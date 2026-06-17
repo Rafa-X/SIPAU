@@ -1,40 +1,78 @@
-using System.Net.Http.Headers;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using UPZMG.Web.Services;
+using UPZMG.Web.Models;
 
 namespace UPZMG.Web.Controllers;
 
 [Authorize]
 public class DashboardController : Controller
 {
-    private readonly IHttpClientFactory _http;
-    private readonly ApiTokenService _tokens;
-
-    public DashboardController(IHttpClientFactory http, ApiTokenService tokens)
+    public IActionResult Index()
     {
-        _http = http;
-        _tokens = tokens;
-    }
+        // Extract user info from claims
+        var email = User.FindFirstValue(ClaimTypes.Email) ?? "usuario@upzmg.edu.mx";
+        var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+        var primaryRole = roles.FirstOrDefault() ?? "Usuario";
 
-    public async Task<IActionResult> Index()
-    {
-        var userIdText = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userIdText) || !Guid.TryParse(userIdText, out var userId))
-            return Unauthorized("Missing user id claim.");
+        // Build user display info
+        var emailParts = email.Split('@')[0].Split('.');
+        var displayName = string.Join(" ", emailParts.Select(p =>
+            char.ToUpper(p[0]) + p[1..]));
+        var initials = string.Join("", emailParts.Select(p =>
+            char.ToUpper(p[0])));
+        if (initials.Length > 2) initials = initials[..2];
 
-        // 1) Web gets a JWT from API
-        var token = await _tokens.GetTokenAsync(userId);
+        // Build demo ViewModel (to be replaced with real DB queries later)
+        var model = new DashboardViewModel
+        {
+            // Period
+            PeriodoActivo = "Ciclo 2025-2026 (Cuatrimestre 1)",
+            PeriodoEsActivo = true,
 
-        // 2) Web calls protected API endpoint
-        var client = _http.CreateClient("UpzmgApi");
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            // Stats
+            TotalAlumnos = 1245,
+            NuevosIngresos = 320,
+            IndiceAprobacion = 87.5m,
+            IndiceReprobacion = 12.5m,
+            IngresosTotales = 15_500_000m,
+            PeriodoIngresos = "Periodo actual",
+            TotalDocentes = 85,
+            DocentesConPosgrado = 62,
 
-        var apiResponse = await client.GetStringAsync("test_jwt");
+            // Summary
+            AreasCompletadas = 4,
+            TotalAreas = 6,
 
-        // Show raw JSON for the test
-        ViewBag.ApiJson = apiResponse;
-        return View();
+            // User
+            NombreUsuario = displayName,
+            RolUsuario = primaryRole,
+            InicialesUsuario = initials,
+
+            // Alerts
+            Alertas = new List<AlertBannerModel>
+            {
+                new() { Mensaje = "Área de Vinculación tiene captura pendiente desde hace 2 días", Tipo = "warning", Prioridad = "Media" },
+                new() { Mensaje = "Reporte 911 debe enviarse en 15 días", Tipo = "info", Prioridad = "Alta" },
+            },
+
+            // Capture progress per area
+            AreasProgreso = new List<CaptureAreaProgress>
+            {
+                new() { NombreArea = "Servicios Escolares", Responsable = "Lic. Ana Martínez", Porcentaje = 100, Estado = "Completo" },
+                new() { NombreArea = "Recursos Humanos", Responsable = "Lic. Carlos López", Porcentaje = 100, Estado = "Completo" },
+                new() { NombreArea = "Vinculación", Responsable = "Mtro. Pedro Sánchez", Porcentaje = 68, Estado = "En progreso" },
+                new() { NombreArea = "Finanzas", Responsable = "C.P. María García", Porcentaje = 100, Estado = "Completo" },
+                new() { NombreArea = "Infraestructura y TIC", Responsable = "Ing. Roberto Díaz", Porcentaje = 45, Estado = "En progreso" },
+                new() { NombreArea = "Investigación", Responsable = "Dr. Laura Hernández", Porcentaje = 100, Estado = "Completo" },
+            }
+        };
+
+        // Pass user info to layout's sidebar
+        ViewData["UserName"] = model.NombreUsuario;
+        ViewData["UserRole"] = model.RolUsuario;
+        ViewData["UserInitials"] = model.InicialesUsuario;
+
+        return View(model);
     }
 }

@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using UPZMG.Persistence;
 using UPZMG.Persistence.Models;
+using UPZMG.Web.Models;
 using UPZMG.Web.Services;
 
 namespace UPZMG.Web.Controllers;
@@ -26,21 +27,21 @@ public class AccountController : Controller
     [HttpGet]
     public IActionResult Login()
     {   
-        //show login page if not authenticated, otherwise redirect to home
+        //show login page if not authenticated, otherwise redirect to dashboard
         if (User.Identity?.IsAuthenticated == true)
-            return RedirectToAction("Index", "Home");
+            return RedirectToAction("Index", "Dashboard");
 
-        return View();
+        return View(new LoginViewModel());
     }
 
     [AllowAnonymous]
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Login(string email, string password)
+    public async Task<IActionResult> Login(LoginViewModel model)
     {   
         //handle login form submission, validate credentials, and sign in with cookie auth
         if (User.Identity?.IsAuthenticated == true)
-            return RedirectToAction("Index", "Home");
+            return RedirectToAction("Index", "Dashboard");
 
         var claims = new List<Claim>();
         var identity = new ClaimsIdentity();
@@ -50,13 +51,14 @@ public class AccountController : Controller
             AllowRefresh = false
         };
 
-        email = email?.Trim() ?? string.Empty;
+        var email = model.Email?.Trim() ?? string.Empty;
 
-        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(model.Password))
         {
             _securityLogger.LogLoginRejected(email, "Missing credentials");
-            ModelState.AddModelError("", "Email and password are required.");
-            return View();
+            model.ErrorMessage = "Email y contraseña son requeridos.";
+            model.Password = null;
+            return View(model);
         }
 
         // 1) Find active user
@@ -67,19 +69,21 @@ public class AccountController : Controller
         if (user is null)
         {
             _securityLogger.LogLoginRejected(email, "User not found or inactive");
-            ModelState.AddModelError("", "Invalid credentials.");
-            return View();
+            model.ErrorMessage = "Credenciales inválidas.";
+            model.Password = null;
+            return View(model);
         }
 
         // 2) Verify password hash
         var hasher = new PasswordHasher<SystemUser>();
-        var result = hasher.VerifyHashedPassword(user, user.Password, password);
+        var result = hasher.VerifyHashedPassword(user, user.Password, model.Password);
 
         if (result == PasswordVerificationResult.Failed)
         {
             _securityLogger.LogLoginRejected(email, "Invalid password");
-            ModelState.AddModelError("", "Invalid credentials.");
-            return View();
+            model.ErrorMessage = "Credenciales inválidas.";
+            model.Password = null;
+            return View(model);
         }
 
         // 3) Load roles
@@ -101,7 +105,7 @@ public class AccountController : Controller
                 new ClaimsPrincipal(identity),
                 props);
         _securityLogger.LogLoginSucceeded(user.Email, roles);
-        return RedirectToAction("Index", "Home");
+        return RedirectToAction("Index", "Dashboard");
     }
 
     [Authorize]
