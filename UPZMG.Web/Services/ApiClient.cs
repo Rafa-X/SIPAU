@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using UPZMG.Persistence.Models;
 using UPZMG.Web.Services;
 
 namespace UPZMG.Web.Services;
@@ -41,6 +42,14 @@ public class ApiClient
         // Example endpoint: GET /example
         var result = await client.GetFromJsonAsync<List<string>>("example");
 
-        return result ?? new List<string>();
+        return result ?? [];
+    }
+
+    public async Task<Permissions> GetPermissionsSnapshotAsync(Guid userId)
+    {
+        var client = await CreateAuthorizedClientAsync(userId);
+        var result = await client.GetFromJsonAsync<Permissions>("auth/permissions");
+
+        return result ?? new Permissions();
     }
 }

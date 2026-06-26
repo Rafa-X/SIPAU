@@ -1,8 +1,9 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
+using UPZMG.Web.Services;
 using UPZMG.Persistence;
 
-
+Console.Title = "UPZMG.Web";
 var builder = WebApplication.CreateBuilder(args);
 using var startupLoggerFactory = CreateStartupLoggerFactory();
 var startupLogger = startupLoggerFactory.CreateLogger("Startup");
@@ -32,9 +33,10 @@ try
             options.Cookie.SameSite = SameSiteMode.Lax;
         });
 
-    builder.Services.AddScoped<UPZMG.Web.Services.ApiTokenService>();
-    builder.Services.AddScoped<UPZMG.Web.Services.ApiClient>();
-    builder.Services.AddSingleton<UPZMG.Web.Services.ISecurityEventLogger, UPZMG.Web.Services.SecurityLogger>();
+    builder.Services.AddScoped<ApiTokenService>();
+    builder.Services.AddScoped<ApiClient>();
+    builder.Services.AddScoped<IAuthService, AuthService>();
+    builder.Services.AddSingleton<ISecurityEventLogger, SecurityLogger>();
 
     builder.Services.AddAuthorization();
 
@@ -102,17 +104,17 @@ static ILoggerFactory CreateStartupLoggerFactory()
 
 static void ValidateRequiredSecret(IConfiguration configuration, string key, int minLength, ILogger logger)
 {
-    logger.LogInformation("Validating required secret configuration {SecretKey}.", key);
+    logger.LogInformation("Validating required secret configuration.");
 
     var value = configuration[key];
     if (string.IsNullOrWhiteSpace(value))
-        throw new InvalidOperationException($"Missing configuration '{key}'. Configure it via user secrets or environment variables.");
+        throw new InvalidOperationException($"Missing configuration 'SecretKey'. Configure it via user secrets or environment variables.");
 
     if (value.StartsWith("CHANGE_", StringComparison.OrdinalIgnoreCase))
-        throw new InvalidOperationException($"Configuration '{key}' still uses a placeholder value. Configure a real secret via user secrets or environment variables.");
+        throw new InvalidOperationException($"Configuration 'SecretKey' still uses a placeholder value. Configure a real secret via user secrets or environment variables.");
 
     if (value.Length < minLength)
-        throw new InvalidOperationException($"Configuration '{key}' must be at least {minLength} characters long.");
+        throw new InvalidOperationException($"Configuration 'SecretKey' must be at least {minLength} characters long.");
 
-    logger.LogInformation("Required secret configuration {SecretKey} loaded successfully.", key);
+    logger.LogInformation("Required secret configuration 'SecretKey' loaded successfully.");
 }

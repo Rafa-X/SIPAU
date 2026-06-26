@@ -2,10 +2,12 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using UPZMG.Api.Services;
 using UPZMG.Persistence;
+using UPZMG.Persistence.Queries;
 
 namespace UPZMG.Api.Controllers;
 
@@ -27,6 +29,8 @@ public class AuthController : ControllerBase
     public record TokenExchangeRequest(Guid UserId, string SharedSecret);
 
     [HttpPost("token")]
+    // Used by the web application to exchange a shared secret for a JWT token.
+    // Fast Authentication context 
     public async Task<IActionResult> Token([FromBody] TokenExchangeRequest req)
     {
         var expected = _cfg["InternalAuth:WebSharedSecret"];
@@ -36,17 +40,12 @@ public class AuthController : ControllerBase
             return Unauthorized();
         }
 
-        var user = await _db.SystemUsers.FirstOrDefaultAsync(x => x.Id == req.UserId && x.IsActive);
+        var user = await _db.GetSystemUserAsync(req.UserId);
         if (user is null)
         {
             _securityLogger.LogTokenExchangeRejected(req.UserId, "User not found or inactive");
             return Unauthorized();
         }
-
-        var roles = await (from ur in _db.UserRoles
-                           join r in _db.Roles on ur.RoleId equals r.Id
-                           where ur.UserId == user.Id
-                           select r.Name).ToListAsync();
 
         var jwt = _cfg.GetSection("Jwt");
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt["Key"]!));
@@ -54,9 +53,9 @@ public class AuthController : ControllerBase
 
         var claims = new List<Claim>
         {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
         };
-        claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
+        claims.AddRange(user.Permissions.Roles.Select(r => new Claim(ClaimTypes.Role, r.Name)));
 
         var minutes = int.Parse(jwt["AccessTokenMinutes"] ?? "15");
         var expiresUtc = DateTime.UtcNow.AddMinutes(minutes);
@@ -68,60 +67,35 @@ public class AuthController : ControllerBase
             signingCredentials: creds
         );
 
-        _securityLogger.LogTokenIssued(user.Id, roles, expiresUtc);
+        _securityLogger.LogTokenIssued(user.Id, user.Permissions.Roles.Select(r => r.Name).ToList(), expiresUtc);
 
         return Ok(new { access_token = new JwtSecurityTokenHandler().WriteToken(token) });
     }
-}
 
-
-/*
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
-
-namespace UPZMG.Api.Controllers;
-
-[ApiController]
-[Route("auth")]
-public class AuthController : ControllerBase
-{
-    private readonly IConfiguration _cfg;
-    public AuthController(IConfiguration cfg) => _cfg = cfg;
-
-    public record TokenExchangeRequest(Guid UserId, string SharedSecret);
-
-    [HttpPost("token")]
-    public IActionResult Token([FromBody] TokenExchangeRequest req)
+    [HttpGet("permissions")]
+    [Authorize]
+    // Returns the user roles and report permissions based on their claims and database records
+    // Fresh Authorization truth
+    public async Task<IActionResult> GetCurrentAuthorizationSnapshot()
     {
-        var expected = _cfg["InternalAuth:WebSharedSecret"];
-        if (string.IsNullOrWhiteSpace(expected) || req.SharedSecret != expected)
+        var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+
+        if (!Guid.TryParse(userIdValue, out var userId))
             return Unauthorized();
 
-        var jwt = _cfg.GetSection("Jwt");
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt["Key"]!));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        // Minimal claims for the test
-        var claims = new List<Claim>
-        {
-            new Claim(JwtRegisteredClaimNames.Sub, req.UserId.ToString()),
-            new Claim(JwtRegisteredClaimNames.UniqueName, "test-user"),
-            new Claim(ClaimTypes.Role, "Admin")
-        };
+        var userPermissions = await _db.GetSystemUserPermissionsAsync(userId);
 
-        var minutes = int.Parse(jwt["AccessTokenMinutes"] ?? "15");
-        var token = new JwtSecurityToken(
-            issuer: jwt["Issuer"],
-            audience: jwt["Audience"],
-            claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(minutes),
-            signingCredentials: creds
-        );
-
-        return Ok(new { access_token = new JwtSecurityTokenHandler().WriteToken(token) });
+        return Ok(userPermissions);
     }
+
+    public sealed record AuthorizationSnapshotResponse(
+        IReadOnlyList<string> Roles,
+        IReadOnlyList<ReportPermissionSnapshot> ReportPermissions);
+
+    public sealed record ReportPermissionSnapshot(
+        string ReportName,
+        bool CanEdit,
+        bool CanSign);
 }
-*/
