@@ -2,26 +2,35 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using UPZMG.Web.Models;
+using UPZMG.Web.Services;
 
 namespace UPZMG.Web.Controllers;
 
 [Authorize]
 public class DashboardController : Controller
 {
-    public IActionResult Index()
+    private readonly IAuthService _authService;
+
+    public DashboardController(IAuthService authService)
+    {
+        _authService = authService;
+    }
+
+    public async Task<IActionResult> Index()
     {
         // Extract user info from claims
-        var email = User.FindFirstValue(ClaimTypes.Email) ?? "usuario@upzmg.edu.mx";
-        var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
-        var primaryRole = roles.FirstOrDefault() ?? "Usuario";
+        var email = User.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
+        var roles = User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value).Distinct().ToList();  // Get live roles from API
+        //var roles = await _authService.GetCurrentRolesAsync(User);  // Get live roles from API
 
         // Build user display info
-        var emailParts = email.Split('@')[0].Split('.');
+        var emailParts = email.Split('@')[0]
+            .Split('.', StringSplitOptions.RemoveEmptyEntries);
+
         var displayName = string.Join(" ", emailParts.Select(p =>
-            char.ToUpper(p[0]) + p[1..]));
+            char.ToUpperInvariant(p[0]) + p[1..]));
         var initials = string.Join("", emailParts.Select(p =>
-            char.ToUpper(p[0])));
-        if (initials.Length > 2) initials = initials[..2];
+            char.ToUpperInvariant(p[0])));
 
         // Build demo ViewModel (to be replaced with real DB queries later)
         var model = new DashboardViewModel
@@ -46,7 +55,6 @@ public class DashboardController : Controller
 
             // User
             NombreUsuario = displayName,
-            RolUsuario = primaryRole,
             InicialesUsuario = initials,
 
             // Alerts

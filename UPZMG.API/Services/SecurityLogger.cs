@@ -17,15 +17,12 @@ public sealed class SecurityLogger : ISecurityEventLogger
 
     public void LogTokenExchangeRejected(Guid userId, string reason)
     {
-        _logger.LogWarning("JWT token exchange rejected for user {UserId}. Reason: {Reason}.", userId, reason);
+        _logger.LogWarning($"JWT token exchange rejected for user {userId}. Reason: {reason}.");
     }
 
     public void LogTokenIssued(Guid userId, IReadOnlyCollection<string> roles, DateTime expiresUtc)
     {
         _logger.LogInformation(
-            "JWT access token issued for user {UserId}. RoleCount: {RoleCount}. ExpiresUtc: {ExpiresUtc}.",
-            userId,
-            roles.Count,
-            expiresUtc);
+            $"JWT access token issued for user {userId}. RoleCount: {roles.Count}. ExpiresUtc: {expiresUtc}.");
     }
 }

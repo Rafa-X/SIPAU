@@ -9,6 +9,7 @@ using UPZMG.Persistence;
 using UPZMG.Persistence.Models;
 using UPZMG.Web.Models;
 using UPZMG.Web.Services;
+using UPZMG.Persistence.Queries;
 
 namespace UPZMG.Web.Controllers;
 
@@ -39,72 +40,68 @@ public class AccountController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Login(LoginViewModel model)
     {   
-        //handle login form submission, validate credentials, and sign in with cookie auth
-        if (User.Identity?.IsAuthenticated == true)
-            return RedirectToAction("Index", "Dashboard");
+        try{
+            // If the user is already authenticated, redirect to the dashboard
+            if (User.Identity?.IsAuthenticated == true)
+                return RedirectToAction("Index", "Dashboard");
 
-        var claims = new List<Claim>();
-        var identity = new ClaimsIdentity();
-        var props = new AuthenticationProperties
+            // If the user is not authenticated, proceed with login logic
+            var claims = new List<Claim>();
+            var identity = new ClaimsIdentity();
+            var props = new AuthenticationProperties
+            {
+                IsPersistent = false,
+                AllowRefresh = false
+            };
+
+            var email = model.Email?.Trim() ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(model.Password))
+            {
+                _securityLogger.LogLoginRejected(email, "Missing credentials");
+                model.ErrorMessage = "Email y contraseña son requeridos.";
+                return View(model);
+            }
+
+            // 1) Find active user
+            var user = await _db.GetSystemUserAsync(email);
+
+            if (user is null)
+            {
+                _securityLogger.LogLoginRejected(email, "User not found or inactive");
+                model.ErrorMessage = "Credenciales inválidas.";
+                return View(model);
+            }
+
+            // 2) Verify password hash
+            var hasher = new PasswordHasher<SystemUser>();
+            var result = hasher.VerifyHashedPassword(user, user.Password, model.Password);
+
+            if (result == PasswordVerificationResult.Failed)
+            {
+                _securityLogger.LogLoginRejected(email, "Invalid password");
+                model.ErrorMessage = "Credenciales inválidas.";
+                return View(model);
+            }
+
+            // 3) Create cookie claims
+            claims.Add(new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()));
+            claims.Add(new Claim(ClaimTypes.Email, user.Email));
+            claims.AddRange(user.Permissions.Roles.Select(r => new Claim(ClaimTypes.Role, r.Id.ToString())));
+
+            identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            await HttpContext.SignInAsync(
+                    CookieAuthenticationDefaults.AuthenticationScheme,
+                    new ClaimsPrincipal(identity),
+                    props);
+            _securityLogger.LogLoginSucceeded(user.Email, user.Permissions.Roles);
+        }
+        catch (Exception ex)
         {
-            IsPersistent = false,
-            AllowRefresh = false
-        };
-
-        var email = model.Email?.Trim() ?? string.Empty;
-
-        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(model.Password))
-        {
-            _securityLogger.LogLoginRejected(email, "Missing credentials");
-            model.ErrorMessage = "Email y contraseña son requeridos.";
-            model.Password = null;
+            _securityLogger.LogLoginRejected(model.Email ?? string.Empty, $"Exception during login: {ex.Message}");
+            model.ErrorMessage = "Ocurrió un error durante el inicio de sesión. Por favor, inténtelo de nuevo.";
             return View(model);
         }
-
-        // 1) Find active user
-        var user = await _db.SystemUsers
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Email == email && x.IsActive);
-
-        if (user is null)
-        {
-            _securityLogger.LogLoginRejected(email, "User not found or inactive");
-            model.ErrorMessage = "Credenciales inválidas.";
-            model.Password = null;
-            return View(model);
-        }
-
-        // 2) Verify password hash
-        var hasher = new PasswordHasher<SystemUser>();
-        var result = hasher.VerifyHashedPassword(user, user.Password, model.Password);
-
-        if (result == PasswordVerificationResult.Failed)
-        {
-            _securityLogger.LogLoginRejected(email, "Invalid password");
-            model.ErrorMessage = "Credenciales inválidas.";
-            model.Password = null;
-            return View(model);
-        }
-
-        // 3) Load roles
-        var roles = await (
-            from ur in _db.UserRoles.AsNoTracking()
-            join r in _db.Roles.AsNoTracking() on ur.RoleId equals r.Id
-            where ur.UserId == user.Id
-            select r.Name
-        ).ToListAsync();
-
-        // 4) Create cookie claims
-        claims.Add(new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()));
-        claims.Add(new Claim(ClaimTypes.Email, user.Email));
-        claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
-
-        identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-        await HttpContext.SignInAsync(
-                CookieAuthenticationDefaults.AuthenticationScheme,
-                new ClaimsPrincipal(identity),
-                props);
-        _securityLogger.LogLoginSucceeded(user.Email, roles);
         return RedirectToAction("Index", "Dashboard");
     }
 
@@ -123,5 +120,6 @@ public class AccountController : Controller
         return RedirectToAction("Login");
     }
 
+    [AllowAnonymous]
     public IActionResult AccessDenied() => View();
 }

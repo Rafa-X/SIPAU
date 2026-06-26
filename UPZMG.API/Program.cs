@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using UPZMG.Persistence;
 
+Console.Title = "UPZMG.API";
 var builder = WebApplication.CreateBuilder(args);
 using var startupLoggerFactory = CreateStartupLoggerFactory();
 var startupLogger = startupLoggerFactory.CreateLogger("Startup");
@@ -83,7 +84,7 @@ static ILoggerFactory CreateStartupLoggerFactory()
 
 static string GetRequiredSecret(IConfiguration configuration, string key, int minLength, ILogger logger)
 {
-    logger.LogInformation("Validating required secret configuration {SecretKey}.", key);
+    logger.LogInformation("Validating required secret configuration - SecretKey.");
 
     var value = configuration[key];
     if (string.IsNullOrWhiteSpace(value))
@@ -95,7 +96,7 @@ static string GetRequiredSecret(IConfiguration configuration, string key, int mi
     if (value.Length < minLength)
         throw new InvalidOperationException($"Configuration '{key}' must be at least {minLength} characters long.");
 
-    logger.LogInformation("Required secret configuration {SecretKey} loaded successfully.", key);
+    logger.LogInformation("Required secret configuration - SecretKey loaded successfully.");
     return value;
 }
 

@@ -1,9 +1,11 @@
+using UPZMG.Persistence.Models;
+
 namespace UPZMG.Web.Services;
 
 public interface ISecurityEventLogger
 {
     void LogLoginRejected(string email, string reason);
-    void LogLoginSucceeded(string email, IReadOnlyCollection<string> roles);
+    void LogLoginSucceeded(string email, IReadOnlyCollection<Role> roles);
     void LogLogout(Guid? userId, string? email);
     void LogApiTokenCacheHit(Guid userId);
     void LogApiTokenRequest(Guid userId);
@@ -25,12 +27,16 @@ public sealed class SecurityLogger : ISecurityEventLogger
         _logger.LogWarning("Web login rejected for {Email}. Reason: {Reason}.", email, reason);
     }
 
-    public void LogLoginSucceeded(string email, IReadOnlyCollection<string> roles)
+    public void LogLoginSucceeded(string email, IReadOnlyCollection<Role> roles)
     {
+        var roleNames = roles.Count == 0
+            ? "(none)"
+            : string.Join(", ", roles.Select(r => r.Name));
+
         _logger.LogInformation(
-            "Web login succeeded for user ({Email}). RoleCount: {RoleCount}.",
+            "Web login succeeded for user ({Email}). Roles: {Roles}.",
             email,
-            roles.Count);
+            roleNames);
     }
 
     public void LogLogout(Guid? userId, string? email)

@@ -3,6 +3,10 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace UPZMG.Web.Services;
 
+/// <summary>
+/// Service responsible for managing API tokens.
+/// </summary>
+
 public class ApiTokenService
 {
     private readonly IHttpClientFactory _factory;
