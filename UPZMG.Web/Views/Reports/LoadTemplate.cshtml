@@ -1,0 +1,154 @@
+@model UPZMG.Web.Models.ReportsTemplateViewModel
+@{
+    ViewData["Title"] = "Constructor de Reporte";
+
+    var sectionCount = Model.Template.Sections.Count;
+    var sectionIndex = Model.SectionIndex;//sectionCount == 0 ? 0 : Math.Clamp(Model.SectionIndex, 0, sectionCount - 1);
+    var currentSection = sectionCount > 0 ? Model.Template.Sections[sectionIndex] : null;
+    var isLastSection = Model.SectionIndex == Model.Template.Sections.Count ? true : false;
+    var actionLabel = isLastSection ? "Enviar Reporte" : "Siguiente Sección";
+}
+
+@section PageStyles {
+    <link rel="stylesheet" href="~/css/reports.css" asp-append-version="true" />
+}
+
+<div class="reports-shell">
+    <section class="reports-header">
+        <h1>@Model.Template.DisplayName</h1>
+        <p>
+            Reporte: @Model.Template.ReportKey | Version: @Model.Template.Version | Estado: @Model.Template.Status
+        </p>
+        @if (sectionCount > 0)
+        {
+            <div class="reports-step-badge">
+                Sección @(sectionIndex + 1) de @sectionCount
+            </div>
+        }
+    </section>
+
+    <form class="reports-form-builder" method="post" asp-controller="Reports" asp-action="SaveDraft">
+        @Html.AntiForgeryToken()
+
+        <input type="hidden" asp-for="ReportType" />
+        <input type="hidden" asp-for="DraftId" />
+        <input type="hidden" asp-for="SectionIndex" />
+
+        @if (currentSection is not null)
+        {
+            <section class="reports-card reports-template-section">
+                <h2>@(sectionIndex + 1). @(currentSection.Title)</h2>
+                @if (!string.IsNullOrWhiteSpace(currentSection.Description))
+                {
+                    <p>@(currentSection.Description)</p>
+                }
+
+                @foreach (var question in currentSection.Questions)
+                {
+                    <div class="reports-question-block">
+                        <label class="reports-field-label" for="@question.Key">
+                            @question.Text
+                            @if (question.Required)
+                            {
+                                <span class="reports-required">*</span>
+                            }
+                        </label>
+
+                        @if (!string.IsNullOrWhiteSpace(question.HelpText))
+                        {
+                            <div class="reports-help-text">@question.HelpText</div>
+                        }
+
+                        @switch (question.Type.ToLowerInvariant())
+                        {
+                            case "boolean":
+                                <select id="@question.Key" name="answers[@question.Key]" class="reports-select" @(question.Required ? "required" : null)>
+                                    <option value="">Selecciona...</option>
+                                    <option value="true">Si</option>
+                                    <option value="false">No</option>
+                                </select>
+                                break;
+
+                            case "number":
+                                <input id="@question.Key"
+                                       name="answers[@question.Key]"
+                                       type="number"
+                                       min="0"
+                                       step="1"
+                                       class="reports-input"
+                                       @(question.Required ? "required" : null) />
+                                break;
+
+                            case "matrix":
+                                <div class="reports-matrix-wrap">
+                                    <table class="reports-matrix-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Concepto</th>
+                                                @foreach (var col in question.Columns)
+                                                {
+                                                    <th>@col</th>
+                                                }
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var row in question.Rows)
+                                            {
+                                                <tr>
+                                                    <td>@row</td>
+                                                    @foreach (var col in question.Columns)
+                                                    {
+                                                        var key = $"answers[{question.Key}][{row}][{col}]";
+                                                        <td>
+                                                            <input type="number"
+                                                                   min="0"
+                                                                   step="1"
+                                                                   name="@key"
+                                                                   class="reports-input reports-input-sm"
+                                                                   @(question.Required ? "required" : null) />
+                                                        </td>
+                                                    }
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                                break;
+
+                            default:
+                                <input id="@question.Key"
+                                       name="answers[@question.Key]"
+                                       type="text"
+                                       class="reports-input"
+                                       @(question.Required ? "required" : null) />
+                                break;
+                        }
+                    </div>
+                }
+            </section>
+        }
+        else
+        {
+            <section class="reports-card">
+                <p>Este template no contiene secciones configuradas.</p>
+            </section>
+        }
+
+        <section class="reports-card">
+            <div class="reports-actions">
+                <a asp-controller="Reports" asp-action="Index" class="btn btn-outline">Volver a selector</a>
+                <button type="submit" class="reports-btn">@actionLabel</button>
+            </div>
+            <div class="reports-hint">
+                @if (isLastSection)
+                {
+                    <text>Al enviar, el borrador se guardará en la base de datos y regresarás al listado de reportes.</text>
+                }
+                else
+                {
+                    <text>Al continuar, se guardará el borrador en la base de datos y se cargará la siguiente sección.</text>
+                }
+            </div>
+        </section>
+    </form>
+</div>

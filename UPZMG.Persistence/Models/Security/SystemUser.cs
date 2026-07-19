@@ -14,16 +14,11 @@ public class SystemUser
     public Guid EmployeeId { get; set; } //fk
     [MaxLength(100)]
     public string Email { get; set; } = null!;
-    [MaxLength(50)]
+    [MaxLength(256)]
     public string Password { get; set; } = null!;
     public bool IsActive { get; set; }
     public DateTime LastLogin { get; set; }
-    [NotMapped]
-    public Permissions Permissions { get; set; } = null!;
-}
 
-public class Permissions
-{
-    public List<Role> Roles { get; set; } = null!;
-    public List<ReportsPermission> ReportsPermissions { get; set; } = null!;
+    [NotMapped] // Not mapped to database, but usable during runtime.
+    public Role? Role { get; set; }
 }

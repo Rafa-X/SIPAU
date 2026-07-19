@@ -3,28 +3,21 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using UPZMG.Api.Services;
 using UPZMG.Persistence;
 using UPZMG.Persistence.Queries;
+using Microsoft.EntityFrameworkCore;
 
 namespace UPZMG.Api.Controllers;
 
 [ApiController]
 [Route("auth")]
-public class AuthController : ControllerBase
+public class AuthController(AppDBContext db, IConfiguration cfg, ISecurityEventLogger securityLogger) : ControllerBase
 {
-    private readonly AppDBContext _db;
-    private readonly IConfiguration _cfg;
-    private readonly ISecurityEventLogger _securityLogger;
-
-    public AuthController(AppDBContext db, IConfiguration cfg, ISecurityEventLogger securityLogger)
-    {
-        _db = db;
-        _cfg = cfg;
-        _securityLogger = securityLogger;
-    }
+    private readonly AppDBContext _db = db;
+    private readonly IConfiguration _cfg = cfg;
+    private readonly ISecurityEventLogger _securityLogger = securityLogger;
 
     public record TokenExchangeRequest(Guid UserId, string SharedSecret);
 
@@ -41,7 +34,7 @@ public class AuthController : ControllerBase
         }
 
         var user = await _db.GetSystemUserAsync(req.UserId);
-        if (user is null)
+        if (user is null || user.Id == Guid.Empty || user.Role is null)
         {
             _securityLogger.LogTokenExchangeRejected(req.UserId, "User not found or inactive");
             return Unauthorized();
@@ -54,8 +47,8 @@ public class AuthController : ControllerBase
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new(ClaimTypes.Role, user.Role.Name),
         };
-        claims.AddRange(user.Permissions.Roles.Select(r => new Claim(ClaimTypes.Role, r.Name)));
 
         var minutes = int.Parse(jwt["AccessTokenMinutes"] ?? "15");
         var expiresUtc = DateTime.UtcNow.AddMinutes(minutes);
@@ -67,7 +60,7 @@ public class AuthController : ControllerBase
             signingCredentials: creds
         );
 
-        _securityLogger.LogTokenIssued(user.Id, user.Permissions.Roles.Select(r => r.Name).ToList(), expiresUtc);
+        _securityLogger.LogTokenIssued(user.Id, user.Role.Name, expiresUtc);
 
         return Ok(new { access_token = new JwtSecurityTokenHandler().WriteToken(token) });
     }
@@ -84,18 +77,8 @@ public class AuthController : ControllerBase
         if (!Guid.TryParse(userIdValue, out var userId))
             return Unauthorized();
 
-
         var userPermissions = await _db.GetSystemUserPermissionsAsync(userId);
 
         return Ok(userPermissions);
     }
-
-    public sealed record AuthorizationSnapshotResponse(
-        IReadOnlyList<string> Roles,
-        IReadOnlyList<ReportPermissionSnapshot> ReportPermissions);
-
-    public sealed record ReportPermissionSnapshot(
-        string ReportName,
-        bool CanEdit,
-        bool CanSign);
 }

@@ -4,25 +4,17 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using UPZMG.Persistence;
 using UPZMG.Persistence.Models;
 using UPZMG.Web.Models;
 using UPZMG.Web.Services;
 using UPZMG.Persistence.Queries;
+using Microsoft.EntityFrameworkCore;
 
 namespace UPZMG.Web.Controllers;
 
-public class AccountController : Controller
+public class AccountController(AppDBContext _db, ISecurityEventLogger _securityLogger) : Controller
 {
-    private readonly AppDBContext _db;
-    private readonly ISecurityEventLogger _securityLogger;
-
-    public AccountController(AppDBContext db, ISecurityEventLogger securityLogger)
-    {
-        _db = db;
-        _securityLogger = securityLogger;
-    }
 
     [AllowAnonymous]
     [HttpGet]
@@ -66,7 +58,7 @@ public class AccountController : Controller
             // 1) Find active user
             var user = await _db.GetSystemUserAsync(email);
 
-            if (user is null)
+            if (user is null || user.IsActive == false || user.Role is null || string.IsNullOrWhiteSpace(user.Password))
             {
                 _securityLogger.LogLoginRejected(email, "User not found or inactive");
                 model.ErrorMessage = "Credenciales inválidas.";
@@ -87,14 +79,14 @@ public class AccountController : Controller
             // 3) Create cookie claims
             claims.Add(new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()));
             claims.Add(new Claim(ClaimTypes.Email, user.Email));
-            claims.AddRange(user.Permissions.Roles.Select(r => new Claim(ClaimTypes.Role, r.Id.ToString())));
+            claims.Add(new Claim(ClaimTypes.Role, user.Role.Name));
 
             identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             await HttpContext.SignInAsync(
                     CookieAuthenticationDefaults.AuthenticationScheme,
                     new ClaimsPrincipal(identity),
                     props);
-            _securityLogger.LogLoginSucceeded(user.Email, user.Permissions.Roles);
+                _securityLogger.LogLoginSucceeded(user.Email, user.Role);
         }
         catch (Exception ex)
         {

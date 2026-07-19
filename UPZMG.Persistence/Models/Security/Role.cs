@@ -13,3 +13,16 @@ public class Role
     [MaxLength(40)]
     public string Name { get; set; } = null!;
 }
+
+
+/// <summary>
+/// Security module.
+/// Represents a system user role assignment in the system.
+/// </summary>
+
+public class UserRole
+{
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; } //fk
+    public Guid RoleId { get; set; } //fk
+}
