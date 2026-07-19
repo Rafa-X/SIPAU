@@ -5,16 +5,10 @@ using UPZMG.Web.Services;
 
 namespace UPZMG.Web.Services;
 
-public class ApiClient
+public class ApiClient(IHttpClientFactory httpClientFactory, ApiTokenService tokenService)
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ApiTokenService _tokenService;
-
-    public ApiClient(IHttpClientFactory httpClientFactory, ApiTokenService tokenService)
-    {
-        _httpClientFactory = httpClientFactory;
-        _tokenService = tokenService;
-    }
+    private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
+    private readonly ApiTokenService _tokenService = tokenService;
 
     // Generic helper: prepare client with Bearer token
     private async Task<HttpClient> CreateAuthorizedClientAsync(Guid userId)
@@ -45,11 +39,11 @@ public class ApiClient
         return result ?? [];
     }
 
-    public async Task<Permissions> GetPermissionsSnapshotAsync(Guid userId)
+    public async Task<UserPermissions> GetPermissionsSnapshotAsync(Guid userId)
     {
         var client = await CreateAuthorizedClientAsync(userId);
-        var result = await client.GetFromJsonAsync<Permissions>("auth/permissions");
+        var result = await client.GetFromJsonAsync<UserPermissions>("auth/permissions");
 
-        return result ?? new Permissions();
+        return result ?? new UserPermissions();
     }
 }

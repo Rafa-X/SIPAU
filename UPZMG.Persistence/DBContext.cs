@@ -10,8 +10,12 @@ public class AppDBContext : DbContext
     // Security
     public DbSet<SystemUser> SystemUsers => Set<SystemUser>();
     public DbSet<Role> Roles => Set<Role>();
-    public DbSet<UserRole> UserRoles => Set<UserRole>();
+    public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<ReportsPermission> ReportsPermissions => Set<ReportsPermission>();
+    public DbSet<Reports> Reports => Set<Reports>();
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+    public DbSet<RoleReportPermission> RoleReportsPermissions => Set<RoleReportPermission>();
+    public DbSet<UserRole> UserRoles => Set<UserRole>();
 
     // Academic
     public DbSet<AcademicLoad> AcademicLoads => Set<AcademicLoad>();
@@ -71,6 +75,55 @@ public class AppDBContext : DbContext
             entity.ToTable("roles");
             entity.HasKey(x => x.Id);
         });
+        modelBuilder.Entity<Permission>(entity => {
+            entity.ToTable("permissions");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Name).HasMaxLength(50);
+            entity.HasIndex(x => x.Name).IsUnique();
+        });
+        modelBuilder.Entity<ReportsPermission>(entity => {
+            entity.ToTable("reportsPermissions");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.ReportId);
+        });
+        modelBuilder.Entity<Reports>(entity => {
+            entity.ToTable("reportDrafts");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.ReportType).HasMaxLength(40);
+            entity.Property(x => x.TemplateKey).HasMaxLength(100);
+            entity.Property(x => x.TemplateVersion).HasMaxLength(20);
+            entity.Property(x => x.Status).HasMaxLength(20);
+            entity.Property(x => x.AnswersJson).HasColumnType("nvarchar(max)");
+            entity.Property(x => x.DateCreated).HasColumnType("datetime2");
+            entity.Property(x => x.LastModified).HasColumnType("datetime2");
+            entity.HasIndex(x => new { x.ReportType, x.TemplateKey, x.TemplateVersion });
+        });
+        modelBuilder.Entity<RolePermission>(entity => {
+            entity.ToTable("rolePermissions");
+            entity.HasKey(x => new { x.RoleId, x.PermissionId });
+            entity.HasOne<Role>()
+                .WithMany()
+                .HasForeignKey(x => x.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Permission>()
+                .WithMany()
+                .HasForeignKey(x => x.PermissionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<RoleReportPermission>(entity => {
+            entity.ToTable("roleReportsPermissions");
+            entity.HasKey(x => new { x.RoleId, x.ReportsPermissionId });
+            entity.Property(x => x.CanEdit).HasDefaultValue(false);
+            entity.Property(x => x.CanSign).HasDefaultValue(false);
+            entity.HasOne<Role>()
+                .WithMany()
+                .HasForeignKey(x => x.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ReportsPermission>()
+                .WithMany()
+                .HasForeignKey(x => x.ReportsPermissionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
         modelBuilder.Entity<UserRole>(entity => {
             entity.ToTable("userRoles");
             entity.HasKey(x => x.Id);
@@ -80,10 +133,6 @@ public class AppDBContext : DbContext
             entity.HasOne<Role>()
                 .WithMany()
                 .HasForeignKey(x => x.RoleId);
-        });
-        modelBuilder.Entity<ReportsPermission>(entity => {
-            entity.ToTable("reportsPermissions");
-            entity.HasKey(x => x.Id);
         });
 
         // Academic
@@ -309,6 +358,15 @@ public class AppDBContext : DbContext
         //     entity.ToTable("teacherContinuousEducations");
         //     entity.HasKey(x => x.Id);
         // });
+
+        // SQL Server does not allow multiple cascade paths; use NO ACTION for inferred cascade FKs.
+        foreach (var foreignKey in modelBuilder.Model.GetEntityTypes().SelectMany(e => e.GetForeignKeys()))
+        {
+            if (foreignKey.DeleteBehavior == DeleteBehavior.Cascade)
+            {
+                foreignKey.DeleteBehavior = DeleteBehavior.NoAction;
+            }
+        }
     }
 }
 

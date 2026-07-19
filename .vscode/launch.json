@@ -2,12 +2,13 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "UPZMG.Web",
+      "name": "UPZMG.API",
       "type": "coreclr",
       "request": "launch",
-      "program": "${workspaceFolder}/UPZMG.Web/bin/Debug/net10.0/UPZMG.Web.dll",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/UPZMG.API/bin/Debug/net10.0/UPZMG.API.dll",
       "args": [],
-      "cwd": "${workspaceFolder}/UPZMG.Web",
+      "cwd": "${workspaceFolder}/UPZMG.API",
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
@@ -18,12 +19,13 @@
       }
     },
     {
-      "name": "UPZMG.API",
+      "name": "UPZMG.Web",
       "type": "coreclr",
       "request": "launch",
-      "program": "${workspaceFolder}/UPZMG.API/bin/Debug/net10.0/UPZMG.API.dll",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/UPZMG.Web/bin/Debug/net10.0/UPZMG.Web.dll",
       "args": [],
-      "cwd": "${workspaceFolder}/UPZMG.API",
+      "cwd": "${workspaceFolder}/UPZMG.Web",
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },

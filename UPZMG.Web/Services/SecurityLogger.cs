@@ -5,7 +5,7 @@ namespace UPZMG.Web.Services;
 public interface ISecurityEventLogger
 {
     void LogLoginRejected(string email, string reason);
-    void LogLoginSucceeded(string email, IReadOnlyCollection<Role> roles);
+    void LogLoginSucceeded(string email, Role role);
     void LogLogout(Guid? userId, string? email);
     void LogApiTokenCacheHit(Guid userId);
     void LogApiTokenRequest(Guid userId);
@@ -27,16 +27,14 @@ public sealed class SecurityLogger : ISecurityEventLogger
         _logger.LogWarning("Web login rejected for {Email}. Reason: {Reason}.", email, reason);
     }
 
-    public void LogLoginSucceeded(string email, IReadOnlyCollection<Role> roles)
+    public void LogLoginSucceeded(string email, Role role)
     {
-        var roleNames = roles.Count == 0
-            ? "(none)"
-            : string.Join(", ", roles.Select(r => r.Name));
+        var roleName = role?.Name ?? "(none)";
 
         _logger.LogInformation(
-            "Web login succeeded for user ({Email}). Roles: {Roles}.",
+            "Web login succeeded for user ({Email}). Role: {Role}.",
             email,
-            roleNames);
+            roleName);
     }
 
     public void LogLogout(Guid? userId, string? email)

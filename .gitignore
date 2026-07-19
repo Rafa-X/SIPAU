@@ -55,3 +55,7 @@ nunit-*.xml
 
 # env files
 .env
+
+#folder
+Reportes
+tests

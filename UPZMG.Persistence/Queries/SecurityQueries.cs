@@ -7,92 +7,82 @@ public static class SecurityQueries
 {
     public static async Task<SystemUser> GetSystemUserAsync(this AppDBContext db, string email)
     {
-        var result = 
-        from sy in db.SystemUsers.AsNoTracking()
-        join ur in db.UserRoles.AsNoTracking() on sy.Id equals ur.UserId
-        join r in db.Roles.AsNoTracking() on ur.RoleId equals r.Id
-        where sy.Email == email && sy.IsActive
-        select new SystemUser
-        {
-            Id = sy.Id,
-            EmployeeId = sy.EmployeeId,
-            Email = sy.Email,
-            Password = sy.Password,
-            IsActive = sy.IsActive,
-            LastLogin = sy.LastLogin,
-            Permissions = new Permissions
+        return await (
+            from su in db.SystemUsers.AsNoTracking()
+            join ur in db.UserRoles.AsNoTracking() on su.Id equals ur.UserId
+            join r in db.Roles.AsNoTracking() on ur.RoleId equals r.Id
+            where su.Email == email && su.IsActive
+            select new SystemUser
             {
-                Roles = new List<Role> { 
-                    new()
-                    {
-                        Id = r.Id,
-                        Name = r.Name
-                    }
-                }
-            }
-        };
-
-        return await result.FirstOrDefaultAsync() ?? new SystemUser();
-    }
-
-    public static async Task<SystemUser> GetSystemUserAsync(this AppDBContext db, Guid userId)
-    {
-        var result = 
-        from sy in db.SystemUsers.AsNoTracking()
-        join ur in db.UserRoles.AsNoTracking() on sy.Id equals ur.UserId
-        join r in db.Roles.AsNoTracking() on ur.RoleId equals r.Id
-        where sy.Id == userId && sy.IsActive
-        select new SystemUser
-        {
-            Id = sy.Id,
-            EmployeeId = sy.EmployeeId,
-            Email = sy.Email,
-            Password = sy.Password,
-            IsActive = sy.IsActive,
-            LastLogin = sy.LastLogin,
-            Permissions = new Permissions
-            {
-                Roles = new List<Role> {
-                    new()
-                    {
-                        Id = r.Id,
-                        Name = r.Name
-                    }
-                }
-            }
-        };
-
-        return await result.FirstOrDefaultAsync() ?? new SystemUser();
-    }
-
-    public static async Task<Permissions> GetSystemUserPermissionsAsync(this AppDBContext db, Guid userId)
-    {
-        var result = 
-        from sy in db.SystemUsers.AsNoTracking()
-        join ur in db.UserRoles.AsNoTracking() on sy.Id equals ur.UserId
-        join r in db.Roles.AsNoTracking() on ur.RoleId equals r.Id
-        join rp in db.ReportsPermissions.AsNoTracking() on r.Id equals rp.RoleId
-        where sy.Id == userId && sy.IsActive
-        select new Permissions
-        {
-            Roles = new List<Role> { 
-                new()
+                Id = su.Id,
+                EmployeeId = su.EmployeeId,
+                Email = su.Email,
+                Password = su.Password,
+                IsActive = su.IsActive,
+                LastLogin = su.LastLogin,
+                Role = new Role
                 {
                     Id = r.Id,
                     Name = r.Name
                 }
-                },
-            ReportsPermissions = new List<ReportsPermission>{
-                new() {
-                    Id = rp.Id,
-                    RoleId = rp.RoleId,
-                    ReportName = rp.ReportName,
-                    CanEdit = rp.CanEdit,
-                    CanSign = rp.CanSign
-                }
-            }
-        };
+            })
+            .FirstOrDefaultAsync() ?? new SystemUser();
+    }
 
-        return result.FirstOrDefault() ?? new Permissions();
+    public static async Task<SystemUser> GetSystemUserAsync(this AppDBContext db, Guid userId)
+    {
+        return await (
+            from su in db.SystemUsers.AsNoTracking()
+            join ur in db.UserRoles.AsNoTracking() on su.Id equals ur.UserId
+            join r in db.Roles.AsNoTracking() on ur.RoleId equals r.Id
+            where su.Id == userId && su.IsActive
+            select new SystemUser
+            {
+                Id = su.Id,
+                EmployeeId = su.EmployeeId,
+                Email = su.Email,
+                Password = su.Password,
+                IsActive = su.IsActive,
+                LastLogin = su.LastLogin,
+                Role = new Role
+                {
+                    Id = r.Id,
+                    Name = r.Name
+                }
+            })
+            .FirstOrDefaultAsync() ?? new SystemUser();
+    }
+
+    public static async Task<UserPermissions> GetSystemUserPermissionsAsync(this AppDBContext db, Guid userId)
+    {
+        if (userId == Guid.Empty)
+            return new UserPermissions();
+        
+        return await (
+            from ur  in db.UserRoles.AsNoTracking()
+            join r   in db.Roles.AsNoTracking() on ur.RoleId equals r.Id
+            join rp  in db.RolePermissions.AsNoTracking() on r.Id equals rp.RoleId
+            join p   in db.Permissions.AsNoTracking() on rp.PermissionId equals p.Id
+            join rrp in db.RoleReportsPermissions.AsNoTracking() on rp.RoleId equals rrp.RoleId
+            where ur.UserId == userId && rp.RoleId == r.Id && rrp.RoleId == r.Id
+            select new UserPermissions
+            {
+                Permissions = new List<Permission>
+                {
+                    new() {
+                        Id = p.Id,
+                        Name = p.Name
+                    }
+                },
+                ReportsPermissions = new List<RoleReportPermission>
+                {
+                    new() {
+                        RoleId = rrp.RoleId,
+                        ReportsPermissionId = rrp.ReportsPermissionId,
+                        CanEdit = rrp.CanEdit,
+                        CanSign = rrp.CanSign
+                    }
+                }
+            }).FirstOrDefaultAsync() ?? new UserPermissions();
     }
 }

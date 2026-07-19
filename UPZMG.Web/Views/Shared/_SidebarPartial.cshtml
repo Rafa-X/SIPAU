@@ -39,8 +39,8 @@
             </a>
         </li>
         <li class="sidebar-nav-item">
-            <a asp-controller="Reportes" asp-action="Index"
-               class="sidebar-nav-link @(currentController == "Reportes" ? "active" : "")">
+            <a asp-controller="Reports" asp-action="Index"
+               class="sidebar-nav-link @(currentController == "Reports" ? "active" : "")">
                 <span class="sidebar-nav-icon">📄</span>
                 Reportes 911
             </a>
@@ -52,6 +52,16 @@
                 Configuración
             </a>
         </li>
+        @if (User.IsInRole("Admin"))
+        {
+            <li class="sidebar-nav-item">
+                <a asp-controller="Security" asp-action="Index"
+                   class="sidebar-nav-link @(currentController == "Security" ? "active" : "")">
+                    <span class="sidebar-nav-icon">🔐</span>
+                    Security
+                </a>
+            </li>
+        }
     </ul>
 
     <!-- User Profile Footer -->
