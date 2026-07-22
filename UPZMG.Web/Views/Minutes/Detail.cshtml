@@ -1,0 +1,65 @@
+@model UPZMG.Web.Models.MinuteDetailViewModel
+@{
+    ViewData["Title"] = "Detalle de Acta";
+
+    var badgeClass = Model.Status switch
+    {
+        "Firmada" => "badge-success",
+        "En revisión gobierno" => "badge-info",
+        _ => "badge-warning"
+    };
+}
+
+@section PageStyles {
+    <link rel="stylesheet" href="~/css/minutes.css" asp-append-version="true" />
+}
+
+<!-- Page Header -->
+<div class="page-header animate-fade-in">
+    <div class="page-header-left">
+        <h1>Acta — @Model.SessionName</h1>
+        <p>
+            @Model.Date.ToString("dd/MM/yyyy")
+            &middot; <span class="badge @badgeClass">@Model.Status</span>
+        </p>
+    </div>
+    <div class="page-header-right">
+        <a asp-controller="Minutes" asp-action="Index" class="btn btn-outline">← Volver a Actas</a>
+    </div>
+</div>
+
+<div class="card animate-slide-up delay-1">
+    <div class="acta-firmantes-header">
+        <div>
+            <h3>Firmantes</h3>
+            <p class="section-subtitle">Estatus de firma de cada integrante de la junta directiva</p>
+        </div>
+        <button type="button" class="btn btn-accent" disabled title="Próximamente — requiere integración de firma electrónica avanzada">
+            Solicitar firma electrónica
+        </button>
+    </div>
+
+    <div class="acta-firmantes-list">
+        @foreach (var signatory in Model.Signatories)
+        {
+            var signatoryBadge = signatory.Status == "Firmado" ? "badge-success" : "badge-warning";
+            var dotClass = signatory.Status == "Firmado" ? "complete" : "pending";
+
+            <div class="acta-firmante-item">
+                <div class="acta-firmante-avatar">@signatory.Initials</div>
+                <div class="acta-firmante-info">
+                    <div class="acta-firmante-nombre">@signatory.Name</div>
+                    <div class="acta-firmante-cargo">@signatory.Title</div>
+                </div>
+                @if (signatory.SignedDate.HasValue)
+                {
+                    <span class="acta-firmante-fecha">@signatory.SignedDate.Value.ToString("dd/MM/yyyy")</span>
+                }
+                <span class="badge @signatoryBadge">
+                    <span class="status-dot @dotClass"></span>
+                    @signatory.Status
+                </span>
+            </div>
+        }
+    </div>
+</div>
