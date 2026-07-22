@@ -5,10 +5,10 @@ namespace UPZMG.Web.Models;
 /// </summary>
 public class CaptureAreaProgress
 {
-    public string NombreArea { get; set; } = string.Empty;
-    public string Responsable { get; set; } = string.Empty;
-    public int Porcentaje { get; set; }
+    public string AreaName { get; set; } = string.Empty;
+    public string ResponsiblePerson { get; set; } = string.Empty;
+    public int Percentage { get; set; }
 
-    /// <summary> "Completo", "En progreso", or "Pendiente" </summary>
-    public string Estado { get; set; } = "Pendiente";
+    /// <summary> "Completo", "En progreso", or "Pendiente" (display-only labels) </summary>
+    public string Status { get; set; } = "Pendiente";
 }

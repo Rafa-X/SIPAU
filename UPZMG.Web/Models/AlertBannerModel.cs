@@ -1,16 +1,16 @@
 namespace UPZMG.Web.Models;
 
 /// <summary>
-/// Model for reusable alert banner partial view.
+/// Model for the reusable alert banner partial view.
 /// Supports info, warning, and success types with priority levels.
 /// </summary>
 public class AlertBannerModel
 {
-    public string Mensaje { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
 
     /// <summary> "info", "warning", or "success" </summary>
-    public string Tipo { get; set; } = "info";
+    public string Type { get; set; } = "info";
 
-    /// <summary> "Alta", "Media", or "Baja" </summary>
-    public string Prioridad { get; set; } = "Media";
+    /// <summary> "Alta", "Media", or "Baja" (display-only labels) </summary>
+    public string Priority { get; set; } = "Media";
 }

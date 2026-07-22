@@ -15,8 +15,8 @@
     </div>
     <div class="page-header-right">
         <div class="period-badge">
-            <span>@Model.PeriodoActivo</span>
-            @if (Model.PeriodoEsActivo)
+            <span>@Model.ActivePeriod</span>
+            @if (Model.IsPeriodActive)
             {
                 <span class="period-badge-dot"></span>
                 <span class="period-badge-label">Periodo Activo</span>
@@ -26,12 +26,12 @@
 </div>
 
 <!-- Alert Banners -->
-@if (Model.Alertas.Any())
+@if (Model.Alerts.Any())
 {
     <div class="dashboard-alerts">
-        @foreach (var alerta in Model.Alertas)
+        @foreach (var alert in Model.Alerts)
         {
-            <partial name="_AlertBannerPartial" model="alerta" />
+            <partial name="_AlertBannerPartial" model="alert" />
         }
     </div>
 }
@@ -41,7 +41,7 @@
     <div class="summary-banner">
         <span class="summary-banner-icon">ℹ</span>
         <span class="summary-banner-text">
-            @Model.AreasCompletadas de @Model.TotalAreas áreas han completado su captura del periodo
+            @Model.CompletedAreas de @Model.TotalAreas áreas han completado su captura del periodo
         </span>
     </div>
 </div>
@@ -51,8 +51,8 @@
     <partial name="_StatCardPartial"
              view-data='@(new ViewDataDictionary(ViewData) {
                  { "CardTitle", "Total Alumnos" },
-                 { "CardValue", Model.TotalAlumnos.ToString("N0") },
-                 { "CardSubtitle", $"+ {Model.NuevosIngresos} nuevos ingresos" },
+                 { "CardValue", Model.TotalStudents.ToString("N0") },
+                 { "CardSubtitle", $"+ {Model.NewEnrollments} nuevos ingresos" },
                  { "CardIcon", "👥" },
                  { "CardColor", "blue" }
              })' />
@@ -60,8 +60,8 @@
     <partial name="_StatCardPartial"
              view-data='@(new ViewDataDictionary(ViewData) {
                  { "CardTitle", "Índice Aprobación" },
-                 { "CardValue", Model.IndiceAprobacion.ToString("0.0") + "%" },
-                 { "CardSubtitle", $"Reprobación: {Model.IndiceReprobacion:0.0}%" },
+                 { "CardValue", Model.ApprovalRate.ToString("0.0") + "%" },
+                 { "CardSubtitle", $"Reprobación: {Model.FailureRate:0.0}%" },
                  { "CardIcon", "✅" },
                  { "CardColor", "green" }
              })' />
@@ -69,8 +69,8 @@
     <partial name="_StatCardPartial"
              view-data='@(new ViewDataDictionary(ViewData) {
                  { "CardTitle", "Ingresos Totales" },
-                 { "CardValue", "$" + Model.IngresosTotales.ToString("N0") },
-                 { "CardSubtitle", Model.PeriodoIngresos },
+                 { "CardValue", "$" + Model.TotalRevenue.ToString("N0") },
+                 { "CardSubtitle", Model.RevenuePeriod },
                  { "CardIcon", "💰" },
                  { "CardColor", "gold" }
              })' />
@@ -78,8 +78,8 @@
     <partial name="_StatCardPartial"
              view-data='@(new ViewDataDictionary(ViewData) {
                  { "CardTitle", "Total Docentes" },
-                 { "CardValue", Model.TotalDocentes.ToString() },
-                 { "CardSubtitle", $"{Model.DocentesConPosgrado} con posgrado" },
+                 { "CardValue", Model.TotalTeachers.ToString() },
+                 { "CardSubtitle", $"{Model.TeachersWithPostgrad} con posgrado" },
                  { "CardIcon", "🎓" },
                  { "CardColor", "purple" }
              })' />
@@ -105,13 +105,13 @@
             </tr>
         </thead>
         <tbody>
-            @foreach (var area in Model.AreasProgreso)
+            @foreach (var area in Model.AreaProgress)
             {
-                var fillClass = area.Porcentaje == 100 ? "complete"
-                    : area.Porcentaje >= 50 ? "warning"
+                var fillClass = area.Percentage == 100 ? "complete"
+                    : area.Percentage >= 50 ? "warning"
                     : "danger";
 
-                var dotClass = area.Estado switch
+                var dotClass = area.Status switch
                 {
                     "Completo" => "complete",
                     "En progreso" => "in-progress",
@@ -120,24 +120,24 @@
 
                 <tr>
                     <td>
-                        <div class="capture-area-name">@area.NombreArea</div>
-                        <div class="capture-area-responsible">Responsable: @area.Responsable</div>
+                        <div class="capture-area-name">@area.AreaName</div>
+                        <div class="capture-area-responsible">Responsable: @area.ResponsiblePerson</div>
                     </td>
                     <td>
                         <div class="capture-progress-bar">
                             <div class="capture-progress-fill @fillClass"
                                  style="width: 0%"
-                                 data-width="@area.Porcentaje%"></div>
+                                 data-width="@area.Percentage%"></div>
                         </div>
                     </td>
                     <td>
-                        <span class="badge @(area.Estado == "Completo" ? "badge-success" : area.Estado == "En progreso" ? "badge-warning" : "badge-danger")">
+                        <span class="badge @(area.Status == "Completo" ? "badge-success" : area.Status == "En progreso" ? "badge-warning" : "badge-danger")">
                             <span class="status-dot @dotClass"></span>
-                            @area.Estado
+                            @area.Status
                         </span>
                     </td>
                     <td class="capture-percentage" style="text-align: right;">
-                        @area.Porcentaje%
+                        @area.Percentage%
                     </td>
                 </tr>
             }
