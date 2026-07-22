@@ -1,0 +1,105 @@
+@model UPZMG.Web.Models.DataCaptureIndexViewModel
+@{
+    ViewData["Title"] = "Captura de Datos";
+}
+
+@section PageStyles {
+    <link rel="stylesheet" href="~/css/data-capture.css" asp-append-version="true" />
+}
+
+<!-- Page Header -->
+<div class="page-header animate-fade-in">
+    <div class="page-header-left">
+        <h1>Captura de Datos — SIGIE</h1>
+        <p>Registro y actualización de información estadística por área</p>
+    </div>
+    <div class="page-header-right">
+        <a asp-controller="DataCapture" asp-action="BulkImport" class="btn btn-outline">⬆ Importación masiva</a>
+        <div class="period-badge">
+            <span>@Model.ActivePeriod</span>
+            <span class="period-badge-dot"></span>
+            <span class="period-badge-label">Periodo Activo</span>
+        </div>
+    </div>
+</div>
+
+@if (ViewData["SuccessMessage"] is string successMessage)
+{
+    <div class="dashboard-alerts">
+        <partial name="_AlertBannerPartial" model='new UPZMG.Web.Models.AlertBannerModel { Message = successMessage, Type = "success", Priority = "" }' />
+    </div>
+}
+
+<!-- Capture Areas Section -->
+<div class="capture-section">
+    <div class="capture-header">
+        <div class="capture-header-left">
+            <h3>Áreas de Captura</h3>
+            <p>Estado de captura de información del periodo actual</p>
+        </div>
+    </div>
+
+    <table class="capture-table">
+        <thead>
+            <tr>
+                <th>Área</th>
+                <th>Progreso</th>
+                <th>Estado</th>
+                <th>Última actualización</th>
+                <th style="text-align: right;">Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var area in Model.Areas)
+            {
+                var fillClass = area.Percentage == 100 ? "complete"
+                    : area.Percentage >= 50 ? "warning"
+                    : "danger";
+
+                var dotClass = area.Status switch
+                {
+                    "Completo" => "complete",
+                    "En progreso" => "in-progress",
+                    _ => "pending"
+                };
+
+                var badgeClass = area.Status == "Completo" ? "badge-success"
+                    : area.Status == "En progreso" ? "badge-warning"
+                    : "badge-danger";
+
+                <tr>
+                    <td>
+                        <div class="capture-area-name">@area.Icon @area.AreaName</div>
+                        <div class="capture-area-responsible">Responsable: @area.ResponsiblePerson</div>
+                    </td>
+                    <td>
+                        <div class="capture-progress-bar">
+                            <div class="capture-progress-fill @fillClass"
+                                 style="width: 0%"
+                                 data-width="@area.Percentage%"></div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge @badgeClass">
+                            <span class="status-dot @dotClass"></span>
+                            @area.Status
+                        </span>
+                    </td>
+                    <td class="text-muted" style="font-size: var(--font-size-sm);">
+                        @area.LastUpdated.ToString("dd/MM/yyyy")
+                    </td>
+                    <td style="text-align: right;">
+                        @if (area.IsCaptureAvailable)
+                        {
+                            <a asp-controller="DataCapture" asp-action="@area.ActionName" class="btn btn-accent btn-sm">Capturar</a>
+                        }
+                        else
+                        {
+                            <button type="button" class="btn btn-outline btn-sm" disabled title="Próximamente">Capturar</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

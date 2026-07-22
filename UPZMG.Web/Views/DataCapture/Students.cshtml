@@ -1,0 +1,103 @@
+@model UPZMG.Web.Models.StudentFormViewModel
+@{
+    ViewData["Title"] = "Registrar Alumno";
+}
+
+@section PageStyles {
+    <link rel="stylesheet" href="~/css/data-capture.css" asp-append-version="true" />
+}
+
+<!-- Page Header -->
+<div class="page-header animate-fade-in">
+    <div class="page-header-left">
+        <h1>Registrar Alumno</h1>
+        <p>Captura de datos — Área de Alumnos</p>
+    </div>
+    <div class="page-header-right">
+        <a asp-controller="DataCapture" asp-action="Index" class="btn btn-outline">← Volver a Capturas</a>
+    </div>
+</div>
+
+<div class="card animate-slide-up">
+    <form method="post" asp-controller="DataCapture" asp-action="Students">
+        @Html.AntiForgeryToken()
+
+        <h3>Datos generales</h3>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label" for="EnrollmentNumber">Matrícula</label>
+                <input asp-for="EnrollmentNumber" class="form-control" placeholder="Ej. 20261234" required />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="Curp">CURP</label>
+                <input asp-for="Curp" class="form-control" placeholder="Ej. XXXX000000HXXXXX00" maxlength="18" required />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="FirstName">Nombre(s)</label>
+                <input asp-for="FirstName" class="form-control" required />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="LastName">Apellido paterno</label>
+                <input asp-for="LastName" class="form-control" required />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="MiddleName">Apellido materno</label>
+                <input asp-for="MiddleName" class="form-control" />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="BirthDate">Fecha de nacimiento</label>
+                <input asp-for="BirthDate" type="date" class="form-control" required />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="Gender">Sexo</label>
+                <select asp-for="Gender" class="form-control" required>
+                    <option value="">Selecciona...</option>
+                    <option value="Mujer">Mujer</option>
+                    <option value="Hombre">Hombre</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="MaritalStatus">Estado civil</label>
+                <select asp-for="MaritalStatus" class="form-control" required>
+                    <option value="">Selecciona...</option>
+                    <option value="Soltero(a)">Soltero(a)</option>
+                    <option value="Casado(a)">Casado(a)</option>
+                    <option value="Unión libre">Unión libre</option>
+                    <option value="Otro">Otro</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="CareerId">Carrera</label>
+                <select asp-for="CareerId" class="form-control" asp-items="Model.Careers" required>
+                    <option value="">Selecciona...</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="PeriodId">Periodo</label>
+                <select asp-for="PeriodId" class="form-control" asp-items="Model.Periods" required></select>
+            </div>
+
+            <div class="form-group form-group-checkbox">
+                <label for="SpeaksIndigenousLanguage">
+                    <input asp-for="SpeaksIndigenousLanguage" type="checkbox" />
+                    Habla alguna lengua indígena
+                </label>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-accent">Guardar alumno</button>
+            <a asp-controller="DataCapture" asp-action="Index" class="btn btn-outline">Cancelar</a>
+        </div>
+    </form>
+</div>

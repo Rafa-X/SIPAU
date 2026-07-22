@@ -1,0 +1,65 @@
+@model UPZMG.Web.Models.BulkImportViewModel
+@{
+    ViewData["Title"] = "Importación Masiva";
+}
+
+@section PageStyles {
+    <link rel="stylesheet" href="~/css/data-capture.css" asp-append-version="true" />
+}
+
+<!-- Page Header -->
+<div class="page-header animate-fade-in">
+    <div class="page-header-left">
+        <h1>Importación Masiva</h1>
+        <p>Carga un archivo de texto delimitado para insertar múltiples registros de una sola vez</p>
+    </div>
+    <div class="page-header-right">
+        <a asp-controller="DataCapture" asp-action="Index" class="btn btn-outline">← Volver a Capturas</a>
+    </div>
+</div>
+
+<div class="card animate-slide-up">
+    <form method="post" asp-controller="DataCapture" asp-action="BulkImport" enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
+
+        <h3>Configuración de la importación</h3>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label" for="AreaKey">Área destino</label>
+                <select asp-for="AreaKey" class="form-control" asp-items="Model.Areas" required>
+                    <option value="">Selecciona...</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="Delimiter">Delimitador</label>
+                <select asp-for="Delimiter" class="form-control" asp-items="Model.Delimiters" required></select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="File">Archivo (.txt / .csv)</label>
+                <input asp-for="File" type="file" accept=".txt,.csv" class="form-control" required />
+            </div>
+
+            <div class="form-group form-group-checkbox">
+                <label for="HasHeaderRow">
+                    <input asp-for="HasHeaderRow" type="checkbox" />
+                    La primera fila contiene los encabezados
+                </label>
+            </div>
+        </div>
+
+        <div class="summary-banner mt-md">
+            <span class="summary-banner-icon">i</span>
+            <span class="summary-banner-text">
+                El archivo debe usar el delimitador seleccionado y respetar el orden de columnas del formato del área. (Validación real pendiente de backend.)
+            </span>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-accent">Procesar archivo</button>
+            <a asp-controller="DataCapture" asp-action="Index" class="btn btn-outline">Cancelar</a>
+        </div>
+    </form>
+</div>

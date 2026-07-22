@@ -1,0 +1,101 @@
+@model UPZMG.Web.Models.ExtensionFormViewModel
+@{
+    ViewData["Title"] = "Registrar Proyecto de Vinculación";
+}
+
+@section PageStyles {
+    <link rel="stylesheet" href="~/css/data-capture.css" asp-append-version="true" />
+}
+
+<!-- Page Header -->
+<div class="page-header animate-fade-in">
+    <div class="page-header-left">
+        <h1>Registrar Proyecto de Vinculación</h1>
+        <p>Captura de datos — Área de Extensión y Vinculación</p>
+    </div>
+    <div class="page-header-right">
+        <a asp-controller="DataCapture" asp-action="Index" class="btn btn-outline">← Volver a Capturas</a>
+    </div>
+</div>
+
+<div class="card animate-slide-up">
+    <form method="post" asp-controller="DataCapture" asp-action="Extension">
+        @Html.AntiForgeryToken()
+
+        <h3>Convenio y proyecto</h3>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label" for="OrganizationName">Organización / Empresa</label>
+                <input asp-for="OrganizationName" class="form-control" required />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="Sector">Sector</label>
+                <select asp-for="Sector" class="form-control" required>
+                    <option value="">Selecciona...</option>
+                    <option value="Público">Público</option>
+                    <option value="Privado">Privado</option>
+                    <option value="Social">Social</option>
+                    <option value="Educativo">Educativo</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="CompanySize">Tamaño de la empresa</label>
+                <select asp-for="CompanySize" class="form-control" required>
+                    <option value="">Selecciona...</option>
+                    <option value="Micro">Micro</option>
+                    <option value="Pequeña">Pequeña</option>
+                    <option value="Mediana">Mediana</option>
+                    <option value="Grande">Grande</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="ActivityType">Tipo de actividad</label>
+                <select asp-for="ActivityType" class="form-control" required>
+                    <option value="">Selecciona...</option>
+                    <option value="Estadía">Estadía</option>
+                    <option value="Servicio Social">Servicio Social</option>
+                    <option value="Prácticas">Prácticas Profesionales</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="StudentEnrollmentNumber">Matrícula del alumno</label>
+                <input asp-for="StudentEnrollmentNumber" class="form-control" placeholder="Ej. 20261234" required />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="ProjectName">Nombre del proyecto</label>
+                <input asp-for="ProjectName" class="form-control" required />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="PeriodId">Periodo</label>
+                <select asp-for="PeriodId" class="form-control" asp-items="Model.Periods" required></select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="AccreditedHours">Horas acreditadas</label>
+                <input asp-for="AccreditedHours" type="number" min="0" class="form-control" required />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="StartDate">Fecha de inicio</label>
+                <input asp-for="StartDate" type="date" class="form-control" required />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="EndDate">Fecha de fin</label>
+                <input asp-for="EndDate" type="date" class="form-control" />
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-accent">Guardar proyecto</button>
+            <a asp-controller="DataCapture" asp-action="Index" class="btn btn-outline">Cancelar</a>
+        </div>
+    </form>
+</div>
