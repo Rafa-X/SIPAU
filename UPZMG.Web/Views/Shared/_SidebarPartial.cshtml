@@ -1,5 +1,5 @@
 @* ============================================================
-   UPZMG — Sidebar Navigation Partial
+   SIGIE — Sidebar Navigation Partial
    Receives user name, role, and initials via ViewData.
    ============================================================ *@
 
@@ -10,7 +10,7 @@
     var userInitials = ViewData["UserInitials"]?.ToString() ?? "U";
 }
 
-<button class="sidebar-toggle" id="sidebarToggle" aria-label="Abrir menú">
+<button class="sidebar-toggle" id="sidebarToggle" aria-label="Open menu">
     ☰
 </button>
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -24,41 +24,74 @@
 
     <!-- Navigation -->
     <ul class="sidebar-nav">
+        <li class="sidebar-nav-section">Operación</li>
         <li class="sidebar-nav-item">
             <a asp-controller="Dashboard" asp-action="Index"
                class="sidebar-nav-link @(currentController == "Dashboard" ? "active" : "")">
                 <span class="sidebar-nav-icon">📊</span>
-                Dashboard
+                Tablero de Control
             </a>
         </li>
         <li class="sidebar-nav-item">
-            <a asp-controller="Capturas" asp-action="Index"
-               class="sidebar-nav-link @(currentController == "Capturas" ? "active" : "")">
+            <a asp-controller="DataCapture" asp-action="Index"
+               class="sidebar-nav-link @(currentController == "DataCapture" ? "active" : "")">
                 <span class="sidebar-nav-icon">📋</span>
-                Mis Capturas
+                Captura de Datos
             </a>
         </li>
+        <li class="sidebar-nav-item">
+            <a asp-controller="Charts" asp-action="Index"
+               class="sidebar-nav-link @(currentController == "Charts" ? "active" : "")">
+                <span class="sidebar-nav-icon">📈</span>
+                Gráficas
+            </a>
+        </li>
+
+        <li class="sidebar-nav-section">Reportes</li>
         <li class="sidebar-nav-item">
             <a asp-controller="Reports" asp-action="Index"
                class="sidebar-nav-link @(currentController == "Reports" ? "active" : "")">
                 <span class="sidebar-nav-icon">📄</span>
-                Reportes 911
+                Reportes 911 / SII
             </a>
         </li>
         <li class="sidebar-nav-item">
-            <a asp-controller="Configuracion" asp-action="Index"
-               class="sidebar-nav-link @(currentController == "Configuracion" ? "active" : "")">
-                <span class="sidebar-nav-icon">⚙️</span>
-                Configuración
+            <a asp-controller="BoardReport" asp-action="Index"
+               class="sidebar-nav-link @(currentController == "BoardReport" ? "active" : "")">
+                <span class="sidebar-nav-icon">📑</span>
+                Informe de Junta
             </a>
         </li>
+        <li class="sidebar-nav-item">
+            <a asp-controller="Minutes" asp-action="Index"
+               class="sidebar-nav-link @(currentController == "Minutes" ? "active" : "")">
+                <span class="sidebar-nav-icon">🖋️</span>
+                Actas de Junta
+            </a>
+        </li>
+
         @if (User.IsInRole("Admin"))
         {
+            <li class="sidebar-nav-section">Administración</li>
+            <li class="sidebar-nav-item">
+                <a asp-controller="Settings" asp-action="Index"
+                   class="sidebar-nav-link @(currentController == "Settings" ? "active" : "")">
+                    <span class="sidebar-nav-icon">⚙️</span>
+                    Configuración
+                </a>
+            </li>
+            <li class="sidebar-nav-item">
+                <a asp-controller="Users" asp-action="Index"
+                   class="sidebar-nav-link @(currentController == "Users" ? "active" : "")">
+                    <span class="sidebar-nav-icon">👥</span>
+                    Usuarios
+                </a>
+            </li>
             <li class="sidebar-nav-item">
                 <a asp-controller="Security" asp-action="Index"
                    class="sidebar-nav-link @(currentController == "Security" ? "active" : "")">
                     <span class="sidebar-nav-icon">🔐</span>
-                    Security
+                    Seguridad
                 </a>
             </li>
         }
