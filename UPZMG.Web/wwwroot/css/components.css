@@ -63,6 +63,16 @@
     margin-bottom: 2px;
 }
 
+/* Section label separating groups of nav items */
+.sidebar-nav-section {
+    padding: var(--space-md) var(--space-md) var(--space-xs);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
 .sidebar-nav-link {
     display: flex;
     align-items: center;
@@ -559,6 +569,77 @@
     font-weight: var(--font-weight-medium);
 }
 
+/* === Status Dot (shared, used by capture/informe/actas tables) === */
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+}
+
+.status-dot.complete {
+    background: var(--color-success);
+}
+
+.status-dot.in-progress {
+    background: var(--color-warning);
+    animation: pulse 2s infinite;
+}
+
+.status-dot.pending {
+    background: var(--color-text-muted);
+}
+
+/* === Section Subtitle (shared, used under card headings) === */
+.section-subtitle {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-md);
+}
+
+/* === Button Small Variant === */
+.btn-sm {
+    padding: 6px 14px;
+    font-size: var(--font-size-sm);
+}
+
+.btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.btn:disabled:hover {
+    background-color: inherit;
+}
+
+/* === Form Layout Helpers === */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0 var(--space-lg);
+}
+
+.form-actions {
+    display: flex;
+    gap: var(--space-md);
+    margin-top: var(--space-md);
+}
+
+.form-group-checkbox label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    cursor: pointer;
+    margin-bottom: 0;
+}
+
+.form-group-checkbox input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--color-accent);
+}
+
 /* === Responsive === */
 @media (max-width: 1200px) {
     .stat-cards-grid {
@@ -599,6 +680,10 @@
 
     .capture-table {
         font-size: var(--font-size-sm);
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr;
     }
 }
 

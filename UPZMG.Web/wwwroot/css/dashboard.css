@@ -32,28 +32,6 @@
     transition: background var(--transition-fast);
 }
 
-/* Status dot in table */
-.status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    display: inline-block;
-    margin-right: 6px;
-}
-
-.status-dot.complete {
-    background: var(--color-success);
-}
-
-.status-dot.in-progress {
-    background: var(--color-warning);
-    animation: pulse 2s infinite;
-}
-
-.status-dot.pending {
-    background: var(--color-text-muted);
-}
-
 /* === Summary stats row === */
 .summary-banner-section {
     margin-bottom: var(--space-lg);
