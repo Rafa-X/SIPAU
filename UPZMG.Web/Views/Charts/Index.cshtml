@@ -1,0 +1,189 @@
+@model UPZMG.Web.Models.ChartsViewModel
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Gráficas";
+}
+
+@section PageStyles {
+    <link rel="stylesheet" href="~/css/charts.css" asp-append-version="true" />
+}
+
+<!-- Page Header -->
+<div class="page-header animate-fade-in">
+    <div class="page-header-left">
+        <h1>Gráficas — SIGIE</h1>
+        <p>Visualización estadística institucional</p>
+    </div>
+</div>
+
+<div class="graficas-grid">
+    <div class="card delay-1">
+        <h3>Matrícula histórica y proyección</h3>
+        <p class="section-subtitle">La línea punteada representa una proyección estimada para los próximos 2 periodos</p>
+        <div class="chart-container">
+            <canvas id="chartMatricula"></canvas>
+        </div>
+    </div>
+
+    <div class="card delay-2">
+        <h3>Distribución de alumnos por carrera</h3>
+        <p class="section-subtitle">Matrícula total del periodo activo por programa educativo</p>
+        <div class="chart-container">
+            <canvas id="chartCarreras"></canvas>
+        </div>
+    </div>
+
+    <div class="card delay-3">
+        <h3>Aprobación vs. reprobación por periodo</h3>
+        <p class="section-subtitle">Índices institucionales de aprovechamiento académico</p>
+        <div class="chart-container">
+            <canvas id="chartAprovechamiento"></canvas>
+        </div>
+    </div>
+
+    <div class="card delay-4">
+        <h3>Becas asignadas por tipo / fuente</h3>
+        <p class="section-subtitle">Distribución de becas vigentes por fuente de financiamiento</p>
+        <div class="chart-container">
+            <canvas id="chartBecas"></canvas>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const enrollmentPeriods = @Html.Raw(JsonSerializer.Serialize(Model.EnrollmentPeriods));
+        const historicalEnrollment = @Html.Raw(JsonSerializer.Serialize(Model.HistoricalEnrollment));
+        const projectedEnrollment = @Html.Raw(JsonSerializer.Serialize(Model.ProjectedEnrollment));
+
+        const careers = @Html.Raw(JsonSerializer.Serialize(Model.Careers));
+        const studentsByCareer = @Html.Raw(JsonSerializer.Serialize(Model.StudentsByCareer));
+
+        const achievementPeriods = @Html.Raw(JsonSerializer.Serialize(Model.AchievementPeriods));
+        const approvalRate = @Html.Raw(JsonSerializer.Serialize(Model.ApprovalRate));
+        const failureRate = @Html.Raw(JsonSerializer.Serialize(Model.FailureRate));
+
+        const scholarshipTypes = @Html.Raw(JsonSerializer.Serialize(Model.ScholarshipTypes));
+        const scholarshipsAssigned = @Html.Raw(JsonSerializer.Serialize(Model.ScholarshipsAssigned));
+
+        // UPZMG design-system categorical palette (matches stat card colors), fixed order
+        const palette = { blue: '#3B82F6', green: '#10B981', gold: '#F59E0B', purple: '#8B5CF6', danger: '#EF4444' };
+
+        Chart.defaults.font.family = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+        Chart.defaults.color = '#5A6170';
+        Chart.defaults.plugins.legend.labels.usePointStyle = true;
+        Chart.defaults.plugins.legend.labels.boxWidth = 8;
+
+        // (1) Historical enrollment + projection
+        new Chart(document.getElementById('chartMatricula'), {
+            type: 'line',
+            data: {
+                labels: enrollmentPeriods,
+                datasets: [
+                    {
+                        label: 'Matrícula',
+                        data: historicalEnrollment,
+                        borderColor: palette.blue,
+                        backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        pointBackgroundColor: palette.blue,
+                        tension: 0.3,
+                        fill: true,
+                        spanGaps: false
+                    },
+                    {
+                        label: 'Proyección',
+                        data: projectedEnrollment,
+                        borderColor: palette.blue,
+                        borderDash: [6, 4],
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#FFFFFF',
+                        pointBorderColor: palette.blue,
+                        pointBorderWidth: 2,
+                        tension: 0.3,
+                        fill: false,
+                        spanGaps: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } },
+                scales: {
+                    y: { beginAtZero: false, grid: { color: '#EEF0F3' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // (2) Student distribution by career
+        new Chart(document.getElementById('chartCarreras'), {
+            type: 'doughnut',
+            data: {
+                labels: careers,
+                datasets: [{
+                    data: studentsByCareer,
+                    backgroundColor: [palette.blue, palette.green, palette.gold, palette.purple],
+                    borderColor: '#FFFFFF',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '62%',
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+
+        // (3) Approval vs failure rate
+        new Chart(document.getElementById('chartAprovechamiento'), {
+            type: 'bar',
+            data: {
+                labels: achievementPeriods,
+                datasets: [
+                    { label: 'Aprobación %', data: approvalRate, backgroundColor: palette.green, borderRadius: 4, maxBarThickness: 36 },
+                    { label: 'Reprobación %', data: failureRate, backgroundColor: palette.danger, borderRadius: 4, maxBarThickness: 36 }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: '#EEF0F3' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // (4) Scholarships by type / funding source
+        new Chart(document.getElementById('chartBecas'), {
+            type: 'bar',
+            data: {
+                labels: scholarshipTypes,
+                datasets: [{
+                    label: 'Becas asignadas',
+                    data: scholarshipsAssigned,
+                    backgroundColor: [palette.blue, palette.green, palette.gold, palette.purple],
+                    borderRadius: 4,
+                    maxBarThickness: 28
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { beginAtZero: true, grid: { color: '#EEF0F3' } },
+                    y: { grid: { display: false } }
+                }
+            }
+        });
+    </script>
+}
