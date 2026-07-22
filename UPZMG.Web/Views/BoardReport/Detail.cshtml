@@ -1,0 +1,56 @@
+@model UPZMG.Web.Models.BoardReportDetailViewModel
+@{
+    ViewData["Title"] = "Detalle de Informe";
+
+    var badgeClass = Model.Status switch
+    {
+        "Enviado" => "badge-success",
+        "Generado" => "badge-info",
+        _ => "badge-warning"
+    };
+}
+
+@section PageStyles {
+    <link rel="stylesheet" href="~/css/board-report.css" asp-append-version="true" />
+}
+
+<!-- Page Header -->
+<div class="page-header animate-fade-in">
+    <div class="page-header-left">
+        <h1>Informe — @Model.Period</h1>
+        <p>
+            Generado el @Model.GeneratedDate.ToString("dd/MM/yyyy")
+            &middot; <span class="badge @badgeClass">@Model.Status</span>
+        </p>
+    </div>
+    <div class="page-header-right">
+        <a asp-controller="BoardReport" asp-action="Index" class="btn btn-outline">← Volver a Informes</a>
+    </div>
+</div>
+
+<div class="card animate-slide-up delay-1 mb-lg">
+    <h3>Tabla de Contenido</h3>
+    <div class="informe-secciones">
+        @foreach (var sec in Model.Sections)
+        {
+            <div class="informe-seccion-item">
+                <span class="informe-seccion-icon">@sec.Icon</span>
+                <div>
+                    <div class="informe-seccion-nombre">@sec.Name</div>
+                    <div class="informe-seccion-desc">@sec.Description</div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="card animate-slide-up delay-2">
+    <h3>Eventos Atípicos — Galería</h3>
+    <p class="section-subtitle">@Model.TotalAtypicalEventPhotos fotografías registradas (límite: 20 por especificación del cliente)</p>
+    <div class="informe-gallery">
+        @for (var i = 1; i <= Model.TotalAtypicalEventPhotos; i++)
+        {
+            <div class="informe-photo-placeholder" title="Foto @i">📷</div>
+        }
+    </div>
+</div>

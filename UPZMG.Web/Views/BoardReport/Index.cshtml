@@ -1,0 +1,54 @@
+@model UPZMG.Web.Models.BoardReportIndexViewModel
+@{
+    ViewData["Title"] = "Informe de Junta Directiva";
+}
+
+@section PageStyles {
+    <link rel="stylesheet" href="~/css/board-report.css" asp-append-version="true" />
+}
+
+<!-- Page Header -->
+<div class="page-header animate-fade-in">
+    <div class="page-header-left">
+        <h1>Informe de Junta Directiva</h1>
+        <p>Informes generados para presentación ante la junta directiva</p>
+    </div>
+    <div class="page-header-right">
+        <a asp-controller="BoardReport" asp-action="Detail" asp-route-id="4" class="btn btn-accent">+ Generar nuevo informe</a>
+    </div>
+</div>
+
+<div class="capture-section">
+    <table class="capture-table">
+        <thead>
+            <tr>
+                <th>Periodo</th>
+                <th>Fecha de generación</th>
+                <th>Estado</th>
+                <th>Páginas</th>
+                <th style="text-align: right;">Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var report in Model.Reports)
+            {
+                var badgeClass = report.Status switch
+                {
+                    "Enviado" => "badge-success",
+                    "Generado" => "badge-info",
+                    _ => "badge-warning"
+                };
+
+                <tr>
+                    <td class="capture-area-name">@report.Period</td>
+                    <td>@report.GeneratedDate.ToString("dd/MM/yyyy")</td>
+                    <td><span class="badge @badgeClass">@report.Status</span></td>
+                    <td>@report.PageCount</td>
+                    <td style="text-align: right;">
+                        <a asp-controller="BoardReport" asp-action="Detail" asp-route-id="@report.Id" class="btn btn-outline btn-sm">Ver detalle</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
