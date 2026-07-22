@@ -1,0 +1,85 @@
+@model UPZMG.Web.Models.Settings.IndicatorsSettingsViewModel
+@{
+    ViewData["Title"] = "Indicadores";
+}
+
+@section PageStyles {
+    <link rel="stylesheet" href="~/css/settings.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/data-capture.css" asp-append-version="true" />
+}
+
+<!-- Page Header -->
+<div class="page-header animate-fade-in">
+    <div class="page-header-left">
+        <h1>Indicadores</h1>
+        <p>Indicadores configurables por hoja de reporte. Cada año pueden agregarse nuevos.</p>
+    </div>
+    <div class="page-header-right">
+        <a asp-controller="Settings" asp-action="Index" class="btn btn-outline">← Volver a Configuración</a>
+    </div>
+</div>
+
+@if (TempData["SettingsStatus"] is string statusMessage)
+{
+    <div class="dashboard-alerts">
+        <partial name="_AlertBannerPartial" model='new AlertBannerModel { Message = statusMessage, Type = "success", Priority = "" }' />
+    </div>
+}
+
+<div class="card animate-slide-up mb-lg">
+    <h3>Agregar indicador</h3>
+    <form method="post" asp-controller="Settings" asp-action="AddIndicator" class="settings-inline-form">
+        @Html.AntiForgeryToken()
+        <div class="form-group">
+            <label class="form-label" for="reportSheet">Hoja de reporte</label>
+            <input id="reportSheet" name="reportSheet" class="form-control" placeholder="Ej. 911.9A — Matrícula" required />
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="name">Nombre del indicador</label>
+            <input id="name" name="name" class="form-control" required />
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="dataType">Tipo de dato</label>
+            <select id="dataType" name="dataType" class="form-control" required>
+                <option value="Número">Número</option>
+                <option value="Porcentaje">Porcentaje</option>
+                <option value="Texto">Texto</option>
+                <option value="Booleano">Booleano</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-accent">Agregar</button>
+    </form>
+</div>
+
+<div class="capture-section">
+    <table class="capture-table">
+        <thead>
+            <tr>
+                <th>Hoja de reporte</th>
+                <th>Indicador</th>
+                <th>Tipo de dato</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var indicator in Model.Indicators)
+            {
+                <tr>
+                    <td>@indicator.ReportSheet</td>
+                    <td class="capture-area-name">@indicator.Name</td>
+                    <td>@indicator.DataType</td>
+                    <td>
+                        @if (indicator.IsActive)
+                        {
+                            <span class="badge badge-success"><span class="status-dot complete"></span>Activo</span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-warning"><span class="status-dot pending"></span>Inactivo</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

@@ -1,0 +1,118 @@
+@model UPZMG.Web.Models.Settings.InstitutionSettingsViewModel
+@{
+    ViewData["Title"] = "Datos de la Institución";
+}
+
+@section PageStyles {
+    <link rel="stylesheet" href="~/css/settings.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/data-capture.css" asp-append-version="true" />
+}
+
+<!-- Page Header -->
+<div class="page-header animate-fade-in">
+    <div class="page-header-left">
+        <h1>Datos de la Institución</h1>
+        <p>Información maestra usada en los encabezados de todos los reportes</p>
+    </div>
+    <div class="page-header-right">
+        <a asp-controller="Settings" asp-action="Index" class="btn btn-outline">← Volver a Configuración</a>
+    </div>
+</div>
+
+@if (TempData["SettingsStatus"] is string statusMessage)
+{
+    <div class="dashboard-alerts">
+        <partial name="_AlertBannerPartial" model='new AlertBannerModel { Message = statusMessage, Type = "success", Priority = "" }' />
+    </div>
+}
+
+<div class="card animate-slide-up">
+    <form method="post" asp-controller="Settings" asp-action="Institution">
+        @Html.AntiForgeryToken()
+
+        <h3>Identidad institucional</h3>
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label" for="InstitutionName">Nombre de la institución</label>
+                <input asp-for="InstitutionName" class="form-control" required />
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="InstitutionKey">Clave de la institución</label>
+                <input asp-for="InstitutionKey" class="form-control" required />
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="CampusName">Nombre del campus</label>
+                <input asp-for="CampusName" class="form-control" />
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="CctKey">Clave CCT</label>
+                <input asp-for="CctKey" class="form-control" required />
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="RectorName">Nombre del rector</label>
+                <input asp-for="RectorName" class="form-control" required />
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="Sostenimiento">Sostenimiento</label>
+                <select asp-for="Sostenimiento" class="form-control" asp-items="Model.SostenimientoOptions" required></select>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="Phone">Teléfono institucional</label>
+                <input asp-for="Phone" class="form-control" />
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="Website">Página web</label>
+                <input asp-for="Website" class="form-control" />
+            </div>
+        </div>
+
+        <h3 class="mt-md">Responsable de captura</h3>
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label" for="ResponsibleName">Nombre</label>
+                <input asp-for="ResponsibleName" class="form-control" />
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="ResponsiblePosition">Puesto</label>
+                <input asp-for="ResponsiblePosition" class="form-control" />
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="ResponsibleEmail">Correo</label>
+                <input asp-for="ResponsibleEmail" type="email" class="form-control" />
+            </div>
+        </div>
+
+        <h3 class="mt-md">Domicilio</h3>
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label" for="Street">Calle</label>
+                <input asp-for="Street" class="form-control" />
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="StreetNumber">Número</label>
+                <input asp-for="StreetNumber" class="form-control" />
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="Neighborhood">Colonia</label>
+                <input asp-for="Neighborhood" class="form-control" />
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="Municipality">Municipio</label>
+                <input asp-for="Municipality" class="form-control" />
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="State">Estado</label>
+                <input asp-for="State" class="form-control" />
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="PostalCode">Código postal</label>
+                <input asp-for="PostalCode" class="form-control" />
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-accent">Guardar cambios</button>
+            <a asp-controller="Settings" asp-action="Index" class="btn btn-outline">Cancelar</a>
+        </div>
+    </form>
+</div>

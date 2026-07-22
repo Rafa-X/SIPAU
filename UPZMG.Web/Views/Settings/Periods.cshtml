@@ -1,0 +1,78 @@
+@model UPZMG.Web.Models.Settings.PeriodsSettingsViewModel
+@{
+    ViewData["Title"] = "Periodos Escolares";
+}
+
+@section PageStyles {
+    <link rel="stylesheet" href="~/css/settings.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/data-capture.css" asp-append-version="true" />
+}
+
+<!-- Page Header -->
+<div class="page-header animate-fade-in">
+    <div class="page-header-left">
+        <h1>Periodos Escolares</h1>
+        <p>Ciclos y cuatrimestres registrados en el sistema</p>
+    </div>
+    <div class="page-header-right">
+        <a asp-controller="Settings" asp-action="Index" class="btn btn-outline">← Volver a Configuración</a>
+    </div>
+</div>
+
+@if (TempData["SettingsStatus"] is string statusMessage)
+{
+    <div class="dashboard-alerts">
+        <partial name="_AlertBannerPartial" model='new AlertBannerModel { Message = statusMessage, Type = "success", Priority = "" }' />
+    </div>
+}
+
+<div class="card animate-slide-up mb-lg">
+    <h3>Agregar periodo</h3>
+    <form method="post" asp-controller="Settings" asp-action="AddPeriod" class="settings-inline-form">
+        @Html.AntiForgeryToken()
+        <div class="form-group">
+            <label class="form-label" for="code">Código</label>
+            <input id="code" name="code" class="form-control" placeholder="Ej. 2025-2026-2" required />
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="schoolCycle">Ciclo escolar SEP</label>
+            <input id="schoolCycle" name="schoolCycle" class="form-control" placeholder="Ej. 2025-2026" required />
+        </div>
+        <button type="submit" class="btn btn-accent">Agregar</button>
+    </form>
+</div>
+
+<div class="capture-section">
+    <table class="capture-table">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Ciclo escolar</th>
+                <th>Inicio</th>
+                <th>Fin</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var period in Model.Periods)
+            {
+                <tr>
+                    <td class="capture-area-name">@period.Code</td>
+                    <td>@period.SchoolCycle</td>
+                    <td>@period.StartDate.ToString("dd/MM/yyyy")</td>
+                    <td>@period.EndDate.ToString("dd/MM/yyyy")</td>
+                    <td>
+                        @if (period.IsActive)
+                        {
+                            <span class="badge badge-success"><span class="status-dot complete"></span>Activo</span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-warning"><span class="status-dot pending"></span>Cerrado</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
