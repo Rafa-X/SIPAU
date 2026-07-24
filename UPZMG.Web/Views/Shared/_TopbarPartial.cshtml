@@ -1,0 +1,55 @@
+@* ============================================================
+   SIGIE — Top bar (navy chrome). "Menú" toggle + context + user.
+   ============================================================ *@
+@{
+    var userName = ViewData["UserName"]?.ToString() ?? "Usuario";
+    var userRole = ViewData["UserRole"]?.ToString() ?? "—";
+    var userInitials = ViewData["UserInitials"]?.ToString() ?? "U";
+    var userEmail = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? "";
+}
+
+<header class="topbar">
+    <button class="topbar-toggle" id="navToggle" type="button" aria-label="Alternar menú">
+        <icon name="menu" /> Menú
+    </button>
+
+    <div class="topbar-brand">
+        <span class="topbar-brand-mark">S</span>
+        SIGIE
+    </div>
+
+    <div class="topbar-context">
+        <strong>UPZMG</strong> · Sistema de Gestión Estadística
+    </div>
+
+    <div class="topbar-spacer"></div>
+
+    <div class="topbar-period" title="Periodo activo del sistema">
+        <span class="dot"></span>
+        Ciclo 2025-2026 · Cuatrimestre 1
+    </div>
+
+    <div class="topbar-user" id="userMenu">
+        <button class="topbar-user-trigger" id="userMenuTrigger" type="button" aria-haspopup="true" aria-expanded="false">
+            <span class="topbar-avatar">@userInitials</span>
+            <span class="topbar-user-meta">
+                <span class="name">@userName</span>
+                <span class="role">@userRole</span>
+            </span>
+            <icon name="chevron-down" />
+        </button>
+
+        <div class="topbar-user-menu" id="userMenuDropdown" role="menu">
+            <div class="menu-header">
+                <div class="name">@userName</div>
+                <div class="email">@userEmail</div>
+            </div>
+            <form method="post" asp-controller="Account" asp-action="Logout">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="menu-item" role="menuitem">
+                    <icon name="logout" /> Cerrar sesión
+                </button>
+            </form>
+        </div>
+    </div>
+</header>

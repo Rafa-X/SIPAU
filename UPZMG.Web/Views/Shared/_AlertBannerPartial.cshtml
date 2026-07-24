@@ -1,16 +1,14 @@
 @model UPZMG.Web.Models.AlertBannerModel
 
 @* ============================================================
-   SIGIE — Alert Banner Partial
-   Reusable component for info/warning/success banners.
+   SIGIE — Alert Banner Partial (info / warning / success)
    ============================================================ *@
-
 @{
-    var cssClass = Model.Type switch
+    var (cssClass, iconName) = Model.Type switch
     {
-        "warning" => "alert-banner-warning",
-        "success" => "alert-banner-success",
-        _ => "alert-banner-info"
+        "warning" => ("alert-banner-warning", "warning"),
+        "success" => ("alert-banner-success", "check"),
+        _         => ("alert-banner-info", "info")
     };
 
     var priorityClass = Model.Priority?.ToLower() switch
@@ -22,7 +20,7 @@
 }
 
 <div class="alert-banner @cssClass">
-    <span class="alert-banner-icon">ℹ</span>
+    <span class="alert-banner-icon"><icon name="@iconName" /></span>
     <span class="alert-banner-text">@Model.Message</span>
     @if (!string.IsNullOrEmpty(Model.Priority))
     {

@@ -1,35 +1,26 @@
 @* ============================================================
-   UPZMG — Stat Card Partial
-   Reusable stat card component.
-   
-   ViewData keys:
-     CardTitle    — card heading (e.g. "Total Alumnos")
-     CardValue    — main value (e.g. "1,245")
-     CardSubtitle — secondary text (e.g. "+ 320 nuevos ingresos")
-     CardIcon     — emoji/icon character
-     CardColor    — "blue", "green", "gold", "purple"
+   SIGIE — Stat Card Partial
+   ViewData keys: CardTitle, CardValue, CardSubtitle,
+   CardIcon (icon name), CardColor ("navy","teal","gold","red").
    ============================================================ *@
-
 @{
     var title = ViewData["CardTitle"]?.ToString() ?? "";
     var value = ViewData["CardValue"]?.ToString() ?? "0";
     var subtitle = ViewData["CardSubtitle"]?.ToString() ?? "";
-    var icon = ViewData["CardIcon"]?.ToString() ?? "📊";
-    var color = ViewData["CardColor"]?.ToString() ?? "blue";
+    var icon = ViewData["CardIcon"]?.ToString() ?? "chart";
+    var color = ViewData["CardColor"]?.ToString() ?? "navy";
 }
 
 <div class="stat-card" data-color="@color">
     <div class="stat-card-content">
         <div class="stat-card-title">@title</div>
-        <div class="stat-card-value" data-countup="@value">@value</div>
+        <div class="stat-card-value">@value</div>
         @if (!string.IsNullOrEmpty(subtitle))
         {
-            <div class="stat-card-subtitle">
-                <span class="positive">@subtitle</span>
-            </div>
+            <div class="stat-card-subtitle">@subtitle</div>
         }
     </div>
     <div class="stat-card-icon @color">
-        @icon
+        <icon name="@icon" />
     </div>
 </div>
