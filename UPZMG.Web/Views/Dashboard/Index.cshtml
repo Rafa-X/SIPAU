@@ -1,31 +1,10 @@
 @model UPZMG.Web.Models.DashboardViewModel
 @{
-    ViewData["Title"] = "Dashboard";
+    ViewData["Title"] = "Tablero de Control";
 }
 
-@section PageStyles {
-    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
-}
+<page-header title="Tablero de Control" subtitle="Panel de indicadores institucionales del periodo activo" />
 
-<!-- Page Header -->
-<div class="page-header animate-fade-in">
-    <div class="page-header-left">
-        <h1>Dashboard — SIGIE</h1>
-        <p>Panel de Control Institucional</p>
-    </div>
-    <div class="page-header-right">
-        <div class="period-badge">
-            <span>@Model.ActivePeriod</span>
-            @if (Model.IsPeriodActive)
-            {
-                <span class="period-badge-dot"></span>
-                <span class="period-badge-label">Periodo Activo</span>
-            }
-        </div>
-    </div>
-</div>
-
-<!-- Alert Banners -->
 @if (Model.Alerts.Any())
 {
     <div class="dashboard-alerts">
@@ -36,87 +15,63 @@
     </div>
 }
 
-<!-- Summary Banner -->
-<div class="summary-banner-section">
-    <div class="summary-banner">
-        <span class="summary-banner-icon">ℹ</span>
-        <span class="summary-banner-text">
-            @Model.CompletedAreas de @Model.TotalAreas áreas han completado su captura del periodo
-        </span>
-    </div>
+<div class="summary-banner">
+    <icon name="info" />
+    <span>@Model.CompletedAreas de @Model.TotalAreas áreas han completado su captura del periodo</span>
 </div>
 
-<!-- Stat Cards -->
 <div class="stat-cards-grid">
-    <partial name="_StatCardPartial"
-             view-data='@(new ViewDataDictionary(ViewData) {
-                 { "CardTitle", "Total Alumnos" },
-                 { "CardValue", Model.TotalStudents.ToString("N0") },
-                 { "CardSubtitle", $"+ {Model.NewEnrollments} nuevos ingresos" },
-                 { "CardIcon", "👥" },
-                 { "CardColor", "blue" }
-             })' />
+    <partial name="_StatCardPartial" view-data='@(new ViewDataDictionary(ViewData) {
+        { "CardTitle", "Total Alumnos" },
+        { "CardValue", Model.TotalStudents.ToString("N0") },
+        { "CardSubtitle", $"+ {Model.NewEnrollments} nuevos ingresos" },
+        { "CardIcon", "users" }, { "CardColor", "navy" } })' />
 
-    <partial name="_StatCardPartial"
-             view-data='@(new ViewDataDictionary(ViewData) {
-                 { "CardTitle", "Índice Aprobación" },
-                 { "CardValue", Model.ApprovalRate.ToString("0.0") + "%" },
-                 { "CardSubtitle", $"Reprobación: {Model.FailureRate:0.0}%" },
-                 { "CardIcon", "✅" },
-                 { "CardColor", "green" }
-             })' />
+    <partial name="_StatCardPartial" view-data='@(new ViewDataDictionary(ViewData) {
+        { "CardTitle", "Índice de Aprobación" },
+        { "CardValue", Model.ApprovalRate.ToString("0.0") + "%" },
+        { "CardSubtitle", $"Reprobación: {Model.FailureRate:0.0}%" },
+        { "CardIcon", "check" }, { "CardColor", "teal" } })' />
 
-    <partial name="_StatCardPartial"
-             view-data='@(new ViewDataDictionary(ViewData) {
-                 { "CardTitle", "Ingresos Totales" },
-                 { "CardValue", "$" + Model.TotalRevenue.ToString("N0") },
-                 { "CardSubtitle", Model.RevenuePeriod },
-                 { "CardIcon", "💰" },
-                 { "CardColor", "gold" }
-             })' />
+    <partial name="_StatCardPartial" view-data='@(new ViewDataDictionary(ViewData) {
+        { "CardTitle", "Ingresos Totales" },
+        { "CardValue", "$" + Model.TotalRevenue.ToString("N0") },
+        { "CardSubtitle", Model.RevenuePeriod },
+        { "CardIcon", "money" }, { "CardColor", "gold" } })' />
 
-    <partial name="_StatCardPartial"
-             view-data='@(new ViewDataDictionary(ViewData) {
-                 { "CardTitle", "Total Docentes" },
-                 { "CardValue", Model.TotalTeachers.ToString() },
-                 { "CardSubtitle", $"{Model.TeachersWithPostgrad} con posgrado" },
-                 { "CardIcon", "🎓" },
-                 { "CardColor", "purple" }
-             })' />
+    <partial name="_StatCardPartial" view-data='@(new ViewDataDictionary(ViewData) {
+        { "CardTitle", "Total Docentes" },
+        { "CardValue", Model.TotalTeachers.ToString() },
+        { "CardSubtitle", $"{Model.TeachersWithPostgrad} con posgrado" },
+        { "CardIcon", "teacher" }, { "CardColor", "navy" } })' />
 </div>
 
-<!-- Capture Progress Section -->
-<div class="capture-section">
+<section class="capture-section">
     <div class="capture-header">
         <div class="capture-header-left">
             <h3>Estado de Capturas por Área</h3>
             <p>Progreso de captura de información del periodo actual</p>
         </div>
-        <a asp-controller="Reports" asp-action="Index" class="btn btn-accent">Generar Reporte 911</a>
+        <a asp-controller="Reports" asp-action="Index" class="btn btn-accent">
+            <icon name="report" /> Generar Reporte 911
+        </a>
     </div>
 
-    <table class="capture-table">
+    <table class="data-table">
         <thead>
             <tr>
                 <th>Área</th>
                 <th>Progreso</th>
                 <th>Estado</th>
-                <th style="text-align: right;">Porcentaje</th>
+                <th class="col-actions">Porcentaje</th>
             </tr>
         </thead>
         <tbody>
             @foreach (var area in Model.AreaProgress)
             {
-                var fillClass = area.Percentage == 100 ? "complete"
-                    : area.Percentage >= 50 ? "warning"
-                    : "danger";
-
-                var dotClass = area.Status switch
-                {
-                    "Completo" => "complete",
-                    "En progreso" => "in-progress",
-                    _ => "pending"
-                };
+                var fillClass = area.Percentage == 100 ? "complete" : area.Percentage >= 50 ? "warning" : "danger";
+                var dotClass = area.Status switch { "Completo" => "complete", "En progreso" => "in-progress", _ => "pending" };
+                var badgeClass = area.Status == "Completo" ? "badge-success" : area.Status == "En progreso" ? "badge-warning" : "badge-danger";
 
                 <tr>
                     <td>
@@ -125,22 +80,15 @@
                     </td>
                     <td>
                         <div class="capture-progress-bar">
-                            <div class="capture-progress-fill @fillClass"
-                                 style="width: 0%"
-                                 data-width="@area.Percentage%"></div>
+                            <div class="capture-progress-fill @fillClass" style="width: @area.Percentage%"></div>
                         </div>
                     </td>
                     <td>
-                        <span class="badge @(area.Status == "Completo" ? "badge-success" : area.Status == "En progreso" ? "badge-warning" : "badge-danger")">
-                            <span class="status-dot @dotClass"></span>
-                            @area.Status
-                        </span>
+                        <span class="badge @badgeClass"><span class="status-dot @dotClass"></span> @area.Status</span>
                     </td>
-                    <td class="capture-percentage" style="text-align: right;">
-                        @area.Percentage%
-                    </td>
+                    <td class="capture-percentage col-actions">@area.Percentage%</td>
                 </tr>
             }
         </tbody>
     </table>
-</div>
+</section>

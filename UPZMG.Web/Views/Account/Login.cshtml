@@ -52,7 +52,7 @@
                 @if (!string.IsNullOrEmpty(Model.ErrorMessage))
                 {
                     <div class="login-error">
-                        <span class="login-error-icon">⚠</span>
+                        <icon name="warning" class="login-error-icon" />
                         <span class="login-error-text">@Model.ErrorMessage</span>
                     </div>
                 }
@@ -71,7 +71,7 @@
                                 placeholder="usuario@upzmg.edu.mx"
                                 value="@Model.Email"
                                 required />
-                            <span class="input-icon">✉</span>
+                            <icon name="mail" class="input-icon" />
                         </div>
                     </div>
 
@@ -85,7 +85,7 @@
                                 autocomplete="current-password"
                                 placeholder="••••••••"
                                 required />
-                            <span class="input-icon">🔒</span>
+                            <icon name="lock" class="input-icon" />
                         </div>
                     </div>
 

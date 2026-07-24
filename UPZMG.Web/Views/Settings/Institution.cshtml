@@ -3,21 +3,11 @@
     ViewData["Title"] = "Datos de la Institución";
 }
 
-@section PageStyles {
-    <link rel="stylesheet" href="~/css/settings.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/data-capture.css" asp-append-version="true" />
-}
-
-<!-- Page Header -->
-<div class="page-header animate-fade-in">
-    <div class="page-header-left">
-        <h1>Datos de la Institución</h1>
-        <p>Información maestra usada en los encabezados de todos los reportes</p>
-    </div>
-    <div class="page-header-right">
-        <a asp-controller="Settings" asp-action="Index" class="btn btn-outline">← Volver a Configuración</a>
-    </div>
-</div>
+<page-header title="Datos de la Institución" subtitle="Información maestra usada en los encabezados de todos los reportes">
+    <a asp-controller="Settings" asp-action="Index" class="btn btn-outline">
+        <icon name="arrow-left" /> Volver a Configuración
+    </a>
+</page-header>
 
 @if (TempData["SettingsStatus"] is string statusMessage)
 {
@@ -32,82 +22,65 @@
 
         <h3>Identidad institucional</h3>
         <div class="form-grid">
-            <div class="form-group">
-                <label class="form-label" for="InstitutionName">Nombre de la institución</label>
+            <form-field label="Nombre de la institución" for="InstitutionName">
                 <input asp-for="InstitutionName" class="form-control" required />
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="InstitutionKey">Clave de la institución</label>
+            </form-field>
+            <form-field label="Clave de la institución" for="InstitutionKey">
                 <input asp-for="InstitutionKey" class="form-control" required />
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="CampusName">Nombre del campus</label>
+            </form-field>
+            <form-field label="Nombre del campus" for="CampusName">
                 <input asp-for="CampusName" class="form-control" />
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="CctKey">Clave CCT</label>
+            </form-field>
+            <form-field label="Clave CCT" for="CctKey">
                 <input asp-for="CctKey" class="form-control" required />
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="RectorName">Nombre del rector</label>
+            </form-field>
+            <form-field label="Nombre del rector" for="RectorName">
                 <input asp-for="RectorName" class="form-control" required />
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="Sostenimiento">Sostenimiento</label>
+            </form-field>
+            <form-field label="Sostenimiento" for="Sostenimiento">
                 <select asp-for="Sostenimiento" class="form-control" asp-items="Model.SostenimientoOptions" required></select>
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="Phone">Teléfono institucional</label>
+            </form-field>
+            <form-field label="Teléfono institucional" for="Phone">
                 <input asp-for="Phone" class="form-control" />
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="Website">Página web</label>
+            </form-field>
+            <form-field label="Página web" for="Website">
                 <input asp-for="Website" class="form-control" />
-            </div>
+            </form-field>
         </div>
 
-        <h3 class="mt-md">Responsable de captura</h3>
+        <h3 class="mt-4">Responsable de captura</h3>
         <div class="form-grid">
-            <div class="form-group">
-                <label class="form-label" for="ResponsibleName">Nombre</label>
+            <form-field label="Nombre" for="ResponsibleName">
                 <input asp-for="ResponsibleName" class="form-control" />
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="ResponsiblePosition">Puesto</label>
+            </form-field>
+            <form-field label="Puesto" for="ResponsiblePosition">
                 <input asp-for="ResponsiblePosition" class="form-control" />
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="ResponsibleEmail">Correo</label>
+            </form-field>
+            <form-field label="Correo" for="ResponsibleEmail">
                 <input asp-for="ResponsibleEmail" type="email" class="form-control" />
-            </div>
+            </form-field>
         </div>
 
-        <h3 class="mt-md">Domicilio</h3>
+        <h3 class="mt-4">Domicilio</h3>
         <div class="form-grid">
-            <div class="form-group">
-                <label class="form-label" for="Street">Calle</label>
+            <form-field label="Calle" for="Street">
                 <input asp-for="Street" class="form-control" />
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="StreetNumber">Número</label>
+            </form-field>
+            <form-field label="Número" for="StreetNumber">
                 <input asp-for="StreetNumber" class="form-control" />
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="Neighborhood">Colonia</label>
+            </form-field>
+            <form-field label="Colonia" for="Neighborhood">
                 <input asp-for="Neighborhood" class="form-control" />
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="Municipality">Municipio</label>
+            </form-field>
+            <form-field label="Municipio" for="Municipality">
                 <input asp-for="Municipality" class="form-control" />
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="State">Estado</label>
+            </form-field>
+            <form-field label="Estado" for="State">
                 <input asp-for="State" class="form-control" />
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="PostalCode">Código postal</label>
+            </form-field>
+            <form-field label="Código postal" for="PostalCode">
                 <input asp-for="PostalCode" class="form-control" />
-            </div>
+            </form-field>
         </div>
 
         <div class="form-actions">

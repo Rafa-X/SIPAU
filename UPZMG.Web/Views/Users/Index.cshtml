@@ -3,20 +3,11 @@
     ViewData["Title"] = "Usuarios y Roles";
 }
 
-@section PageStyles {
-    <link rel="stylesheet" href="~/css/data-capture.css" asp-append-version="true" />
-}
-
-<!-- Page Header -->
-<div class="page-header animate-fade-in">
-    <div class="page-header-left">
-        <h1>Usuarios y Roles</h1>
-        <p>Alta de usuarios y asignación de rol de acceso</p>
-    </div>
-    <div class="page-header-right">
-        <a asp-controller="Users" asp-action="Create" class="btn btn-accent">+ Nuevo usuario</a>
-    </div>
-</div>
+<page-header title="Usuarios y Roles" subtitle="Alta de usuarios y asignación de rol de acceso">
+    <a asp-controller="Users" asp-action="Create" class="btn btn-accent">
+        <icon name="plus" /> Nuevo usuario
+    </a>
+</page-header>
 
 @if (ViewData["UsersStatus"] is string statusMessage)
 {
@@ -25,8 +16,8 @@
     </div>
 }
 
-<div class="capture-section">
-    <table class="capture-table">
+<section class="table-section">
+    <table class="data-table">
         <thead>
             <tr>
                 <th>Usuario</th>
@@ -34,7 +25,7 @@
                 <th>Rol</th>
                 <th>Estado</th>
                 <th>Último acceso</th>
-                <th style="text-align: right;">Acción</th>
+                <th class="col-actions">Acción</th>
             </tr>
         </thead>
         <tbody>
@@ -42,26 +33,26 @@
             {
                 <tr>
                     <td class="capture-area-name">@user.FullName</td>
-                    <td class="text-muted" style="font-size: var(--font-size-sm);">@user.Email</td>
-                    <td><span class="badge badge-info">@user.RoleName</span></td>
+                    <td class="text-muted">@user.Email</td>
+                    <td><span class="badge badge-teal">@user.RoleName</span></td>
                     <td>
                         @if (user.IsActive)
                         {
-                            <span class="badge badge-success"><span class="status-dot complete"></span>Activo</span>
+                            <span class="badge badge-success"><span class="status-dot complete"></span> Activo</span>
                         }
                         else
                         {
-                            <span class="badge badge-danger"><span class="status-dot pending"></span>Inactivo</span>
+                            <span class="badge badge-danger"><span class="status-dot pending"></span> Inactivo</span>
                         }
                     </td>
-                    <td class="text-muted" style="font-size: var(--font-size-sm);">
-                        @(user.LastLogin?.ToString("dd/MM/yyyy HH:mm") ?? "—")
-                    </td>
-                    <td style="text-align: right;">
-                        <a asp-controller="Users" asp-action="Edit" asp-route-id="@user.Id" class="btn btn-outline btn-sm">Editar</a>
+                    <td class="text-muted">@(user.LastLogin?.ToString("dd/MM/yyyy HH:mm") ?? "—")</td>
+                    <td class="col-actions">
+                        <a asp-controller="Users" asp-action="Edit" asp-route-id="@user.Id" class="btn btn-outline btn-sm">
+                            <icon name="edit" /> Editar
+                        </a>
                     </td>
                 </tr>
             }
         </tbody>
     </table>
-</div>
+</section>

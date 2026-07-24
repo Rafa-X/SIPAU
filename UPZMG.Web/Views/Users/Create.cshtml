@@ -3,19 +3,10 @@
     ViewData["Title"] = "Nuevo Usuario";
 }
 
-@section PageStyles {
-    <link rel="stylesheet" href="~/css/data-capture.css" asp-append-version="true" />
-}
-
-<!-- Page Header -->
-<div class="page-header animate-fade-in">
-    <div class="page-header-left">
-        <h1>Nuevo Usuario</h1>
-        <p>Da de alta un usuario y asígnale un rol de acceso</p>
-    </div>
-    <div class="page-header-right">
-        <a asp-controller="Users" asp-action="Index" class="btn btn-outline">← Volver a Usuarios</a>
-    </div>
-</div>
+<page-header title="Nuevo Usuario" subtitle="Da de alta un usuario y asígnale un rol de acceso">
+    <a asp-controller="Users" asp-action="Index" class="btn btn-outline">
+        <icon name="arrow-left" /> Volver a Usuarios
+    </a>
+</page-header>
 
 <partial name="_UserForm" model="Model" />

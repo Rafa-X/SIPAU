@@ -3,26 +3,16 @@
     ViewData["Title"] = "Actas de Junta Directiva";
 }
 
-@section PageStyles {
-    <link rel="stylesheet" href="~/css/minutes.css" asp-append-version="true" />
-}
+<page-header title="Actas de Junta Directiva" subtitle="Seguimiento de firmas y estatus de actas institucionales" />
 
-<!-- Page Header -->
-<div class="page-header animate-fade-in">
-    <div class="page-header-left">
-        <h1>Actas de Junta Directiva</h1>
-        <p>Seguimiento de firmas y estatus de actas institucionales</p>
-    </div>
-</div>
-
-<div class="capture-section">
-    <table class="capture-table">
+<section class="table-section">
+    <table class="data-table">
         <thead>
             <tr>
                 <th>Sesión</th>
                 <th>Fecha</th>
                 <th>Estado</th>
-                <th style="text-align: right;">Acción</th>
+                <th class="col-actions">Acción</th>
             </tr>
         </thead>
         <tbody>
@@ -39,11 +29,11 @@
                     <td class="capture-area-name">@minute.SessionName</td>
                     <td>@minute.Date.ToString("dd/MM/yyyy")</td>
                     <td><span class="badge @badgeClass">@minute.Status</span></td>
-                    <td style="text-align: right;">
+                    <td class="col-actions">
                         <a asp-controller="Minutes" asp-action="Detail" asp-route-id="@minute.Id" class="btn btn-outline btn-sm">Ver firmantes</a>
                     </td>
                 </tr>
             }
         </tbody>
     </table>
-</div>
+</section>

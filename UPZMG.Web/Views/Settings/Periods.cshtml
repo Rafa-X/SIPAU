@@ -3,21 +3,11 @@
     ViewData["Title"] = "Periodos Escolares";
 }
 
-@section PageStyles {
-    <link rel="stylesheet" href="~/css/settings.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/data-capture.css" asp-append-version="true" />
-}
-
-<!-- Page Header -->
-<div class="page-header animate-fade-in">
-    <div class="page-header-left">
-        <h1>Periodos Escolares</h1>
-        <p>Ciclos y cuatrimestres registrados en el sistema</p>
-    </div>
-    <div class="page-header-right">
-        <a asp-controller="Settings" asp-action="Index" class="btn btn-outline">← Volver a Configuración</a>
-    </div>
-</div>
+<page-header title="Periodos Escolares" subtitle="Ciclos y cuatrimestres registrados en el sistema">
+    <a asp-controller="Settings" asp-action="Index" class="btn btn-outline">
+        <icon name="arrow-left" /> Volver a Configuración
+    </a>
+</page-header>
 
 @if (TempData["SettingsStatus"] is string statusMessage)
 {
@@ -26,7 +16,7 @@
     </div>
 }
 
-<div class="card animate-slide-up mb-lg">
+<div class="card animate-slide-up">
     <h3>Agregar periodo</h3>
     <form method="post" asp-controller="Settings" asp-action="AddPeriod" class="settings-inline-form">
         @Html.AntiForgeryToken()
@@ -38,12 +28,12 @@
             <label class="form-label" for="schoolCycle">Ciclo escolar SEP</label>
             <input id="schoolCycle" name="schoolCycle" class="form-control" placeholder="Ej. 2025-2026" required />
         </div>
-        <button type="submit" class="btn btn-accent">Agregar</button>
+        <button type="submit" class="btn btn-accent"><icon name="plus" /> Agregar</button>
     </form>
 </div>
 
-<div class="capture-section">
-    <table class="capture-table">
+<section class="table-section">
+    <table class="data-table">
         <thead>
             <tr>
                 <th>Código</th>
@@ -64,15 +54,15 @@
                     <td>
                         @if (period.IsActive)
                         {
-                            <span class="badge badge-success"><span class="status-dot complete"></span>Activo</span>
+                            <span class="badge badge-success"><span class="status-dot complete"></span> Activo</span>
                         }
                         else
                         {
-                            <span class="badge badge-warning"><span class="status-dot pending"></span>Cerrado</span>
+                            <span class="badge badge-neutral"><span class="status-dot pending"></span> Cerrado</span>
                         }
                     </td>
                 </tr>
             }
         </tbody>
     </table>
-</div>
+</section>

@@ -8,36 +8,35 @@
         "Generado" => "badge-info",
         _ => "badge-warning"
     };
+
+    string IconFor(string name) => name switch
+    {
+        "Matrícula" => "users",
+        "Aprovechamiento" => "chart",
+        "Titulación" => "trophy",
+        "Becas" => "award",
+        "Infraestructura" => "building",
+        _ => "board"
+    };
 }
 
-@section PageStyles {
-    <link rel="stylesheet" href="~/css/board-report.css" asp-append-version="true" />
-}
+<page-header title="@($"Informe — {Model.Period}")" subtitle="@($"Generado el {Model.GeneratedDate:dd/MM/yyyy}")">
+    <span class="badge @badgeClass">@Model.Status</span>
+    <a asp-controller="BoardReport" asp-action="Index" class="btn btn-outline">
+        <icon name="arrow-left" /> Volver a Informes
+    </a>
+</page-header>
 
-<!-- Page Header -->
-<div class="page-header animate-fade-in">
-    <div class="page-header-left">
-        <h1>Informe — @Model.Period</h1>
-        <p>
-            Generado el @Model.GeneratedDate.ToString("dd/MM/yyyy")
-            &middot; <span class="badge @badgeClass">@Model.Status</span>
-        </p>
-    </div>
-    <div class="page-header-right">
-        <a asp-controller="BoardReport" asp-action="Index" class="btn btn-outline">← Volver a Informes</a>
-    </div>
-</div>
-
-<div class="card animate-slide-up delay-1 mb-lg">
+<div class="card animate-slide-up delay-1">
     <h3>Tabla de Contenido</h3>
-    <div class="informe-secciones">
+    <div class="report-sections">
         @foreach (var sec in Model.Sections)
         {
-            <div class="informe-seccion-item">
-                <span class="informe-seccion-icon">@sec.Icon</span>
+            <div class="report-section-item">
+                <icon name="@IconFor(sec.Name)" />
                 <div>
-                    <div class="informe-seccion-nombre">@sec.Name</div>
-                    <div class="informe-seccion-desc">@sec.Description</div>
+                    <div class="report-section-name">@sec.Name</div>
+                    <div class="report-section-desc">@sec.Description</div>
                 </div>
             </div>
         }
@@ -47,10 +46,10 @@
 <div class="card animate-slide-up delay-2">
     <h3>Eventos Atípicos — Galería</h3>
     <p class="section-subtitle">@Model.TotalAtypicalEventPhotos fotografías registradas (límite: 20 por especificación del cliente)</p>
-    <div class="informe-gallery">
+    <div class="report-gallery">
         @for (var i = 1; i <= Model.TotalAtypicalEventPhotos; i++)
         {
-            <div class="informe-photo-placeholder" title="Foto @i">📷</div>
+            <div class="report-photo" title="Foto @i"><icon name="camera" /></div>
         }
     </div>
 </div>

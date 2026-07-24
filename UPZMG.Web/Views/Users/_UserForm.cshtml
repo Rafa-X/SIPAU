@@ -14,22 +14,19 @@
         <h3>Datos del usuario</h3>
 
         <div class="form-grid">
-            <div class="form-group">
-                <label class="form-label" for="FullName">Nombre completo</label>
+            <form-field label="Nombre completo" for="FullName">
                 <input asp-for="FullName" class="form-control" required />
-            </div>
+            </form-field>
 
-            <div class="form-group">
-                <label class="form-label" for="Email">Correo electrónico</label>
+            <form-field label="Correo electrónico" for="Email">
                 <input asp-for="Email" type="email" class="form-control" required />
-            </div>
+            </form-field>
 
-            <div class="form-group">
-                <label class="form-label" for="RoleId">Rol</label>
+            <form-field label="Rol" for="RoleId">
                 <select asp-for="RoleId" class="form-control" asp-items="Model.Roles" required>
                     <option value="">Selecciona...</option>
                 </select>
-            </div>
+            </form-field>
 
             <div class="form-group form-group-checkbox">
                 <label for="IsActive">
