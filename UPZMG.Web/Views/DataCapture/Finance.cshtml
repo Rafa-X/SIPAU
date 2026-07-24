@@ -3,20 +3,11 @@
     ViewData["Title"] = "Registrar Resumen Financiero";
 }
 
-@section PageStyles {
-    <link rel="stylesheet" href="~/css/data-capture.css" asp-append-version="true" />
-}
-
-<!-- Page Header -->
-<div class="page-header animate-fade-in">
-    <div class="page-header-left">
-        <h1>Registrar Resumen Financiero Anual</h1>
-        <p>Captura de datos — Área de Finanzas</p>
-    </div>
-    <div class="page-header-right">
-        <a asp-controller="DataCapture" asp-action="Index" class="btn btn-outline">← Volver a Capturas</a>
-    </div>
-</div>
+<page-header title="Registrar Resumen Financiero Anual" subtitle="Captura de datos — Área de Finanzas">
+    <a asp-controller="DataCapture" asp-action="Index" class="btn btn-outline">
+        <icon name="arrow-left" /> Volver a Capturas
+    </a>
+</page-header>
 
 <div class="card animate-slide-up">
     <form method="post" asp-controller="DataCapture" asp-action="Finance">
@@ -27,50 +18,41 @@
             <input asp-for="FiscalYear" type="number" min="2000" max="2100" class="form-control" required />
         </div>
 
-        <h3 class="mt-md">Ingresos por fuente (MXN)</h3>
+        <h3 class="mt-4">Ingresos por fuente (MXN)</h3>
         <div class="form-grid">
-            <div class="form-group">
-                <label class="form-label" for="FederalIncome">Ingreso federal</label>
+            <form-field label="Ingreso federal" for="FederalIncome">
                 <input asp-for="FederalIncome" type="number" step="0.01" min="0" class="form-control" required />
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="StateIncome">Ingreso estatal</label>
+            </form-field>
+            <form-field label="Ingreso estatal" for="StateIncome">
                 <input asp-for="StateIncome" type="number" step="0.01" min="0" class="form-control" required />
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="OwnIncomeEnrollment">Ingreso propio — inscripciones</label>
+            </form-field>
+            <form-field label="Ingreso propio — inscripciones" for="OwnIncomeEnrollment">
                 <input asp-for="OwnIncomeEnrollment" type="number" step="0.01" min="0" class="form-control" required />
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="OwnIncomeServices">Ingreso propio — servicios</label>
+            </form-field>
+            <form-field label="Ingreso propio — servicios" for="OwnIncomeServices">
                 <input asp-for="OwnIncomeServices" type="number" step="0.01" min="0" class="form-control" required />
-            </div>
+            </form-field>
         </div>
 
-        <h3 class="mt-md">Egresos por tipo (MXN)</h3>
+        <h3 class="mt-4">Egresos por tipo (MXN)</h3>
         <div class="form-grid">
-            <div class="form-group">
-                <label class="form-label" for="PayrollExpense">Gasto en nómina</label>
+            <form-field label="Gasto en nómina" for="PayrollExpense">
                 <input asp-for="PayrollExpense" type="number" step="0.01" min="0" class="form-control" required />
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="MaterialsExpense">Gasto en materiales</label>
+            </form-field>
+            <form-field label="Gasto en materiales" for="MaterialsExpense">
                 <input asp-for="MaterialsExpense" type="number" step="0.01" min="0" class="form-control" required />
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="ServicesExpense">Gasto en servicios</label>
+            </form-field>
+            <form-field label="Gasto en servicios" for="ServicesExpense">
                 <input asp-for="ServicesExpense" type="number" step="0.01" min="0" class="form-control" required />
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="InvestmentExpense">Gasto en inversión</label>
+            </form-field>
+            <form-field label="Gasto en inversión" for="InvestmentExpense">
                 <input asp-for="InvestmentExpense" type="number" step="0.01" min="0" class="form-control" required />
-            </div>
+            </form-field>
         </div>
 
-        <div class="form-group">
-            <label class="form-label" for="Notes">Observaciones</label>
+        <form-field label="Observaciones" for="Notes">
             <textarea asp-for="Notes" class="form-control" rows="3"></textarea>
-        </div>
+        </form-field>
 
         <div class="form-actions">
             <button type="submit" class="btn btn-accent">Guardar resumen</button>

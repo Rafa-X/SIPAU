@@ -3,20 +3,11 @@
     ViewData["Title"] = "Registrar Espacio Físico";
 }
 
-@section PageStyles {
-    <link rel="stylesheet" href="~/css/data-capture.css" asp-append-version="true" />
-}
-
-<!-- Page Header -->
-<div class="page-header animate-fade-in">
-    <div class="page-header-left">
-        <h1>Registrar Espacio Físico</h1>
-        <p>Captura de datos — Área de Infraestructura y TIC</p>
-    </div>
-    <div class="page-header-right">
-        <a asp-controller="DataCapture" asp-action="Index" class="btn btn-outline">← Volver a Capturas</a>
-    </div>
-</div>
+<page-header title="Registrar Espacio Físico" subtitle="Captura de datos — Área de Infraestructura y TIC">
+    <a asp-controller="DataCapture" asp-action="Index" class="btn btn-outline">
+        <icon name="arrow-left" /> Volver a Capturas
+    </a>
+</page-header>
 
 <div class="card animate-slide-up">
     <form method="post" asp-controller="DataCapture" asp-action="Infrastructure">
@@ -25,13 +16,11 @@
         <h3>Datos del espacio</h3>
 
         <div class="form-grid">
-            <div class="form-group">
-                <label class="form-label" for="SpaceName">Identificador del espacio</label>
+            <form-field label="Identificador del espacio" for="SpaceName">
                 <input asp-for="SpaceName" class="form-control" placeholder="Ej. Laboratorio de Cómputo 2" required />
-            </div>
+            </form-field>
 
-            <div class="form-group">
-                <label class="form-label" for="UseType">Tipo de uso</label>
+            <form-field label="Tipo de uso" for="UseType">
                 <select asp-for="UseType" class="form-control" required>
                     <option value="">Selecciona...</option>
                     <option value="Aula">Aula</option>
@@ -41,25 +30,22 @@
                     <option value="Auditorio">Auditorio</option>
                     <option value="Oficina">Oficina</option>
                 </select>
-            </div>
+            </form-field>
 
-            <div class="form-group">
-                <label class="form-label" for="SquareMeters">Metros cuadrados</label>
+            <form-field label="Metros cuadrados" for="SquareMeters">
                 <input asp-for="SquareMeters" type="number" step="0.01" min="0" class="form-control" required />
-            </div>
+            </form-field>
 
-            <div class="form-group">
-                <label class="form-label" for="Capacity">Capacidad (personas)</label>
+            <form-field label="Capacidad (personas)" for="Capacity">
                 <input asp-for="Capacity" type="number" min="0" class="form-control" required />
-            </div>
+            </form-field>
 
-            <div class="form-group">
-                <label class="form-label" for="ComputersInOperation">Computadoras en operación</label>
+            <form-field label="Computadoras en operación" for="ComputersInOperation">
                 <input asp-for="ComputersInOperation" type="number" min="0" class="form-control" />
-            </div>
+            </form-field>
         </div>
 
-        <h3 class="mt-md">Servicios</h3>
+        <h3 class="mt-4">Servicios</h3>
         <div class="form-grid">
             <div class="form-group form-group-checkbox">
                 <label for="HasInternet">

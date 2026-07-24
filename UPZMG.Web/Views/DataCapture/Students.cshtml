@@ -3,20 +3,11 @@
     ViewData["Title"] = "Registrar Alumno";
 }
 
-@section PageStyles {
-    <link rel="stylesheet" href="~/css/data-capture.css" asp-append-version="true" />
-}
-
-<!-- Page Header -->
-<div class="page-header animate-fade-in">
-    <div class="page-header-left">
-        <h1>Registrar Alumno</h1>
-        <p>Captura de datos — Área de Alumnos</p>
-    </div>
-    <div class="page-header-right">
-        <a asp-controller="DataCapture" asp-action="Index" class="btn btn-outline">← Volver a Capturas</a>
-    </div>
-</div>
+<page-header title="Registrar Alumno" subtitle="Captura de datos — Área de Alumnos">
+    <a asp-controller="DataCapture" asp-action="Index" class="btn btn-outline">
+        <icon name="arrow-left" /> Volver a Capturas
+    </a>
+</page-header>
 
 <div class="card animate-slide-up">
     <form method="post" asp-controller="DataCapture" asp-action="Students">
@@ -25,47 +16,39 @@
         <h3>Datos generales</h3>
 
         <div class="form-grid">
-            <div class="form-group">
-                <label class="form-label" for="EnrollmentNumber">Matrícula</label>
+            <form-field label="Matrícula" for="EnrollmentNumber">
                 <input asp-for="EnrollmentNumber" class="form-control" placeholder="Ej. 20261234" required />
-            </div>
+            </form-field>
 
-            <div class="form-group">
-                <label class="form-label" for="Curp">CURP</label>
+            <form-field label="CURP" for="Curp">
                 <input asp-for="Curp" class="form-control" placeholder="Ej. XXXX000000HXXXXX00" maxlength="18" required />
-            </div>
+            </form-field>
 
-            <div class="form-group">
-                <label class="form-label" for="FirstName">Nombre(s)</label>
+            <form-field label="Nombre(s)" for="FirstName">
                 <input asp-for="FirstName" class="form-control" required />
-            </div>
+            </form-field>
 
-            <div class="form-group">
-                <label class="form-label" for="LastName">Apellido paterno</label>
+            <form-field label="Apellido paterno" for="LastName">
                 <input asp-for="LastName" class="form-control" required />
-            </div>
+            </form-field>
 
-            <div class="form-group">
-                <label class="form-label" for="MiddleName">Apellido materno</label>
+            <form-field label="Apellido materno" for="MiddleName">
                 <input asp-for="MiddleName" class="form-control" />
-            </div>
+            </form-field>
 
-            <div class="form-group">
-                <label class="form-label" for="BirthDate">Fecha de nacimiento</label>
+            <form-field label="Fecha de nacimiento" for="BirthDate">
                 <input asp-for="BirthDate" type="date" class="form-control" required />
-            </div>
+            </form-field>
 
-            <div class="form-group">
-                <label class="form-label" for="Gender">Sexo</label>
+            <form-field label="Sexo" for="Gender">
                 <select asp-for="Gender" class="form-control" required>
                     <option value="">Selecciona...</option>
                     <option value="Mujer">Mujer</option>
                     <option value="Hombre">Hombre</option>
                 </select>
-            </div>
+            </form-field>
 
-            <div class="form-group">
-                <label class="form-label" for="MaritalStatus">Estado civil</label>
+            <form-field label="Estado civil" for="MaritalStatus">
                 <select asp-for="MaritalStatus" class="form-control" required>
                     <option value="">Selecciona...</option>
                     <option value="Soltero(a)">Soltero(a)</option>
@@ -73,19 +56,17 @@
                     <option value="Unión libre">Unión libre</option>
                     <option value="Otro">Otro</option>
                 </select>
-            </div>
+            </form-field>
 
-            <div class="form-group">
-                <label class="form-label" for="CareerId">Carrera</label>
+            <form-field label="Carrera" for="CareerId">
                 <select asp-for="CareerId" class="form-control" asp-items="Model.Careers" required>
                     <option value="">Selecciona...</option>
                 </select>
-            </div>
+            </form-field>
 
-            <div class="form-group">
-                <label class="form-label" for="PeriodId">Periodo</label>
+            <form-field label="Periodo" for="PeriodId">
                 <select asp-for="PeriodId" class="form-control" asp-items="Model.Periods" required></select>
-            </div>
+            </form-field>
 
             <div class="form-group form-group-checkbox">
                 <label for="SpeaksIndigenousLanguage">

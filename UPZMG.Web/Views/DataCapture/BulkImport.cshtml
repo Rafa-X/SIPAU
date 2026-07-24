@@ -3,20 +3,11 @@
     ViewData["Title"] = "Importación Masiva";
 }
 
-@section PageStyles {
-    <link rel="stylesheet" href="~/css/data-capture.css" asp-append-version="true" />
-}
-
-<!-- Page Header -->
-<div class="page-header animate-fade-in">
-    <div class="page-header-left">
-        <h1>Importación Masiva</h1>
-        <p>Carga un archivo de texto delimitado para insertar múltiples registros de una sola vez</p>
-    </div>
-    <div class="page-header-right">
-        <a asp-controller="DataCapture" asp-action="Index" class="btn btn-outline">← Volver a Capturas</a>
-    </div>
-</div>
+<page-header title="Importación Masiva" subtitle="Carga un archivo de texto delimitado para insertar múltiples registros de una sola vez">
+    <a asp-controller="DataCapture" asp-action="Index" class="btn btn-outline">
+        <icon name="arrow-left" /> Volver a Capturas
+    </a>
+</page-header>
 
 <div class="card animate-slide-up">
     <form method="post" asp-controller="DataCapture" asp-action="BulkImport" enctype="multipart/form-data">
@@ -25,22 +16,19 @@
         <h3>Configuración de la importación</h3>
 
         <div class="form-grid">
-            <div class="form-group">
-                <label class="form-label" for="AreaKey">Área destino</label>
+            <form-field label="Área destino" for="AreaKey">
                 <select asp-for="AreaKey" class="form-control" asp-items="Model.Areas" required>
                     <option value="">Selecciona...</option>
                 </select>
-            </div>
+            </form-field>
 
-            <div class="form-group">
-                <label class="form-label" for="Delimiter">Delimitador</label>
+            <form-field label="Delimitador" for="Delimiter">
                 <select asp-for="Delimiter" class="form-control" asp-items="Model.Delimiters" required></select>
-            </div>
+            </form-field>
 
-            <div class="form-group">
-                <label class="form-label" for="File">Archivo (.txt / .csv)</label>
+            <form-field label="Archivo (.txt / .csv)" for="File">
                 <input asp-for="File" type="file" accept=".txt,.csv" class="form-control" required />
-            </div>
+            </form-field>
 
             <div class="form-group form-group-checkbox">
                 <label for="HasHeaderRow">
@@ -50,11 +38,9 @@
             </div>
         </div>
 
-        <div class="summary-banner mt-md">
-            <span class="summary-banner-icon">i</span>
-            <span class="summary-banner-text">
-                El archivo debe usar el delimitador seleccionado y respetar el orden de columnas del formato del área. (Validación real pendiente de backend.)
-            </span>
+        <div class="summary-banner mt-4">
+            <icon name="info" />
+            <span>El archivo debe usar el delimitador seleccionado y respetar el orden de columnas del formato del área. (Validación real pendiente de backend.)</span>
         </div>
 
         <div class="form-actions">
