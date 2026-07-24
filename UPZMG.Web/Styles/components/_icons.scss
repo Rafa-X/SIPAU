@@ -1,0 +1,13 @@
+// ============================================================
+//  Component — inline SVG icons (rendered by <icon>)
+// ============================================================
+
+.icon {
+    width: 1.15em;
+    height: 1.15em;
+    vertical-align: -0.18em;
+    flex-shrink: 0;
+    stroke: currentColor;
+
+    &--area { width: 20px; height: 20px; }
+}

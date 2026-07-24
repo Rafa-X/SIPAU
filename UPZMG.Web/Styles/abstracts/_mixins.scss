@@ -1,0 +1,39 @@
+// ============================================================
+//  Abstracts — mixins
+// ============================================================
+
+@mixin card {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+@mixin focus-ring {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(var(--teal-rgb), 0.20);
+}
+
+// The signature "— Title" gold accent used on card / section headings
+@mixin gold-dash {
+    position: relative;
+    padding-left: 20px;
+
+    &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 12px;
+        height: 3px;
+        border-radius: var(--radius-full);
+        background: var(--gold);
+    }
+}
+
+@mixin truncate {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

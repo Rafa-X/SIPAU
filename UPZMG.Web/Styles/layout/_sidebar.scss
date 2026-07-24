@@ -1,0 +1,67 @@
+// ============================================================
+//  Layout — sidebar (navy drawer, teal active). Toggled by "Menú".
+// ============================================================
+
+.sidebar {
+    position: fixed;
+    top: var(--topbar-h);
+    left: 0;
+    bottom: 0;
+    width: var(--sidebar-w);
+    background: var(--navy-800);
+    display: flex;
+    flex-direction: column;
+    z-index: 200;
+    overflow-y: auto;
+    transition: transform var(--t-normal);
+}
+
+// Desktop: always visible. Mobile: off-canvas drawer toggled by "Menú".
+@media (min-width: 901px) {
+    .sidebar { transform: translateX(0); }
+}
+
+@media (max-width: 900px) {
+    .sidebar { transform: translateX(-100%); }
+    .app-layout.nav-open .sidebar { transform: translateX(0); }
+}
+
+.sidebar-nav {
+    padding: var(--space-4) var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.sidebar-nav-section {
+    padding: var(--space-4) var(--space-3) var(--space-1);
+    font-size: 11px;
+    font-weight: var(--fw-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.sidebar-nav-link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: 10px var(--space-3);
+    color: rgba(255, 255, 255, 0.72);
+    font-size: var(--text-base);
+    font-weight: var(--fw-medium);
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background var(--t-fast), color var(--t-fast);
+
+    .icon { width: 19px; height: 19px; flex-shrink: 0; }
+
+    &:hover { color: var(--text-invert); background: rgba(255, 255, 255, 0.07); }
+
+    &.active {
+        color: var(--text-invert);
+        background: var(--teal);
+        font-weight: var(--fw-semibold);
+    }
+}

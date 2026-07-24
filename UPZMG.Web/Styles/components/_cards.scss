@@ -1,0 +1,80 @@
+// ============================================================
+//  Component — cards, page header, banners
+//  Card headings use the UdeG "— Title" gold-dash + gold underline.
+// ============================================================
+@use '../abstracts/mixins' as *;
+
+.card {
+    @include card;
+    padding: var(--space-6);
+
+    & + .card { margin-top: var(--space-6); }
+
+    // Card section heading with the signature gold accent
+    h3 {
+        @include gold-dash;
+        padding-bottom: var(--space-3);
+        margin-bottom: var(--space-5);
+        border-bottom: 1px solid var(--border);
+        font-size: var(--text-md);
+        font-weight: var(--fw-semibold);
+
+        &::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: -1px;
+            width: 44px;
+            height: 2px;
+            background: var(--gold);
+        }
+
+        &:not(:first-child) { margin-top: var(--space-6); }
+    }
+}
+
+// --- Page header (title + subtitle + actions) rendered by <page-header> ---
+.page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-6);
+
+    &-left {
+        h1 { margin-bottom: 3px; }
+        p { font-size: var(--text-sm); color: var(--text-muted); margin: 0; }
+    }
+
+    &-right {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        flex-wrap: wrap;
+    }
+}
+
+.section-subtitle {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    margin-bottom: var(--space-4);
+}
+
+// --- Summary banner ---
+.summary-banner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-5);
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-left: 3px solid var(--teal);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-xs);
+    margin-bottom: var(--space-6);
+    font-size: var(--text-base);
+    color: var(--text);
+
+    .icon { width: 18px; height: 18px; color: var(--teal); flex-shrink: 0; }
+}
