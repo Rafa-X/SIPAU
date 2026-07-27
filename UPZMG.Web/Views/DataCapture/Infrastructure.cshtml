@@ -1,0 +1,77 @@
+@model UPZMG.Web.Models.InfrastructureFormViewModel
+@{
+    ViewData["Title"] = "Registrar Espacio Físico";
+}
+
+<page-header title="Registrar Espacio Físico" subtitle="Captura de datos — Área de Infraestructura y TIC">
+    <a asp-controller="DataCapture" asp-action="Index" class="btn btn-outline">
+        <icon name="arrow-left" /> Volver a Capturas
+    </a>
+</page-header>
+
+<div class="card animate-slide-up">
+    <form method="post" asp-controller="DataCapture" asp-action="Infrastructure">
+        @Html.AntiForgeryToken()
+
+        <h3>Datos del espacio</h3>
+
+        <div class="form-grid">
+            <form-field label="Identificador del espacio" for="SpaceName">
+                <input asp-for="SpaceName" class="form-control" placeholder="Ej. Laboratorio de Cómputo 2" required />
+            </form-field>
+
+            <form-field label="Tipo de uso" for="UseType">
+                <select asp-for="UseType" class="form-control" required>
+                    <option value="">Selecciona...</option>
+                    <option value="Aula">Aula</option>
+                    <option value="Laboratorio">Laboratorio</option>
+                    <option value="Taller">Taller</option>
+                    <option value="Biblioteca">Biblioteca</option>
+                    <option value="Auditorio">Auditorio</option>
+                    <option value="Oficina">Oficina</option>
+                </select>
+            </form-field>
+
+            <form-field label="Metros cuadrados" for="SquareMeters">
+                <input asp-for="SquareMeters" type="number" step="0.01" min="0" class="form-control" required />
+            </form-field>
+
+            <form-field label="Capacidad (personas)" for="Capacity">
+                <input asp-for="Capacity" type="number" min="0" class="form-control" required />
+            </form-field>
+
+            <form-field label="Computadoras en operación" for="ComputersInOperation">
+                <input asp-for="ComputersInOperation" type="number" min="0" class="form-control" />
+            </form-field>
+        </div>
+
+        <h3 class="mt-4">Servicios</h3>
+        <div class="form-grid">
+            <div class="form-group form-group-checkbox">
+                <label for="HasInternet">
+                    <input asp-for="HasInternet" type="checkbox" />
+                    Cuenta con conexión a internet
+                </label>
+            </div>
+
+            <div class="form-group form-group-checkbox">
+                <label for="HasComputerEquipment">
+                    <input asp-for="HasComputerEquipment" type="checkbox" />
+                    Cuenta con equipo de cómputo
+                </label>
+            </div>
+
+            <div class="form-group form-group-checkbox">
+                <label for="IsAdapted">
+                    <input asp-for="IsAdapted" type="checkbox" />
+                    Adaptado para personas con discapacidad
+                </label>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-accent">Guardar espacio</button>
+            <a asp-controller="DataCapture" asp-action="Index" class="btn btn-outline">Cancelar</a>
+        </div>
+    </form>
+</div>

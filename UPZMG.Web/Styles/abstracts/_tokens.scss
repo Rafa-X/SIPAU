@@ -1,0 +1,126 @@
+// ============================================================
+//  Design tokens — SIGIE / UPZMG
+//  Visual language inspired by the UdeG institutional portal:
+//  deep navy chrome, teal interactive accent, gold card accents,
+//  red for primary calls-to-action. Clean sans typography.
+// ============================================================
+
+:root {
+    // --- Navy (chrome: topbar, sidebar, headings) ---
+    --navy:        #0A1F44;
+    --navy-800:    #0D2A54;
+    --navy-700:    #143a6b;
+    --navy-900:    #07172F;
+    --navy-rgb:    10, 31, 68;
+
+    // --- Teal (interactive accent: links, active nav, primary actions) ---
+    --teal:        #158F8B;
+    --teal-light:  #1DB0AB;
+    --teal-dark:   #0F6E6B;
+    --teal-rgb:    21, 143, 139;
+
+    // --- Gold (card header dash + dividers, sparing highlights) ---
+    --gold:        #C69528;
+    --gold-light:  #E0B44A;
+    --gold-rgb:    198, 149, 40;
+
+    // --- Red (primary CTA + danger) ---
+    --red:         #C0392B;
+    --red-dark:    #A32C20;
+    --red-rgb:     192, 57, 43;
+
+    // --- Neutrals ---
+    --bg:          #EEF1F5;
+    --surface:     #FFFFFF;
+    --surface-alt: #F7F9FB;
+    --border:      #E2E7EC;
+    --border-soft: #EDF0F3;
+    --text:        #1E2A3A;
+    --text-soft:   #586173;
+    --text-muted:  #8A94A3;
+    --text-invert: #FFFFFF;
+
+    // --- Semantic ---
+    --info:    #2563EB; --info-bg:    #EAF1FE; --info-border:    #C6DAFB;
+    --warning: #B7791F; --warning-bg: #FBF1DE; --warning-border: #ECD5A6;
+    --success: #157347; --success-bg: #E6F3EC; --success-border: #B4DCC3;
+    --danger:  #C0392B; --danger-bg:  #FBEBE9; --danger-border:  #F0BEB8;
+
+    // --- Typography (clean sans, no serif) ---
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+
+    --text-xs:   0.75rem;
+    --text-sm:   0.8125rem;
+    --text-base: 0.875rem;
+    --text-md:   1rem;
+    --text-lg:   1.125rem;
+    --text-xl:   1.375rem;
+    --text-2xl:  1.75rem;
+
+    --fw-normal:   400;
+    --fw-medium:   500;
+    --fw-semibold: 600;
+    --fw-bold:     700;
+
+    --lh-tight:   1.2;
+    --lh-normal:  1.5;
+    --lh-relaxed: 1.65;
+
+    // --- Spacing (4pt) ---
+    --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+    --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px;
+    --space-12: 48px; --space-16: 64px;
+
+    // --- Radius (subtle, portal-like) ---
+    --radius-sm:   4px;
+    --radius-md:   6px;
+    --radius-lg:   10px;
+    --radius-full: 9999px;
+
+    // --- Shadows ---
+    --shadow-xs: 0 1px 2px rgba(16, 32, 46, 0.05);
+    --shadow-sm: 0 1px 3px rgba(16, 32, 46, 0.07);
+    --shadow-md: 0 3px 10px rgba(16, 32, 46, 0.08);
+    --shadow-lg: 0 10px 26px rgba(16, 32, 46, 0.12);
+
+    // --- Motion ---
+    --ease:     cubic-bezier(0.4, 0, 0.2, 1);
+    --t-fast:   140ms var(--ease);
+    --t-normal: 240ms var(--ease);
+
+    // --- Layout ---
+    --topbar-h:          56px;
+    --sidebar-w:         248px;
+
+    // ------------------------------------------------------------
+    //  Backward-compat aliases for older stylesheets (login.css,
+    //  reports.css, security.css) and legacy inline styles.
+    // ------------------------------------------------------------
+    --color-primary: var(--navy); --color-primary-light: var(--navy-700);
+    --color-primary-dark: var(--navy-900); --color-primary-rgb: var(--navy-rgb);
+    --color-accent: var(--teal); --color-accent-light: var(--teal-light);
+    --color-accent-dark: var(--teal-dark); --color-accent-rgb: var(--teal-rgb);
+    --color-bg: var(--bg); --color-surface: var(--surface);
+    --color-border: var(--border); --color-border-light: var(--border-soft);
+    --color-text-primary: var(--text); --color-text-secondary: var(--text-soft);
+    --color-text-muted: var(--text-muted); --color-text-inverse: var(--text-invert);
+    --color-info: var(--info); --color-info-bg: var(--info-bg); --color-info-border: var(--info-border);
+    --color-warning: var(--warning); --color-warning-bg: var(--warning-bg); --color-warning-border: var(--warning-border);
+    --color-success: var(--success); --color-success-bg: var(--success-bg); --color-success-border: var(--success-border);
+    --color-danger: var(--danger); --color-danger-bg: var(--danger-bg); --color-danger-border: var(--danger-border);
+    --color-stat-blue: var(--navy); --color-stat-green: var(--teal);
+    --color-stat-gold: var(--gold); --color-stat-purple: var(--navy-700);
+    --font-family: var(--font-sans);
+    --font-size-xs: var(--text-xs); --font-size-sm: var(--text-sm); --font-size-base: var(--text-base);
+    --font-size-md: var(--text-md); --font-size-lg: var(--text-lg); --font-size-xl: var(--text-xl);
+    --font-size-2xl: var(--text-2xl); --font-size-3xl: 2.25rem;
+    --font-weight-normal: var(--fw-normal); --font-weight-medium: var(--fw-medium);
+    --font-weight-semibold: var(--fw-semibold); --font-weight-bold: var(--fw-bold);
+    --line-height-tight: var(--lh-tight); --line-height-normal: var(--lh-normal); --line-height-relaxed: var(--lh-relaxed);
+    --space-xs: var(--space-1); --space-sm: var(--space-2); --space-md: var(--space-4);
+    --space-lg: var(--space-6); --space-xl: var(--space-8); --space-2xl: var(--space-12); --space-3xl: var(--space-16);
+    --radius-xl: var(--radius-lg);
+    --shadow-xl: var(--shadow-lg);
+    --transition-fast: var(--t-fast); --transition-normal: var(--t-normal); --transition-slow: 380ms var(--ease);
+    --sidebar-width: var(--sidebar-w); --header-height: var(--topbar-h);
+}

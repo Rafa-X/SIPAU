@@ -1,0 +1,55 @@
+@model UPZMG.Web.Models.BoardReportDetailViewModel
+@{
+    ViewData["Title"] = "Detalle de Informe";
+
+    var badgeClass = Model.Status switch
+    {
+        "Enviado" => "badge-success",
+        "Generado" => "badge-info",
+        _ => "badge-warning"
+    };
+
+    string IconFor(string name) => name switch
+    {
+        "Matrícula" => "users",
+        "Aprovechamiento" => "chart",
+        "Titulación" => "trophy",
+        "Becas" => "award",
+        "Infraestructura" => "building",
+        _ => "board"
+    };
+}
+
+<page-header title="@($"Informe — {Model.Period}")" subtitle="@($"Generado el {Model.GeneratedDate:dd/MM/yyyy}")">
+    <span class="badge @badgeClass">@Model.Status</span>
+    <a asp-controller="BoardReport" asp-action="Index" class="btn btn-outline">
+        <icon name="arrow-left" /> Volver a Informes
+    </a>
+</page-header>
+
+<div class="card animate-slide-up delay-1">
+    <h3>Tabla de Contenido</h3>
+    <div class="report-sections">
+        @foreach (var sec in Model.Sections)
+        {
+            <div class="report-section-item">
+                <icon name="@IconFor(sec.Name)" />
+                <div>
+                    <div class="report-section-name">@sec.Name</div>
+                    <div class="report-section-desc">@sec.Description</div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="card animate-slide-up delay-2">
+    <h3>Eventos Atípicos — Galería</h3>
+    <p class="section-subtitle">@Model.TotalAtypicalEventPhotos fotografías registradas (límite: 20 por especificación del cliente)</p>
+    <div class="report-gallery">
+        @for (var i = 1; i <= Model.TotalAtypicalEventPhotos; i++)
+        {
+            <div class="report-photo" title="Foto @i"><icon name="camera" /></div>
+        }
+    </div>
+</div>

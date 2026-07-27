@@ -1,0 +1,45 @@
+@model UPZMG.Web.Models.BoardReportIndexViewModel
+@{
+    ViewData["Title"] = "Informe de Junta Directiva";
+}
+
+<page-header title="Informe de Junta Directiva" subtitle="Informes generados para presentación ante la junta directiva">
+    <a asp-controller="BoardReport" asp-action="Detail" asp-route-id="4" class="btn btn-accent">
+        <icon name="plus" /> Generar nuevo informe
+    </a>
+</page-header>
+
+<section class="table-section">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Periodo</th>
+                <th>Fecha de generación</th>
+                <th>Estado</th>
+                <th>Páginas</th>
+                <th class="col-actions">Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var report in Model.Reports)
+            {
+                var badgeClass = report.Status switch
+                {
+                    "Enviado" => "badge-success",
+                    "Generado" => "badge-info",
+                    _ => "badge-warning"
+                };
+
+                <tr>
+                    <td class="capture-area-name">@report.Period</td>
+                    <td>@report.GeneratedDate.ToString("dd/MM/yyyy")</td>
+                    <td><span class="badge @badgeClass">@report.Status</span></td>
+                    <td>@report.PageCount</td>
+                    <td class="col-actions">
+                        <a asp-controller="BoardReport" asp-action="Detail" asp-route-id="@report.Id" class="btn btn-outline btn-sm">Ver detalle</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</section>

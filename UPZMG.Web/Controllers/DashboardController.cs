@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using UPZMG.Web.Models;
@@ -6,32 +5,15 @@ using UPZMG.Web.Models;
 namespace UPZMG.Web.Controllers;
 
 [Authorize]
-public class DashboardController : Controller
+public class DashboardController : SigieBaseController
 {
-    public async Task<IActionResult> Index(DashboardViewModel? model = null)
+    public IActionResult Index()
     {
-        model ??= new DashboardViewModel();
+        SetUserViewData();
 
-        // Extract user info from claims
-        var email = User.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
-        var roleName = User.FindFirstValue(ClaimTypes.Role) ?? "—";
-
-        // Build user display info
-        var emailParts = email.Split('@')[0]
-            .Split('.', StringSplitOptions.RemoveEmptyEntries);
-
-        var displayName = string.Join(" ", emailParts.Select(p =>
-            char.ToUpperInvariant(p[0]) + p[1..]));
-        var initials = string.Join("", emailParts.Select(p =>
-            char.ToUpperInvariant(p[0])));
-
-        // Fill the same model instance with fresh data for the current request.
+        // Build demo ViewModel (to be replaced with real DB/API queries later)
+        var model = new DashboardViewModel();
         PopulateDashboardModel(model);
-
-        // Pass user info to layout's sidebar
-        ViewData["UserName"] = displayName;
-        ViewData["UserRole"] = roleName;
-        ViewData["UserInitials"] = initials;
 
         return View(model);
     }
@@ -39,39 +21,39 @@ public class DashboardController : Controller
     private static void PopulateDashboardModel(DashboardViewModel model)
     {
         // Period
-        model.PeriodoActivo = "Ciclo 2025-2026 (Cuatrimestre 1)";
-        model.PeriodoEsActivo = true;
+        model.ActivePeriod = "Ciclo 2025-2026 (Cuatrimestre 1)";
+        model.IsPeriodActive = true;
 
         // Stats
-        model.TotalAlumnos = 1245;
-        model.NuevosIngresos = 320;
-        model.IndiceAprobacion = 87.5m;
-        model.IndiceReprobacion = 12.5m;
-        model.IngresosTotales = 15_500_000m;
-        model.PeriodoIngresos = "Periodo actual";
-        model.TotalDocentes = 85;
-        model.DocentesConPosgrado = 62;
+        model.TotalStudents = 1245;
+        model.NewEnrollments = 320;
+        model.ApprovalRate = 87.5m;
+        model.FailureRate = 12.5m;
+        model.TotalRevenue = 15_500_000m;
+        model.RevenuePeriod = "Periodo actual";
+        model.TotalTeachers = 85;
+        model.TeachersWithPostgrad = 62;
 
         // Summary
-        model.AreasCompletadas = 4;
+        model.CompletedAreas = 4;
         model.TotalAreas = 6;
 
         // Alerts
-        model.Alertas = new List<AlertBannerModel>
+        model.Alerts = new List<AlertBannerModel>
         {
-            new() { Mensaje = "Área de Vinculación tiene captura pendiente desde hace 2 días", Tipo = "warning", Prioridad = "Media" },
-            new() { Mensaje = "Reporte 911 debe enviarse en 15 días", Tipo = "info", Prioridad = "Alta" },
+            new() { Message = "Área de Vinculación tiene captura pendiente desde hace 2 días", Type = "warning", Priority = "Media" },
+            new() { Message = "Reporte 911 debe enviarse en 15 días", Type = "info", Priority = "Alta" },
         };
 
-        // Capture progress per area
-        model.AreasProgreso = new List<CaptureAreaProgress>
+        // capture progress per area
+        model.AreaProgress = new List<CaptureAreaProgress>
         {
-            new() { NombreArea = "Servicios Escolares", Responsable = "Lic. Ana Martínez", Porcentaje = 100, Estado = "Completo" },
-            new() { NombreArea = "Recursos Humanos", Responsable = "Lic. Carlos López", Porcentaje = 100, Estado = "Completo" },
-            new() { NombreArea = "Vinculación", Responsable = "Mtro. Pedro Sánchez", Porcentaje = 68, Estado = "En progreso" },
-            new() { NombreArea = "Finanzas", Responsable = "C.P. María García", Porcentaje = 100, Estado = "Completo" },
-            new() { NombreArea = "Infraestructura y TIC", Responsable = "Ing. Roberto Díaz", Porcentaje = 45, Estado = "En progreso" },
-            new() { NombreArea = "Investigación", Responsable = "Dr. Laura Hernández", Porcentaje = 100, Estado = "Completo" },
+            new() { AreaName = "Servicios Escolares", ResponsiblePerson = "Lic. Ana Martínez", Percentage = 100, Status = "Completo" },
+            new() { AreaName = "Recursos Humanos", ResponsiblePerson = "Lic. Carlos López", Percentage = 100, Status = "Completo" },
+            new() { AreaName = "Vinculación", ResponsiblePerson = "Mtro. Pedro Sánchez", Percentage = 68, Status = "En progreso" },
+            new() { AreaName = "Finanzas", ResponsiblePerson = "C.P. María García", Percentage = 100, Status = "Completo" },
+            new() { AreaName = "Infraestructura y TIC", ResponsiblePerson = "Ing. Roberto Díaz", Percentage = 45, Status = "En progreso" },
+            new() { AreaName = "Investigación", ResponsiblePerson = "Dr. Laura Hernández", Percentage = 100, Status = "Completo" },
         };
     }
 }

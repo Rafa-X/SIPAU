@@ -1,0 +1,39 @@
+@model UPZMG.Web.Models.MinutesIndexViewModel
+@{
+    ViewData["Title"] = "Actas de Junta Directiva";
+}
+
+<page-header title="Actas de Junta Directiva" subtitle="Seguimiento de firmas y estatus de actas institucionales" />
+
+<section class="table-section">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Sesión</th>
+                <th>Fecha</th>
+                <th>Estado</th>
+                <th class="col-actions">Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var minute in Model.Minutes)
+            {
+                var badgeClass = minute.Status switch
+                {
+                    "Firmada" => "badge-success",
+                    "En revisión gobierno" => "badge-info",
+                    _ => "badge-warning"
+                };
+
+                <tr>
+                    <td class="capture-area-name">@minute.SessionName</td>
+                    <td>@minute.Date.ToString("dd/MM/yyyy")</td>
+                    <td><span class="badge @badgeClass">@minute.Status</span></td>
+                    <td class="col-actions">
+                        <a asp-controller="Minutes" asp-action="Detail" asp-route-id="@minute.Id" class="btn btn-outline btn-sm">Ver firmantes</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</section>

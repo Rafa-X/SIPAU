@@ -1,0 +1,31 @@
+@{
+    ViewData["Title"] = "Configuración";
+}
+
+<page-header title="Configuración" subtitle="Administración de datos maestros del sistema" />
+
+<div class="settings-grid">
+    <a asp-controller="Settings" asp-action="Institution" class="settings-card animate-slide-up delay-1">
+        <span class="settings-card-icon"><icon name="landmark" class="icon--area" /></span>
+        <span class="settings-card-title">Datos de la institución</span>
+        <p class="settings-card-desc">Nombre, rector, clave CCT y domicilio que aparecen en los encabezados de reportes.</p>
+    </a>
+
+    <a asp-controller="Settings" asp-action="Periods" class="settings-card animate-slide-up delay-2">
+        <span class="settings-card-icon"><icon name="calendar" class="icon--area" /></span>
+        <span class="settings-card-title">Periodos escolares</span>
+        <p class="settings-card-desc">Ciclos y cuatrimestres. Define cuál es el periodo activo del sistema.</p>
+    </a>
+
+    <a asp-controller="Settings" asp-action="Indicators" class="settings-card animate-slide-up delay-3">
+        <span class="settings-card-icon"><icon name="sliders" class="icon--area" /></span>
+        <span class="settings-card-title">Indicadores</span>
+        <p class="settings-card-desc">Agrega nuevos indicadores a cada hoja de reporte conforme cambian cada año.</p>
+    </a>
+
+    <a asp-controller="Users" asp-action="Index" class="settings-card animate-slide-up delay-4">
+        <span class="settings-card-icon"><icon name="users" class="icon--area" /></span>
+        <span class="settings-card-title">Usuarios y roles</span>
+        <p class="settings-card-desc">Da de alta usuarios, asigna su rol y controla el acceso al sistema.</p>
+    </a>
+</div>
