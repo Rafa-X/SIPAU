@@ -1,0 +1,95 @@
+@page "/charts"
+@attribute [Authorize]
+@inject IIntelligenceService Ai
+
+<PageTitle>Gráficas — SIGIE</PageTitle>
+
+<PageHeader Title="Gráficas" Subtitle="Visualización estadística institucional con proyección de tendencias" />
+
+<MudGrid>
+    <MudItem xs="12" lg="6">
+        <MudPaper Elevation="1" Class="pa-4" Style="height:100%">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                <div>
+                    <MudText Typo="Typo.h6">Matrícula histórica y proyección</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Pronóstico por regresión lineal · los últimos @_forecastAhead periodos son proyección</MudText>
+                </div>
+                <MudChip T="string" Size="Size.Small" Color="Color.Tertiary" Variant="Variant.Text" Icon="@Icons.Material.Filled.AutoGraph">R² @_fc.R2.ToString("0.00")</MudChip>
+            </MudStack>
+            <MudChart T="double" ChartType="ChartType.Line" ChartSeries="@_enrollment" ChartLabels="@_fc.Labels"
+                      Width="100%" Height="320px" ChartOptions="@_lineOptions" />
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" lg="6">
+        <MudPaper Elevation="1" Class="pa-4" Style="height:100%">
+            <MudText Typo="Typo.h6">Distribución de alumnos por carrera</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Matrícula del periodo activo por programa educativo</MudText>
+            <MudChart T="double" ChartType="ChartType.Bar" ChartSeries="@_careers" ChartLabels="@_careerLabels"
+                      Width="100%" Height="320px" ChartOptions="@_tealBar" />
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" lg="6">
+        <MudPaper Elevation="1" Class="pa-4" Style="height:100%">
+            <MudText Typo="Typo.h6">Aprobación vs. reprobación por periodo</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Índices institucionales de aprovechamiento</MudText>
+            <MudChart T="double" ChartType="ChartType.Bar" ChartSeries="@_achievement" ChartLabels="@_achievementLabels"
+                      Width="100%" Height="320px" ChartOptions="@_abBar" />
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" lg="6">
+        <MudPaper Elevation="1" Class="pa-4" Style="height:100%">
+            <MudText Typo="Typo.h6">Becas asignadas por tipo / fuente</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Distribución de becas vigentes por fuente de financiamiento</MudText>
+            <MudChart T="double" ChartType="ChartType.Bar" ChartSeries="@_scholarships" ChartLabels="@_scholarshipLabels"
+                      Width="100%" Height="320px" ChartOptions="@_goldBar" />
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    // Teal (actual) + navy (trend) line for the enrollment forecast
+    private readonly ChartOptions _lineOptions = new()
+    {
+        ChartPalette = new[] { "#12A594", "#0B2350" },
+    };
+    private readonly ChartOptions _tealBar = new() { ChartPalette = new[] { "#12A594" } };
+    private readonly ChartOptions _goldBar = new() { ChartPalette = new[] { "#C69528" } };
+    private readonly ChartOptions _abBar   = new() { ChartPalette = new[] { "#12A594", "#DC3B2E" } };
+
+    // Matrícula: pronóstico real por regresión lineal (mínimos cuadrados en C#)
+    private const int _forecastAhead = 2;
+    private EnrollmentForecast _fc = null!;
+    private List<ChartSeries<double>> _enrollment = new();
+
+    protected override void OnInitialized()
+    {
+        _fc = Ai.ForecastEnrollment(_forecastAhead);
+        _enrollment = new()
+        {
+            new ChartSeries<double> { Name = "Matrícula (real + pronóstico)", Data = _fc.Actual },
+            new ChartSeries<double> { Name = "Tendencia", Data = _fc.Trend },
+        };
+    }
+
+    private readonly string[] _careerLabels = { "Sistemas", "Industrial", "Biotecnología", "Admón." };
+    private readonly List<ChartSeries<double>> _careers = new()
+    {
+        new ChartSeries<double> { Name = "Alumnos", Data = new double[] { 420, 355, 210, 260 } },
+    };
+
+    private readonly string[] _achievementLabels = { "2024-1", "2024-2", "2025-1", "2025-2" };
+    private readonly List<ChartSeries<double>> _achievement = new()
+    {
+        new ChartSeries<double> { Name = "Aprobación %", Data = new double[] { 84.2, 85.6, 86.9, 87.5 } },
+        new ChartSeries<double> { Name = "Reprobación %", Data = new double[] { 15.8, 14.4, 13.1, 12.5 } },
+    };
+
+    private readonly string[] _scholarshipLabels = { "Excelencia", "Manutención", "Deportiva", "Federal" };
+    private readonly List<ChartSeries<double>> _scholarships = new()
+    {
+        new ChartSeries<double> { Name = "Becas", Data = new double[] { 180, 260, 65, 340 } },
+    };
+}

@@ -1,0 +1,185 @@
+@page "/dashboard"
+@attribute [Authorize]
+@implements IAsyncDisposable
+@inject IDashboardService DashboardSvc
+@inject IIntelligenceService Ai
+
+<PageTitle>Tablero de Control — SIGIE</PageTitle>
+
+<PageHeader Title="Tablero de Control" Subtitle="Panel de indicadores institucionales del periodo activo">
+    <Actions>
+        <MudChip T="string" Color="Color.Secondary" Variant="Variant.Text" Icon="@Icons.Material.Filled.Event">@_model.ActivePeriod</MudChip>
+    </Actions>
+</PageHeader>
+
+@* Anomalies flagged automatically (intelligent layer) *@
+@foreach (var a in _anomalies)
+{
+    <MudAlert Severity="@SigieUi.AlertSeverity(a.Severity)" Variant="Variant.Outlined" Dense="true" Class="mb-2">
+        <MudText Typo="Typo.body2" Style="font-weight:600">@a.Title</MudText>
+        <MudText Typo="Typo.caption">@a.Detail</MudText>
+    </MudAlert>
+}
+
+<MudGrid Class="mt-2">
+    <MudItem xs="12" sm="6" md="3">
+        <StatCard Title="Total Alumnos" Value="@_model.TotalStudents.ToString("N0")"
+                  Subtitle="@($"+ {_model.NewEnrollments} nuevos ingresos")"
+                  Icon="@Icons.Material.Filled.School" Color="Color.Primary" />
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <StatCard Title="Índice de Aprobación" Value="@($"{_model.ApprovalRate:0.0}%")"
+                  Subtitle="@($"Reprobación: {_model.FailureRate:0.0}%")"
+                  Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Secondary" />
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <StatCard Title="Proyección próximo periodo" Value="@_forecastNext.ToString("N0")"
+                  Subtitle="@($"Regresión lineal · R² {_fc.R2:0.00}")"
+                  Icon="@Icons.Material.Filled.AutoGraph" Color="Color.Tertiary" />
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <StatCard Title="Total Docentes" Value="@_model.TotalTeachers.ToString()"
+                  Subtitle="@($"{_model.TeachersWithPostgrad} con posgrado")"
+                  Icon="@Icons.Material.Filled.Groups" Color="Color.Primary" />
+    </MudItem>
+</MudGrid>
+
+<MudGrid Class="mt-2">
+    <MudItem xs="12" md="8">
+        <MudPaper Elevation="1" Class="pa-4" Style="height:100%">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3" Wrap="Wrap.Wrap">
+                <div>
+                    <MudText Typo="Typo.h6">Estado de Capturas por Área</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        @_completed de @_model.AreaProgress.Count áreas completas · última sincronización @_lastSync.ToString("HH:mm:ss")
+                    </MudText>
+                </div>
+                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled" Icon="@Icons.Material.Filled.FiberManualRecord">
+                    En vivo
+                </MudChip>
+            </MudStack>
+
+            <MudDataGrid T="CaptureAreaProgress" Items="_model.AreaProgress" Dense="true" Hover="true" Elevation="0">
+                <Columns>
+                    <PropertyColumn Property="x => x.AreaName" Title="Área" />
+                    <PropertyColumn Property="x => x.ResponsiblePerson" Title="Responsable" />
+                    <TemplateColumn Title="Progreso">
+                        <CellTemplate>
+                            <MudProgressLinear Color="@SigieUi.ProgressColor(context.Item.Percentage)"
+                                               Value="context.Item.Percentage" Rounded="true"
+                                               Style="height:8px;min-width:120px" />
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Estado">
+                        <CellTemplate>
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@SigieUi.StatusColor(context.Item.Status)">
+                                @context.Item.Status
+                            </MudChip>
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <TemplateColumn Title="%" HeaderStyle="text-align:right">
+                        <CellTemplate>
+                            <div style="text-align:right;font-weight:700">@context.Item.Percentage%</div>
+                        </CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+            </MudDataGrid>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="4">
+        <MudPaper Elevation="1" Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" Class="mb-1">Aprovechamiento</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Aprobación vs. reprobación del periodo</MudText>
+            <div class="d-flex justify-center align-center my-4" style="position:relative;height:170px">
+                <MudProgressCircular Color="Color.Secondary" Value="@((double)_model.ApprovalRate)"
+                                     Min="0" Max="100" StrokeWidth="6" Style="height:170px;width:170px" />
+                <div style="position:absolute;text-align:center">
+                    <MudText Typo="Typo.h4" Style="font-weight:700;line-height:1">@($"{_model.ApprovalRate:0.0}%")</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Aprobación</MudText>
+                </div>
+            </div>
+        </MudPaper>
+
+        <MudPaper Elevation="1" Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-1">Riesgo de deserción</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3">Estimado por carrera (modelo predictivo)</MudText>
+            @foreach (var r in _risks)
+            {
+                <div class="mb-2">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <MudText Typo="Typo.body2">@r.Career</MudText>
+                        <MudChip T="string" Size="Size.Small" Color="@SigieUi.RiskColor(r.Level)" Variant="Variant.Text">@r.RiskPct%</MudChip>
+                    </MudStack>
+                    <MudProgressLinear Color="@SigieUi.RiskColor(r.Level)" Value="r.RiskPct" Rounded="true" Style="height:6px" />
+                </div>
+            }
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private DashboardViewModel _model = new();
+    private IReadOnlyList<AnomalyAlert> _anomalies = System.Array.Empty<AnomalyAlert>();
+    private IReadOnlyList<DropoutRisk> _risks = System.Array.Empty<DropoutRisk>();
+    private EnrollmentForecast _fc = null!;
+    private double _forecastNext;
+
+    private DateTime _lastSync = DateTime.Now;
+    private int _completed;
+
+    private PeriodicTimer? _timer;
+    private readonly CancellationTokenSource _cts = new();
+
+    protected override void OnInitialized()
+    {
+        _model = DashboardSvc.GetDashboard();
+        _anomalies = Ai.Anomalies();
+        _risks = Ai.DropoutRisks();
+        _fc = Ai.ForecastEnrollment(2);
+        _forecastNext = _fc.Actual[_fc.HistoricalCount]; // first forecast period
+        RecomputeCompleted();
+
+        // Real-time consolidation: departments sync concurrently, pushed live.
+        _ = RunSyncLoopAsync();
+    }
+
+    private async Task RunSyncLoopAsync()
+    {
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(3));
+        try
+        {
+            while (await _timer.WaitForNextTickAsync(_cts.Token))
+            {
+                if (SimulateDepartmentSync())
+                {
+                    _lastSync = DateTime.Now;
+                    RecomputeCompleted();
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+        }
+        catch (OperationCanceledException) { /* disposed */ }
+    }
+
+    /// <summary>Bumps an in-progress area as if a department just synced its data.</summary>
+    private bool SimulateDepartmentSync()
+    {
+        var inProgress = _model.AreaProgress.Where(a => a.Percentage < 100).ToList();
+        if (inProgress.Count == 0) return false;
+
+        var area = inProgress[Random.Shared.Next(inProgress.Count)];
+        area.Percentage = Math.Min(100, area.Percentage + Random.Shared.Next(2, 9));
+        area.Status = area.Percentage == 100 ? "Completo" : "En progreso";
+        return true;
+    }
+
+    private void RecomputeCompleted() => _completed = _model.AreaProgress.Count(a => a.Percentage == 100);
+
+    public async ValueTask DisposeAsync()
+    {
+        await _cts.CancelAsync();
+        _timer?.Dispose();
+        _cts.Dispose();
+    }
+}

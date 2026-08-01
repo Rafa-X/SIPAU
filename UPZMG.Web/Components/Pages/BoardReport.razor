@@ -1,0 +1,42 @@
+@page "/boardreport"
+@attribute [Authorize]
+@inject IBoardReportService BoardSvc
+
+<PageTitle>Informe de Junta — SIGIE</PageTitle>
+
+<PageHeader Title="Informe de Junta Directiva" Subtitle="Reporte estandarizado presentado a la junta directiva">
+    <Actions>
+        <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Add">Generar informe</MudButton>
+    </Actions>
+</PageHeader>
+
+<MudPaper Elevation="1" Class="pa-2">
+    <MudDataGrid T="BoardReportListItemModel" Items="_reports" Hover="true" Dense="true" Elevation="0">
+        <Columns>
+            <PropertyColumn Property="x => x.Period" Title="Periodo" />
+            <PropertyColumn Property="x => x.GeneratedDate" Title="Generado" Format="dd/MM/yyyy" />
+            <PropertyColumn Property="x => x.PageCount" Title="Páginas" />
+            <TemplateColumn Title="Estado">
+                <CellTemplate>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@SigieUi.StatusColor(context.Item.Status)">
+                        @context.Item.Status
+                    </MudChip>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Acción" CellClass="d-flex justify-end" Sortable="false">
+                <CellTemplate>
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Visibility" Href="@($"/boardreport/{context.Item.Id}")">
+                        Ver detalle
+                    </MudButton>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+</MudPaper>
+
+@code {
+    private IReadOnlyList<BoardReportListItemModel> _reports = System.Array.Empty<BoardReportListItemModel>();
+
+    protected override void OnInitialized() => _reports = BoardSvc.GetAll();
+}

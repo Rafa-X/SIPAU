@@ -1,0 +1,201 @@
+@page "/reports"
+@attribute [Authorize]
+@inject IReportsService ReportsSvc
+@inject ISnackbar Snackbar
+
+<PageTitle>Reportes 911 — SIGIE</PageTitle>
+
+<PageHeader Title="Plantilla de Reportes 911 / SII" Subtitle="Captura de los formatos estadísticos oficiales, versionados por JSON" />
+
+@if (_template is null)
+{
+    <MudPaper Elevation="1" Class="pa-6" MaxWidth="640px">
+        <MudText Typo="Typo.h6" Class="mb-1">Nuevo reporte</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">Elige una plantilla para iniciar la captura.</MudText>
+
+        <MudGrid>
+            <MudItem xs="12" sm="8">
+                <MudSelect T="ReportType?" @bind-Value="_selectedType" Label="Tipo de reporte" Clearable="true">
+                    @foreach (var r in ReportsSvc.AvailableReports)
+                    {
+                        <MudSelectItem T="ReportType?" Value="@r.Type">@r.Label</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="4" Class="d-flex align-center">
+                <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Description"
+                           OnClick="PrepareTemplate" Disabled="@(_selectedType is null || _loading)">
+                    Preparar plantilla
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+
+        @if (_loadError)
+        {
+            <MudAlert Severity="Severity.Info" Class="mt-4">
+                Esta plantilla aún no tiene una definición JSON cargada. Solo el Anexo TIC está disponible por ahora.
+            </MudAlert>
+        }
+    </MudPaper>
+}
+else
+{
+    var sec = _template.Sections.Count > 0 ? _template.Sections[_sectionIndex] : null;
+
+    <MudPaper Elevation="1" Class="pa-4 mb-4">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+            <div>
+                <MudText Typo="Typo.h6">@_template.DisplayName</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    @_template.ReportKey · v@_template.Version
+                </MudText>
+            </div>
+            @if (_template.Sections.Count > 0)
+            {
+                <MudChip T="string" Color="Color.Secondary" Variant="Variant.Text">
+                    Sección @(_sectionIndex + 1) de @_template.Sections.Count
+                </MudChip>
+            }
+        </MudStack>
+        <MudProgressLinear Color="Color.Secondary" Value="@SectionProgress" Rounded="true" Class="mt-2" Style="height:6px" />
+    </MudPaper>
+
+    @if (sec is not null)
+    {
+        <MudPaper Elevation="1" Class="pa-6 mb-4">
+            <MudText Typo="Typo.h6">@(_sectionIndex + 1). @sec.Title</MudText>
+            @if (!string.IsNullOrWhiteSpace(sec.Description))
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">@sec.Description</MudText>
+            }
+
+            @foreach (var q in sec.Questions)
+            {
+                <div class="mb-5">
+                    <MudText Typo="Typo.subtitle2">
+                        @q.Text @if (q.Required) { <span style="color:var(--mud-palette-error)">*</span> }
+                    </MudText>
+                    @if (!string.IsNullOrWhiteSpace(q.HelpText))
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block mb-2">@q.HelpText</MudText>
+                    }
+
+                    @switch (q.Type.ToLowerInvariant())
+                    {
+                        case "boolean":
+                            <MudSelect T="string" Value="@Get(q.Key)" ValueChanged="@(v => Set(q.Key, v))" Style="max-width:280px">
+                                <MudSelectItem T="string" Value="@("true")">Sí</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("false")">No</MudSelectItem>
+                            </MudSelect>
+                            break;
+
+                        case "number":
+                            <MudTextField T="string" Value="@Get(q.Key)" ValueChanged="@(v => Set(q.Key, v))"
+                                          InputType="InputType.Number" Style="max-width:280px" />
+                            break;
+
+                        case "matrix":
+                            <MudSimpleTable Dense="true" Bordered="true" Style="max-width:520px">
+                                <thead>
+                                    <tr>
+                                        <th>Concepto</th>
+                                        @foreach (var col in q.Columns) { <th>@col</th> }
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var row in q.Rows)
+                                    {
+                                        <tr>
+                                            <td>@row</td>
+                                            @foreach (var col in q.Columns)
+                                            {
+                                                var key = $"{q.Key}[{row}][{col}]";
+                                                <td>
+                                                    <MudTextField T="string" Value="@Get(key)" ValueChanged="@(v => Set(key, v))"
+                                                                  InputType="InputType.Number" Margin="Margin.Dense" />
+                                                </td>
+                                            }
+                                        </tr>
+                                    }
+                                </tbody>
+                            </MudSimpleTable>
+                            break;
+
+                        default:
+                            <MudTextField T="string" Value="@Get(q.Key)" ValueChanged="@(v => Set(q.Key, v))" />
+                            break;
+                    }
+                </div>
+            }
+        </MudPaper>
+    }
+
+    <MudStack Row="true" Justify="Justify.SpaceBetween">
+        <MudButton Variant="Variant.Outlined" OnClick="Back">
+            @(_sectionIndex == 0 ? "Cambiar plantilla" : "Sección anterior")
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="Next"
+                   EndIcon="@(IsLastSection ? Icons.Material.Filled.Send : Icons.Material.Filled.ArrowForward)">
+            @(IsLastSection ? "Enviar reporte" : "Siguiente sección")
+        </MudButton>
+    </MudStack>
+}
+
+@code {
+    private ReportType? _selectedType;
+    private ReportTemplateDefinition? _template;
+    private int _sectionIndex;
+    private bool _loading;
+    private bool _loadError;
+    private readonly Dictionary<string, string> _answers = new();
+
+    private bool IsLastSection => _template is not null && _sectionIndex >= _template.Sections.Count - 1;
+    private double SectionProgress => _template is null || _template.Sections.Count == 0
+        ? 0 : (double)(_sectionIndex + 1) / _template.Sections.Count * 100;
+
+    private string Get(string key) => _answers.TryGetValue(key, out var v) ? v : string.Empty;
+    private void Set(string key, string value) => _answers[key] = value;
+
+    private async Task PrepareTemplate()
+    {
+        if (_selectedType is null) return;
+        _loading = true;
+        _loadError = false;
+
+        _template = await ReportsSvc.LoadTemplateAsync(_selectedType.Value);
+        _sectionIndex = 0;
+        _answers.Clear();
+
+        if (_template is null) _loadError = true;
+        _loading = false;
+    }
+
+    private void Back()
+    {
+        if (_sectionIndex == 0)
+        {
+            _template = null;
+            _selectedType = null;
+        }
+        else
+        {
+            _sectionIndex--;
+        }
+    }
+
+    private void Next()
+    {
+        if (IsLastSection)
+        {
+            Snackbar.Add("Borrador del reporte guardado correctamente.", Severity.Success);
+            _template = null;
+            _selectedType = null;
+            _sectionIndex = 0;
+            _answers.Clear();
+        }
+        else
+        {
+            _sectionIndex++;
+        }
+    }
+}

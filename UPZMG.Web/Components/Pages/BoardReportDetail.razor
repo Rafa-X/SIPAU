@@ -1,0 +1,72 @@
+@page "/boardreport/{Id:int}"
+@attribute [Authorize]
+@inject IBoardReportService BoardSvc
+
+<PageTitle>Detalle de Informe — SIGIE</PageTitle>
+
+@if (_model is null)
+{
+    <PageHeader Title="Informe no encontrado" BackHref="/boardreport" />
+    <MudAlert Severity="Severity.Warning">No se encontró el informe solicitado.</MudAlert>
+}
+else
+{
+    <PageHeader Title="@($"Informe {_model.Period}")" Subtitle="@($"Generado el {_model.GeneratedDate:dd/MM/yyyy} · {_model.Status}")" BackHref="/boardreport">
+        <Actions>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PictureAsPdf">Exportar PDF</MudButton>
+        </Actions>
+    </PageHeader>
+
+    <MudGrid>
+        <MudItem xs="12" md="8">
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-3">Contenido del informe</MudText>
+                <MudList T="string">
+                    @foreach (var sec in _model.Sections)
+                    {
+                        <MudListItem T="string" Icon="@IconFor(sec.Name)">
+                            <MudText Typo="Typo.body1" Style="font-weight:600">@sec.Name</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@sec.Description</MudText>
+                        </MudListItem>
+                        <MudDivider />
+                    }
+                </MudList>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-2">Eventos atípicos</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3">
+                    Galería de fotografías de eventos protocolarios (máx. 20).
+                </MudText>
+                <div class="d-flex align-center" style="gap:12px">
+                    <MudIcon Icon="@Icons.Material.Filled.PhotoLibrary" Color="Color.Tertiary" Size="Size.Large" />
+                    <div>
+                        <MudText Typo="Typo.h4" Style="font-weight:700">@_model.TotalAtypicalEventPhotos</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">fotografías cargadas</MudText>
+                    </div>
+                </div>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private BoardReportDetailViewModel? _model;
+
+    protected override void OnInitialized() => _model = BoardSvc.GetDetail(Id);
+
+    private static string IconFor(string section) => section switch
+    {
+        "Matrícula"            => Icons.Material.Filled.School,
+        "Aprovechamiento"      => Icons.Material.Filled.TrendingUp,
+        "Titulación"           => Icons.Material.Filled.EmojiEvents,
+        "Becas"                => Icons.Material.Filled.CreditCard,
+        "Infraestructura"      => Icons.Material.Filled.Apartment,
+        "Eventos Protocolarios"=> Icons.Material.Filled.Campaign,
+        _                      => Icons.Material.Filled.Article,
+    };
+}

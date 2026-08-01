@@ -1,0 +1,63 @@
+@page "/settings/periods"
+@attribute [Authorize(Roles = "Admin")]
+@inject ISettingsService SettingsSvc
+@inject ISnackbar Snackbar
+
+<PageTitle>Periodos escolares — SIGIE</PageTitle>
+
+<PageHeader Title="Periodos escolares" Subtitle="Ciclos y cuatrimestres del sistema" BackHref="/settings" />
+
+<MudPaper Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.subtitle1" Class="mb-2">Agregar periodo</MudText>
+    <MudGrid>
+        <MudItem xs="12" md="4"><MudTextField @bind-Value="_newCode" Label="Código (ej. 2025-2026-2)" /></MudItem>
+        <MudItem xs="12" md="4"><MudTextField @bind-Value="_newCycle" Label="Ciclo escolar (ej. 2025-2026)" /></MudItem>
+        <MudItem xs="12" md="4" Class="d-flex align-center">
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Add" OnClick="AddPeriod">Agregar</MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+<MudPaper Elevation="1" Class="pa-2">
+    <MudDataGrid T="PeriodItemModel" Items="_periods" Hover="true" Dense="true" Elevation="0">
+        <Columns>
+            <PropertyColumn Property="x => x.Code" Title="Código" />
+            <PropertyColumn Property="x => x.SchoolCycle" Title="Ciclo" />
+            <PropertyColumn Property="x => x.StartDate" Title="Inicio" Format="dd/MM/yyyy" />
+            <PropertyColumn Property="x => x.EndDate" Title="Fin" Format="dd/MM/yyyy" />
+            <TemplateColumn Title="Activo">
+                <CellTemplate>
+                    @if (context.Item.IsActive)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text" Icon="@Icons.Material.Filled.CheckCircle">Activo</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Text">Inactivo</MudChip>
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+</MudPaper>
+
+@code {
+    private IReadOnlyList<PeriodItemModel> _periods = System.Array.Empty<PeriodItemModel>();
+    private string _newCode = string.Empty;
+    private string _newCycle = string.Empty;
+
+    protected override void OnInitialized() => _periods = SettingsSvc.GetPeriods();
+
+    private void AddPeriod()
+    {
+        if (string.IsNullOrWhiteSpace(_newCode) || string.IsNullOrWhiteSpace(_newCycle))
+        {
+            Snackbar.Add("Captura el código y el ciclo escolar.", Severity.Warning);
+            return;
+        }
+        SettingsSvc.AddPeriod(_newCode.Trim(), _newCycle.Trim());
+        _periods = SettingsSvc.GetPeriods().ToList();
+        Snackbar.Add($"Periodo '{_newCode}' agregado correctamente.", Severity.Success);
+        _newCode = _newCycle = string.Empty;
+    }
+}

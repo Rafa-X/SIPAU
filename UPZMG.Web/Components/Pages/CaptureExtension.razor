@@ -1,0 +1,77 @@
+@page "/datacapture/extension"
+@attribute [Authorize]
+@inject IDataCaptureService CaptureSvc
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Captura de Extensión — SIGIE</PageTitle>
+
+<PageHeader Title="Captura de Extensión y Vinculación" Subtitle="Convenios y proyectos de vinculación" BackHref="/datacapture" />
+
+<MudPaper Elevation="1" Class="pa-6">
+    <MudForm @ref="_form">
+        <MudText Typo="Typo.h6" Class="mb-3">Organización</MudText>
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_model.OrganizationName" Label="Nombre de la organización"
+                              Required="true" RequiredError="Requerido." />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudSelect T="string" @bind-Value="_model.Sector" Label="Sector">
+                    @foreach (var s in CaptureSvc.Sectors) { <MudSelectItem T="string" Value="@s">@s</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudSelect T="string" @bind-Value="_model.CompanySize" Label="Tamaño de empresa">
+                    @foreach (var c in CaptureSvc.CompanySizes) { <MudSelectItem T="string" Value="@c">@c</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudSelect T="string" @bind-Value="_model.ActivityType" Label="Tipo de actividad">
+                    @foreach (var a in CaptureSvc.ActivityTypes) { <MudSelectItem T="string" Value="@a">@a</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12"><MudDivider Class="my-2" /><MudText Typo="Typo.subtitle1">Proyecto</MudText></MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_model.ProjectName" Label="Nombre del proyecto" Required="true" RequiredError="Requerido." />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_model.StudentEnrollmentNumber" Label="Matrícula del alumno" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudSelect T="int" @bind-Value="_model.PeriodId" Label="Periodo">
+                    @foreach (var p in CaptureSvc.Periods) { <MudSelectItem T="int" Value="@int.Parse(p.Value)">@p.Text</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudDatePicker @bind-Date="_model.StartDate" Label="Fecha de inicio" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudDatePicker @bind-Date="_model.EndDate" Label="Fecha de término" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudNumericField T="int" @bind-Value="_model.AccreditedHours" Label="Horas acreditadas" Min="0" />
+            </MudItem>
+        </MudGrid>
+
+        <MudStack Row="true" Spacing="2" Class="mt-6">
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Save" OnClick="Submit">Guardar proyecto</MudButton>
+            <MudButton Variant="Variant.Outlined" OnClick="@(() => Nav.NavigateTo("/datacapture"))">Cancelar</MudButton>
+        </MudStack>
+    </MudForm>
+</MudPaper>
+
+@code {
+    private MudForm _form = null!;
+    private ExtensionFormViewModel _model = new();
+
+    private async Task Submit()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid) return;
+        Snackbar.Add($"Proyecto de vinculación '{_model.ProjectName}' guardado correctamente.", Severity.Success);
+        Nav.NavigateTo("/datacapture");
+    }
+}

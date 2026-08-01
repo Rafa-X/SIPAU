@@ -1,0 +1,116 @@
+@page "/users"
+@attribute [Authorize(Roles = "Admin")]
+@inject IUsersService UsersSvc
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Usuarios y Roles — SIGIE</PageTitle>
+
+<PageHeader Title="Usuarios y Roles" Subtitle="Alta de usuarios y asignación de rol de acceso">
+    <Actions>
+        <MudButton Variant="Variant.Filled" Color="Color.Secondary"
+                   StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="OpenCreate">
+            Nuevo usuario
+        </MudButton>
+    </Actions>
+</PageHeader>
+
+<MudPaper Elevation="1" Class="pa-2">
+    <MudDataGrid T="UserListItemModel" Items="_users" Hover="true" Dense="true" Elevation="0"
+                 QuickFilter="_quickFilter" Filterable="false" SortMode="SortMode.Multiple">
+        <ToolBarContent>
+            <MudTextField @bind-Value="_search" Placeholder="Buscar usuario, correo o rol…"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                          IconSize="Size.Medium" Immediate="true" Clearable="true" Class="mt-0" />
+        </ToolBarContent>
+        <Columns>
+            <TemplateColumn Title="Usuario" SortBy="x => x.FullName">
+                <CellTemplate>
+                    <div>
+                        <MudText Typo="Typo.body2" Style="font-weight:600">@context.Item.FullName</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@context.Item.Email</MudText>
+                    </div>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Rol" SortBy="x => x.RoleName">
+                <CellTemplate>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">@context.Item.RoleName</MudChip>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Estado" SortBy="x => x.IsActive">
+                <CellTemplate>
+                    @if (context.Item.IsActive)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Success"
+                                 Icon="@Icons.Material.Filled.CheckCircle">Activo</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Error"
+                                 Icon="@Icons.Material.Filled.Cancel">Inactivo</MudChip>
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.LastLogin" Title="Último acceso" Format="dd/MM/yyyy HH:mm" />
+            <TemplateColumn Title="Acción" CellClass="d-flex justify-end" Sortable="false">
+                <CellTemplate>
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Edit" OnClick="() => OpenEdit(context.Item)">
+                        Editar
+                    </MudButton>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+</MudPaper>
+
+@code {
+    private IReadOnlyList<UserListItemModel> _users = System.Array.Empty<UserListItemModel>();
+    private string _search = string.Empty;
+
+    protected override void OnInitialized() => Reload();
+
+    private void Reload() => _users = UsersSvc.GetUsers().ToList();
+
+    private Func<UserListItemModel, bool> _quickFilter => user =>
+    {
+        if (string.IsNullOrWhiteSpace(_search)) return true;
+        var s = _search.Trim();
+        return user.FullName.Contains(s, StringComparison.OrdinalIgnoreCase)
+            || user.Email.Contains(s, StringComparison.OrdinalIgnoreCase)
+            || user.RoleName.Contains(s, StringComparison.OrdinalIgnoreCase);
+    };
+
+    private Task OpenCreate() => ShowDialog("Nuevo Usuario", new UserFormViewModel(), created: true);
+
+    private Task OpenEdit(UserListItemModel user) => ShowDialog("Editar Usuario", new UserFormViewModel
+    {
+        Id = user.Id,
+        FullName = user.FullName,
+        Email = user.Email,
+        RoleId = user.RoleName,
+        IsActive = user.IsActive,
+    }, created: false);
+
+    private async Task ShowDialog(string title, UserFormViewModel model, bool created)
+    {
+        var parameters = new DialogParameters<UserDialog>
+        {
+            { x => x.Model, model },
+            { x => x.Roles, UsersSvc.GetRoles() },
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, CloseButton = true };
+
+        var dialog = await DialogService.ShowAsync<UserDialog>(title, parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled && result.Data is UserFormViewModel saved)
+        {
+            UsersSvc.Save(saved);
+            Reload();
+            Snackbar.Add(created
+                ? $"Usuario '{saved.Email}' creado correctamente."
+                : $"Usuario '{saved.Email}' actualizado correctamente.", Severity.Success);
+        }
+    }
+}

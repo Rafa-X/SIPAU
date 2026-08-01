@@ -1,0 +1,37 @@
+@page "/minutes"
+@attribute [Authorize]
+@inject IMinutesService MinutesSvc
+
+<PageTitle>Actas de Junta — SIGIE</PageTitle>
+
+<PageHeader Title="Actas de Junta Directiva" Subtitle="Seguimiento de firmas de las actas de sesión" />
+
+<MudPaper Elevation="1" Class="pa-2">
+    <MudDataGrid T="MinuteListItemModel" Items="_minutes" Hover="true" Dense="true" Elevation="0">
+        <Columns>
+            <PropertyColumn Property="x => x.SessionName" Title="Sesión" />
+            <PropertyColumn Property="x => x.Date" Title="Fecha" Format="dd/MM/yyyy" />
+            <TemplateColumn Title="Estado">
+                <CellTemplate>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@SigieUi.StatusColor(context.Item.Status)">
+                        @context.Item.Status
+                    </MudChip>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Acción" CellClass="d-flex justify-end" Sortable="false">
+                <CellTemplate>
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Visibility" Href="@($"/minutes/{context.Item.Id}")">
+                        Ver detalle
+                    </MudButton>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+</MudPaper>
+
+@code {
+    private IReadOnlyList<MinuteListItemModel> _minutes = System.Array.Empty<MinuteListItemModel>();
+
+    protected override void OnInitialized() => _minutes = MinutesSvc.GetAll();
+}

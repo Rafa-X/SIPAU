@@ -1,0 +1,51 @@
+@page "/datacapture/finance"
+@attribute [Authorize]
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Captura de Finanzas — SIGIE</PageTitle>
+
+<PageHeader Title="Captura de Finanzas" Subtitle="Resumen financiero anual" BackHref="/datacapture" />
+
+<MudPaper Elevation="1" Class="pa-6">
+    <MudForm @ref="_form">
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <MudNumericField T="int" @bind-Value="_model.FiscalYear" Label="Ejercicio fiscal" Min="2000" Max="2100" />
+            </MudItem>
+
+            <MudItem xs="12"><MudDivider Class="my-2" /><MudText Typo="Typo.subtitle1">Ingresos por fuente</MudText></MudItem>
+            <MudItem xs="12" md="3"><MudNumericField T="decimal" @bind-Value="_model.FederalIncome" Label="Federal" Min="0" Format="N2" Adornment="Adornment.Start" AdornmentText="$" /></MudItem>
+            <MudItem xs="12" md="3"><MudNumericField T="decimal" @bind-Value="_model.StateIncome" Label="Estatal" Min="0" Format="N2" Adornment="Adornment.Start" AdornmentText="$" /></MudItem>
+            <MudItem xs="12" md="3"><MudNumericField T="decimal" @bind-Value="_model.OwnIncomeEnrollment" Label="Propios: inscripciones" Min="0" Format="N2" Adornment="Adornment.Start" AdornmentText="$" /></MudItem>
+            <MudItem xs="12" md="3"><MudNumericField T="decimal" @bind-Value="_model.OwnIncomeServices" Label="Propios: servicios" Min="0" Format="N2" Adornment="Adornment.Start" AdornmentText="$" /></MudItem>
+
+            <MudItem xs="12"><MudDivider Class="my-2" /><MudText Typo="Typo.subtitle1">Egresos por tipo</MudText></MudItem>
+            <MudItem xs="12" md="3"><MudNumericField T="decimal" @bind-Value="_model.PayrollExpense" Label="Nómina" Min="0" Format="N2" Adornment="Adornment.Start" AdornmentText="$" /></MudItem>
+            <MudItem xs="12" md="3"><MudNumericField T="decimal" @bind-Value="_model.MaterialsExpense" Label="Materiales" Min="0" Format="N2" Adornment="Adornment.Start" AdornmentText="$" /></MudItem>
+            <MudItem xs="12" md="3"><MudNumericField T="decimal" @bind-Value="_model.ServicesExpense" Label="Servicios" Min="0" Format="N2" Adornment="Adornment.Start" AdornmentText="$" /></MudItem>
+            <MudItem xs="12" md="3"><MudNumericField T="decimal" @bind-Value="_model.InvestmentExpense" Label="Inversión" Min="0" Format="N2" Adornment="Adornment.Start" AdornmentText="$" /></MudItem>
+
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_model.Notes" Label="Notas" Lines="3" />
+            </MudItem>
+        </MudGrid>
+
+        <MudStack Row="true" Spacing="2" Class="mt-6">
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Save" OnClick="Submit">Guardar resumen</MudButton>
+            <MudButton Variant="Variant.Outlined" OnClick="@(() => Nav.NavigateTo("/datacapture"))">Cancelar</MudButton>
+        </MudStack>
+    </MudForm>
+</MudPaper>
+
+@code {
+    private MudForm _form = null!;
+    private FinanceFormViewModel _model = new() { FiscalYear = DateTime.Now.Year };
+
+    private async Task Submit()
+    {
+        await _form.ValidateAsync();
+        Snackbar.Add($"Resumen financiero {_model.FiscalYear} guardado correctamente.", Severity.Success);
+        Nav.NavigateTo("/datacapture");
+    }
+}
