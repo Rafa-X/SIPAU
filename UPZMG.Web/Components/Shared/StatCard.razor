@@ -1,0 +1,45 @@
+@*
+    KPI card. Colored left accent + gradient icon badge, lifts on hover.
+*@
+<MudPaper Elevation="1" Class="pa-4 sigie-lift" Style="@($"height:100%;border-left:3px solid var(--mud-palette-{PaletteVar})")">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Spacing="2">
+        <div>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">@Title</MudText>
+            <MudText Typo="Typo.h5" Style="font-weight:800;line-height:1.15">@Value</MudText>
+            @if (!string.IsNullOrEmpty(Subtitle))
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@Subtitle</MudText>
+            }
+        </div>
+        <span class="sigie-icon-badge @BadgeClass">
+            <MudIcon Icon="@Icon" />
+        </span>
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string Value { get; set; } = string.Empty;
+    [Parameter] public string Subtitle { get; set; } = string.Empty;
+    [Parameter] public string Icon { get; set; } = Icons.Material.Filled.Insights;
+    [Parameter] public Color Color { get; set; } = Color.Primary;
+
+    private string PaletteVar => Color switch
+    {
+        Color.Secondary => "secondary",
+        Color.Tertiary  => "tertiary",
+        Color.Info      => "info",
+        Color.Success   => "success",
+        Color.Warning   => "warning",
+        Color.Error     => "error",
+        _               => "primary",
+    };
+
+    private string BadgeClass => Color switch
+    {
+        Color.Secondary => "teal",
+        Color.Tertiary  => "gold",
+        Color.Error     => "red",
+        _               => "navy",
+    };
+}

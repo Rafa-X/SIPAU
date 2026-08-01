@@ -1,0 +1,270 @@
+/* ============================================================
+   SIGIE — Blazor/MudBlazor visual layer
+   Modern, smooth, "tech but academic". Central styles: change here,
+   every page updates. (MVC login keeps its own site.css.)
+   ============================================================ */
+
+:root {
+    --mud-typography-default-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --mud-typography-h1-family: 'Inter', sans-serif;
+    --mud-typography-h2-family: 'Inter', sans-serif;
+    --mud-typography-h3-family: 'Inter', sans-serif;
+    --mud-typography-h4-family: 'Inter', sans-serif;
+    --mud-typography-h5-family: 'Inter', sans-serif;
+    --mud-typography-h6-family: 'Inter', sans-serif;
+    --mud-typography-subtitle1-family: 'Inter', sans-serif;
+    --mud-typography-subtitle2-family: 'Inter', sans-serif;
+    --mud-typography-body1-family: 'Inter', sans-serif;
+    --mud-typography-body2-family: 'Inter', sans-serif;
+    --mud-typography-button-family: 'Inter', sans-serif;
+    --mud-typography-caption-family: 'Inter', sans-serif;
+
+    /* SIGIE accent tokens */
+    --sigie-navy: #0A1F44;
+    --sigie-navy-2: #0D2A54;
+    --sigie-teal: #12A594;
+    --sigie-teal-bright: #1FC7B4;
+    --sigie-gold: #C69528;
+    --sigie-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Smooth, subtle background for the app canvas */
+body {
+    background-image:
+        radial-gradient(1200px 600px at 12% -8%, rgba(18, 165, 148, 0.06), transparent 60%),
+        radial-gradient(1000px 520px at 100% 0%, rgba(10, 31, 68, 0.06), transparent 55%);
+    background-attachment: fixed;
+}
+
+/* Refined thin scrollbars */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+    background: rgba(10, 31, 68, 0.22);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(18, 165, 148, 0.55); background-clip: content-box; }
+
+/* ---------- App bar: navy gradient + soft depth ---------- */
+.mud-appbar.mud-appbar-fixed-top,
+.mud-appbar {
+    background: linear-gradient(100deg, #0A1F44 0%, #0D2A54 55%, #103466 100%) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    box-shadow: 0 2px 18px rgba(9, 20, 45, 0.28) !important;
+    backdrop-filter: saturate(140%) blur(2px);
+}
+
+/* Brand mark (small square in the app bar) */
+.sigie-brand-mark {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px; border-radius: 9px; font-weight: 800; color: #fff;
+    background: linear-gradient(135deg, var(--sigie-teal) 0%, var(--sigie-teal-bright) 100%);
+    box-shadow: 0 4px 12px rgba(18, 165, 148, 0.40);
+}
+
+/* User trigger in the app bar */
+.sigie-user-trigger {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; border-radius: 10px; color: #fff; cursor: pointer;
+    transition: background 0.2s var(--sigie-ease);
+}
+.sigie-user-trigger:hover { background: rgba(255, 255, 255, 0.10); }
+
+/* ---------- Drawer: deep navy gradient + legible nav ---------- */
+.mud-drawer {
+    background: linear-gradient(180deg, #0A1F44 0%, #081B38 45%, #061225 100%) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+.mud-drawer .mud-nav-link {
+    color: rgba(255, 255, 255, 0.88);
+    margin: 2px 10px; border-radius: 10px; font-weight: 500;
+    transition: background 0.2s var(--sigie-ease), color 0.2s var(--sigie-ease), transform 0.2s var(--sigie-ease);
+}
+.mud-drawer .mud-nav-link .mud-nav-link-icon { color: rgba(255, 255, 255, 0.66); transition: color 0.2s var(--sigie-ease); }
+.mud-drawer .mud-nav-link:hover {
+    background: rgba(255, 255, 255, 0.08); color: #fff; transform: translateX(2px);
+}
+.mud-drawer .mud-nav-link:hover .mud-nav-link-icon { color: var(--sigie-teal-bright); }
+.mud-drawer .mud-nav-link.active {
+    background: linear-gradient(90deg, rgba(18, 165, 148, 0.92), rgba(18, 165, 148, 0.62));
+    font-weight: 600;
+    box-shadow: inset 3px 0 0 #ffffff, 0 6px 16px rgba(18, 165, 148, 0.28);
+}
+/* Force readable white text/icon on the selected item (MudBlazor colors it teal by default) */
+.mud-drawer .mud-nav-link.active,
+.mud-drawer .mud-nav-link.active .mud-nav-link-text,
+.mud-drawer .mud-nav-link.active .mud-nav-link-icon,
+.mud-drawer .mud-nav-link.active .mud-icon-root {
+    color: #ffffff !important;
+}
+.mud-drawer .mud-navmenu .mud-typography-caption {
+    color: rgba(255, 255, 255, 0.52) !important; opacity: 1 !important;
+    font-weight: 600; letter-spacing: 0.8px;
+}
+
+/* ---------- Cards / surfaces: crisp border, soft shadow, smooth ---------- */
+.mud-main-content .mud-paper {
+    border: 1px solid rgba(20, 40, 70, 0.08);
+    box-shadow: 0 1px 2px rgba(16, 32, 46, 0.04), 0 8px 24px rgba(16, 32, 46, 0.05) !important;
+    transition: box-shadow 0.28s var(--sigie-ease), transform 0.28s var(--sigie-ease), border-color 0.28s var(--sigie-ease);
+}
+.mud-main-content .mud-paper:hover {
+    box-shadow: 0 2px 4px rgba(16, 32, 46, 0.05), 0 16px 40px rgba(16, 32, 46, 0.10) !important;
+    border-color: rgba(18, 165, 148, 0.22);
+}
+
+/* Cards that should visibly "lift" (KPI/stat cards opt in) */
+.sigie-lift { transition: box-shadow 0.28s var(--sigie-ease), transform 0.28s var(--sigie-ease); }
+.sigie-lift:hover { transform: translateY(-4px); }
+
+/* Gradient icon chip used in stat/summary cards */
+.sigie-icon-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 48px; height: 48px; border-radius: 14px; color: #fff;
+    box-shadow: 0 8px 18px rgba(10, 31, 68, 0.18);
+}
+.sigie-icon-badge.navy   { background: linear-gradient(135deg, #12305F, #0A1F44); }
+.sigie-icon-badge.teal   { background: linear-gradient(135deg, #1FC7B4, #0F8C7D); box-shadow: 0 8px 18px rgba(18,165,148,.30); }
+.sigie-icon-badge.gold   { background: linear-gradient(135deg, #E0B44A, #C69528); box-shadow: 0 8px 18px rgba(198,149,40,.28); }
+.sigie-icon-badge.red    { background: linear-gradient(135deg, #E4614F, #C0392B); box-shadow: 0 8px 18px rgba(192,57,43,.26); }
+
+/* ---------- Buttons: alive on hover ---------- */
+.mud-button-root { transition: transform 0.18s var(--sigie-ease), box-shadow 0.18s var(--sigie-ease), background 0.18s var(--sigie-ease); }
+.mud-button-root.mud-button-filled:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(10, 31, 68, 0.20); }
+.mud-button-root:active { transform: translateY(0); }
+
+/* ---------- Inputs: subtle, smooth ---------- */
+.mud-input-control { transition: box-shadow 0.2s var(--sigie-ease); }
+
+/* Progress bars a touch rounder/smoother */
+.mud-progress-linear { transition: none; }
+
+/* ---------- Charts: rounded bars, refined axis text, tidy legend ---------- */
+.mud-chart svg text { fill: #6A7688; font-size: 11px; font-weight: 500; }
+.mud-chart rect { rx: 6px; ry: 6px; }
+.mud-chart .mud-chart-bar { transition: opacity 0.2s var(--sigie-ease); }
+.mud-chart-legend { margin-top: 6px; }
+.mud-chart-legend .mud-typography { font-size: 12px; }
+
+/* ---------- Page transition: content fades up on navigation ---------- */
+.sigie-page {
+    animation: sigie-fade-up 0.45s var(--sigie-ease) both;
+}
+@keyframes sigie-fade-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Logout button inside the user menu (native submit inside the antiforgery form) */
+.sigie-logout-btn {
+    display: flex; align-items: center; width: 100%;
+    padding: 10px 16px; border: 0; background: transparent;
+    color: var(--mud-palette-error); font: inherit; font-size: 0.875rem;
+    cursor: pointer; text-align: left; transition: background 0.18s var(--sigie-ease);
+}
+.sigie-logout-btn:hover { background: rgba(220, 59, 46, 0.10); }
+
+/* Respect reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+    .mud-drawer .mud-nav-link:hover, .sigie-lift:hover, .mud-button-root.mud-button-filled:hover { transform: none !important; }
+}
+
+/* ============================================================
+   Login (Blazor) — glass card over a soft animated aurora
+   ============================================================ */
+.sigie-login {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px; overflow: hidden;
+    background: radial-gradient(140% 120% at 20% 0%, #10305F 0%, #0A1F44 45%, #06122A 100%);
+}
+.sigie-login-bg { position: absolute; inset: 0; overflow: hidden; }
+.sigie-orb {
+    position: absolute; border-radius: 50%;
+    filter: blur(70px); opacity: 0.55; will-change: transform;
+}
+.orb-teal { width: 46vw; height: 46vw; left: -8vw; top: -6vw;
+    background: radial-gradient(circle, rgba(31,199,180,0.55), transparent 62%);
+    animation: sigie-drift 20s var(--sigie-ease) infinite alternate; }
+.orb-navy { width: 52vw; height: 52vw; right: -12vw; top: 8vw;
+    background: radial-gradient(circle, rgba(43,110,220,0.42), transparent 60%);
+    animation: sigie-drift 26s var(--sigie-ease) infinite alternate-reverse; }
+.orb-gold { width: 34vw; height: 34vw; left: 24vw; bottom: -14vw;
+    background: radial-gradient(circle, rgba(224,180,74,0.30), transparent 62%);
+    animation: sigie-drift 30s var(--sigie-ease) infinite alternate; }
+.sigie-grid {
+    position: absolute; inset: -2px;
+    background-image:
+        linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px);
+    background-size: 46px 46px;
+    mask-image: radial-gradient(80% 60% at 50% 40%, #000 0%, transparent 80%);
+    animation: sigie-grid-pan 40s linear infinite;
+}
+@keyframes sigie-drift {
+    from { transform: translate3d(0,0,0) scale(1); }
+    to   { transform: translate3d(4vw, 5vh, 0) scale(1.12); }
+}
+@keyframes sigie-grid-pan { from { background-position: 0 0; } to { background-position: 46px 46px; } }
+
+.sigie-login-card {
+    position: relative; z-index: 2; width: 100%; max-width: 420px;
+    padding: 38px 34px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 20px;
+    box-shadow: 0 30px 80px rgba(3, 10, 25, 0.55);
+    backdrop-filter: blur(18px) saturate(140%);
+    color: #fff;
+    animation: sigie-fade-up 0.6s var(--sigie-ease) both;
+}
+.sigie-brand-mark.lg { width: 44px; height: 44px; border-radius: 12px; font-size: 20px; }
+.sigie-login-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 26px; }
+.sigie-login-title { font-size: 22px; font-weight: 800; letter-spacing: 0.5px; }
+.sigie-login-sub { font-size: 12px; color: rgba(255,255,255,0.62); }
+.sigie-login-h1 { font-size: 26px; font-weight: 700; margin: 0 0 4px; }
+.sigie-login-lead { font-size: 14px; color: rgba(255,255,255,0.66); margin: 0 0 22px; }
+
+.sigie-login-label { display: block; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.72); margin: 14px 0 6px; }
+.sigie-login-input {
+    width: 100%; padding: 12px 14px; border-radius: 11px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #fff; font: inherit; font-size: 14px; outline: none;
+    transition: border-color 0.2s var(--sigie-ease), box-shadow 0.2s var(--sigie-ease), background 0.2s var(--sigie-ease);
+}
+.sigie-login-input::placeholder { color: rgba(255,255,255,0.40); }
+.sigie-login-input:focus {
+    border-color: var(--sigie-teal-bright);
+    box-shadow: 0 0 0 3px rgba(31, 199, 180, 0.22);
+    background: rgba(255, 255, 255, 0.12);
+}
+.sigie-login-btn {
+    width: 100%; margin-top: 26px; padding: 13px 16px; border: 0; cursor: pointer;
+    border-radius: 12px; font: inherit; font-size: 15px; font-weight: 700; color: #fff;
+    background: linear-gradient(120deg, #12A594 0%, #1FC7B4 100%);
+    box-shadow: 0 10px 26px rgba(18, 165, 148, 0.40);
+    transition: transform 0.18s var(--sigie-ease), box-shadow 0.18s var(--sigie-ease), filter 0.18s var(--sigie-ease);
+}
+.sigie-login-btn:hover { transform: translateY(-2px); box-shadow: 0 16px 34px rgba(18, 165, 148, 0.50); filter: brightness(1.04); }
+.sigie-login-btn:active { transform: translateY(0); }
+.sigie-login-error {
+    padding: 11px 14px; border-radius: 11px; font-size: 13px; margin-bottom: 4px;
+    background: rgba(220, 59, 46, 0.16); border: 1px solid rgba(220, 59, 46, 0.40); color: #FFD9D4;
+}
+.sigie-login-foot { margin-top: 22px; text-align: center; font-size: 11px; color: rgba(255,255,255,0.42); }
+
+@media (prefers-reduced-motion: reduce) {
+    .sigie-orb, .sigie-grid { animation: none !important; }
+}
+
+/* ---------- Blazor unhandled-error UI ---------- */
+#blazor-error-ui {
+    background: #C0392B; color: #fff; bottom: 0; display: none; left: 0;
+    padding: 0.8rem 1.2rem; position: fixed; width: 100%; z-index: 2000;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+}
+#blazor-error-ui .dismiss { cursor: pointer; position: absolute; right: 1rem; top: 0.6rem; }
