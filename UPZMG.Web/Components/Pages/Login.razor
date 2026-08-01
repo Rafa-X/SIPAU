@@ -1,0 +1,67 @@
+@page "/login"
+@layout LoginLayout
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+
+<PageTitle>Iniciar sesión — SIGIE</PageTitle>
+
+<div class="sigie-login">
+    <!-- soft animated aurora background -->
+    <div class="sigie-login-bg" aria-hidden="true">
+        <span class="sigie-orb orb-teal"></span>
+        <span class="sigie-orb orb-navy"></span>
+        <span class="sigie-orb orb-gold"></span>
+        <span class="sigie-grid"></span>
+    </div>
+
+    <div class="sigie-login-card">
+        <div class="sigie-login-brand">
+            <span class="sigie-brand-mark lg">S</span>
+            <div>
+                <div class="sigie-login-title">SIGIE</div>
+                <div class="sigie-login-sub">Sistema de Gestión Estadística · UPZMG</div>
+            </div>
+        </div>
+
+        <h1 class="sigie-login-h1">Bienvenido</h1>
+        <p class="sigie-login-lead">Ingresa tus credenciales para acceder al sistema</p>
+
+        @if (_hasError)
+        {
+            <div class="sigie-login-error">Credenciales inválidas. Verifica tu correo y contraseña.</div>
+        }
+
+        <form method="post" action="/Account/Login">
+            <AntiforgeryToken />
+
+            <label class="sigie-login-label" for="email">Correo electrónico</label>
+            <input id="email" name="Email" type="email" class="sigie-login-input"
+                   placeholder="usuario@upzmg.edu.mx" autocomplete="username" required />
+
+            <label class="sigie-login-label" for="password">Contraseña</label>
+            <input id="password" name="Password" type="password" class="sigie-login-input"
+                   placeholder="••••••••" autocomplete="current-password" required />
+
+            <button type="submit" class="sigie-login-btn">Iniciar sesión</button>
+        </form>
+
+        <div class="sigie-login-foot">© @DateTime.Now.Year — UPZMG · Todos los derechos reservados</div>
+    </div>
+</div>
+
+@code {
+    private bool _hasError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Already signed in → go straight to the dashboard.
+        var state = await AuthState.GetAuthenticationStateAsync();
+        if (state.User.Identity?.IsAuthenticated == true)
+        {
+            Nav.NavigateTo("/dashboard", forceLoad: true);
+            return;
+        }
+
+        _hasError = new Uri(Nav.Uri).Query.Contains("error", StringComparison.OrdinalIgnoreCase);
+    }
+}

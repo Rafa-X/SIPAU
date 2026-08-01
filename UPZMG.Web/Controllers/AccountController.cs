@@ -16,17 +16,9 @@ namespace UPZMG.Web.Controllers;
 public class AccountController(AppDBContext _db, ISecurityEventLogger _securityLogger) : Controller
 {
 
-    [AllowAnonymous]
-    [HttpGet]
-    public IActionResult Login()
-    {   
-        //show login page if not authenticated, otherwise redirect to dashboard
-        if (User.Identity?.IsAuthenticated == true)
-            return RedirectToAction("Index", "Dashboard");
-
-        return View(new LoginViewModel());
-    }
-
+    // The login page (GET) is now a Blazor component at /login. This controller
+    // only handles the cookie sign-in POST (Blazor can't sign a cookie mid-circuit)
+    // and redirects back to /login?error=1 on failure.
     [AllowAnonymous]
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -35,7 +27,7 @@ public class AccountController(AppDBContext _db, ISecurityEventLogger _securityL
         try{
             // If the user is already authenticated, redirect to the dashboard
             if (User.Identity?.IsAuthenticated == true)
-                return RedirectToAction("Index", "Dashboard");
+                return LocalRedirect("/dashboard");
 
             // If the user is not authenticated, proceed with login logic
             var claims = new List<Claim>();
@@ -52,7 +44,7 @@ public class AccountController(AppDBContext _db, ISecurityEventLogger _securityL
             {
                 _securityLogger.LogLoginRejected(email, "Missing credentials");
                 model.ErrorMessage = "Email y contraseña son requeridos.";
-                return View(model);
+                return Redirect("/login?error=1");
             }
 
             // 1) Find active user
@@ -62,7 +54,7 @@ public class AccountController(AppDBContext _db, ISecurityEventLogger _securityL
             {
                 _securityLogger.LogLoginRejected(email, "User not found or inactive");
                 model.ErrorMessage = "Credenciales inválidas.";
-                return View(model);
+                return Redirect("/login?error=1");
             }
 
             // 2) Verify password hash
@@ -73,7 +65,7 @@ public class AccountController(AppDBContext _db, ISecurityEventLogger _securityL
             {
                 _securityLogger.LogLoginRejected(email, "Invalid password");
                 model.ErrorMessage = "Credenciales inválidas.";
-                return View(model);
+                return Redirect("/login?error=1");
             }
 
             // 3) Create cookie claims
@@ -92,9 +84,9 @@ public class AccountController(AppDBContext _db, ISecurityEventLogger _securityL
         {
             _securityLogger.LogLoginRejected(model.Email ?? string.Empty, $"Exception during login: {ex.Message}");
             model.ErrorMessage = "Ocurrió un error durante el inicio de sesión. Por favor, inténtelo de nuevo.";
-            return View(model);
+            return Redirect("/login?error=1");
         }
-        return RedirectToAction("Index", "Dashboard");
+        return LocalRedirect("/dashboard");
     }
 
     [Authorize]
@@ -109,9 +101,11 @@ public class AccountController(AppDBContext _db, ISecurityEventLogger _securityL
 
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         _securityLogger.LogLogout(userId, email);
-        return RedirectToAction("Login");
+        return LocalRedirect("/login");
     }
 
+    // Authorization is enforced by Blazor's AuthorizeRouteView; if the cookie
+    // middleware ever hits this path, send the user somewhere valid.
     [AllowAnonymous]
-    public IActionResult AccessDenied() => View();
+    public IActionResult AccessDenied() => LocalRedirect("/dashboard");
 }
