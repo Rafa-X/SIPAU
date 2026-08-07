@@ -457,9 +457,6 @@ namespace UPZMG.Persistence.Migrations
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<int>("CurrentSectionIndex")
-                        .HasColumnType("int");
-
                     b.Property<DateTime>("DateCreated")
                         .HasColumnType("datetime2");
 
@@ -476,11 +473,6 @@ namespace UPZMG.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<string>("TemplateKey")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
                     b.Property<string>("TemplateVersion")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -488,9 +480,9 @@ namespace UPZMG.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ReportType", "TemplateKey", "TemplateVersion");
+                    b.HasIndex("ReportType", "TemplateVersion");
 
-                    b.ToTable("reportDrafts", (string)null);
+                    b.ToTable("reports", (string)null);
                 });
 
             modelBuilder.Entity("UPZMG.Persistence.Models.ReportsPermission", b =>

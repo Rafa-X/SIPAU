@@ -1,8 +1,7 @@
 {
-  "reportKey": "sep_911_anexo_tic",
+  "reportType": "AnexoTI",
   "version": "2024-2025",
   "displayName": "Formato 911 - Anexo Tecnologias de la Informacion",
-  "status": "draft",
   "sections": [
     {
       "key": "computadoras",

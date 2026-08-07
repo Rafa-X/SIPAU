@@ -15,6 +15,13 @@ try
     ValidateRequiredSecret(builder.Configuration, "InternalAuth:WebSharedSecret", 32, startupLogger);
 
     builder.Services.AddControllersWithViews();
+    builder.Services.AddDistributedMemoryCache();
+    builder.Services.AddSession(options =>
+    {
+        options.IdleTimeout = TimeSpan.FromMinutes(30);
+        options.Cookie.HttpOnly = true;
+        options.Cookie.IsEssential = true;
+    });
 
     builder.Services.AddDbContext<AppDBContext>(opt =>
         opt.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
@@ -71,6 +78,7 @@ try
     app.UseStaticFiles();
 
     app.UseRouting();
+    app.UseSession();
 
     app.UseAuthentication();
     app.UseAuthorization();

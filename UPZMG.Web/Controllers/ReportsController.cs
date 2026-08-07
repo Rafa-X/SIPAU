@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using System.Text.Json;
 using UPZMG.Persistence;
 using UPZMG.Web.Models;
@@ -10,152 +11,230 @@ using UPZMG.Persistence.Models;
 namespace UPZMG.Web.Controllers;
 
 [Authorize]
-public class ReportsController(IWebHostEnvironment environment, AppDBContext db) : Controller
+public class ReportsController(IWebHostEnvironment environment, AppDBContext db, IMemoryCache cache) : Controller
 {
+    private static readonly TimeSpan TemplateCacheDuration = TimeSpan.FromMinutes(10);
+    private const string TemplateCatalogCacheKey = "reports-template-catalog";
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true
     };
 
-    private const string DefaultTemplateVersion = "2024-2025";
-
+#region Index
     [HttpGet]
-    public IActionResult Index(ReportsTemplateViewModel? reportsModel = null)
+    public async Task<IActionResult> Index(ReportsOverviewViewModel? reportsModel = null)
     {
-        reportsModel ??= new ReportsTemplateViewModel();
+        reportsModel ??= new ReportsOverviewViewModel();
+        var userId = Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsedUserId) ? parsedUserId : Guid.Empty;
 
-        if (reportsModel.ReportType.HasValue)
-            return RedirectToAction(nameof(LoadTemplate), reportsModel);
+        if (userId != Guid.Empty)
+        {
+            reportsModel.AvailableTemplates = await GetTemplatesForSelection();
+
+            // TODO: move this to a service layer to avoid direct DB access in the controller
+            var recentReports = await db.Reports
+                .AsNoTracking()
+                .Where(x => x.CreatedBy == userId)
+                .OrderByDescending(x => x.LastModified)
+                .Select(report => new
+                {
+                    report.Id,
+                    report.ReportType,
+                    report.TemplateVersion,
+                    report.Status,
+                    report.LastModified
+                })
+                .Take(5)
+                .ToListAsync();
+
+            var templateLookup = reportsModel.AvailableTemplates
+                .ToDictionary(
+                    t => $"{t.ReportType}|{t.Version}",
+                    t => t.DisplayName, StringComparer.OrdinalIgnoreCase);
+
+            reportsModel.LoadedReports = recentReports
+                .Select(report =>
+                {
+                    return new ReportTemplateViewModel
+                    {
+                        Id = report.Id,
+                        ReportType = Enum.TryParse<ReportType>(report.ReportType, ignoreCase: true, out var parsedReportType) ? parsedReportType : default,
+                        DisplayName = templateLookup.GetValueOrDefault($"{report.ReportType}|{report.TemplateVersion}", report.ReportType),
+                        TemplateVersion = report.TemplateVersion ?? string.Empty,
+                        Status = Enum.TryParse<ReportStatus>(report.Status, out var parsedStatus) ? parsedStatus : default,
+                        LastModified = report.LastModified,
+                    };
+                })
+                .ToList();
+        }
 
         ViewData["SelectedReportType"] = reportsModel.ReportType;
         return View(reportsModel);
     }
+#endregion
 
+#region LoadTemplate
     [HttpGet]
-    public async Task<IActionResult> LoadTemplate(ReportsTemplateViewModel reportsModel)
+    public async Task<IActionResult> LoadTemplate(ReportTemplateViewModel reportModel)
     {
-        if (!reportsModel.ReportType.HasValue)
-            return BadRequest("Debe especificarse el tipo de reporte.");
+        Guid userId = Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsedUserId) ? parsedUserId : Guid.Empty;
+        if (userId == Guid.Empty) 
+            return Unauthorized("No se pudo determinar el usuario actual.");
 
-        reportsModel.Template ??= await GetTemplateJsonAsync(reportsModel.ReportType.Value) ?? new ReportTemplateDefinition();
+        Reports? report = new();
 
-        if (reportsModel.Template is null)
-            return NotFound($"No se encontro template para {reportsModel.ReportType.Value}.");
+        if (reportModel.Id != Guid.Empty)
+        {
+            // Case for loading an existing Report by Id
+            report = await db.Reports
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == reportModel.Id && x.CreatedBy == userId);
 
-        var safeSectionIndex = reportsModel.Template.Sections.Count == 0
-            ? 0
-            : Math.Clamp(reportsModel.SectionIndex, 0, reportsModel.Template.Sections.Count - 1);
-        reportsModel.SectionIndex = safeSectionIndex;
+            if (report is null) 
+                return NotFound($"No se encontro reporte con Id {reportModel.Id} para el usuario actual.");
 
-        ViewData["SelectedTemplateFile"] = $"{reportsModel.Template.ReportKey}.{reportsModel.Template.Version}.json";
+            reportModel.Id = report.Id;
+            reportModel.TemplateVersion = report.TemplateVersion ?? reportModel.TemplateVersion;
+            reportModel.Status = Enum.TryParse<ReportStatus>(report.Status, out var parsedStatus) ? parsedStatus : reportModel.Status;
+            reportModel.Answers = ParseAnswersDictionary(report.AnswersJson);
+        }
 
-        return View(reportsModel);
+        var templateVersion = !string.IsNullOrWhiteSpace(report?.TemplateVersion)
+            ? report.TemplateVersion
+            : reportModel.TemplateVersion;
+        reportModel.Template = await GetTemplateByTypeAndVersionAsync(reportModel.ReportType.ToString(), templateVersion) 
+            ?? null;
+
+        // By this point if the template is still null, it means it was not found in the cache or in the file system
+        if (reportModel.Template is null)
+            return NotFound($"No se encontro template para {reportModel.ReportType} version {templateVersion}.");
+
+        ViewData["SelectedTemplateFile"] = $"{reportModel.ReportType}-{templateVersion}.json";
+        return View(reportModel);
     }
+#endregion
 
+#region SaveDraft
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SaveDraft(ReportsTemplateViewModel model)
+    public async Task<IActionResult> SaveDraft(ReportTemplateViewModel model, string submitAction, string sessionAnswersJson)
     {
-        if (!model.ReportType.HasValue)
-            return BadRequest("Debe especificarse el tipo de reporte.");
+        var userId = Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsedUserId) ? parsedUserId : Guid.Empty;
+        if (userId == Guid.Empty)
+            return Unauthorized("No se pudo determinar el usuario actual.");
 
-        model.Template = await GetTemplateJsonAsync(model.ReportType.Value) ?? new ReportTemplateDefinition();
-        if (model.Template is null)
-            return NotFound($"No se encontro template para {model.ReportType.Value}.");
+        var templateVersion = model.TemplateVersion;
+        model.Template = await GetTemplateByTypeAndVersionAsync(model.ReportType.ToString(), templateVersion) 
+            ?? null;
 
-        var draft = model.DraftId.HasValue
-            ? await db.Reports.FirstOrDefaultAsync(x => x.Id == model.DraftId.Value)
-            : null;
-
-        var now = DateTime.UtcNow;
-        Guid? userId = Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsedUserId) ? parsedUserId : null;
-
-        if (draft is null)
+        if (string.IsNullOrWhiteSpace(templateVersion) || model.Template is null)
+            return BadRequest("No se pudo determinar la version o el template no fue encontrado.");
+        
+        var report = new Reports
         {
-            draft = new Reports
-            {
-                Id = Guid.NewGuid(),
-                DateCreated = now,
-                CreatedBy = userId,
-                AnswersJson = "{}"
-            };
+            Id = Guid.NewGuid(),
+            CreatedBy = userId,
+            ReportType = model.ReportType.ToString(),
+            TemplateVersion = templateVersion,
+            Status = submitAction.ToString(),
+            AnswersJson = "{}",
+            DateCreated = DateTime.UtcNow,
+            LastModified = DateTime.UtcNow
+        };
+        report.AnswersJson = MergeAnswers(
+            MergeAnswers(report.AnswersJson, sessionAnswersJson ?? "{}"),
+            ExtractAnswersJson(Request.Form));
+        db.Reports.Add(report); // Add the new report to the database context
 
-            db.Reports.Add(draft);
-        }
+        if (submitAction == ReportStatus.draft.ToString())
+            TempData["ReportStatusMessage"] = "Borrador guardado correctamente.";
 
-        draft.ReportType = model.ReportType.Value.ToString();
-        draft.TemplateKey = model.Template.ReportKey;
-        draft.TemplateVersion = model.Template.Version;
-        draft.CurrentSectionIndex = model.SectionIndex;
-        draft.Status = "draft";
-        draft.AnswersJson = MergeAnswers(draft.AnswersJson, ExtractAnswersJson(Request.Form));
-        draft.LastModified = now;
+        if (submitAction == ReportStatus.submitted.ToString())
+            TempData["ReportStatusMessage"] = "Reporte terminado y guardado correctamente.";
 
         await db.SaveChangesAsync();
+        return RedirectToAction(nameof(Index));
+    }
+#endregion
 
-        model.SectionIndex++;
-        model.DraftId = draft.Id;
 
-        if (model.SectionIndex == model.Template.Sections.Count)
+#region Helper Methods
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    public async Task<List<ReportTemplateDefinition>> GetTemplatesForSelection()
+    {
+        var templates = await cache.GetOrCreateAsync(TemplateCatalogCacheKey, async entry =>
         {
-            TempData["ReportDraftSaved"] = "Borrador guardado correctamente.";
-            return RedirectToAction(nameof(Index), model);
-        }
-        return RedirectToAction(nameof(LoadTemplate), model);
+            entry.AbsoluteExpirationRelativeToNow = TemplateCacheDuration;
+
+            var templateDirectory = Path.Combine(environment.ContentRootPath, "Views", "Reports", "Templates");
+            var templateFiles = Directory.GetFiles(templateDirectory, "*.json", SearchOption.TopDirectoryOnly);
+            var catalog = new List<ReportTemplateDefinition>();
+
+            foreach (var file in templateFiles)
+            {
+                var rawJson = await System.IO.File.ReadAllTextAsync(file);
+                var template = JsonSerializer.Deserialize<ReportTemplateDefinition>(rawJson, JsonOptions);
+                if (template != null)
+                {
+                    catalog.Add(template);
+                }
+            }
+
+            return (IReadOnlyList<ReportTemplateDefinition>)catalog
+                .OrderBy(t => t.ReportType)
+                .ThenBy(t => t.Version)
+                .ToArray();
+        });
+
+        return templates?.ToList() ?? [];
     }
 
-    private async Task<ReportTemplateDefinition?> GetTemplateJsonAsync(ReportType reportType)
+    private async Task<ReportTemplateDefinition?> GetTemplateByTypeAndVersionAsync(string reportType, string version)
     {
-        if (!TemplateMap.TryGetValue(reportType, out var reportKey))
+        if (string.IsNullOrWhiteSpace(version))
             return null;
 
-        var templateDirectory = Path.Combine(environment.ContentRootPath, "Views", "Reports", "Templates");
-        var matches = Directory.GetFiles(templateDirectory, $"{reportKey}.*.json", SearchOption.TopDirectoryOnly);
+        var cacheKey = $"reports-template:{reportType}:{version}";
+        var rawJson = await cache.GetOrCreateAsync(cacheKey, async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = TemplateCacheDuration;
+            var templateFilePath = Path.Combine(environment.ContentRootPath, "Views", "Reports", "Templates", $"{reportType}_{version}.json");
 
-        if (matches.Length == 0)
+            if (!System.IO.File.Exists(templateFilePath))
+                return null;
+
+            return await System.IO.File.ReadAllTextAsync(templateFilePath);
+        });
+
+        if (string.IsNullOrWhiteSpace(rawJson))
             return null;
 
-        // If more than one version exists, use a deterministic file instead of relying on file system order.
-        var filePath = matches
-            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
-            .First();
-
-        if (!System.IO.File.Exists(filePath))
-            return null;
-
-        var rawJson = await System.IO.File.ReadAllTextAsync(filePath);
-        return JsonSerializer.Deserialize<ReportTemplateDefinition>(rawJson, JsonOptions);
+        var template = JsonSerializer.Deserialize<ReportTemplateDefinition>(rawJson, JsonOptions);
+        return template;
     }
 
     private static string MergeAnswers(string currentAnswersJson, string newAnswersJson)
     {
-        var mergedAnswers = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        var mergedAnswers = ParseAnswersDictionary(currentAnswersJson);
 
-        if (!string.IsNullOrWhiteSpace(currentAnswersJson))
+        foreach (var pair in ParseAnswersDictionary(newAnswersJson))
         {
-            var existingAnswers = JsonSerializer.Deserialize<Dictionary<string, string?>>(currentAnswersJson, JsonOptions);
-            if (existingAnswers is not null)
-            {
-                foreach (var pair in existingAnswers)
-                {
-                    mergedAnswers[pair.Key] = pair.Value;
-                }
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(newAnswersJson))
-        {
-            var latestAnswers = JsonSerializer.Deserialize<Dictionary<string, string?>>(newAnswersJson, JsonOptions);
-            if (latestAnswers is not null)
-            {
-                foreach (var pair in latestAnswers)
-                {
-                    mergedAnswers[pair.Key] = pair.Value;
-                }
-            }
+            mergedAnswers[pair.Key] = pair.Value;
         }
 
         return JsonSerializer.Serialize(mergedAnswers, JsonOptions);
+    }
+
+    private static Dictionary<string, string?> ParseAnswersDictionary(string? answersJson)
+    {
+        if (string.IsNullOrWhiteSpace(answersJson))
+            return new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+
+        var parsed = JsonSerializer.Deserialize<Dictionary<string, string?>>(answersJson, JsonOptions);
+        if (parsed is null)
+            return new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+
+        return new Dictionary<string, string?>(parsed, StringComparer.OrdinalIgnoreCase);
     }
 
     private static string ExtractAnswersJson(IFormCollection form)
@@ -163,12 +242,7 @@ public class ReportsController(IWebHostEnvironment environment, AppDBContext db)
         var answers = form
             .Where(pair => pair.Key.StartsWith("answers[", StringComparison.OrdinalIgnoreCase))
             .ToDictionary(pair => pair.Key, pair => pair.Value.ToString(), StringComparer.OrdinalIgnoreCase);
-
         return JsonSerializer.Serialize(answers, JsonOptions);
     }
-
-    private static readonly Dictionary<ReportType, string> TemplateMap = new()
-    {
-        [ReportType.AnexoTI] = "sep_911_anexo_tic"
-    };
+#endregion
 }

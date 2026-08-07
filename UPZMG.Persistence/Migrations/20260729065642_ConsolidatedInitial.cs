@@ -127,15 +127,13 @@ namespace UPZMG.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "reportDrafts",
+                name: "reports",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     ReportType = table.Column<string>(type: "nvarchar(40)", maxLength: 40, nullable: false),
-                    TemplateKey = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     TemplateVersion = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    CurrentSectionIndex = table.Column<int>(type: "int", nullable: false),
                     Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
                     AnswersJson = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     DateCreated = table.Column<DateTime>(type: "datetime2", nullable: false),
@@ -143,7 +141,7 @@ namespace UPZMG.Persistence.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_reportDrafts", x => x.Id);
+                    table.PrimaryKey("PK_reports", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -729,9 +727,9 @@ namespace UPZMG.Persistence.Migrations
                 column: "WithdrawReasonId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_reportDrafts_ReportType_TemplateKey_TemplateVersion",
-                table: "reportDrafts",
-                columns: new[] { "ReportType", "TemplateKey", "TemplateVersion" });
+                name: "IX_reports_ReportType_TemplateVersion",
+                table: "reports",
+                columns: new[] { "ReportType", "TemplateVersion" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_reportsPermissions_ReportId",
@@ -833,7 +831,7 @@ namespace UPZMG.Persistence.Migrations
                 name: "registrations");
 
             migrationBuilder.DropTable(
-                name: "reportDrafts");
+                name: "reports");
 
             migrationBuilder.DropTable(
                 name: "rolePermissions");
