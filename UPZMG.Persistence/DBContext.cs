@@ -87,16 +87,15 @@ public class AppDBContext : DbContext
             entity.HasIndex(x => x.ReportId);
         });
         modelBuilder.Entity<Reports>(entity => {
-            entity.ToTable("reportDrafts");
+            entity.ToTable("reports");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.ReportType).HasMaxLength(40);
-            entity.Property(x => x.TemplateKey).HasMaxLength(100);
             entity.Property(x => x.TemplateVersion).HasMaxLength(20);
             entity.Property(x => x.Status).HasMaxLength(20);
             entity.Property(x => x.AnswersJson).HasColumnType("nvarchar(max)");
             entity.Property(x => x.DateCreated).HasColumnType("datetime2");
             entity.Property(x => x.LastModified).HasColumnType("datetime2");
-            entity.HasIndex(x => new { x.ReportType, x.TemplateKey, x.TemplateVersion });
+            entity.HasIndex(x => new { x.ReportType, x.TemplateVersion });
         });
         modelBuilder.Entity<RolePermission>(entity => {
             entity.ToTable("rolePermissions");

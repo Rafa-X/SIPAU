@@ -1,12 +1,18 @@
-@model UPZMG.Web.Models.ReportsTemplateViewModel
+@using UPZMG.Persistence.Models
+@model UPZMG.Web.Models.ReportTemplateViewModel
 @{
-    ViewData["Title"] = "Constructor de Reporte";
+    ViewData["Title"] = "Reportes";
 
-    var sectionCount = Model.Template.Sections.Count;
-    var sectionIndex = Model.SectionIndex;//sectionCount == 0 ? 0 : Math.Clamp(Model.SectionIndex, 0, sectionCount - 1);
-    var currentSection = sectionCount > 0 ? Model.Template.Sections[sectionIndex] : null;
-    var isLastSection = Model.SectionIndex == Model.Template.Sections.Count ? true : false;
-    var actionLabel = isLastSection ? "Enviar Reporte" : "Siguiente Sección";
+    var sectionCount = Model.Template?.Sections.Count ?? 0;
+    var sectionIndex = sectionCount == 0 ? 0 : Math.Clamp(Model.SectionIndex, 0, sectionCount - 1);
+    var currentSection = Model.Template?.Sections[sectionIndex];
+    var isLastSection = sectionCount > 0 && sectionIndex >= sectionCount - 1;
+    var actionLabel = isLastSection ? "Terminar Reporte" : "Siguiente seccion";
+
+    string? GetAnswer(string key)
+    {
+        return Model.Answers.TryGetValue(key, out var value) ? value : null;
+    }
 }
 
 @section PageStyles {
@@ -15,24 +21,28 @@
 
 <div class="reports-shell">
     <section class="reports-header">
-        <h1>@Model.Template.DisplayName</h1>
+        <h1>@Model.Template?.ReportType</h1>
         <p>
-            Reporte: @Model.Template.ReportKey | Version: @Model.Template.Version | Estado: @Model.Template.Status
+            Reporte: @Model.Template?.ReportType | Version: @Model.Template?.Version | Estado: @Model.Template?.Status
         </p>
-        @if (sectionCount > 0)
-        {
-            <div class="reports-step-badge">
-                Sección @(sectionIndex + 1) de @sectionCount
-            </div>
-        }
+        <div class="reports-step-badge">
+            Sección @(sectionIndex + 1) de @sectionCount
+        </div>
     </section>
 
-    <form class="reports-form-builder" method="post" asp-controller="Reports" asp-action="SaveDraft">
+    <form class="reports-form-builder" method="post" asp-controller="Reports" asp-action="SaveDraft"
+          id="reportForm"
+          data-report-type="@Model.ReportType"
+          data-template-key="@Model.Template?.ReportType"
+          data-template-version="@Model.Template?.Version"
+          data-report-id="@Model.Id">
         @Html.AntiForgeryToken()
 
+        <input type="hidden" asp-for="Id" />
         <input type="hidden" asp-for="ReportType" />
-        <input type="hidden" asp-for="DraftId" />
+        <input type="hidden" asp-for="TemplateVersion" />
         <input type="hidden" asp-for="SectionIndex" />
+        <input type="hidden" id="SessionAnswersJson" name="sessionAnswersJson" value="" />
 
         @if (currentSection is not null)
         {
@@ -62,20 +72,39 @@
                         @switch (question.Type.ToLowerInvariant())
                         {
                             case "boolean":
+                                var boolAnswerKey = $"answers[{question.Key}]";
+                                var boolAnswer = GetAnswer(boolAnswerKey);
                                 <select id="@question.Key" name="answers[@question.Key]" class="reports-select" @(question.Required ? "required" : null)>
                                     <option value="">Selecciona...</option>
-                                    <option value="true">Si</option>
-                                    <option value="false">No</option>
+                                    @if (string.Equals(boolAnswer, "true", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <option value="true" selected>Si</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="true">Si</option>
+                                    }
+
+                                    @if (string.Equals(boolAnswer, "false", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <option value="false" selected>No</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="false">No</option>
+                                    }
                                 </select>
                                 break;
 
                             case "number":
+                                var numberAnswer = GetAnswer($"answers[{question.Key}]");
                                 <input id="@question.Key"
                                        name="answers[@question.Key]"
                                        type="number"
                                        min="0"
                                        step="1"
                                        class="reports-input"
+                                       value="@numberAnswer"
                                        @(question.Required ? "required" : null) />
                                 break;
 
@@ -99,12 +128,14 @@
                                                     @foreach (var col in question.Columns)
                                                     {
                                                         var key = $"answers[{question.Key}][{row}][{col}]";
+                                                        var matrixAnswer = GetAnswer(key);
                                                         <td>
                                                             <input type="number"
                                                                    min="0"
                                                                    step="1"
                                                                    name="@key"
                                                                    class="reports-input reports-input-sm"
+                                                                   value="@matrixAnswer"
                                                                    @(question.Required ? "required" : null) />
                                                         </td>
                                                     }
@@ -116,10 +147,12 @@
                                 break;
 
                             default:
+                                var textAnswer = GetAnswer($"answers[{question.Key}]");
                                 <input id="@question.Key"
                                        name="answers[@question.Key]"
                                        type="text"
                                        class="reports-input"
+                                    value="@textAnswer"
                                        @(question.Required ? "required" : null) />
                                 break;
                         }
@@ -133,22 +166,201 @@
                 <p>Este template no contiene secciones configuradas.</p>
             </section>
         }
-
+        <!--ACTION BUTTONS-->
         <section class="reports-card">
             <div class="reports-actions">
-                <a asp-controller="Reports" asp-action="Index" class="btn btn-outline">Volver a selector</a>
-                <button type="submit" class="reports-btn">@actionLabel</button>
-            </div>
-            <div class="reports-hint">
-                @if (isLastSection)
-                {
-                    <text>Al enviar, el borrador se guardará en la base de datos y regresarás al listado de reportes.</text>
-                }
-                else
-                {
-                    <text>Al continuar, se guardará el borrador en la base de datos y se cargará la siguiente sección.</text>
-                }
+                <div class="reports-actions-top">
+                    @if (sectionIndex > 0)
+                    {
+                        <a class="reports-btn reports-btn-1"
+                            asp-controller="Reports"
+                            asp-action="LoadTemplate"
+                            asp-route-ReportType="@Model.ReportType"
+                            asp-route-Id="@Model.Id"
+                            asp-route-SectionIndex="@(sectionIndex - 1)"
+                            asp-route-TemplateVersion="@Model.TemplateVersion">
+                            Seccion anterior
+                        </a>
+                    }
+                    else
+                    {
+                        <button type="button" class="reports-btn reports-btn-1" disabled>Seccion anterior</button>
+                    }
+
+                    @if (isLastSection)
+                    {
+                        <button type="submit" name="submitAction" value="@ReportStatus.submitted.ToString()" class="reports-btn reports-btn-2">@actionLabel</button>
+                    }
+                    else
+                    {
+                        <button type="button"
+                                id="ContinueSectionButton"
+                                class="reports-btn reports-btn-2"
+                                data-next-url="@Url.Action("LoadTemplate", "Reports", 
+                                new { 
+                                    ReportType = Model.ReportType, 
+                                    Id = Model.Id, 
+                                    SectionIndex = sectionIndex + 1, 
+                                    TemplateVersion = Model.TemplateVersion 
+                                })">
+                            @actionLabel
+                        </button>
+                    }
+                </div>
+
+                <div class="reports-actions-bottom">
+                    <a asp-controller="Reports" asp-action="Index" class="reports-btn reports-btn-3">Volver a selector</a>
+                    <button type="submit" name="submitAction" value="@ReportStatus.draft.ToString()" class="reports-btn reports-btn-4">Guardar borrador</button>
+                </div>
             </div>
         </section>
     </form>
 </div>
+
+
+
+@section Scripts {
+  <script>
+    @* window.addEventListener("load", function () {
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }); *@
+
+    (function () {
+      const form = document.getElementById('reportForm');
+      if (!form) return;
+
+      const reportType = form.dataset.reportType || 'unknown';
+      const templateVersion = form.dataset.templateVersion || 'unknown';
+      const reportId = form.dataset.reportId || 'new';
+      const storageKey = `reports-template-json:${reportType}:${templateVersion}:${reportId}`;
+
+      const answerFieldsSelector = '[name^="answers["]';
+      const hiddenPayload = document.getElementById('SessionAnswersJson');
+      const continueButton = document.getElementById('ContinueSectionButton');
+
+      const safeParse = (raw) => {
+        try {
+          const parsed = JSON.parse(raw || '{}');
+          return parsed && typeof parsed === 'object' ? parsed : {};
+        } catch {
+          return {};
+        }
+      };
+
+      const collectCurrentFormAnswers = () => {
+        const fields = form.querySelectorAll(answerFieldsSelector);
+        const answers = {};
+
+        fields.forEach((field) => {
+          if (!field.name) return;
+          answers[field.name] = field.value;
+        });
+
+        return answers;
+      };
+
+      const readStoredPayload = () => {
+        try {
+          const parsed = JSON.parse( sessionStorage.getItem(storageKey) || '{}');
+          const mergedAnswers = {
+            ...(parsed.answers || {})
+          };
+
+          return {
+            meta: {
+              reportType,
+              templateVersion,
+              reportId,
+              updatedAt: new Date().toISOString()
+            },
+            answers: mergedAnswers
+          };
+        } catch {
+          return {
+            meta: {
+              reportType,
+              templateVersion,
+              reportId,
+              updatedAt: new Date().toISOString()
+            },
+            answers: {}
+          };
+        }
+      };
+
+      const persistAnswers = () => {
+        const current = collectCurrentFormAnswers();
+        const stored = readStoredPayload();
+        const merged = {
+          meta: {
+            reportType,
+            templateVersion,
+            reportId,
+            updatedAt: new Date().toISOString()
+          },
+          answers: {
+            ...(stored.answers || {}),
+            ...current
+          }
+        };
+
+        sessionStorage.setItem(storageKey, JSON.stringify(merged));
+        return merged;
+      };
+
+      const hydrateFormFromStorage = () => {
+        const stored = readStoredPayload();
+        const answers = stored.answers || {};
+
+        Object.entries(answers).forEach(([name, value]) => {
+          const field = form.querySelector(`[name="${CSS.escape(name)}"]`);
+          if (!field) return;
+          field.value = value ?? '';
+        });
+      };
+
+      const updateHiddenPayload = () => {
+        if (!hiddenPayload) return;
+        const merged = persistAnswers();
+        hiddenPayload.value = JSON.stringify(merged.answers || {});
+      };
+
+      hydrateFormFromStorage();
+
+      const schedulePersist = (() => {
+        let timer;
+        return () => {
+          window.clearTimeout(timer);
+          timer = window.setTimeout(() => {
+            persistAnswers();
+          }, 300);
+        };
+      })();
+
+      form.addEventListener('input', schedulePersist);
+      form.addEventListener('change', schedulePersist);
+
+      form.addEventListener('submit', (event) => {
+        const submitter = event.submitter;
+        const submitAction = submitter?.value || '';
+
+        updateHiddenPayload();
+
+        if (submitAction.toLowerCase() === 'submitted') {
+          sessionStorage.removeItem(storageKey);
+        }
+      });
+
+      if (continueButton) {
+        continueButton.addEventListener('click', () => {
+          persistAnswers();
+          const nextUrl = continueButton.dataset.nextUrl;
+          if (nextUrl) {
+            window.location.assign(nextUrl);
+          }
+        });
+      }
+    })();
+  </script>
+}
