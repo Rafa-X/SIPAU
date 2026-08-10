@@ -18,6 +18,13 @@ try
     ValidateRequiredSecret(builder.Configuration, "InternalAuth:WebSharedSecret", 32, startupLogger);
 
     builder.Services.AddControllersWithViews();
+    builder.Services.AddDistributedMemoryCache();
+    builder.Services.AddSession(options =>
+    {
+        options.IdleTimeout = TimeSpan.FromMinutes(30);
+        options.Cookie.HttpOnly = true;
+        options.Cookie.IsEssential = true;
+    });
 
     // Blazor Web App (Interactive Server) + MudBlazor, coexisting with MVC.
     builder.Services.AddRazorComponents()
@@ -51,7 +58,7 @@ try
     builder.Services.AddScoped<IMinutesService, MinutesService>();
     builder.Services.AddScoped<IBoardReportService, BoardReportService>();
     builder.Services.AddSingleton<ISettingsService, SettingsService>();
-    builder.Services.AddScoped<IReportsService, ReportsService>();
+    // builder.Services.AddScoped<IReportsService, ReportsService>();
     builder.Services.AddScoped<ISecurityService, SecurityService>();
     builder.Services.AddSingleton<IIntelligenceService, IntelligenceService>();
 
@@ -93,6 +100,7 @@ try
     app.UseStaticFiles();
 
     app.UseRouting();
+    app.UseSession();
 
     app.UseAuthentication();
     app.UseAuthorization();

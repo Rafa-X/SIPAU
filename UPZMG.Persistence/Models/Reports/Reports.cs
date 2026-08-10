@@ -9,10 +9,8 @@ public class Reports
     public Guid Id { get; set; }
     public Guid? CreatedBy { get; set; }
     public string ReportType { get; set; } = string.Empty;
-    public string TemplateKey { get; set; } = string.Empty;
-    public string TemplateVersion { get; set; } = string.Empty;
-    public int CurrentSectionIndex { get; set; }
-    public string Status { get; set; } = "draft";
+    public string? TemplateVersion { get; set; }
+    public string Status { get; set; } = ReportStatus.draft.ToString();
     public string AnswersJson { get; set; } = "{}";
     public DateTime DateCreated { get; set; }
     public DateTime LastModified { get; set; }
@@ -20,8 +18,8 @@ public class Reports
 
 public enum ReportStatus
 {
-    Draft,
-    Submitted,
-    Approved,
-    Rejected
+    draft,
+    submitted,
+    approved,
+    rejected
 }

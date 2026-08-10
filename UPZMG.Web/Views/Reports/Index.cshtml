@@ -1,0 +1,114 @@
+@using UPZMG.Persistence.Models
+@model UPZMG.Web.Models.ReportsOverviewViewModel
+@{
+    ViewData["Title"] = "Reportes 911";
+
+    var reportOptions = Model.AvailableTemplates
+        .Select(t => new
+        {
+            Value = t.ReportType,
+            Label = t.DisplayName,
+            Version = t.Version
+        })
+        .ToList();
+}
+
+@section PageStyles {
+    <link rel="stylesheet" href="~/css/reports.css" asp-append-version="true" />
+}
+
+<div class="reports-shell">
+    <section class="reports-header">
+        <h1>Reportes 911</h1>
+        <p>
+            Creacion de reportes para la Secretaria de Educacion Publica (SEP) y la Coordinacion de la Carrera 911.
+        </p>
+    </section>
+
+    @if (TempData["ReportStatusMessage"] is string reportStatusMessage && !string.IsNullOrWhiteSpace(reportStatusMessage))
+    {
+        <div class="reports-selected">@reportStatusMessage</div>
+    }
+
+    <!----TEMPLATES---->
+    <section class="reports-card">
+        <h2>Nuevo Reporte</h2>
+
+        <form method="get" asp-controller="Reports" asp-action="LoadTemplate">
+            <div class="reports-select-row">
+                <select id="ReportTypeSelect" asp-for="ReportType" class="reports-select" required>
+                    <option value="">Selecciona una plantilla para iniciar la captura...</option>
+                    @foreach (var option in reportOptions)
+                    {
+                        <option value="@option.Value" data-version="@option.Version">@option.Label @option.Version</option>
+                    }
+                </select>
+                <input type="hidden" id="TemplateVersion" asp-for="TemplateVersion" />
+                <button type="submit" class="reports-btn reports-btn-1">Preparar plantilla</button>
+            </div>
+        </form>
+    </section>
+
+    <!----CREATED REPORTS---->
+    <section class="reports-card reports-created">
+        <div class="reports-created-header">
+            <h2>Reportes Creados</h2>
+            <span class="reports-created-count">@Model.LoadedReports.Count</span>
+        </div>
+
+        @if (Model.LoadedReports.Count == 0)
+        {
+            <div class="reports-empty-state">
+                Aun no has creado ningun reporte.
+            </div>
+        }
+        else
+        {
+            <div class="reports-created-grid">
+                @foreach (var report in Model.LoadedReports)
+                {
+                    var statusCss = report.Status.ToString();
+
+                    <div class="reports-created-item">
+                        <div class="reports-created-top">
+                            <h3>@report.DisplayName - @report.TemplateVersion</h3>
+                            <span class="reports-status @statusCss">@(statusCss == ReportStatus.submitted.ToString() ? "completado" : "borrador")</span>
+                            <div class="reports-created-actions">
+                                <a class="btn btn-outline btn-sm" asp-controller="Reports" asp-action="LoadTemplate"
+                                asp-route-Id="@report.Id"
+                                asp-route-ReportType="@report.ReportType">
+                                    @(statusCss == ReportStatus.submitted.ToString() ? "Abrir" : "Continuar")
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="reports-created-meta">
+                            <span>Ultima edicion: @report.LastModified.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </section>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const reportTypeSelect = document.getElementById("ReportTypeSelect");
+            const templateVersionInput = document.getElementById("TemplateVersion");
+
+            if (!reportTypeSelect || !templateVersionInput) {
+                return;
+            }
+
+            const syncTemplateVersion = function () {
+                const selectedOption = reportTypeSelect.options[reportTypeSelect.selectedIndex];
+                templateVersionInput.value = selectedOption ? (selectedOption.dataset.version || "") : "";
+            };
+
+            syncTemplateVersion();
+            reportTypeSelect.addEventListener("change", syncTemplateVersion);
+        });
+    </script>
+}

@@ -9,7 +9,7 @@
     <MudNavLink Href="/charts" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.BarChart">Gráficas</MudNavLink>
 
     <MudText Typo="Typo.caption" Class="px-4 pt-3 pb-1" Style="opacity:.55;text-transform:uppercase;letter-spacing:.6px">Reportes</MudText>
-    <MudNavLink Href="/reports" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Description">Reportes 911 / SII</MudNavLink>
+    <MudNavLink OnClick="@(() => Nav.NavigateTo("/Reports", forceLoad: true))" Icon="@Icons.Material.Filled.Description">Reportes 911 / SII</MudNavLink>
     <MudNavLink Href="/boardreport" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Article">Informe de Junta</MudNavLink>
     <MudNavLink Href="/minutes" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Gavel">Actas de Junta</MudNavLink>
 
