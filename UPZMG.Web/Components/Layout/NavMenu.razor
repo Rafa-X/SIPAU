@@ -1,26 +1,29 @@
-@inject NavigationManager Nav
-
 @*
-    Module navigation. Reports 911 stays on MVC (compañero's improved version),
-    so its link does a full-page load; every other module is a Blazor page.
+    Navigation rail. Every destination is a Blazor page; section captions
+    collapse automatically when the drawer is in its mini (icon-only) state.
 *@
-<MudNavMenu Class="pt-2" Bordered="true">
+<MudNavMenu Class="pt-2">
 
-    <MudText Typo="Typo.caption" Class="px-4 pt-3 pb-1" Style="opacity:.55;text-transform:uppercase;letter-spacing:.6px">Operación</MudText>
+    <span class="sigie-nav-section"><span class="sigie-nav-section-label">Operación</span></span>
     <MudNavLink Href="/dashboard" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.SpaceDashboard">Tablero de Control</MudNavLink>
     <MudNavLink Href="/datacapture" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.EditNote">Captura de Datos</MudNavLink>
-    <MudNavLink Href="/charts" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.BarChart">Gráficas</MudNavLink>
+    <MudNavLink Href="/charts" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.QueryStats">Gráficas</MudNavLink>
 
-    <MudText Typo="Typo.caption" Class="px-4 pt-3 pb-1" Style="opacity:.55;text-transform:uppercase;letter-spacing:.6px">Reportes</MudText>
-    <MudNavLink OnClick="@(() => Nav.NavigateTo("/Reports", forceLoad: true))" Icon="@Icons.Material.Filled.Description">Reportes 911 / SII</MudNavLink>
+    <span class="sigie-nav-section"><span class="sigie-nav-section-label">Reportes</span></span>
+    <MudNavLink Href="/reports" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Description">Reportes 911 / SII</MudNavLink>
     <MudNavLink Href="/boardreport" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Article">Informe de Junta</MudNavLink>
     <MudNavLink Href="/minutes" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Gavel">Actas de Junta</MudNavLink>
 
     <AuthorizeView Roles="Admin">
-        <MudText Typo="Typo.caption" Class="px-4 pt-3 pb-1" Style="opacity:.55;text-transform:uppercase;letter-spacing:.6px">Administración</MudText>
-        <MudNavLink Href="/settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Settings">Configuración</MudNavLink>
+        <span class="sigie-nav-section"><span class="sigie-nav-section-label">Administración</span></span>
+        <MudNavLink Href="/settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Tune">Configuración</MudNavLink>
         <MudNavLink Href="/users" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.People">Usuarios</MudNavLink>
         <MudNavLink Href="/security" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Shield">Seguridad</MudNavLink>
     </AuthorizeView>
+
+    <div class="sigie-rail-foot">
+        <div style="font-weight:700;letter-spacing:.04em">SIGIE v0.6</div>
+        <div style="opacity:.8">Universidad Politécnica de la ZMG</div>
+    </div>
 
 </MudNavMenu>
