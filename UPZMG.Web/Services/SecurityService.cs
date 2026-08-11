@@ -30,8 +30,36 @@ public sealed class SecurityService : ISecurityService
 
     private sealed record RolePerm(Guid RoleId, string RoleName, Guid PermissionId, string PermissionName);
 
+    // Cached once per process. Without this, every page load fires a query that
+    // EF logs at 'fail' level before our catch swallows it — noisy console for
+    // a database where the security tables simply haven't been migrated yet.
+    // OBJECT_ID returns NULL for a missing table instead of throwing.
+    private static bool? _securityTablesExist;
+
+    private async Task<bool> SecurityTablesExistAsync()
+    {
+        if (_securityTablesExist is { } cached) return cached;
+        try
+        {
+            // One round-trip, materialised client-side so EF doesn't log an
+            // "unordered FirstOrDefault" advisory for a scalar existence probe.
+            var ids = await _db.Database
+                .SqlQueryRaw<int?>("SELECT OBJECT_ID('roles') AS Value UNION ALL SELECT OBJECT_ID('rolePermissions')")
+                .ToListAsync();
+            _securityTablesExist = ids.Count == 2 && ids.All(id => id is not null);
+        }
+        catch
+        {
+            _securityTablesExist = false; // DB unreachable
+        }
+        return _securityTablesExist.Value;
+    }
+
     public async Task<SecurityData> LoadAsync(Guid? roleId)
     {
+        if (!await SecurityTablesExistAsync())
+            return new SecurityData(new(), roleId, string.Empty, new(), DbAvailable: false);
+
         try
         {
             var roles = await _db.Roles.AsNoTracking().OrderBy(r => r.Name).ToListAsync();
@@ -63,6 +91,9 @@ public sealed class SecurityService : ISecurityService
 
     public async Task<string> ToggleAsync(Guid roleId, string permissionName, bool enable)
     {
+        if (!await SecurityTablesExistAsync())
+            return "No se pudo actualizar el permiso (la tabla de permisos no está disponible).";
+
         try
         {
             var name = permissionName.Trim();
