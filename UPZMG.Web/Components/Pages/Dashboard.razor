@@ -3,6 +3,7 @@
 @implements IAsyncDisposable
 @inject IDashboardService DashboardSvc
 @inject IIntelligenceService Ai
+@inject IJSRuntime JS
 
 <PageTitle>Tablero de Control — SIGIE</PageTitle>
 
@@ -54,9 +55,17 @@
                         @_completed de @_model.AreaProgress.Count áreas completas · última sincronización @_lastSync.ToString("HH:mm:ss")
                     </MudText>
                 </div>
-                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                    <MudText Typo="Typo.h5" Style="font-weight:800">@GlobalProgress%</MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">global</MudText>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                    <div style="text-align:right">
+                        <MudText Typo="Typo.h5" Style="font-weight:800;line-height:1">@GlobalProgress%</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">global</MudText>
+                    </div>
+                    <MudTooltip Text="Descargar el avance por área en CSV" Placement="Placement.Top">
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary"
+                                   StartIcon="@Icons.Material.Filled.FileDownload" OnClick="ExportAreasAsync">
+                            Exportar
+                        </MudButton>
+                    </MudTooltip>
                 </MudStack>
             </MudStack>
 
@@ -300,6 +309,17 @@
     }
 
     private void RecomputeCompleted() => _completed = _model.AreaProgress.Count(a => a.Percentage == 100);
+
+    private async Task ExportAreasAsync()
+    {
+        var csv = CsvExport.Build(_model.AreaProgress,
+            ("Área", a => a.AreaName),
+            ("Responsable", a => a.ResponsiblePerson),
+            ("Avance %", a => a.Percentage),
+            ("Estado", a => a.Status));
+
+        await JS.InvokeVoidAsync("sigieDownload", CsvExport.FileName("captura-por-area"), csv);
+    }
 
     public async ValueTask DisposeAsync()
     {

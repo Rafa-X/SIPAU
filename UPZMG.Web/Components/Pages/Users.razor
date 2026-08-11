@@ -3,6 +3,7 @@
 @inject IUsersService UsersSvc
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@inject IJSRuntime JS
 
 <PageTitle>Usuarios y Roles — SIGIE</PageTitle>
 
@@ -15,14 +16,22 @@
     </Actions>
 </PageHeader>
 
-<MudPaper Elevation="1" Class="pa-2">
-    <MudDataGrid T="UserListItemModel" Items="_users" Hover="true" Dense="true" Elevation="0"
-                 QuickFilter="_quickFilter" Filterable="false" SortMode="SortMode.Multiple">
-        <ToolBarContent>
-            <MudTextField @bind-Value="_search" Placeholder="Buscar usuario, correo o rol…"
-                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
-                          IconSize="Size.Medium" Immediate="true" Clearable="true" Class="mt-0" />
-        </ToolBarContent>
+<MudPaper Elevation="0" Class="pa-2">
+    <DataToolbar @bind-Search="_search" Placeholder="Buscar usuario, correo o rol…"
+                 Count="Filtered.Count" Total="_users.Count" OnExport="ExportAsync">
+        <Filters>
+            <MudSelect T="string" Value="_state" ValueChanged="@(v => _state = v)" Dense="true"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Class="sigie-toolbar-filter mt-0"
+                       Placeholder="Estado" Clearable="true">
+                <MudSelectItem T="string" Value="@(null!)">Todos</MudSelectItem>
+                <MudSelectItem T="string" Value="@("activos")">Solo activos</MudSelectItem>
+                <MudSelectItem T="string" Value="@("inactivos")">Solo inactivos</MudSelectItem>
+            </MudSelect>
+        </Filters>
+    </DataToolbar>
+
+    <MudDataGrid T="UserListItemModel" Items="Filtered" Hover="true" Dense="true" Elevation="0"
+                 Filterable="false" SortMode="SortMode.Multiple">
         <Columns>
             <TemplateColumn Title="Usuario" SortBy="x => x.FullName">
                 <CellTemplate>
@@ -61,25 +70,48 @@
                 </CellTemplate>
             </TemplateColumn>
         </Columns>
+        <NoRecordsContent>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-6" Style="text-align:center">
+                Ningún usuario coincide con la búsqueda.
+            </MudText>
+        </NoRecordsContent>
     </MudDataGrid>
 </MudPaper>
 
 @code {
     private IReadOnlyList<UserListItemModel> _users = System.Array.Empty<UserListItemModel>();
     private string _search = string.Empty;
+    private string? _state;
 
     protected override void OnInitialized() => Reload();
 
     private void Reload() => _users = UsersSvc.GetUsers().ToList();
 
-    private Func<UserListItemModel, bool> _quickFilter => user =>
+    private List<UserListItemModel> Filtered => _users.Where(Matches).ToList();
+
+    private bool Matches(UserListItemModel user)
     {
+        if (_state == "activos" && !user.IsActive) return false;
+        if (_state == "inactivos" && user.IsActive) return false;
+
         if (string.IsNullOrWhiteSpace(_search)) return true;
         var s = _search.Trim();
         return user.FullName.Contains(s, StringComparison.OrdinalIgnoreCase)
             || user.Email.Contains(s, StringComparison.OrdinalIgnoreCase)
             || user.RoleName.Contains(s, StringComparison.OrdinalIgnoreCase);
-    };
+    }
+
+    private async Task ExportAsync()
+    {
+        var csv = CsvExport.Build(Filtered,
+            ("Nombre", u => u.FullName),
+            ("Correo", u => u.Email),
+            ("Rol", u => u.RoleName),
+            ("Activo", u => u.IsActive),
+            ("Último acceso", u => u.LastLogin));
+
+        await JS.InvokeVoidAsync("sigieDownload", CsvExport.FileName("usuarios"), csv);
+    }
 
     private Task OpenCreate() => ShowDialog("Nuevo Usuario", new UserFormViewModel(), created: true);
 

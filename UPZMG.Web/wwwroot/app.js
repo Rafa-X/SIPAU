@@ -56,6 +56,23 @@
     // A menu/dropdown opening while the header is hidden would look broken.
     function reveal() { document.body.classList.remove(HIDDEN); }
 
+    // Streams a generated file (CSV export) to the browser without a round-trip.
+    window.sigieDownload = function (filename, text, mime) {
+        // The BOM makes Excel open UTF-8 accents correctly.
+        var blob = new Blob(['﻿' + text], { type: mime || 'text/csv;charset=utf-8;' });
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement('a');
+
+        link.href = url;
+        link.download = filename;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    };
+
     window.addEventListener('scroll', onScroll, { passive: true, capture: true });
     window.addEventListener('resize', onScroll, { passive: true });
     window.addEventListener('keydown', reveal, { passive: true });

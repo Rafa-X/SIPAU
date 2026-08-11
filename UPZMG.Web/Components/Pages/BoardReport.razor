@@ -1,6 +1,7 @@
 @page "/boardreport"
 @attribute [Authorize]
 @inject IBoardReportService BoardSvc
+@inject IJSRuntime JS
 
 <PageTitle>Informe de Junta — SIGIE</PageTitle>
 
@@ -10,13 +11,29 @@
     </Actions>
 </PageHeader>
 
-<MudPaper Elevation="1" Class="pa-2">
-    <MudDataGrid T="BoardReportListItemModel" Items="_reports" Hover="true" Dense="true" Elevation="0">
+<MudPaper Elevation="0" Class="pa-2">
+    <DataToolbar @bind-Search="_search" Placeholder="Buscar periodo…"
+                 Count="Filtered.Count" Total="_reports.Count" OnExport="ExportAsync">
+        <Filters>
+            <MudSelect T="string" Value="_status" ValueChanged="@(v => _status = v)" Dense="true"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Class="sigie-toolbar-filter mt-0"
+                       Placeholder="Estado" Clearable="true">
+                <MudSelectItem T="string" Value="@(null!)">Todos los estados</MudSelectItem>
+                @foreach (var s in _statuses)
+                {
+                    <MudSelectItem T="string" Value="@s">@s</MudSelectItem>
+                }
+            </MudSelect>
+        </Filters>
+    </DataToolbar>
+
+    <MudDataGrid T="BoardReportListItemModel" Items="Filtered" Hover="true" Dense="true" Elevation="0"
+                 SortMode="SortMode.Multiple">
         <Columns>
             <PropertyColumn Property="x => x.Period" Title="Periodo" />
             <PropertyColumn Property="x => x.GeneratedDate" Title="Generado" Format="dd/MM/yyyy" />
             <PropertyColumn Property="x => x.PageCount" Title="Páginas" />
-            <TemplateColumn Title="Estado">
+            <TemplateColumn Title="Estado" SortBy="x => x.Status">
                 <CellTemplate>
                     <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@SigieUi.StatusColor(context.Item.Status)">
                         @context.Item.Status
@@ -32,11 +49,48 @@
                 </CellTemplate>
             </TemplateColumn>
         </Columns>
+        <NoRecordsContent>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-6" Style="text-align:center">
+                Ningún informe coincide con la búsqueda.
+            </MudText>
+        </NoRecordsContent>
     </MudDataGrid>
 </MudPaper>
 
 @code {
-    private IReadOnlyList<BoardReportListItemModel> _reports = System.Array.Empty<BoardReportListItemModel>();
+    private IReadOnlyList<BoardReportListItemModel> _reports = Array.Empty<BoardReportListItemModel>();
+    private string _search = string.Empty;
+    private string? _status;
 
-    protected override void OnInitialized() => _reports = BoardSvc.GetAll();
+    private string[] _statuses = Array.Empty<string>();
+
+    protected override void OnInitialized()
+    {
+        _reports = BoardSvc.GetAll();
+        _statuses = _reports.Select(r => r.Status).Distinct().OrderBy(s => s).ToArray();
+    }
+
+    private List<BoardReportListItemModel> Filtered => _reports.Where(Matches).ToList();
+
+    private bool Matches(BoardReportListItemModel r)
+    {
+        if (!string.IsNullOrWhiteSpace(_status) && !string.Equals(r.Status, _status, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (string.IsNullOrWhiteSpace(_search)) return true;
+        var q = _search.Trim();
+        return r.Period.Contains(q, StringComparison.OrdinalIgnoreCase)
+            || r.Status.Contains(q, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task ExportAsync()
+    {
+        var csv = CsvExport.Build(Filtered,
+            ("Periodo", r => r.Period),
+            ("Generado", r => r.GeneratedDate),
+            ("Páginas", r => r.PageCount),
+            ("Estado", r => r.Status));
+
+        await JS.InvokeVoidAsync("sigieDownload", CsvExport.FileName("informes-junta"), csv);
+    }
 }

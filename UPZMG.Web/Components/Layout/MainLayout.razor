@@ -16,7 +16,7 @@
                            Class="sigie-appbar-btn" OnClick="ToggleDrawer" aria-label="Alternar menú" />
         </MudTooltip>
 
-        <div class="sigie-brand ml-2">
+        <a class="sigie-brand ml-2" href="/dashboard" title="Ir al tablero de control">
             <span class="sigie-brand-mark">S</span>
             <div>
                 <div class="sigie-brand-name">SIGIE</div>
@@ -24,11 +24,12 @@
                     UPZMG · Planeación
                 </div>
             </div>
-        </div>
+        </a>
 
         <MudSpacer />
 
-        @* Quick-nav: type a module name, press enter, you are there. *@
+        @* Quick-nav sits with the other tools on the right, not floating in
+           the middle of the bar. *@
         <MudAutocomplete T="NavTarget" @ref="_quickNavRef"
                          Value="_quickNav" ValueChanged="GoToAsync"
                          SearchFunc="SearchNavAsync"
@@ -45,8 +46,6 @@
                 </MudStack>
             </ItemTemplate>
         </MudAutocomplete>
-
-        <MudSpacer />
 
         @* Anomalies detected by the intelligent layer, surfaced globally. *@
         <MudMenu @bind-Open="_alertsOpen" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">

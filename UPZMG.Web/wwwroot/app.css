@@ -71,6 +71,12 @@
     --sigie-mid: 0.32s;
     --sigie-slow: 0.6s;
 
+    /* Every surface that repaints on a light/dark switch MUST use exactly this
+       duration and easing, or the header, rail and canvas visibly desync.
+       Gradients cannot be interpolated by CSS, so themed surfaces are painted
+       with a solid background-color and any decoration is theme-independent. */
+    --sigie-theme-dur: 0.35s;
+
     /* Geometry */
     --sigie-radius: 18px;
     --sigie-radius-sm: 12px;
@@ -101,8 +107,20 @@ body {
     font-family: var(--sigie-font-body);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* Theme switches should feel like a dimmer, not a flash. */
-    transition: background-color var(--sigie-slow) var(--sigie-ease-soft), color var(--sigie-slow) var(--sigie-ease-soft);
+}
+
+/* One shared timing for the whole theme switch, so canvas, header, rail and
+   cards all cross over in the same 350ms instead of racing each other.
+   The chrome (appbar/drawer/paper) repeats this timing in its own section
+   below, because those rules declare a fuller transition list. */
+body,
+.mud-typography,
+.mud-input-root,
+.mud-table-cell,
+.mud-divider {
+    transition-property: background-color, border-color, color;
+    transition-duration: var(--sigie-theme-dur);
+    transition-timing-function: var(--sigie-ease-soft);
 }
 
 /* ------------------------------------------------------- 2. Ambient canvas */
@@ -149,14 +167,16 @@ body::before {
 
 /* ------------------------------------------------------------- 4. App bar */
 .mud-appbar {
-    background: color-mix(in srgb, var(--mud-palette-appbar-background) 72%, transparent) !important;
+    background-color: color-mix(in srgb, var(--mud-palette-appbar-background) 72%, transparent) !important;
+    background-image: none !important;
     -webkit-backdrop-filter: blur(22px) saturate(180%);
     backdrop-filter: blur(22px) saturate(180%);
     border-bottom: 1px solid transparent;
     box-shadow: none !important;
-    transition: background var(--sigie-mid) var(--sigie-ease-soft),
-                border-color var(--sigie-mid) var(--sigie-ease-soft),
-                box-shadow var(--sigie-mid) var(--sigie-ease-soft),
+    transition: background-color var(--sigie-theme-dur) var(--sigie-ease-soft),
+                border-color var(--sigie-theme-dur) var(--sigie-ease-soft),
+                color var(--sigie-theme-dur) var(--sigie-ease-soft),
+                box-shadow var(--sigie-theme-dur) var(--sigie-ease-soft),
                 transform 0.4s var(--sigie-ease);
 }
 
@@ -180,7 +200,7 @@ body.sigie-header-hidden .mud-drawer { top: 0 !important; height: 100% !importan
 
 /* app.js flags scroll: the header condenses and lifts off the page. */
 body.sigie-scrolled .mud-appbar {
-    background: color-mix(in srgb, var(--mud-palette-appbar-background) 88%, transparent) !important;
+    background-color: color-mix(in srgb, var(--mud-palette-appbar-background) 88%, transparent) !important;
     box-shadow: var(--sigie-shadow-1) !important;
     border-bottom-color: var(--sigie-hairline);
 }
@@ -191,8 +211,18 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
     transition: opacity var(--sigie-mid) var(--sigie-ease), transform var(--sigie-mid) var(--sigie-ease);
 }
 
-/* Brand */
-.sigie-brand { display: flex; align-items: center; gap: 11px; }
+/* Brand — clickable, routes home to the dashboard. */
+.sigie-brand {
+    display: flex; align-items: center; gap: 11px;
+    padding: 4px 10px 4px 4px; border-radius: 12px;
+    color: inherit; text-decoration: none;
+    transition: background var(--sigie-fast) var(--sigie-ease), transform var(--sigie-mid) var(--sigie-spring);
+}
+.sigie-brand:hover {
+    background: color-mix(in srgb, var(--mud-palette-appbar-text) 9%, transparent);
+    transform: translateY(-1px);
+}
+.sigie-brand:hover .sigie-brand-mark { box-shadow: 0 8px 22px -4px color-mix(in srgb, var(--sigie-cyan) 75%, transparent); }
 .sigie-brand-mark {
     position: relative;
     display: inline-flex; align-items: center; justify-content: center;
@@ -283,26 +313,24 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 
 /* ------------------------------------------------------- 5. Navigation rail */
 /* The rail follows the theme: an airy sheet in light mode, ink in dark mode. */
+/* Solid colour (not a gradient) so the rail cross-fades in step with the rest
+   of the UI — CSS cannot interpolate gradients. */
 .mud-drawer {
+    background-image: none !important;
     transition: width var(--sigie-slow) var(--sigie-ease),
                 transform var(--sigie-slow) var(--sigie-ease),
                 left var(--sigie-slow) var(--sigie-ease),
                 top var(--sigie-mid) var(--sigie-ease),
                 height var(--sigie-mid) var(--sigie-ease),
-                background var(--sigie-slow) var(--sigie-ease-soft) !important;
+                background-color var(--sigie-theme-dur) var(--sigie-ease-soft),
+                border-color var(--sigie-theme-dur) var(--sigie-ease-soft) !important;
 }
 .sigie-light .mud-drawer {
-    background:
-        radial-gradient(120% 55% at 0% 0%, rgba(15, 181, 160, 0.07), transparent 62%),
-        radial-gradient(120% 50% at 100% 100%, rgba(109, 92, 231, 0.07), transparent 64%),
-        linear-gradient(180deg, #FFFFFF 0%, #F8FAFF 55%, #EFF4FD 100%) !important;
+    background-color: #FBFCFF !important;
     border-right: 1px solid var(--sigie-hairline);
 }
 .sigie-dark .mud-drawer {
-    background:
-        radial-gradient(120% 60% at 0% 0%, rgba(34, 211, 191, 0.10), transparent 60%),
-        radial-gradient(120% 50% at 100% 100%, rgba(109, 92, 231, 0.12), transparent 62%),
-        linear-gradient(180deg, #0A1020 0%, #070C17 55%, #04070F 100%) !important;
+    background-color: #080D18 !important;
     border-right: 1px solid rgba(255, 255, 255, 0.06);
 }
 
@@ -342,11 +370,19 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 /* Light rail */
 .sigie-light .mud-drawer .mud-nav-link { color: #41506A; }
 .sigie-light .mud-drawer .mud-nav-link .mud-nav-link-icon { color: #7C8AA3; }
-.sigie-light .mud-drawer .mud-nav-link:hover {
-    background: color-mix(in srgb, var(--mud-palette-secondary) 11%, transparent);
+.sigie-light .mud-drawer .mud-nav-link:hover,
+.sigie-light .mud-drawer .mud-nav-link:hover .mud-nav-link-text {
+    background-color: color-mix(in srgb, var(--mud-palette-secondary) 11%, transparent);
     color: var(--mud-palette-text-primary);
 }
+.sigie-light .mud-drawer .mud-nav-link:hover .mud-nav-link-text { background-color: transparent; }
 .sigie-light .mud-drawer .mud-nav-link:hover .mud-nav-link-icon { color: var(--sigie-cyan); }
+
+/* The active item keeps its white label on hover — never inherit the theme
+   text colour there, or it disappears into the coloured plate. */
+.mud-drawer .mud-nav-link.active:hover,
+.mud-drawer .mud-nav-link.active:hover .mud-nav-link-text,
+.mud-drawer .mud-nav-link.active:hover .mud-nav-link-icon { color: #fff !important; }
 
 /* Dark rail */
 .sigie-dark .mud-drawer .mud-nav-link { color: rgba(255, 255, 255, 0.78); }
@@ -354,11 +390,11 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 .sigie-dark .mud-drawer .mud-nav-link:hover { background: rgba(255, 255, 255, 0.07); color: #fff; }
 .sigie-dark .mud-drawer .mud-nav-link:hover .mud-nav-link-icon { color: var(--sigie-cyan-up); }
 
-/* Active: gradient plate + glow + animated left marker. */
+/* Active: gradient plate + glow + animated left marker.
+   The gradient is fully opaque on purpose — a translucent plate over the light
+   rail left the white label unreadable. */
 .mud-drawer .mud-nav-link.active {
-    background: linear-gradient(100deg,
-        color-mix(in srgb, var(--sigie-cyan) 88%, transparent) 0%,
-        color-mix(in srgb, var(--sigie-indigo) 72%, transparent) 118%);
+    background: linear-gradient(100deg, var(--sigie-cyan) 0%, var(--sigie-indigo) 125%);
     font-weight: 700;
     box-shadow: 0 10px 26px -10px color-mix(in srgb, var(--sigie-cyan) 85%, transparent);
     transform: none;
@@ -420,9 +456,8 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 .mud-main-content .mud-paper {
     position: relative;
     border-radius: var(--sigie-radius);
-    background: linear-gradient(158deg,
-        color-mix(in srgb, var(--mud-palette-surface) 94%, transparent) 0%,
-        var(--sigie-glass) 100%) !important;
+    background-color: var(--sigie-glass) !important;
+    background-image: none !important;
     -webkit-backdrop-filter: blur(16px) saturate(165%);
     backdrop-filter: blur(16px) saturate(165%);
     border: 1px solid var(--sigie-hairline) !important;
@@ -430,8 +465,8 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
     overflow: hidden;
     transition: transform var(--sigie-mid) var(--sigie-ease),
                 box-shadow var(--sigie-mid) var(--sigie-ease),
-                border-color var(--sigie-mid) var(--sigie-ease),
-                background var(--sigie-slow) var(--sigie-ease-soft);
+                background-color var(--sigie-theme-dur) var(--sigie-ease-soft),
+                border-color var(--sigie-theme-dur) var(--sigie-ease-soft);
 }
 
 /* Specular hairline along the top edge — what sells the "glass". */
@@ -554,6 +589,10 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
    this only touches typography, chips/buttons keep the real accent colour. */
 .mud-typography.mud-secondary-text { color: var(--mud-palette-text-secondary) !important; }
 .mud-tabs .mud-tab { text-transform: none; font-weight: 600; letter-spacing: 0; }
+
+/* Listing toolbar: search grows, filters stay compact. */
+.sigie-toolbar-search { min-width: 240px; max-width: 340px; flex: 1 1 240px; }
+.sigie-toolbar-filter { min-width: 150px; max-width: 200px; }
 
 /* Progress bars: rounded, with a soft glow at the leading edge. */
 .mud-progress-linear { border-radius: 999px; overflow: hidden; }
