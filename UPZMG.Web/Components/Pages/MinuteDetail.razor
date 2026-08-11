@@ -6,12 +6,12 @@
 
 @if (_model is null)
 {
-    <PageHeader Title="Acta no encontrada" BackHref="/minutes" />
+    <PageHeader Eyebrow="Junta directiva" Title="Acta no encontrada" BackHref="/minutes" />
     <MudAlert Severity="Severity.Warning">No se encontró el acta solicitada.</MudAlert>
 }
 else
 {
-    <PageHeader Title="@_model.SessionName" Subtitle="@($"Sesión del {_model.Date:dd 'de' MMMM 'de' yyyy}")" BackHref="/minutes">
+    <PageHeader Eyebrow="Junta directiva" Title="@_model.SessionName" Subtitle="@($"Sesión del {_model.Date:dd 'de' MMMM 'de' yyyy}")" BackHref="/minutes">
         <Actions>
             <MudChip T="string" Color="@SigieUi.StatusColor(_model.Status)" Variant="Variant.Filled">@_model.Status</MudChip>
         </Actions>

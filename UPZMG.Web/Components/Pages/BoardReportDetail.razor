@@ -6,12 +6,12 @@
 
 @if (_model is null)
 {
-    <PageHeader Title="Informe no encontrado" BackHref="/boardreport" />
+    <PageHeader Eyebrow="Junta directiva" Title="Informe no encontrado" BackHref="/boardreport" />
     <MudAlert Severity="Severity.Warning">No se encontró el informe solicitado.</MudAlert>
 }
 else
 {
-    <PageHeader Title="@($"Informe {_model.Period}")" Subtitle="@($"Generado el {_model.GeneratedDate:dd/MM/yyyy} · {_model.Status}")" BackHref="/boardreport">
+    <PageHeader Eyebrow="Junta directiva" Title="@($"Informe {_model.Period}")" Subtitle="@($"Generado el {_model.GeneratedDate:dd/MM/yyyy} · {_model.Status}")" BackHref="/boardreport">
         <Actions>
             <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PictureAsPdf">Exportar PDF</MudButton>
         </Actions>
