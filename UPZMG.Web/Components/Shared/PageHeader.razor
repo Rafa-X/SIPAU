@@ -1,20 +1,27 @@
 @*
-    Reusable page header: optional back button, title, subtitle and an
-    actions slot on the right.
+    Page header: optional back button, an eyebrow label, the title with a subtle
+    gradient wash, a subtitle and an actions slot on the right.
 *@
-<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4" Style="flex-wrap:wrap">
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="mb-5" Style="flex-wrap:wrap">
     @if (!string.IsNullOrEmpty(BackHref))
     {
-        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Color="Color.Default"
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBackIosNew" Size="Size.Small" Color="Color.Default"
+                       Style="border:1px solid var(--sigie-hairline);border-radius:12px"
                        OnClick="@(() => Nav.NavigateTo(BackHref))" aria-label="Volver" />
     }
-    <div class="flex-grow-1">
-        <MudText Typo="Typo.h4" Style="font-weight:700">@Title</MudText>
+
+    <div class="flex-grow-1" style="min-width:220px">
+        @if (!string.IsNullOrEmpty(Eyebrow))
+        {
+            <span class="sigie-eyebrow">@Eyebrow</span>
+        }
+        <MudText Typo="Typo.h4" Class="sigie-title">@Title</MudText>
         @if (!string.IsNullOrEmpty(Subtitle))
         {
-            <MudText Typo="Typo.body2" Color="Color.Secondary">@Subtitle</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">@Subtitle</MudText>
         }
     </div>
+
     @Actions
 </MudStack>
 
@@ -23,6 +30,10 @@
 
     [Parameter] public string Title { get; set; } = string.Empty;
     [Parameter] public string? Subtitle { get; set; }
+
+    /// <summary>Small uppercase label above the title (module / section name).</summary>
+    [Parameter] public string? Eyebrow { get; set; }
+
     [Parameter] public string? BackHref { get; set; }
     [Parameter] public RenderFragment? Actions { get; set; }
 }
