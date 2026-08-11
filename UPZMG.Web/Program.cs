@@ -58,7 +58,7 @@ try
     builder.Services.AddScoped<IMinutesService, MinutesService>();
     builder.Services.AddScoped<IBoardReportService, BoardReportService>();
     builder.Services.AddSingleton<ISettingsService, SettingsService>();
-    // builder.Services.AddScoped<IReportsService, ReportsService>();
+    builder.Services.AddScoped<IReportsService, ReportsService>();
     builder.Services.AddScoped<ISecurityService, SecurityService>();
     builder.Services.AddSingleton<IIntelligenceService, IntelligenceService>();
 
