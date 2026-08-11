@@ -4,60 +4,93 @@
 
 <PageTitle>Gráficas — SIGIE</PageTitle>
 
-<PageHeader Title="Gráficas" Subtitle="Visualización estadística institucional con proyección de tendencias" />
+<PageHeader Eyebrow="Analítica"
+            Title="Gráficas"
+            Subtitle="Visualización estadística institucional con proyección de tendencias">
+    <Actions>
+        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Tertiary"
+                 Icon="@Icons.Material.Filled.Functions">Mínimos cuadrados</MudChip>
+    </Actions>
+</PageHeader>
 
 <MudGrid>
     <MudItem xs="12" lg="6">
-        <MudPaper Elevation="1" Class="pa-4" Style="height:100%">
-            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+        <MudPaper Elevation="0" Class="pa-5" Style="height:100%">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start" Class="mb-2" Wrap="Wrap.Wrap">
                 <div>
                     <MudText Typo="Typo.h6">Matrícula histórica y proyección</MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">Pronóstico por regresión lineal · los últimos @_forecastAhead periodos son proyección</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Pronóstico por regresión lineal · los últimos @_forecastAhead periodos son proyección
+                    </MudText>
                 </div>
-                <MudChip T="string" Size="Size.Small" Color="Color.Tertiary" Variant="Variant.Text" Icon="@Icons.Material.Filled.AutoGraph">R² @_fc.R2.ToString("0.00")</MudChip>
+                <MudChip T="string" Size="Size.Small" Color="Color.Tertiary" Variant="Variant.Text"
+                         Icon="@Icons.Material.Filled.AutoGraph">R² @_fc.R2.ToString("0.00")</MudChip>
             </MudStack>
+
             <MudChart T="double" ChartType="ChartType.Line" ChartSeries="@_enrollment" ChartLabels="@_fc.Labels"
                       Width="100%" Height="320px" ChartOptions="@_lineOptions" />
+
+            <MudDivider Class="my-3" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Pendiente estimada: <b>@_fc.Slope.ToString("0.0")</b> alumnos por periodo ·
+                ordenada al origen <b>@_fc.Intercept.ToString("0.0")</b>
+            </MudText>
         </MudPaper>
     </MudItem>
 
     <MudItem xs="12" lg="6">
-        <MudPaper Elevation="1" Class="pa-4" Style="height:100%">
+        <MudPaper Elevation="0" Class="pa-5" Style="height:100%">
             <MudText Typo="Typo.h6">Distribución de alumnos por carrera</MudText>
             <MudText Typo="Typo.caption" Color="Color.Secondary">Matrícula del periodo activo por programa educativo</MudText>
+
             <MudChart T="double" ChartType="ChartType.Bar" ChartSeries="@_careers" ChartLabels="@_careerLabels"
-                      Width="100%" Height="320px" ChartOptions="@_tealBar" />
+                      Width="100%" Height="320px" ChartOptions="@_cyanBar" />
+
+            <MudDivider Class="my-3" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Programa con mayor matrícula: <b>@_topCareer</b>
+            </MudText>
         </MudPaper>
     </MudItem>
 
     <MudItem xs="12" lg="6">
-        <MudPaper Elevation="1" Class="pa-4" Style="height:100%">
+        <MudPaper Elevation="0" Class="pa-5" Style="height:100%">
             <MudText Typo="Typo.h6">Aprobación vs. reprobación por periodo</MudText>
             <MudText Typo="Typo.caption" Color="Color.Secondary">Índices institucionales de aprovechamiento</MudText>
+
             <MudChart T="double" ChartType="ChartType.Bar" ChartSeries="@_achievement" ChartLabels="@_achievementLabels"
                       Width="100%" Height="320px" ChartOptions="@_abBar" />
+
+            <MudDivider Class="my-3" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                La reprobación acumula cuatro periodos a la baja.
+            </MudText>
         </MudPaper>
     </MudItem>
 
     <MudItem xs="12" lg="6">
-        <MudPaper Elevation="1" Class="pa-4" Style="height:100%">
+        <MudPaper Elevation="0" Class="pa-5" Style="height:100%">
             <MudText Typo="Typo.h6">Becas asignadas por tipo / fuente</MudText>
             <MudText Typo="Typo.caption" Color="Color.Secondary">Distribución de becas vigentes por fuente de financiamiento</MudText>
+
             <MudChart T="double" ChartType="ChartType.Bar" ChartSeries="@_scholarships" ChartLabels="@_scholarshipLabels"
                       Width="100%" Height="320px" ChartOptions="@_goldBar" />
+
+            <MudDivider Class="my-3" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Total de becas vigentes: <b>@_totalScholarships.ToString("N0")</b>
+            </MudText>
         </MudPaper>
     </MudItem>
 </MudGrid>
 
 @code {
-    // Teal (actual) + navy (trend) line for the enrollment forecast
-    private readonly ChartOptions _lineOptions = new()
-    {
-        ChartPalette = new[] { "#12A594", "#0B2350" },
-    };
-    private readonly ChartOptions _tealBar = new() { ChartPalette = new[] { "#12A594" } };
-    private readonly ChartOptions _goldBar = new() { ChartPalette = new[] { "#C69528" } };
-    private readonly ChartOptions _abBar   = new() { ChartPalette = new[] { "#12A594", "#DC3B2E" } };
+    // Palettes mirror the theme accents: cyan = observed, indigo = model,
+    // gold = funding, rose = negative indicators.
+    private readonly ChartOptions _lineOptions = new() { ChartPalette = new[] { "#22D3BF", "#6D5CE7" } };
+    private readonly ChartOptions _cyanBar     = new() { ChartPalette = new[] { "#0FB5A0" } };
+    private readonly ChartOptions _goldBar     = new() { ChartPalette = new[] { "#D4A02C" } };
+    private readonly ChartOptions _abBar       = new() { ChartPalette = new[] { "#0FB5A0", "#E5484D" } };
 
     // Matrícula: pronóstico real por regresión lineal (mínimos cuadrados en C#)
     private const int _forecastAhead = 2;
@@ -79,6 +112,8 @@
     {
         new ChartSeries<double> { Name = "Alumnos", Data = new double[] { 420, 355, 210, 260 } },
     };
+    private string _topCareer => _careerLabels[
+        _careers[0].Data.Select((value, index) => (value, index)).OrderByDescending(t => t.value).First().index];
 
     private readonly string[] _achievementLabels = { "2024-1", "2024-2", "2025-1", "2025-2" };
     private readonly List<ChartSeries<double>> _achievement = new()
@@ -92,4 +127,5 @@
     {
         new ChartSeries<double> { Name = "Becas", Data = new double[] { 180, 260, 65, 340 } },
     };
+    private double _totalScholarships => _scholarships[0].Data.Sum();
 }
