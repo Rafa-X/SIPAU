@@ -39,10 +39,10 @@ public static class AppTheme
             AppbarBackground = "#FFFFFF",
             AppbarText       = "#0E1B33",
 
-            // The navy rail is the brand signature and stays dark in both modes.
-            DrawerBackground = "#0B1B3A",
-            DrawerText       = "rgba(255,255,255,0.88)",
-            DrawerIcon       = "rgba(255,255,255,0.70)",
+            // The rail follows the theme: airy in light mode, ink in dark.
+            DrawerBackground = "#FFFFFF",
+            DrawerText       = "#41506A",
+            DrawerIcon       = "#697891",
 
             Background       = "#F4F7FC",
             BackgroundGray   = "#E8EDF7",

@@ -29,7 +29,7 @@
         <MudSpacer />
 
         @* Quick-nav: type a module name, press enter, you are there. *@
-        <MudAutocomplete T="NavTarget"
+        <MudAutocomplete T="NavTarget" @ref="_quickNavRef"
                          Value="_quickNav" ValueChanged="GoToAsync"
                          SearchFunc="SearchNavAsync"
                          ToStringFunc="@(t => t?.Label ?? string.Empty)"
@@ -51,14 +51,15 @@
         @* Anomalies detected by the intelligent layer, surfaced globally. *@
         <MudMenu @bind-Open="_alertsOpen" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
             <ActivatorContent>
-                <div @onclick="@(() => _alertsOpen = !_alertsOpen)" @onclick:stopPropagation="true">
-                    <MudTooltip Text="Alertas del modelo" Placement="Placement.Bottom">
-                        <MudBadge Content="@_anomalies.Count" Color="Color.Error" Overlap="true" Bordered="true"
-                                  Visible="@(_anomalies.Count > 0)">
-                            <MudIconButton Icon="@Icons.Material.Filled.NotificationsNone" Color="Color.Inherit"
-                                           Class="sigie-appbar-btn" aria-label="Alertas" />
-                        </MudBadge>
-                    </MudTooltip>
+                @* A plain div, not a MudIconButton: a real <button> swallows the
+                   click and the menu never opens. *@
+                <div class="sigie-appbar-trigger" role="button" tabindex="0" title="Alertas del modelo"
+                     aria-label="Alertas del modelo"
+                     @onclick="@(() => _alertsOpen = !_alertsOpen)" @onclick:stopPropagation="true">
+                    <MudBadge Content="@_anomalies.Count" Color="Color.Error" Overlap="true" Bordered="true"
+                              Visible="@(_anomalies.Count > 0)">
+                        <MudIcon Icon="@Icons.Material.Filled.NotificationsNone" />
+                    </MudBadge>
                 </div>
             </ActivatorContent>
             <ChildContent>
@@ -137,7 +138,8 @@
     </MudAppBar>
 
     @* ──────────────────── Navigation rail (collapsible) ──────────────────── *@
-    <MudDrawer @bind-Open="_drawerOpen" Variant="DrawerVariant.Mini" OpenMiniOnHover="true"
+    @* Mini rail. It expands only from the header button — never on hover. *@
+    <MudDrawer @bind-Open="_drawerOpen" Variant="DrawerVariant.Mini" OpenMiniOnHover="false"
                Breakpoint="Breakpoint.Md" ClipMode="DrawerClipMode.Always" Elevation="0">
         <NavMenu />
     </MudDrawer>
@@ -176,6 +178,7 @@
     public sealed record NavTarget(string Label, string Href, string Icon);
 
     private NavTarget? _quickNav;
+    private MudAutocomplete<NavTarget>? _quickNavRef;
 
     private static readonly NavTarget[] NavTargets =
     {
@@ -204,11 +207,15 @@
         return Task.FromResult(matches);
     }
 
-    private Task GoToAsync(NavTarget? target)
+    private async Task GoToAsync(NavTarget? target)
     {
-        _quickNav = null; // never keep the field filled after jumping
-        if (target is not null) Nav.NavigateTo(target.Href);
-        return Task.CompletedTask;
+        _quickNav = null;
+        if (target is null) return; // re-entry from the Clear below
+
+        // Reset the field *and* its text, otherwise the old query stays visible
+        // and an empty dropdown lingers under the header after navigating.
+        if (_quickNavRef is not null) await _quickNavRef.ClearAsync();
+        Nav.NavigateTo(target.Href);
     }
 
     // ── Alert presentation ──────────────────────────────────────────────────

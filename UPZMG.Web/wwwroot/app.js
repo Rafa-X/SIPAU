@@ -1,27 +1,50 @@
 // ---------------------------------------------------------------------------
 // SIGIE — small progressive-enhancement layer.
 // Purely cosmetic: if this file fails to load the app still works, it just
-// loses the condensed header. No Blazor interop, no dependencies.
+// loses the condensed / auto-hiding header. No Blazor interop, no dependencies.
 // ---------------------------------------------------------------------------
 (function () {
     'use strict';
 
-    var SCROLLED = 'sigie-scrolled';
-    var THRESHOLD = 8;
+    var SCROLLED = 'sigie-scrolled';   // past the top → header condenses
+    var HIDDEN = 'sigie-header-hidden'; // scrolling down → header slides away
+
+    var TOP_THRESHOLD = 8;    // treat anything above this as "at the top"
+    var HIDE_AFTER = 120;     // don't hide until the user is genuinely scrolling
+    var DELTA_MIN = 6;        // ignore jitter / rubber-banding
+
+    var lastY = 0;
     var ticking = false;
 
     function offset() {
         // MudLayout normally scrolls the document, but a fixed-height layout
         // scrolls .mud-main-content instead — read whichever is actually moving.
         var doc = window.pageYOffset || document.documentElement.scrollTop || 0;
-        if (doc > THRESHOLD) return doc;
+        if (doc > TOP_THRESHOLD) return doc;
         var main = document.querySelector('.mud-main-content');
-        return main ? main.scrollTop : 0;
+        return main && main.scrollTop ? main.scrollTop : doc;
     }
 
     function sync() {
         ticking = false;
-        document.body.classList.toggle(SCROLLED, offset() > THRESHOLD);
+
+        var y = offset();
+        var body = document.body;
+
+        body.classList.toggle(SCROLLED, y > TOP_THRESHOLD);
+
+        var delta = y - lastY;
+        if (y <= TOP_THRESHOLD) {
+            body.classList.remove(HIDDEN);          // at the top: always visible
+        } else if (Math.abs(delta) >= DELTA_MIN) {
+            if (delta > 0 && y > HIDE_AFTER) {
+                body.classList.add(HIDDEN);         // scrolling down
+            } else if (delta < 0) {
+                body.classList.remove(HIDDEN);      // scrolling up
+            }
+        }
+
+        lastY = y;
     }
 
     function onScroll() {
@@ -30,8 +53,12 @@
         window.requestAnimationFrame(sync);
     }
 
+    // A menu/dropdown opening while the header is hidden would look broken.
+    function reveal() { document.body.classList.remove(HIDDEN); }
+
     window.addEventListener('scroll', onScroll, { passive: true, capture: true });
     window.addEventListener('resize', onScroll, { passive: true });
+    window.addEventListener('keydown', reveal, { passive: true });
     document.addEventListener('DOMContentLoaded', sync);
     sync();
 })();

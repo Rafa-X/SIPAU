@@ -157,8 +157,13 @@ body::before {
     transition: background var(--sigie-mid) var(--sigie-ease-soft),
                 border-color var(--sigie-mid) var(--sigie-ease-soft),
                 box-shadow var(--sigie-mid) var(--sigie-ease-soft),
-                height var(--sigie-mid) var(--sigie-ease);
+                transform 0.4s var(--sigie-ease);
 }
+
+/* Scrolling down hides the header; scrolling up (or reaching the top) brings
+   it back. The rail grows into the vacated strip so no gap is left behind. */
+body.sigie-header-hidden .mud-appbar { transform: translateY(-100%); }
+body.sigie-header-hidden .mud-drawer { top: 0 !important; height: 100% !important; }
 
 /* A hairline of brand colour along the very top edge. */
 .mud-appbar::after {
@@ -238,6 +243,20 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
     background: color-mix(in srgb, var(--mud-palette-appbar-text) 12%, transparent) !important;
     transform: translateY(-1px);
 }
+/* Plain (non-button) header trigger — MudMenu needs an activator that does not
+   swallow the click, so these are divs styled to look like icon buttons. */
+.sigie-appbar-trigger {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 42px; height: 42px;
+    border-radius: 12px; cursor: pointer;
+    color: var(--mud-palette-appbar-text);
+    transition: background var(--sigie-fast) var(--sigie-ease), transform var(--sigie-mid) var(--sigie-spring);
+}
+.sigie-appbar-trigger:hover {
+    background: color-mix(in srgb, var(--mud-palette-appbar-text) 12%, transparent);
+    transform: translateY(-1px);
+}
+
 /* The theme toggle spins as it swaps sun/moon. */
 .sigie-theme-btn .mud-icon-root { transition: transform var(--sigie-slow) var(--sigie-spring); }
 .sigie-theme-btn:hover .mud-icon-root { transform: rotate(180deg) scale(1.08); }
@@ -263,21 +282,28 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 }
 
 /* ------------------------------------------------------- 5. Navigation rail */
+/* The rail follows the theme: an airy sheet in light mode, ink in dark mode. */
 .mud-drawer {
-    background:
-        radial-gradient(120% 60% at 0% 0%, rgba(34, 211, 191, 0.12), transparent 60%),
-        radial-gradient(120% 50% at 100% 100%, rgba(109, 92, 231, 0.14), transparent 62%),
-        linear-gradient(180deg, #0B1B3A 0%, #081428 52%, #050B18 100%) !important;
-    border-right: 1px solid rgba(255, 255, 255, 0.06);
     transition: width var(--sigie-slow) var(--sigie-ease),
                 transform var(--sigie-slow) var(--sigie-ease),
-                left var(--sigie-slow) var(--sigie-ease) !important;
+                left var(--sigie-slow) var(--sigie-ease),
+                top var(--sigie-mid) var(--sigie-ease),
+                height var(--sigie-mid) var(--sigie-ease),
+                background var(--sigie-slow) var(--sigie-ease-soft) !important;
+}
+.sigie-light .mud-drawer {
+    background:
+        radial-gradient(120% 55% at 0% 0%, rgba(15, 181, 160, 0.07), transparent 62%),
+        radial-gradient(120% 50% at 100% 100%, rgba(109, 92, 231, 0.07), transparent 64%),
+        linear-gradient(180deg, #FFFFFF 0%, #F8FAFF 55%, #EFF4FD 100%) !important;
+    border-right: 1px solid var(--sigie-hairline);
 }
 .sigie-dark .mud-drawer {
     background:
         radial-gradient(120% 60% at 0% 0%, rgba(34, 211, 191, 0.10), transparent 60%),
         radial-gradient(120% 50% at 100% 100%, rgba(109, 92, 231, 0.12), transparent 62%),
         linear-gradient(180deg, #0A1020 0%, #070C17 55%, #04070F 100%) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .mud-drawer .mud-navmenu { padding-inline: 0; }
@@ -288,10 +314,11 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
     padding: 18px 22px 7px;
     font-size: 0.66rem; font-weight: 700;
     letter-spacing: 0.14em; text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.36) !important;
     white-space: nowrap;
     transition: opacity var(--sigie-mid) var(--sigie-ease);
 }
+.sigie-light .sigie-nav-section { color: color-mix(in srgb, var(--mud-palette-text-secondary) 78%, transparent) !important; }
+.sigie-dark  .sigie-nav-section { color: rgba(255, 255, 255, 0.36) !important; }
 
 /* Links */
 .mud-drawer .mud-nav-link {
@@ -300,26 +327,32 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
     padding: 10px 14px;
     border-radius: var(--sigie-radius-sm);
     font-size: 0.875rem; font-weight: 550;
-    color: rgba(255, 255, 255, 0.78);
     overflow: hidden;
     transition: color var(--sigie-fast) var(--sigie-ease),
                 background var(--sigie-fast) var(--sigie-ease),
                 transform var(--sigie-mid) var(--sigie-spring);
 }
 .mud-drawer .mud-nav-link .mud-nav-link-icon {
-    color: rgba(255, 255, 255, 0.58);
     transition: color var(--sigie-fast) var(--sigie-ease), transform var(--sigie-mid) var(--sigie-spring);
     min-width: 34px;
 }
-.mud-drawer .mud-nav-link:hover {
-    background: rgba(255, 255, 255, 0.07);
-    color: #fff;
-    transform: translateX(3px);
+.mud-drawer .mud-nav-link:hover { transform: translateX(3px); }
+.mud-drawer .mud-nav-link:hover .mud-nav-link-icon { transform: scale(1.08); }
+
+/* Light rail */
+.sigie-light .mud-drawer .mud-nav-link { color: #41506A; }
+.sigie-light .mud-drawer .mud-nav-link .mud-nav-link-icon { color: #7C8AA3; }
+.sigie-light .mud-drawer .mud-nav-link:hover {
+    background: color-mix(in srgb, var(--mud-palette-secondary) 11%, transparent);
+    color: var(--mud-palette-text-primary);
 }
-.mud-drawer .mud-nav-link:hover .mud-nav-link-icon {
-    color: var(--sigie-cyan-up);
-    transform: scale(1.08);
-}
+.sigie-light .mud-drawer .mud-nav-link:hover .mud-nav-link-icon { color: var(--sigie-cyan); }
+
+/* Dark rail */
+.sigie-dark .mud-drawer .mud-nav-link { color: rgba(255, 255, 255, 0.78); }
+.sigie-dark .mud-drawer .mud-nav-link .mud-nav-link-icon { color: rgba(255, 255, 255, 0.58); }
+.sigie-dark .mud-drawer .mud-nav-link:hover { background: rgba(255, 255, 255, 0.07); color: #fff; }
+.sigie-dark .mud-drawer .mud-nav-link:hover .mud-nav-link-icon { color: var(--sigie-cyan-up); }
 
 /* Active: gradient plate + glow + animated left marker. */
 .mud-drawer .mud-nav-link.active {
@@ -350,11 +383,11 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 .sigie-rail-foot {
     margin-top: auto;
     padding: 16px 20px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-    color: rgba(255, 255, 255, 0.42);
     font-size: 0.7rem;
     white-space: nowrap;
 }
+.sigie-light .sigie-rail-foot { border-top: 1px solid var(--sigie-hairline); color: var(--mud-palette-text-secondary); }
+.sigie-dark  .sigie-rail-foot { border-top: 1px solid rgba(255, 255, 255, 0.06); color: rgba(255, 255, 255, 0.42); }
 .mud-drawer .mud-navmenu { display: flex; flex-direction: column; height: 100%; }
 
 /* Collapsed (mini) rail: icons only, centred. */
@@ -377,8 +410,9 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
     display: block;
     width: 22px; height: 2px; margin: 0 auto;
     border-radius: 2px;
-    background: rgba(255, 255, 255, 0.14);
 }
+.sigie-light .mud-drawer--closed.mud-drawer-mini .sigie-nav-section::after { background: var(--sigie-hairline); }
+.sigie-dark  .mud-drawer--closed.mud-drawer-mini .sigie-nav-section::after { background: rgba(255, 255, 255, 0.14); }
 
 /* ------------------------------------------------- 6. Surfaces (the cards) */
 .mud-main-content { position: relative; z-index: 1; }
@@ -451,6 +485,31 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 .mud-overlay-dialog { background: color-mix(in srgb, var(--sigie-navy) 55%, transparent) !important; }
 .mud-snackbar { border-radius: var(--sigie-radius-sm) !important; }
 
+/* Tooltips are always dark-on-light-text — they must NOT inherit the glass
+   surface above, or they turn white-on-white in light mode.
+   (Declared after .mud-popover on purpose: same specificity, later wins.) */
+.mud-tooltip,
+.mud-popover.mud-tooltip {
+    background: color-mix(in srgb, var(--sigie-navy) 95%, transparent) !important;
+    color: #FFFFFF !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border-radius: 10px !important;
+    padding: 6px 11px;
+    font-size: 0.75rem; font-weight: 600; letter-spacing: 0.01em;
+    box-shadow: var(--sigie-shadow-2) !important;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+}
+.mud-tooltip * { color: #FFFFFF !important; }
+/* When MudBlazor wraps the tooltip in a popover, that wrapper stays invisible. */
+.mud-popover:has(> .mud-tooltip) {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+}
+
 /* ------------------------------------------- 7. Buttons, chips and inputs */
 .mud-button-root {
     border-radius: var(--sigie-radius-sm);
@@ -489,6 +548,11 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 .mud-input-control:focus-within { transform: translateY(-1px); }
 
 .mud-alert { border-radius: var(--sigie-radius-sm) !important; }
+
+/* Across the app, MudText Color="Secondary" is used to mean "muted caption",
+   not "paint this with the teal accent". Render it as muted ink instead —
+   this only touches typography, chips/buttons keep the real accent colour. */
+.mud-typography.mud-secondary-text { color: var(--mud-palette-text-secondary) !important; }
 .mud-tabs .mud-tab { text-transform: none; font-weight: 600; letter-spacing: 0; }
 
 /* Progress bars: rounded, with a soft glow at the leading edge. */

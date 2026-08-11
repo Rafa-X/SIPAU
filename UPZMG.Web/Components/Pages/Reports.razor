@@ -10,67 +10,95 @@
 
 @if (_template is null)
 {
-    <MudGrid>
-        <!-- Catálogo de plantillas -->
-        <MudItem xs="12" md="7">
-            <MudText Typo="Typo.h6" Class="mb-2">Nuevo reporte</MudText>
-            @if (_templates.Count == 0)
-            {
-                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">No hay plantillas disponibles.</MudAlert>
-            }
-            <MudGrid>
-                @foreach (var t in _templates)
-                {
-                    <MudItem xs="12" sm="6">
-                        <MudPaper Elevation="1" Class="pa-4 d-flex flex-column" Style="height:100%">
-                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
-                                <span class="sigie-icon-badge teal" style="width:40px;height:40px;border-radius:11px">
-                                    <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" />
-                                </span>
-                                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">911 · v@t.Version</MudChip>
-                            </MudStack>
-                            <MudText Typo="Typo.subtitle1" Style="font-weight:600" Class="flex-grow-1">@t.DisplayName</MudText>
-                            <MudButton Variant="Variant.Filled" Color="Color.Secondary" Class="mt-3" FullWidth="true"
-                                       StartIcon="@Icons.Material.Filled.Add" OnClick="() => StartNew(t)">
-                                Iniciar captura
-                            </MudButton>
-                        </MudPaper>
-                    </MudItem>
-                }
-            </MudGrid>
-        </MudItem>
+    @* ── Catálogo de plantillas ───────────────────────────────────────── *@
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3" Wrap="Wrap.Wrap">
+        <MudText Typo="Typo.h6">Nuevo reporte</MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            @_templates.Count @(_templates.Count == 1 ? "plantilla disponible" : "plantillas disponibles")
+        </MudText>
+    </MudStack>
 
-        <!-- Historial reciente -->
-        <MudItem xs="12" md="5">
-            <MudText Typo="Typo.h6" Class="mb-2">Mis reportes recientes</MudText>
-            <MudPaper Elevation="1" Class="pa-2">
-                @if (_recent.Count == 0)
+    @if (_templates.Count == 0)
+    {
+        <MudPaper Elevation="0" Class="pa-8 mb-8" Style="text-align:center">
+            <MudIcon Icon="@Icons.Material.Filled.FolderOff" Size="Size.Large" Color="Color.Secondary" />
+            <MudText Typo="Typo.subtitle1" Class="mt-2" Style="font-weight:650">No hay plantillas disponibles</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Agrega un archivo JSON en <code>Views/Reports/Templates</code> para habilitar un formato.
+            </MudText>
+        </MudPaper>
+    }
+    else
+    {
+        <MudGrid Class="mb-6">
+            @foreach (var t in _templates)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudPaper Elevation="0" Class="pa-5 d-flex flex-column sigie-lift" Style="height:100%">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
+                            <span class="sigie-icon-badge teal">
+                                <MudIcon Icon="@Icons.Material.Filled.Description" />
+                            </span>
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">
+                                @($"{t.ReportType} · v{t.Version}")
+                            </MudChip>
+                        </MudStack>
+
+                        <MudText Typo="Typo.subtitle1" Style="font-weight:700;line-height:1.3">@t.DisplayName</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1 flex-grow-1">
+                            @t.Sections.Count @(t.Sections.Count == 1 ? "sección" : "secciones")
+                        </MudText>
+
+                        <MudButton Variant="Variant.Filled" Color="Color.Secondary" Class="mt-4" FullWidth="true"
+                                   StartIcon="@Icons.Material.Filled.Add" OnClick="() => StartNew(t)">
+                            Iniciar captura
+                        </MudButton>
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+
+    @* ── Historial reciente ───────────────────────────────────────────── *@
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3" Wrap="Wrap.Wrap">
+        <MudText Typo="Typo.h6">Mis reportes recientes</MudText>
+        @if (_recent.Count > 0)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Últimos @_recent.Count</MudText>
+        }
+    </MudStack>
+
+    <MudPaper Elevation="0" Class="@(_recent.Count == 0 ? "pa-8" : "pa-2")"
+              Style="@(_recent.Count == 0 ? "text-align:center" : null)">
+        @if (_recent.Count == 0)
+        {
+            <MudIcon Icon="@Icons.Material.Filled.HistoryToggleOff" Size="Size.Large" Color="Color.Secondary" />
+            <MudText Typo="Typo.subtitle1" Class="mt-2" Style="font-weight:650">Aún no has capturado reportes</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                El historial empieza a guardarse en cuanto exista la tabla <b>reports</b> en la base de datos.
+            </MudText>
+        }
+        else
+        {
+            <MudList T="string" Dense="true">
+                @foreach (var r in _recent)
                 {
-                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-3">
-                        Sin reportes recientes. (El historial se guarda cuando la tabla <b>reports</b> existe en la base de datos.)
-                    </MudText>
+                    <MudListItem T="string" OnClick="() => Resume(r.Id)">
+                        <div class="d-flex justify-space-between align-center">
+                            <div>
+                                <MudText Typo="Typo.body2" Style="font-weight:650">@r.DisplayName</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    @($"{r.ReportType} · v{r.Version}") · @r.LastModified.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                </MudText>
+                            </div>
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@StatusColor(r.Status)">@StatusLabel(r.Status)</MudChip>
+                        </div>
+                    </MudListItem>
+                    <MudDivider />
                 }
-                else
-                {
-                    <MudList T="string" Dense="true">
-                        @foreach (var r in _recent)
-                        {
-                            <MudListItem T="string" OnClick="() => Resume(r.Id)">
-                                <div class="d-flex justify-space-between align-center">
-                                    <div>
-                                        <MudText Typo="Typo.body2" Style="font-weight:600">@r.DisplayName</MudText>
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@r.LastModified.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</MudText>
-                                    </div>
-                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@StatusColor(r.Status)">@StatusLabel(r.Status)</MudChip>
-                                </div>
-                            </MudListItem>
-                            <MudDivider />
-                        }
-                    </MudList>
-                }
-            </MudPaper>
-        </MudItem>
-    </MudGrid>
+            </MudList>
+        }
+    </MudPaper>
 }
 else
 {
@@ -80,7 +108,7 @@ else
         <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
             <div>
                 <MudText Typo="Typo.h6">@_template.DisplayName</MudText>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">@_template.ReportType · v@_template.Version</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@($"{_template.ReportType} · v{_template.Version}")</MudText>
             </div>
             @if (_template.Sections.Count > 0)
             {
