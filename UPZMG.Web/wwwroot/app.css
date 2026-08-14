@@ -218,10 +218,7 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
     color: inherit; text-decoration: none;
     transition: background var(--sigie-fast) var(--sigie-ease), transform var(--sigie-mid) var(--sigie-spring);
 }
-.sigie-brand:hover {
-    background: color-mix(in srgb, var(--mud-palette-appbar-text) 9%, transparent);
-    transform: translateY(-1px);
-}
+.sigie-brand:hover { background: color-mix(in srgb, var(--mud-palette-appbar-text) 9%, transparent); }
 .sigie-brand:hover .sigie-brand-mark { box-shadow: 0 8px 22px -4px color-mix(in srgb, var(--sigie-cyan) 75%, transparent); }
 .sigie-brand-mark {
     position: relative;
@@ -234,18 +231,16 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
     box-shadow: 0 6px 18px -4px color-mix(in srgb, var(--sigie-cyan) 60%, transparent);
     overflow: hidden;
 }
-/* Slow light sweep across the logo tile. */
+/* Light sweep across the logo tile — on hover only. A permanent loop in the
+   corner of the eye is distracting during data entry. */
 .sigie-brand-mark::after {
     content: '';
     position: absolute; inset: 0;
-    background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.55) 50%, transparent 70%);
+    background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.5) 50%, transparent 70%);
     transform: translateX(-130%);
-    animation: sigie-sheen 6s var(--sigie-ease-soft) infinite;
+    transition: transform 0.75s var(--sigie-ease);
 }
-@keyframes sigie-sheen {
-    0%, 62% { transform: translateX(-130%); }
-    82%, 100% { transform: translateX(130%); }
-}
+.sigie-brand:hover .sigie-brand-mark::after { transform: translateX(130%); }
 .sigie-brand-name {
     font-family: var(--sigie-font-display);
     font-weight: 800; font-size: 18px; letter-spacing: -0.02em; line-height: 1;
@@ -481,11 +476,9 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
     pointer-events: none;
 }
 
-.mud-main-content .mud-paper:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--sigie-shadow-2) !important;
-    border-color: color-mix(in srgb, var(--mud-palette-secondary) 38%, transparent) !important;
-}
+/* Plain cards deliberately do NOT react to the pointer — see MOTION POLICY.
+   A card holding a table is not a button and should not bob when the cursor
+   crosses it. Cards you can actually click opt in with .sigie-lift. */
 
 /* Nested papers (grids inside cards) must stay flat. */
 .mud-main-content .mud-paper .mud-paper {
@@ -496,10 +489,15 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
     -webkit-backdrop-filter: none;
 }
 .mud-main-content .mud-paper .mud-paper::before { display: none; }
-.mud-main-content .mud-paper .mud-paper:hover { transform: none; }
 
-/* Opt-in extra lift for KPI tiles. */
-.sigie-lift:hover { transform: translateY(-5px) !important; }
+/* Opt-in feedback, applied deliberately per card: focal KPI tiles and cards
+   that lead somewhere. Never applied wholesale to every surface. */
+.sigie-lift { cursor: default; }
+.sigie-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--sigie-shadow-2) !important;
+    border-color: color-mix(in srgb, var(--mud-palette-secondary) 40%, transparent) !important;
+}
 
 /* Glass popovers, dialogs, snackbars */
 .mud-popover {
@@ -568,19 +566,22 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
     box-shadow: 0 12px 28px -10px color-mix(in srgb, var(--mud-palette-secondary) 75%, transparent) !important;
 }
 .mud-button-root:active { transform: translateY(0) scale(0.985); }
-.mud-icon-button { transition: transform var(--sigie-mid) var(--sigie-spring), background-color var(--sigie-fast) var(--sigie-ease); }
-.mud-icon-button:hover { transform: translateY(-1px); }
+/* Icon buttons keep MudBlazor's own hover plate — no extra travel. */
+.mud-icon-button { transition: background-color var(--sigie-fast) var(--sigie-ease); }
 
+/* Chips are labels by default (status, period, counts): they must stay put.
+   Only genuinely clickable chips get feedback. */
 .mud-chip {
     border-radius: 999px !important;
     font-weight: 600;
-    transition: transform var(--sigie-fast) var(--sigie-spring), filter var(--sigie-fast) var(--sigie-ease);
 }
-.mud-chip:hover { transform: translateY(-1px); }
+.mud-chip.mud-clickable {
+    transition: filter var(--sigie-fast) var(--sigie-ease), background-color var(--sigie-fast) var(--sigie-ease);
+}
+.mud-chip.mud-clickable:hover { filter: brightness(1.08); }
 
+/* Inputs signal focus with the border and ring, never by moving. */
 .mud-input-outlined-border { border-radius: var(--sigie-radius-sm) !important; transition: border-color var(--sigie-fast) var(--sigie-ease); }
-.mud-input-control { transition: transform var(--sigie-fast) var(--sigie-ease); }
-.mud-input-control:focus-within { transform: translateY(-1px); }
 
 .mud-alert { border-radius: var(--sigie-radius-sm) !important; }
 
@@ -658,8 +659,6 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 .mud-chart .mud-chart-bar:nth-of-type(6) { animation-delay: 0.27s; }
 .mud-chart .mud-chart-bar:nth-of-type(7) { animation-delay: 0.32s; }
 .mud-chart .mud-chart-bar:nth-of-type(8) { animation-delay: 0.37s; }
-.mud-chart:hover .mud-chart-bar { opacity: 0.55; }
-.mud-chart .mud-chart-bar:hover { opacity: 1; }
 
 /* Donut / pie segments fade+scale in (never touch their stroke-dasharray —
    MudBlazor uses it to lay out the arcs). */
@@ -695,11 +694,21 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 }
 
 /* ------------------------------------------------------------- 10. Motion */
+/* ============================ MOTION POLICY ================================
+   1. Only surfaces you can ACT ON move under the pointer: links, buttons,
+      menu items, table rows, clickable cards. Text, labels, status chips and
+      plain cards stay perfectly still — movement there is noise, not feedback.
+   2. Entrances are opacity + a short translate. No blur: it reads as an
+      out-of-focus glitch while the page settles.
+   3. Continuous (infinite) animation is reserved for things that genuinely
+      convey ongoing state: the "live" pulse and the login backdrop.
+   ========================================================================== */
+
 /* Page transition — keyed on the route, so every navigation replays it. */
-.sigie-page { animation: sigie-page-in 0.5s var(--sigie-ease) both; }
+.sigie-page { animation: sigie-page-in 0.4s var(--sigie-ease) both; }
 @keyframes sigie-page-in {
-    from { opacity: 0; transform: translateY(14px) scale(0.994); filter: blur(5px); }
-    to   { opacity: 1; transform: none; filter: blur(0); }
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: none; }
 }
 
 /* Cards cascade in rather than appearing all at once. */
@@ -726,7 +735,8 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
     flex: 0 0 auto;
     transition: transform var(--sigie-mid) var(--sigie-spring), box-shadow var(--sigie-mid) var(--sigie-ease);
 }
-.mud-paper:hover .sigie-icon-badge { transform: translateY(-2px) rotate(-4deg) scale(1.05); }
+/* Only the badge of a card that is itself interactive responds. */
+.sigie-lift:hover .sigie-icon-badge { transform: scale(1.06); }
 .sigie-icon-badge.navy   { background: var(--sigie-grad-navy);   box-shadow: 0 10px 22px -8px rgba(23, 58, 109, 0.85); }
 .sigie-icon-badge.teal   { background: var(--sigie-grad-cool);   box-shadow: 0 10px 22px -8px rgba(15, 181, 160, 0.9); }
 .sigie-icon-badge.violet { background: var(--sigie-grad-violet); box-shadow: 0 10px 22px -8px rgba(109, 92, 231, 0.9); }
@@ -786,6 +796,232 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
     100% { box-shadow: 0 0 0 0 transparent; }
 }
 
+/* ---------- SectionCard ---------- */
+.sigie-card { display: flex; flex-direction: column; }
+.sigie-card-fill { height: 100%; }
+
+.sigie-card-head {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 20px 22px 0;
+}
+.sigie-card-titles { flex: 1 1 auto; min-width: 0; }
+.sigie-card-eyebrow {
+    display: block;
+    font-size: 0.64rem; font-weight: 700;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--mud-palette-secondary);
+    margin-bottom: 3px;
+}
+.sigie-card-actions {
+    display: flex; align-items: center; gap: 8px;
+    flex-wrap: wrap; justify-content: flex-end;
+    margin-left: auto;
+}
+.sigie-card-body { flex: 1 1 auto; padding: 18px 22px 22px; min-width: 0; }
+.sigie-card-flush > .sigie-card-body { padding: 12px 6px 6px; }
+.sigie-card-head + .sigie-card-body { padding-top: 16px; }
+
+.sigie-card-foot {
+    padding: 13px 22px;
+    border-top: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 55%, transparent);
+    background: color-mix(in srgb, var(--mud-palette-text-secondary) 4%, transparent);
+    font-size: 0.79rem;
+    color: var(--mud-palette-text-secondary);
+}
+
+/* ---------- EmptyState ---------- */
+.sigie-empty { padding: 42px 24px; text-align: center; }
+.sigie-empty-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 62px; height: 62px; margin-bottom: 14px;
+    border-radius: 20px;
+    color: var(--mud-palette-text-secondary);
+    background: color-mix(in srgb, var(--mud-palette-text-secondary) 9%, transparent);
+    border: 1px solid var(--sigie-hairline);
+}
+.sigie-empty-text { max-width: 46ch; margin: 4px auto 0; }
+
+/* ---------- SVG chart engine (TrendChart / BarChart) ----------
+   A CSS grid keeps the HTML axis labels in register with the SVG plot:
+     col 1 = value axis   col 2 = plot
+     row 1 = legend       row 2 = plot   row 3 = category axis
+   The SVG is stretched horizontally (preserveAspectRatio="none") but keeps a
+   1:1 vertical scale, so a value's % position maps exactly onto its label. */
+.sigie-chart {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    column-gap: 10px;
+    width: 100%;
+}
+.sigie-chart-svg {
+    display: block;
+    width: 100%;
+    height: var(--sigie-chart-h, 280px);
+    overflow: visible;
+}
+
+.sigie-chart-yaxis { grid-column: 1; grid-row: 2; position: relative; }
+.sigie-chart-yaxis span {
+    position: absolute; right: 0;
+    transform: translateY(-50%);
+    font-size: 0.72rem; font-weight: 500; white-space: nowrap;
+    color: var(--mud-palette-text-secondary);
+}
+
+.sigie-chart-plot { grid-column: 2; grid-row: 2; position: relative; }
+
+.sigie-chart-xaxis { grid-column: 2; grid-row: 3; position: relative; height: 26px; }
+.sigie-chart-xaxis span {
+    position: absolute; top: 7px;
+    transform: translateX(-50%);
+    font-size: 0.72rem; font-weight: 500; white-space: nowrap;
+    color: var(--mud-palette-text-secondary);
+    transition: color var(--sigie-fast) var(--sigie-ease), font-weight var(--sigie-fast) var(--sigie-ease);
+}
+.sigie-chart-xaxis span.on { color: var(--mud-palette-text-primary); font-weight: 700; }
+
+.sigie-chart-legend {
+    grid-column: 1 / -1; grid-row: 1;
+    display: flex; flex-wrap: wrap; gap: 16px;
+    margin-bottom: 10px;
+}
+.sigie-chart-key {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 0.76rem; font-weight: 600;
+    color: var(--mud-palette-text-secondary);
+}
+.sigie-chart-key i { width: 14px; height: 3px; border-radius: 2px; }
+.sigie-chart-key i.dash {
+    background-image: linear-gradient(90deg, currentColor 55%, transparent 0);
+    background-size: 6px 3px;
+}
+
+.sigie-chart-grid {
+    stroke: color-mix(in srgb, var(--mud-palette-lines-default) 85%, transparent);
+    stroke-width: 1;
+    stroke-dasharray: 3 6;
+}
+
+/* Modelled region */
+.sigie-chart-forecast { fill: color-mix(in srgb, var(--mud-palette-tertiary) 7%, transparent); }
+.sigie-chart-divider {
+    stroke: color-mix(in srgb, var(--mud-palette-tertiary) 55%, transparent);
+    stroke-width: 1; stroke-dasharray: 4 4;
+}
+.sigie-chart-tag {
+    position: absolute; top: 8px;
+    margin-left: 8px;
+    font-size: 0.6rem; font-weight: 700;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--mud-palette-tertiary);
+    pointer-events: none;
+}
+
+/* Series */
+.sigie-chart-line {
+    stroke-width: 2.5;
+    stroke-linecap: round; stroke-linejoin: round;
+    stroke-dasharray: 3000; stroke-dashoffset: 3000;
+    animation: sigie-draw 1.3s var(--sigie-ease) forwards;
+}
+.sigie-chart-line.dashed {
+    stroke-width: 1.8;
+    opacity: 0.75;
+    animation: none;
+    stroke-dasharray: 6 6; stroke-dashoffset: 0;
+}
+.sigie-chart-area { animation: sigie-fade-in 1.1s var(--sigie-ease) 0.25s both; }
+@keyframes sigie-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.sigie-chart-bar {
+    transform-box: fill-box; transform-origin: 50% 100%;
+    animation: sigie-bar-grow 0.65s var(--sigie-ease) both;
+    transition: opacity var(--sigie-fast) var(--sigie-ease);
+}
+.sigie-chart-bar.dim { opacity: 0.38; }
+
+/* Hover affordances */
+.sigie-chart-guide {
+    stroke: color-mix(in srgb, var(--mud-palette-text-secondary) 45%, transparent);
+    stroke-width: 1; stroke-dasharray: 3 4;
+}
+/* Hover dots are HTML, so they stay perfectly round despite the stretched SVG. */
+.sigie-chart-dot {
+    position: absolute;
+    width: 11px; height: 11px; border-radius: 50%;
+    transform: translate(-50%, -50%);
+    border: 2.5px solid var(--mud-palette-surface);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    pointer-events: none;
+    animation: sigie-fade-in 0.14s var(--sigie-ease) both;
+}
+.sigie-chart-band { fill: transparent; cursor: crosshair; }
+
+/* Tooltip: HTML over SVG, positioned as a % of the viewBox so it stays
+   anchored to its data point at every container width. */
+.sigie-chart-tip {
+    position: absolute; top: 6px;
+    transform: translateX(-50%);
+    min-width: 150px; padding: 9px 12px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--sigie-navy) 95%, transparent);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: var(--sigie-shadow-2);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    color: #fff;
+    pointer-events: none;
+    z-index: 3;
+    animation: sigie-fade-in 0.14s var(--sigie-ease) both;
+}
+.sigie-chart-tip-head {
+    font-size: 0.72rem; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 5px;
+}
+.sigie-chart-tip-row {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.79rem; line-height: 1.7;
+    white-space: nowrap;
+}
+.sigie-chart-tip-row i { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+.sigie-chart-tip-row span { color: rgba(255, 255, 255, 0.72); }
+.sigie-chart-tip-row b { margin-left: auto; font-weight: 700; }
+
+/* ---------- MetricRing ---------- */
+.sigie-ring { position: relative; width: 100%; margin: 0 auto; }
+.sigie-ring svg { display: block; width: 100%; height: auto; }
+.sigie-ring-track { stroke: color-mix(in srgb, var(--mud-palette-text-secondary) 15%, transparent); }
+.sigie-ring-arc {
+    stroke-dashoffset: var(--sigie-ring-offset);
+    animation: sigie-ring-sweep 1.2s var(--sigie-ease) both;
+    filter: drop-shadow(0 4px 12px color-mix(in srgb, var(--mud-palette-secondary) 40%, transparent));
+}
+@keyframes sigie-ring-sweep {
+    from { stroke-dashoffset: 340; }
+    to   { stroke-dashoffset: var(--sigie-ring-offset); }
+}
+.sigie-ring-center {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; pointer-events: none;
+}
+.sigie-ring-value {
+    font-family: var(--sigie-font-display);
+    font-size: clamp(1.5rem, 4.6vw, 2.1rem); font-weight: 800;
+    line-height: 1; letter-spacing: -0.02em;
+    color: var(--mud-palette-text-primary);
+}
+.sigie-ring-label {
+    margin-top: 5px;
+    font-size: 0.68rem; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+}
+
 /* Logout row inside the user menu (native submit for the antiforgery form). */
 .sigie-logout-btn {
     display: flex; align-items: center; width: 100%;
@@ -836,6 +1072,111 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 }
 @keyframes sigie-grid-pan { from { background-position: 0 0; } to { background-position: 48px 48px; } }
 
+/* A statistical motif: two trend curves that draw themselves, rest, and fade.
+   It is the product's own subject matter used as ornament — quiet enough to
+   stay academic rather than decorative. */
+.sigie-login-plot {
+    position: absolute; inset: auto 0 0 0;
+    width: 100%; height: 46vh;
+    opacity: 0.55;
+}
+.sigie-login-plot polyline {
+    fill: none;
+    stroke: rgba(34, 211, 191, 0.55);
+    stroke-width: 1.6;
+    stroke-linecap: round; stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+    stroke-dasharray: 2000; stroke-dashoffset: 2000;
+    animation: sigie-plot-draw 16s var(--sigie-ease-soft) infinite;
+}
+.sigie-login-plot polyline.lag {
+    stroke: rgba(109, 92, 231, 0.5);
+    stroke-dasharray: 5 9;
+    animation-delay: 1.6s;
+}
+@keyframes sigie-plot-draw {
+    0%        { stroke-dashoffset: 2000; opacity: 0; }
+    10%       { opacity: 1; }
+    55%, 74%  { stroke-dashoffset: 0; opacity: 1; }
+    88%, 100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+/* Slow-drifting data points. */
+.sigie-node {
+    position: absolute;
+    width: 5px; height: 5px; border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 12px 2px rgba(34, 211, 191, 0.45);
+    animation: sigie-float 18s var(--sigie-ease-soft) infinite alternate;
+}
+.sigie-node.n1 { left: 14%; top: 22%; animation-duration: 17s; }
+.sigie-node.n2 { left: 32%; top: 68%; animation-duration: 23s; animation-delay: -4s; }
+.sigie-node.n3 { left: 61%; top: 18%; animation-duration: 20s; animation-delay: -9s; }
+.sigie-node.n4 { left: 78%; top: 54%; animation-duration: 26s; animation-delay: -2s; }
+.sigie-node.n5 { left: 47%; top: 38%; animation-duration: 21s; animation-delay: -13s; }
+@keyframes sigie-float {
+    from { transform: translate3d(0, 0, 0); opacity: 0.35; }
+    50%  { opacity: 0.85; }
+    to   { transform: translate3d(2.5vw, -3vh, 0); opacity: 0.4; }
+}
+
+/* ---------- Split shell: institutional panel + credentials ---------- */
+.sigie-login-shell {
+    position: relative; z-index: 2;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    gap: 40px;
+    width: 100%; max-width: 1080px;
+}
+@media (min-width: 1024px) {
+    .sigie-login-shell {
+        grid-template-columns: 1.05fr minmax(0, 430px);
+        align-items: center;
+        gap: 72px;
+        justify-items: stretch;
+    }
+}
+
+.sigie-login-hero { display: none; color: #fff; }
+@media (min-width: 1024px) { .sigie-login-hero { display: block; } }
+
+.sigie-hero-title {
+    font-family: var(--sigie-font-display);
+    font-size: clamp(2rem, 3.2vw, 2.85rem);
+    font-weight: 800; letter-spacing: -0.03em; line-height: 1.14;
+    margin: 26px 0 16px;
+    animation: sigie-hero-in 0.7s var(--sigie-ease) 0.05s both;
+}
+.sigie-hero-lead {
+    font-size: 0.98rem; line-height: 1.65;
+    color: rgba(255, 255, 255, 0.66);
+    max-width: 52ch; margin: 0 0 30px;
+    animation: sigie-hero-in 0.7s var(--sigie-ease) 0.15s both;
+}
+.sigie-hero-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+.sigie-hero-list li {
+    display: flex; align-items: flex-start; gap: 14px;
+    animation: sigie-hero-in 0.7s var(--sigie-ease) both;
+}
+.sigie-hero-list li:nth-child(1) { animation-delay: 0.26s; }
+.sigie-hero-list li:nth-child(2) { animation-delay: 0.34s; }
+.sigie-hero-list li:nth-child(3) { animation-delay: 0.42s; }
+.sigie-hero-list b { display: block; font-size: 0.9rem; font-weight: 700; margin-bottom: 2px; }
+.sigie-hero-list span { font-size: 0.85rem; color: rgba(255, 255, 255, 0.58); line-height: 1.5; }
+.sigie-hero-ico {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; flex: 0 0 auto;
+    border-radius: 11px;
+    color: var(--sigie-cyan-up);
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+@keyframes sigie-hero-in {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: none; }
+}
+
 .sigie-login-card {
     position: relative; z-index: 2;
     width: 100%; max-width: 430px;
@@ -850,9 +1191,15 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
     animation: sigie-page-in 0.7s var(--sigie-ease) both;
 }
 .sigie-brand-mark.lg { width: 46px; height: 46px; border-radius: 14px; font-size: 20px; }
-.sigie-login-brand { display: flex; align-items: center; gap: 13px; margin-bottom: 28px; }
+.sigie-login-brand {
+    display: flex; align-items: center; gap: 13px; margin-bottom: 28px;
+    animation: sigie-hero-in 0.6s var(--sigie-ease) both;
+}
 .sigie-login-title { font-family: var(--sigie-font-display); font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
-.sigie-login-sub { font-size: 11.5px; color: rgba(255,255,255,0.58); }
+.sigie-login-sub { font-size: 11.5px; color: rgba(255,255,255,0.58); max-width: 34ch; line-height: 1.4; }
+
+/* The card repeats the brand only when the institutional panel is hidden. */
+@media (min-width: 1024px) { .sigie-login-brand.compact { display: none; } }
 .sigie-login-h1 { font-family: var(--sigie-font-display); font-size: 27px; font-weight: 800; letter-spacing: -0.025em; margin: 0 0 6px; }
 .sigie-login-lead { font-size: 13.5px; color: rgba(255,255,255,0.62); margin: 0 0 24px; }
 
@@ -915,11 +1262,15 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
         animation-iteration-count: 1 !important;
         transition-duration: 0.001ms !important;
     }
-    body::before, .sigie-orb, .sigie-grid { animation: none !important; }
-    .mud-chart .mud-chart-line, .sigie-spark polyline { stroke-dashoffset: 0 !important; }
+    body::before, .sigie-orb, .sigie-grid, .sigie-node { animation: none !important; }
+    .sigie-login-plot polyline { animation: none !important; stroke-dashoffset: 0 !important; opacity: 1; }
+    .mud-chart .mud-chart-line,
+    .sigie-spark polyline,
+    .sigie-chart-line { stroke-dashoffset: 0 !important; }
+    .sigie-chart-bar, .sigie-ring-arc { animation: none !important; }
+    .sigie-ring-arc { stroke-dashoffset: var(--sigie-ring-offset); }
     .mud-drawer .mud-nav-link:hover,
     .sigie-lift:hover,
-    .mud-main-content .mud-paper:hover,
     .mud-button-filled:hover { transform: none !important; }
 }
 

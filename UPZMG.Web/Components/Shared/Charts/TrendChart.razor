@@ -1,0 +1,197 @@
+@*
+    Interactive line / area chart drawn as plain SVG from C#.
+
+    No JavaScript and no charting library: hover is handled by Blazor event
+    callbacks on transparent bands, which is why the tooltip works without any
+    interop.
+
+    Axis labels are HTML positioned over the plot (a CSS grid keeps them in
+    register). That keeps text crisp at every size instead of scaling with the
+    viewBox — and sidesteps Razor reserving the <text> tag.
+*@
+@using System.Globalization
+@using UPZMG.Web.Components.Shared.Charts
+
+<div class="sigie-chart" style="@($"--sigie-chart-h:{Height}px")">
+
+    @if (ShowLegend && Series.Count > 0)
+    {
+        <div class="sigie-chart-legend">
+            @foreach (var s in Series)
+            {
+                <span class="sigie-chart-key">
+                    <i class="@(s.Dashed ? "dash" : null)" style="@($"background:{s.Color}")"></i>@s.Name
+                </span>
+            }
+        </div>
+    }
+
+    <div class="sigie-chart-yaxis">
+        @foreach (var tick in _ticks)
+        {
+            <span style="@Pct("top", _scale.Y(tick) / Height * 100)">
+                @tick.ToString(ValueFormat, CultureInfo.CurrentCulture)
+            </span>
+        }
+    </div>
+
+    <div class="sigie-chart-plot" @onmouseleave="() => _hover = null">
+        <svg class="sigie-chart-svg" viewBox="@($"0 0 {VbW} {Height}")" preserveAspectRatio="none"
+             role="img" aria-label="@AriaLabel">
+
+            <defs>
+                @foreach (var (s, i) in Series.Select((s, i) => (s, i)).Where(t => t.s.Filled))
+                {
+                    <linearGradient id="@($"{_id}-fill-{i}")" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="@s.Color" stop-opacity="0.32" />
+                        <stop offset="100%" stop-color="@s.Color" stop-opacity="0" />
+                    </linearGradient>
+                }
+            </defs>
+
+            @* ---- grid ---- *@
+            @foreach (var tick in _ticks)
+            {
+                var y = ChartScale.N(_scale.Y(tick));
+                <line class="sigie-chart-grid" x1="0" x2="@VbW" y1="@y" y2="@y" vector-effect="non-scaling-stroke" />
+            }
+
+            @* ---- modelled region ---- *@
+            @if (ForecastX is { } fx)
+            {
+                <rect class="sigie-chart-forecast" x="@ChartScale.N(fx)" y="0"
+                      width="@ChartScale.N(VbW - fx)" height="@Height" />
+                <line class="sigie-chart-divider" x1="@ChartScale.N(fx)" x2="@ChartScale.N(fx)"
+                      y1="0" y2="@Height" vector-effect="non-scaling-stroke" />
+            }
+
+            @* ---- areas first, then strokes ---- *@
+            @foreach (var (s, i) in Series.Select((s, i) => (s, i)).Where(t => t.s.Filled))
+            {
+                <path class="sigie-chart-area" d="@AreaPath(s)" fill="@($"url(#{_id}-fill-{i})")" />
+            }
+
+            @foreach (var s in Series)
+            {
+                <path class="@($"sigie-chart-line{(s.Dashed ? " dashed" : null)}")" d="@LinePath(s)"
+                      stroke="@s.Color" fill="none" vector-effect="non-scaling-stroke" />
+            }
+
+            @* ---- hover guide + points ---- *@
+            @if (_hover is { } h)
+            {
+                var hx = ChartScale.N(_scale.X(h, Labels.Count));
+                <line class="sigie-chart-guide" x1="@hx" x2="@hx" y1="0" y2="@Height" vector-effect="non-scaling-stroke" />
+            }
+
+            @* ---- transparent hover bands, on top so they catch the pointer ---- *@
+            @for (int i = 0; i < Labels.Count; i++)
+            {
+                var index = i;
+                var bw = _scale.Width / Math.Max(1, Labels.Count - 1);
+                <rect class="sigie-chart-band" x="@ChartScale.N(_scale.X(i, Labels.Count) - bw / 2)" y="0"
+                      width="@ChartScale.N(bw)" height="@Height"
+                      @onmouseenter="() => _hover = index" />
+            }
+        </svg>
+
+        @* Hover dots are HTML so they stay round despite the stretched viewBox. *@
+        @if (_hover is { } hd)
+        {
+            @foreach (var s in Series.Where(s => hd < s.Values.Count))
+            {
+                <span class="sigie-chart-dot"
+                      style="@($"{Pct("left", _scale.X(hd, Labels.Count) / VbW * 100)};{Pct("top", _scale.Y(s.Values[hd]) / Height * 100)};background:{s.Color}")"></span>
+            }
+
+            <div class="sigie-chart-tip" style="@Pct("left", Math.Clamp(_scale.X(hd, Labels.Count) / VbW * 100, 6, 94))">
+                <div class="sigie-chart-tip-head">@Labels[hd]</div>
+                @foreach (var s in Series.Where(s => hd < s.Values.Count))
+                {
+                    <div class="sigie-chart-tip-row">
+                        <i style="@($"background:{s.Color}")"></i>
+                        <span>@s.Name</span>
+                        <b>@s.Values[hd].ToString(ValueFormat, CultureInfo.CurrentCulture)@Unit</b>
+                    </div>
+                }
+            </div>
+        }
+
+        @if (ForecastX is { } tagX)
+        {
+            <span class="sigie-chart-tag" style="@Pct("left", tagX / VbW * 100)">Pronóstico</span>
+        }
+    </div>
+
+    <div class="sigie-chart-xaxis">
+        @for (int i = 0; i < Labels.Count; i++)
+        {
+            if (Labels.Count > 10 && i % 2 == 1) { continue; }
+            <span class="@(_hover == i ? "on" : null)" style="@Pct("left", _scale.X(i, Labels.Count) / VbW * 100)">
+                @Labels[i]
+            </span>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>Category labels along the X axis.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<string> Labels { get; set; } = Array.Empty<string>();
+
+    /// <summary>Series to plot. Values are matched to <see cref="Labels"/> by index.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<ChartSeriesData> Series { get; set; } = Array.Empty<ChartSeriesData>();
+
+    /// <summary>Plot height in SVG units.</summary>
+    [Parameter] public int Height { get; set; } = 280;
+
+    /// <summary>Index from which the data stops being observed and becomes modelled.</summary>
+    [Parameter] public int? ForecastFromIndex { get; set; }
+
+    [Parameter] public string ValueFormat { get; set; } = "N0";
+    [Parameter] public string? Unit { get; set; }
+    [Parameter] public bool ShowLegend { get; set; } = true;
+    [Parameter] public string AriaLabel { get; set; } = "Gráfica de tendencia";
+
+    private const int VbW = 1000;
+
+    private readonly string _id = $"tc{Guid.NewGuid():N}"[..10];
+    private int? _hover;
+    private ChartScale _scale = null!;
+    private IReadOnlyList<double> _ticks = Array.Empty<double>();
+
+    protected override void OnParametersSet()
+    {
+        // The plot fills the whole viewBox; axis labels live outside it in HTML.
+        _scale = new ChartScale(
+            Series.SelectMany(s => s.Values),
+            left: 4, right: VbW - 4, top: 10, bottom: Height - 10);
+
+        _ticks = _scale.Ticks();
+        _hover = null;
+    }
+
+    private double? ForecastX =>
+        ForecastFromIndex is { } fi && fi > 0 && fi < Labels.Count
+            ? _scale.X(fi, Labels.Count)
+            : null;
+
+    private string LinePath(ChartSeriesData s)
+    {
+        if (s.Values.Count == 0) return string.Empty;
+        return string.Concat(s.Values.Select((v, i) =>
+            $"{(i == 0 ? "M" : "L")}{ChartScale.N(_scale.X(i, s.Values.Count))},{ChartScale.N(_scale.Y(v))}"));
+    }
+
+    private string AreaPath(ChartSeriesData s)
+    {
+        if (s.Values.Count == 0) return string.Empty;
+        var baseline = ChartScale.N(Height);
+        var first = ChartScale.N(_scale.X(0, s.Values.Count));
+        var last = ChartScale.N(_scale.X(s.Values.Count - 1, s.Values.Count));
+        return $"{LinePath(s)}L{last},{baseline}L{first},{baseline}Z";
+    }
+
+    /// <summary>Culture-invariant percentage declaration for inline positioning.</summary>
+    private static string Pct(string property, double value) =>
+        $"{property}:{value.ToString("0.##", CultureInfo.InvariantCulture)}%";
+}

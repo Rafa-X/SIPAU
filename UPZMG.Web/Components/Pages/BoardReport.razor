@@ -11,7 +11,7 @@
     </Actions>
 </PageHeader>
 
-<MudPaper Elevation="0" Class="pa-2">
+<SectionCard Flush="true" FullHeight="false">
     <DataToolbar @bind-Search="_search" Placeholder="Buscar periodo…"
                  Count="Filtered.Count" Total="_reports.Count" OnExport="ExportAsync">
         <Filters>
@@ -35,9 +35,7 @@
             <PropertyColumn Property="x => x.PageCount" Title="Páginas" />
             <TemplateColumn Title="Estado" SortBy="x => x.Status">
                 <CellTemplate>
-                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@SigieUi.StatusColor(context.Item.Status)">
-                        @context.Item.Status
-                    </MudChip>
+                    <StatusChip Status="@context.Item.Status" />
                 </CellTemplate>
             </TemplateColumn>
             <TemplateColumn Title="Acción" CellClass="d-flex justify-end" Sortable="false">
@@ -50,12 +48,12 @@
             </TemplateColumn>
         </Columns>
         <NoRecordsContent>
-            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-6" Style="text-align:center">
-                Ningún informe coincide con la búsqueda.
-            </MudText>
+            <EmptyState Icon="@Icons.Material.Filled.SearchOff"
+                        Title="Sin coincidencias"
+                        Description="Ningún informe coincide con la búsqueda o el filtro de estado." />
         </NoRecordsContent>
     </MudDataGrid>
-</MudPaper>
+</SectionCard>
 
 @code {
     private IReadOnlyList<BoardReportListItemModel> _reports = Array.Empty<BoardReportListItemModel>();

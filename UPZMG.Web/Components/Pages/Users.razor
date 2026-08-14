@@ -16,7 +16,7 @@
     </Actions>
 </PageHeader>
 
-<MudPaper Elevation="0" Class="pa-2">
+<SectionCard Flush="true" FullHeight="false">
     <DataToolbar @bind-Search="_search" Placeholder="Buscar usuario, correo o rol…"
                  Count="Filtered.Count" Total="_users.Count" OnExport="ExportAsync">
         <Filters>
@@ -71,12 +71,12 @@
             </TemplateColumn>
         </Columns>
         <NoRecordsContent>
-            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-6" Style="text-align:center">
-                Ningún usuario coincide con la búsqueda.
-            </MudText>
+            <EmptyState Icon="@Icons.Material.Filled.PersonSearch"
+                        Title="Sin coincidencias"
+                        Description="Ningún usuario coincide con la búsqueda o el filtro de estado." />
         </NoRecordsContent>
     </MudDataGrid>
-</MudPaper>
+</SectionCard>
 
 @code {
     private IReadOnlyList<UserListItemModel> _users = System.Array.Empty<UserListItemModel>();

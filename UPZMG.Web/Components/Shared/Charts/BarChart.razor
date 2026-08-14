@@ -1,0 +1,151 @@
+@*
+    Grouped bar chart drawn as plain SVG from C#, sharing ChartScale (and the
+    axis/tooltip conventions) with TrendChart.
+
+    Bars always grow from zero — a bar chart with a clipped baseline misleads.
+*@
+@using System.Globalization
+@using UPZMG.Web.Components.Shared.Charts
+
+<div class="sigie-chart" style="@($"--sigie-chart-h:{Height}px")">
+
+    @if (ShowLegend && Series.Count > 1)
+    {
+        <div class="sigie-chart-legend">
+            @foreach (var s in Series)
+            {
+                <span class="sigie-chart-key"><i style="@($"background:{s.Color}")"></i>@s.Name</span>
+            }
+        </div>
+    }
+
+    <div class="sigie-chart-yaxis">
+        @foreach (var tick in _ticks)
+        {
+            <span style="@Pct("top", _scale.Y(tick) / Height * 100)">
+                @tick.ToString(ValueFormat, CultureInfo.CurrentCulture)
+            </span>
+        }
+    </div>
+
+    <div class="sigie-chart-plot" @onmouseleave="() => _hover = null">
+        <svg class="sigie-chart-svg" viewBox="@($"0 0 {VbW} {Height}")" preserveAspectRatio="none"
+             role="img" aria-label="@AriaLabel">
+
+            <defs>
+                @foreach (var (s, i) in Series.Select((s, i) => (s, i)))
+                {
+                    <linearGradient id="@($"{_id}-bar-{i}")" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="@s.Color" stop-opacity="1" />
+                        <stop offset="100%" stop-color="@s.Color" stop-opacity="0.55" />
+                    </linearGradient>
+                }
+            </defs>
+
+            @foreach (var tick in _ticks)
+            {
+                var y = ChartScale.N(_scale.Y(tick));
+                <line class="sigie-chart-grid" x1="0" x2="@VbW" y1="@y" y2="@y" vector-effect="non-scaling-stroke" />
+            }
+
+            @for (int c = 0; c < Labels.Count; c++)
+            {
+                var category = c;
+                for (int s = 0; s < Series.Count; s++)
+                {
+                    if (category >= Series[s].Values.Count) { continue; }
+
+                    var geom = BarGeometry(category, s);
+                    var dimmed = _hover is { } h && h != category;
+
+                    <rect class="@($"sigie-chart-bar{(dimmed ? " dim" : null)}")"
+                          x="@ChartScale.N(geom.X)" y="@ChartScale.N(geom.Y)"
+                          width="@ChartScale.N(geom.W)" height="@ChartScale.N(geom.H)" rx="3"
+                          fill="@($"url(#{_id}-bar-{s})")"
+                          style="@($"animation-delay:{ChartScale.N((category * Series.Count + s) * 0.05)}s")" />
+                }
+            }
+
+            @for (int c = 0; c < Labels.Count; c++)
+            {
+                var category = c;
+                var bw = _scale.BandWidth(Labels.Count);
+                <rect class="sigie-chart-band" x="@ChartScale.N(_scale.Left + category * bw)" y="0"
+                      width="@ChartScale.N(bw)" height="@Height"
+                      @onmouseenter="() => _hover = category" />
+            }
+        </svg>
+
+        @if (_hover is { } hi && hi < Labels.Count)
+        {
+            <div class="sigie-chart-tip" style="@Pct("left", Math.Clamp(_scale.BandCenter(hi, Labels.Count) / VbW * 100, 6, 94))">
+                <div class="sigie-chart-tip-head">@Labels[hi]</div>
+                @foreach (var s in Series.Where(s => hi < s.Values.Count))
+                {
+                    <div class="sigie-chart-tip-row">
+                        <i style="@($"background:{s.Color}")"></i>
+                        <span>@s.Name</span>
+                        <b>@s.Values[hi].ToString(ValueFormat, CultureInfo.CurrentCulture)@Unit</b>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="sigie-chart-xaxis">
+        @for (int c = 0; c < Labels.Count; c++)
+        {
+            <span class="@(_hover == c ? "on" : null)" style="@Pct("left", _scale.BandCenter(c, Labels.Count) / VbW * 100)">
+                @Labels[c]
+            </span>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<string> Labels { get; set; } = Array.Empty<string>();
+    [Parameter, EditorRequired] public IReadOnlyList<ChartSeriesData> Series { get; set; } = Array.Empty<ChartSeriesData>();
+
+    [Parameter] public int Height { get; set; } = 280;
+    [Parameter] public string ValueFormat { get; set; } = "N0";
+    [Parameter] public string? Unit { get; set; }
+    [Parameter] public bool ShowLegend { get; set; } = true;
+    [Parameter] public string AriaLabel { get; set; } = "Gráfica de barras";
+
+    private const int VbW = 1000;
+
+    private readonly string _id = $"bc{Guid.NewGuid():N}"[..10];
+    private int? _hover;
+    private ChartScale _scale = null!;
+    private IReadOnlyList<double> _ticks = Array.Empty<double>();
+
+    protected override void OnParametersSet()
+    {
+        _scale = new ChartScale(
+            Series.SelectMany(s => s.Values),
+            left: 0, right: VbW, top: 10, bottom: Height,
+            baselineAtZero: true);
+
+        _ticks = _scale.Ticks();
+        _hover = null;
+    }
+
+    private readonly record struct Bar(double X, double Y, double W, double H);
+
+    /// <summary>Places one bar inside its category band, side by side with its peers.</summary>
+    private Bar BarGeometry(int category, int seriesIndex)
+    {
+        var band = _scale.BandWidth(Labels.Count);
+        var inner = band * 0.6;                        // breathing room between groups
+        var slot = inner / Math.Max(1, Series.Count);
+        var startX = _scale.Left + category * band + (band - inner) / 2 + seriesIndex * slot;
+
+        var y = _scale.Y(Series[seriesIndex].Values[category]);
+        var baseline = _scale.Y(Math.Max(0, _scale.Min));
+
+        return new Bar(startX + slot * 0.08, Math.Min(y, baseline), slot * 0.84, Math.Abs(baseline - y));
+    }
+
+    private static string Pct(string property, double value) =>
+        $"{property}:{value.ToString("0.##", CultureInfo.InvariantCulture)}%";
+}

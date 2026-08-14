@@ -1,0 +1,87 @@
+@*
+    The standard content card: optional icon badge, title, subtitle, an actions
+    slot, the body and an optional footer.
+
+    Single responsibility — it owns card *layout* only, never data. Everything
+    variable is a slot, so new uses extend it without editing it.
+*@
+<MudPaper Elevation="0" Class="@RootClass" Style="@Style">
+
+    @if (HasHeader)
+    {
+        <div class="sigie-card-head">
+            @if (!string.IsNullOrEmpty(Icon))
+            {
+                <span class="sigie-icon-badge @Accent"><MudIcon Icon="@Icon" /></span>
+            }
+            <div class="sigie-card-titles">
+                @if (!string.IsNullOrEmpty(Eyebrow))
+                {
+                    <span class="sigie-card-eyebrow">@Eyebrow</span>
+                }
+                <MudText Typo="Typo.h6">@Title</MudText>
+                @if (!string.IsNullOrEmpty(Subtitle))
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@Subtitle</MudText>
+                }
+            </div>
+            @if (Actions is not null)
+            {
+                <div class="sigie-card-actions">@Actions</div>
+            }
+        </div>
+    }
+
+    <div class="sigie-card-body">@ChildContent</div>
+
+    @if (Footer is not null)
+    {
+        <div class="sigie-card-foot">@Footer</div>
+    }
+
+</MudPaper>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Subtitle { get; set; }
+
+    /// <summary>Small uppercase label above the title.</summary>
+    [Parameter] public string? Eyebrow { get; set; }
+
+    /// <summary>Material icon for the gradient badge. Omit to hide the badge.</summary>
+    [Parameter] public string? Icon { get; set; }
+
+    /// <summary>Badge gradient: navy | teal | violet | gold | red.</summary>
+    [Parameter] public string Accent { get; set; } = "teal";
+
+    /// <summary>Right-hand side of the header (chips, buttons, counters).</summary>
+    [Parameter] public RenderFragment? Actions { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Muted strip under the body — good for a one-line insight.</summary>
+    [Parameter] public RenderFragment? Footer { get; set; }
+
+    /// <summary>Stretch to the tallest card in the row.</summary>
+    [Parameter] public bool FullHeight { get; set; } = true;
+
+    /// <summary>Remove the body padding (for cards that hold a flush data grid).</summary>
+    [Parameter] public bool Flush { get; set; }
+
+    /// <summary>Give the card hover feedback, for cards that lead somewhere.</summary>
+    [Parameter] public bool Interactive { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Style { get; set; }
+
+    private bool HasHeader => !string.IsNullOrEmpty(Title) || !string.IsNullOrEmpty(Icon) || Actions is not null;
+
+    private string RootClass => string.Join(' ', new[]
+    {
+        "sigie-card",
+        FullHeight ? "sigie-card-fill" : null,
+        Flush ? "sigie-card-flush" : null,
+        Interactive ? "sigie-lift" : null,
+        Class,
+    }.Where(c => !string.IsNullOrEmpty(c)));
+}

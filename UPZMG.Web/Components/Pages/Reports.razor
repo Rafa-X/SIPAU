@@ -20,13 +20,11 @@
 
     @if (_templates.Count == 0)
     {
-        <MudPaper Elevation="0" Class="pa-8 mb-8" Style="text-align:center">
-            <MudIcon Icon="@Icons.Material.Filled.FolderOff" Size="Size.Large" Color="Color.Secondary" />
-            <MudText Typo="Typo.subtitle1" Class="mt-2" Style="font-weight:650">No hay plantillas disponibles</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary">
-                Agrega un archivo JSON en <code>Views/Reports/Templates</code> para habilitar un formato.
-            </MudText>
-        </MudPaper>
+        <SectionCard FullHeight="false" Class="mb-6">
+            <EmptyState Icon="@Icons.Material.Filled.FolderOff"
+                        Title="No hay plantillas disponibles"
+                        Description="Agrega un archivo JSON en Views/Reports/Templates para habilitar un formato oficial." />
+        </SectionCard>
     }
     else
     {
@@ -68,15 +66,12 @@
         }
     </MudStack>
 
-    <MudPaper Elevation="0" Class="@(_recent.Count == 0 ? "pa-8" : "pa-2")"
-              Style="@(_recent.Count == 0 ? "text-align:center" : null)">
+    <SectionCard Flush="true" FullHeight="false">
         @if (_recent.Count == 0)
         {
-            <MudIcon Icon="@Icons.Material.Filled.HistoryToggleOff" Size="Size.Large" Color="Color.Secondary" />
-            <MudText Typo="Typo.subtitle1" Class="mt-2" Style="font-weight:650">Aún no has capturado reportes</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary">
-                El historial empieza a guardarse en cuanto exista la tabla <b>reports</b> en la base de datos.
-            </MudText>
+            <EmptyState Icon="@Icons.Material.Filled.HistoryToggleOff"
+                        Title="Aún no has capturado reportes"
+                        Description="El historial empieza a guardarse en cuanto exista la tabla 'reports' en la base de datos." />
         }
         else
         {
@@ -98,7 +93,7 @@
                 }
             </MudList>
         }
-    </MudPaper>
+    </SectionCard>
 }
 else
 {
