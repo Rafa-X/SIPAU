@@ -13,12 +13,23 @@ public interface IDashboardService
 
 public sealed class DashboardService : IDashboardService
 {
+    private readonly ISettingsService _settings;
+
+    public DashboardService(ISettingsService settings) => _settings = settings;
+
     public DashboardViewModel GetDashboard()
     {
+        // The active period has exactly one owner: the settings module. Hard-coding
+        // it here as well meant the dashboard could disagree with Configuración
+        // about which cycle the figures belong to.
+        var period = _settings.ActivePeriod;
+
         var model = new DashboardViewModel
         {
-            ActivePeriod = "Ciclo 2025-2026 (Cuatrimestre 1)",
-            IsPeriodActive = true,
+            ActivePeriod = period is null
+                ? "Sin periodo activo"
+                : $"Ciclo {period.SchoolCycle} · {period.Code}",
+            IsPeriodActive = period is not null,
 
             TotalStudents = 1245,
             NewEnrollments = 320,

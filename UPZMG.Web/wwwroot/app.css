@@ -735,8 +735,9 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
     flex: 0 0 auto;
     transition: transform var(--sigie-mid) var(--sigie-spring), box-shadow var(--sigie-mid) var(--sigie-ease);
 }
-/* Only the badge of a card that is itself interactive responds. */
-.sigie-lift:hover .sigie-icon-badge { transform: scale(1.06); }
+/* Only the badge of a card that is itself interactive responds — the small
+   tilt is the one flourish worth keeping on the KPI tiles. */
+.sigie-lift:hover .sigie-icon-badge { transform: translateY(-2px) rotate(-5deg) scale(1.06); }
 .sigie-icon-badge.navy   { background: var(--sigie-grad-navy);   box-shadow: 0 10px 22px -8px rgba(23, 58, 109, 0.85); }
 .sigie-icon-badge.teal   { background: var(--sigie-grad-cool);   box-shadow: 0 10px 22px -8px rgba(15, 181, 160, 0.9); }
 .sigie-icon-badge.violet { background: var(--sigie-grad-violet); box-shadow: 0 10px 22px -8px rgba(109, 92, 231, 0.9); }

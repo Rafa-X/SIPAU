@@ -23,7 +23,14 @@ public interface IReportsService
     Task<ReportTemplateDefinition?> GetTemplateAsync(string reportType, string version);
     Task<IReadOnlyList<RecentReport>> GetRecentReportsAsync(Guid userId);
     Task<ReportDraft?> GetReportAsync(Guid id, Guid userId);
-    Task<bool> SaveAsync(Guid userId, string reportType, string version, ReportStatus status, Dictionary<string, string?> answers);
+
+    /// <summary>
+    /// Persists a report. Pass <paramref name="reportId"/> to update the row a
+    /// draft was loaded from — omit it only for a brand new capture. Returns the
+    /// stored id, or null when the 'reports' table is not available.
+    /// </summary>
+    Task<Guid?> SaveAsync(Guid userId, Guid? reportId, string reportType, string version,
+                          ReportStatus status, Dictionary<string, string?> answers);
 }
 
 public sealed class ReportsService : IReportsService
@@ -139,31 +146,52 @@ public sealed class ReportsService : IReportsService
         }
     }
 
-    public async Task<bool> SaveAsync(Guid userId, string reportType, string version, ReportStatus status, Dictionary<string, string?> answers)
+    public async Task<Guid?> SaveAsync(Guid userId, Guid? reportId, string reportType, string version,
+                                       ReportStatus status, Dictionary<string, string?> answers)
     {
         try
         {
             using var scope = _scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDBContext>();
-            if (!await ReportsTableExistsAsync(db)) return false;
+            if (!await ReportsTableExistsAsync(db)) return null;
 
-            db.Reports.Add(new Reports
+            var json = JsonSerializer.Serialize(answers, JsonOptions);
+
+            // Saving a draft twice must update the same report, not pile up a
+            // new row on every click — the history would otherwise fill with
+            // half-finished copies of the same 911 capture.
+            if (reportId is { } id)
+            {
+                var existing = await db.Reports.FirstOrDefaultAsync(r => r.Id == id && r.CreatedBy == userId);
+                if (existing is not null)
+                {
+                    existing.Status = status.ToString();
+                    existing.AnswersJson = json;
+                    existing.TemplateVersion = version;
+                    existing.LastModified = DateTime.UtcNow;
+                    await db.SaveChangesAsync();
+                    return existing.Id;
+                }
+            }
+
+            var created = new Reports
             {
                 Id = Guid.NewGuid(),
                 CreatedBy = userId,
                 ReportType = reportType,
                 TemplateVersion = version,
                 Status = status.ToString(),
-                AnswersJson = JsonSerializer.Serialize(answers, JsonOptions),
+                AnswersJson = json,
                 DateCreated = DateTime.UtcNow,
                 LastModified = DateTime.UtcNow,
-            });
+            };
+            db.Reports.Add(created);
             await db.SaveChangesAsync();
-            return true;
+            return created.Id;
         }
         catch (Exception)
         {
-            return false; // table missing → caller shows a hint but the UX still flows
+            return null; // table missing → caller shows a hint but the UX still flows
         }
     }
 

@@ -12,7 +12,15 @@ public interface ISettingsService
     IReadOnlyList<SelectOption> SostenimientoOptions { get; }
 
     IReadOnlyList<PeriodItemModel> GetPeriods();
-    void AddPeriod(string code, string schoolCycle);
+
+    /// <summary>Adds a period. Returns false if the code already exists.</summary>
+    bool AddPeriod(string code, string schoolCycle);
+
+    /// <summary>Makes one period the active one, deactivating every other.</summary>
+    void ActivatePeriod(string code);
+
+    /// <summary>The single active period, if one is set.</summary>
+    PeriodItemModel? ActivePeriod { get; }
 
     IReadOnlyList<IndicatorItemModel> GetIndicators();
     void AddIndicator(string reportSheet, string name, string dataType);
@@ -60,8 +68,36 @@ public sealed class SettingsService : ISettingsService
 
     public IReadOnlyList<PeriodItemModel> GetPeriods() => _periods;
 
-    public void AddPeriod(string code, string schoolCycle) =>
-        _periods.Insert(0, new PeriodItemModel { Code = code, SchoolCycle = schoolCycle, StartDate = DateTime.Today, EndDate = DateTime.Today.AddMonths(4), IsActive = false });
+    public PeriodItemModel? ActivePeriod => _periods.FirstOrDefault(p => p.IsActive);
+
+    public bool AddPeriod(string code, string schoolCycle)
+    {
+        // The period code identifies every capture and report downstream, so a
+        // duplicate would silently split one cycle's data across two rows.
+        if (_periods.Any(p => string.Equals(p.Code, code, StringComparison.OrdinalIgnoreCase)))
+            return false;
+
+        _periods.Insert(0, new PeriodItemModel
+        {
+            Code = code,
+            SchoolCycle = schoolCycle,
+            StartDate = DateTime.Today,
+            EndDate = DateTime.Today.AddMonths(4),
+            IsActive = false,
+        });
+        return true;
+    }
+
+    /// <summary>
+    /// Exactly one period may be active: the whole system ("periodo activo" on
+    /// the dashboard, capture forms, report headers) resolves data through it,
+    /// so activating one must deactivate the rest in the same operation.
+    /// </summary>
+    public void ActivatePeriod(string code)
+    {
+        foreach (var period in _periods)
+            period.IsActive = string.Equals(period.Code, code, StringComparison.OrdinalIgnoreCase);
+    }
 
     private readonly List<IndicatorItemModel> _indicators = new()
     {

@@ -56,6 +56,27 @@
     // A menu/dropdown opening while the header is hidden would look broken.
     function reveal() { document.body.classList.remove(HIDDEN); }
 
+    // Ctrl/Cmd+K jumps to the module search, the way every tool this audience
+    // already uses behaves. Escape gives the field back.
+    function shortcuts(e) {
+        var input = document.querySelector('.sigie-quicknav input');
+
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+            if (!input) return;
+            e.preventDefault();
+            reveal();
+            input.focus();
+            input.select();
+            return;
+        }
+
+        if (e.key === 'Escape' && input && document.activeElement === input) {
+            input.blur();
+        }
+    }
+
+    window.addEventListener('keydown', shortcuts);
+
     // Streams a generated file (CSV export) to the browser without a round-trip.
     window.sigieDownload = function (filename, text, mime) {
         // The BOM makes Excel open UTF-8 accents correctly.

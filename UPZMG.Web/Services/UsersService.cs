@@ -7,13 +7,16 @@ namespace UPZMG.Web.Services;
 /// "one user = one role"); swap for real DB/API queries later.
 /// Registered as a singleton so edits persist across the app session.
 /// </summary>
+/// <summary>Outcome of a save attempt: the row, or why it was rejected.</summary>
+public sealed record UserSaveResult(bool Success, UserListItemModel? User, string? Error);
+
 public interface IUsersService
 {
     IReadOnlyList<UserListItemModel> GetUsers();
     IReadOnlyList<string> GetRoles();
 
-    /// <summary>Creates or updates a user and returns the resulting row.</summary>
-    UserListItemModel Save(UserFormViewModel model);
+    /// <summary>Creates or updates a user, rejecting duplicates.</summary>
+    UserSaveResult Save(UserFormViewModel model);
 }
 
 public sealed class UsersService : IUsersService
@@ -35,18 +38,30 @@ public sealed class UsersService : IUsersService
 
     public IReadOnlyList<string> GetRoles() => RoleCatalog;
 
-    public UserListItemModel Save(UserFormViewModel model)
+    public UserSaveResult Save(UserFormViewModel model)
     {
+        var email = (model.Email ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(email))
+            return new UserSaveResult(false, null, "El correo electrónico es obligatorio.");
+
+        // The email IS the login identity (it is unique on SystemUser), so two
+        // rows sharing one would make the account unresolvable at sign-in.
+        var clash = _users.FirstOrDefault(u =>
+            u.Id != model.Id && string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase));
+
+        if (clash is not null)
+            return new UserSaveResult(false, null, $"Ya existe un usuario con el correo '{email}' ({clash.FullName}).");
+
         if (model.IsEditing)
         {
             var existing = _users.FirstOrDefault(u => u.Id == model.Id);
             if (existing is not null)
             {
                 existing.FullName = model.FullName;
-                existing.Email = model.Email;
+                existing.Email = email;
                 existing.RoleName = model.RoleId;
                 existing.IsActive = model.IsActive;
-                return existing;
+                return new UserSaveResult(true, existing, null);
             }
         }
 
@@ -54,12 +69,12 @@ public sealed class UsersService : IUsersService
         {
             Id = _users.Count == 0 ? 1 : _users.Max(u => u.Id) + 1,
             FullName = model.FullName,
-            Email = model.Email,
+            Email = email,
             RoleName = model.RoleId,
             IsActive = model.IsActive,
             LastLogin = null,
         };
         _users.Add(row);
-        return row;
+        return new UserSaveResult(true, row, null);
     }
 }

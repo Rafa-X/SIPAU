@@ -138,7 +138,14 @@
 
         if (result is not null && !result.Canceled && result.Data is UserFormViewModel saved)
         {
-            UsersSvc.Save(saved);
+            var outcome = UsersSvc.Save(saved);
+
+            if (!outcome.Success)
+            {
+                Snackbar.Add(outcome.Error ?? "No se pudo guardar el usuario.", Severity.Error);
+                return;
+            }
+
             Reload();
             Snackbar.Add(created
                 ? $"Usuario '{saved.Email}' creado correctamente."

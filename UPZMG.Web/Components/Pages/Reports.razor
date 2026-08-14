@@ -107,10 +107,28 @@ else
             </div>
             @if (_template.Sections.Count > 0)
             {
-                <MudChip T="string" Color="Color.Secondary" Variant="Variant.Text">Sección @(_sectionIndex + 1) de @_template.Sections.Count</MudChip>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    @if (_missing.Count > 0)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text"
+                                 Icon="@Icons.Material.Filled.ErrorOutline">
+                            @_missing.Count obligatorio@(_missing.Count == 1 ? "" : "s") pendiente@(_missing.Count == 1 ? "" : "s")
+                        </MudChip>
+                    }
+                    <MudChip T="string" Color="Color.Secondary" Variant="Variant.Text">
+                        Sección @(_sectionIndex + 1) de @_template.Sections.Count
+                    </MudChip>
+                </MudStack>
             }
         </MudStack>
-        <MudProgressLinear Color="Color.Secondary" Value="@SectionProgress" Rounded="true" Class="mt-2" Style="height:6px" />
+
+        @* Progress reflects how much is actually answered, not how far the user
+           has clicked — a capture form that reports 100% while empty is a lie. *@
+        <MudProgressLinear Color="@(_missing.Count == 0 ? Color.Success : Color.Secondary)"
+                           Value="@CompletionProgress" Rounded="true" Class="mt-2" Style="height:6px" />
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
+            @_answeredRequired de @_totalRequired campos obligatorios capturados
+        </MudText>
     </MudPaper>
 
     @if (sec is not null)
@@ -200,14 +218,27 @@ else
     private IReadOnlyList<RecentReport> _recent = System.Array.Empty<RecentReport>();
 
     private ReportTemplateDefinition? _template;
+
+    /// <summary>Row being edited. Null for a capture that has never been saved.</summary>
+    private Guid? _reportId;
+
     private string _reportType = string.Empty;
     private string _version = string.Empty;
     private int _sectionIndex;
     private readonly Dictionary<string, string?> _answers = new(StringComparer.OrdinalIgnoreCase);
 
+    // Completion state, recomputed whenever an answer changes.
+    private List<MissingAnswer> _missing = new();
+    private int _totalRequired;
+    private int _answeredRequired;
+
+    /// <summary>A required field still to be captured, with where to find it.</summary>
+    private sealed record MissingAnswer(int SectionIndex, string SectionTitle, string QuestionText);
+
     private bool IsLastSection => _template is not null && _sectionIndex >= _template.Sections.Count - 1;
-    private double SectionProgress => _template is null || _template.Sections.Count == 0
-        ? 0 : (double)(_sectionIndex + 1) / _template.Sections.Count * 100;
+
+    private double CompletionProgress =>
+        _totalRequired == 0 ? 100 : (double)_answeredRequired / _totalRequired * 100;
 
     protected override async Task OnInitializedAsync()
     {
@@ -225,10 +256,12 @@ else
     private void StartNew(ReportTemplateDefinition t)
     {
         _template = t;
+        _reportId = null;                 // brand new capture
         _reportType = t.ReportType;
         _version = t.Version;
         _sectionIndex = 0;
         _answers.Clear();
+        Recompute();
     }
 
     private async Task Resume(Guid id)
@@ -240,19 +273,66 @@ else
         if (template is null) { Snackbar.Add("No se encontró la plantilla del reporte.", Severity.Warning); return; }
 
         _template = template;
+        _reportId = draft.Id;             // keep editing the same row
         _reportType = draft.ReportType;
         _version = draft.Version;
         _sectionIndex = 0;
         _answers.Clear();
         foreach (var kv in draft.Answers) _answers[kv.Key] = kv.Value;
+        Recompute();
     }
 
     private string Get(string key) => _answers.TryGetValue(key, out var v) ? v ?? string.Empty : string.Empty;
-    private void Set(string key, string value) => _answers[key] = value;
+
+    private void Set(string key, string value)
+    {
+        _answers[key] = value;
+        Recompute();
+    }
+
+    /// <summary>
+    /// Walks the whole template (not just the visible section) and works out
+    /// which required answers are still missing. A matrix counts as answered
+    /// only when every cell has a value — a partially filled official table is
+    /// not a valid submission.
+    /// </summary>
+    private void Recompute()
+    {
+        _missing = new List<MissingAnswer>();
+        _totalRequired = 0;
+
+        if (_template is null) { _answeredRequired = 0; return; }
+
+        for (int s = 0; s < _template.Sections.Count; s++)
+        {
+            var section = _template.Sections[s];
+            foreach (var q in section.Questions.Where(q => q.Required))
+            {
+                _totalRequired++;
+                if (!IsAnswered(q))
+                    _missing.Add(new MissingAnswer(s, section.Title, q.Text));
+            }
+        }
+
+        _answeredRequired = _totalRequired - _missing.Count;
+    }
+
+    private bool IsAnswered(ReportTemplateQuestion q)
+    {
+        if (!q.Type.Equals("matrix", StringComparison.OrdinalIgnoreCase))
+            return !string.IsNullOrWhiteSpace(Get(q.Key));
+
+        foreach (var row in q.Rows)
+            foreach (var col in q.Columns)
+                if (string.IsNullOrWhiteSpace(Get($"{q.Key}[{row}][{col}]")))
+                    return false;
+
+        return q.Rows.Count > 0 && q.Columns.Count > 0;
+    }
 
     private void Back()
     {
-        if (_sectionIndex == 0) { _template = null; }
+        if (_sectionIndex == 0) { _template = null; _reportId = null; }
         else { _sectionIndex--; }
     }
 
@@ -260,14 +340,38 @@ else
 
     private async Task Save(ReportStatus status)
     {
-        var ok = await ReportsSvc.SaveAsync(_userId, _reportType, _version, status, _answers);
-        var verb = status == ReportStatus.submitted ? "enviado" : "guardado como borrador";
-        if (ok)
-            Snackbar.Add($"Reporte {verb} correctamente.", Severity.Success);
-        else
-            Snackbar.Add($"Reporte {verb} (nota: no se persistió — la tabla 'reports' no existe aún en la BD).", Severity.Warning);
+        // A draft may be incomplete by definition; a submission may not.
+        if (status == ReportStatus.submitted && _missing.Count > 0)
+        {
+            var first = _missing[0];
+            _sectionIndex = first.SectionIndex;
+            Snackbar.Add(
+                $"Faltan {_missing.Count} campo(s) obligatorio(s). Revisa «{first.SectionTitle}»: {first.QuestionText}.",
+                Severity.Warning);
+            return;
+        }
 
-        _template = null;
+        var savedId = await ReportsSvc.SaveAsync(_userId, _reportId, _reportType, _version, status, _answers);
+
+        if (savedId is null)
+        {
+            Snackbar.Add("No se pudo persistir: la tabla 'reports' aún no existe en la base de datos.", Severity.Warning);
+        }
+        else
+        {
+            _reportId = savedId;   // subsequent saves update this same row
+            Snackbar.Add(status == ReportStatus.submitted
+                ? "Reporte enviado correctamente."
+                : "Borrador guardado.", Severity.Success);
+        }
+
+        // Submitting closes the capture; saving a draft keeps you where you were.
+        if (status == ReportStatus.submitted)
+        {
+            _template = null;
+            _reportId = null;
+        }
+
         await LoadOverview();
     }
 
