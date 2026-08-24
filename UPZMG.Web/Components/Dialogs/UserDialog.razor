@@ -1,0 +1,73 @@
+@*
+    Create / edit a system user. Returns the edited UserFormViewModel on OK.
+    Enforces "one user = one role" (single MudSelect).
+*@
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form">
+            <MudTextField @bind-Value="_model.FullName" Label="Nombre completo"
+                          Required="true" RequiredError="El nombre es obligatorio."
+                          Immediate="true" Class="mb-3" />
+
+            <MudTextField @bind-Value="_model.Email" Label="Correo electrónico"
+                          InputType="InputType.Email" Required="true"
+                          Validation="@(new Func<string, string?>(ValidateEmail))"
+                          Immediate="true" Class="mb-3" />
+
+            <MudSelect T="string" @bind-Value="_model.RoleId" Label="Rol"
+                       Required="true" RequiredError="Selecciona un rol." Class="mb-3">
+                @foreach (var role in Roles)
+                {
+                    <MudSelectItem T="string" Value="@role">@role</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudSwitch T="bool" @bind-Value="_model.IsActive" Color="Color.Secondary" Label="Usuario activo" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Secondary" Variant="Variant.Filled" OnClick="Submit">
+            @(_model.IsEditing ? "Guardar cambios" : "Crear usuario")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public UserFormViewModel Model { get; set; } = new();
+    [Parameter] public IReadOnlyList<string> Roles { get; set; } = System.Array.Empty<string>();
+
+    private MudForm _form = null!;
+    private UserFormViewModel _model = new();
+
+    protected override void OnInitialized()
+    {
+        // Work on a copy so a cancel leaves the source untouched.
+        _model = new UserFormViewModel
+        {
+            Id = Model.Id,
+            FullName = Model.FullName,
+            Email = Model.Email,
+            RoleId = Model.RoleId,
+            IsActive = Model.IsActive,
+        };
+    }
+
+    private static string? ValidateEmail(string? email)
+    {
+        if (string.IsNullOrWhiteSpace(email)) return "El correo es obligatorio.";
+        if (!email.Contains('@') || !email.Contains('.')) return "Correo no válido.";
+        return null;
+    }
+
+    private async Task Submit()
+    {
+        await _form.ValidateAsync();
+        if (_form.IsValid)
+            MudDialog.Close(DialogResult.Ok(_model));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

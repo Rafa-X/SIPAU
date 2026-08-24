@@ -1,0 +1,101 @@
+@page "/settings/periods"
+@attribute [Authorize(Roles = "Admin")]
+@inject ISettingsService SettingsSvc
+@inject ISnackbar Snackbar
+
+<PageTitle>Periodos escolares — SIGIE</PageTitle>
+
+<PageHeader Eyebrow="Administración" Title="Periodos escolares"
+            Subtitle="Ciclos y cuatrimestres del sistema. El periodo activo determina a qué ciclo se asocian las capturas y los reportes."
+            BackHref="/settings" />
+
+<MudGrid>
+    <MudItem xs="12" md="5">
+        <SectionCard Title="Agregar periodo" Subtitle="El código identifica el ciclo en capturas y reportes"
+                     Icon="@Icons.Material.Filled.EventRepeat" Accent="navy">
+            <ChildContent>
+                <MudTextField @bind-Value="_newCode" Label="Código" Placeholder="2025-2026-2"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-3" />
+                <MudTextField @bind-Value="_newCycle" Label="Ciclo escolar" Placeholder="2025-2026"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-4" />
+                <MudButton Variant="Variant.Filled" Color="Color.Secondary" FullWidth="true"
+                           StartIcon="@Icons.Material.Filled.Add" OnClick="AddPeriod">
+                    Agregar periodo
+                </MudButton>
+            </ChildContent>
+        </SectionCard>
+    </MudItem>
+
+    <MudItem xs="12" md="7">
+        <SectionCard Title="Periodos registrados"
+                     Subtitle="@ActiveSummary"
+                     Icon="@Icons.Material.Filled.CalendarMonth" Accent="teal" Flush="true">
+            <MudDataGrid T="PeriodItemModel" Items="_periods" Hover="true" Dense="true" Elevation="0">
+                <Columns>
+                    <PropertyColumn Property="x => x.Code" Title="Código" />
+                    <PropertyColumn Property="x => x.SchoolCycle" Title="Ciclo" />
+                    <PropertyColumn Property="x => x.StartDate" Title="Inicio" Format="dd/MM/yyyy" />
+                    <PropertyColumn Property="x => x.EndDate" Title="Fin" Format="dd/MM/yyyy" />
+                    <TemplateColumn Title="Estado" CellClass="d-flex justify-end" Sortable="false">
+                        <CellTemplate>
+                            @if (context.Item.IsActive)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text"
+                                         Icon="@Icons.Material.Filled.CheckCircle">Activo</MudChip>
+                            }
+                            else
+                            {
+                                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary"
+                                           StartIcon="@Icons.Material.Filled.PlayArrow"
+                                           OnClick="() => Activate(context.Item)">
+                                    Activar
+                                </MudButton>
+                            }
+                        </CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+            </MudDataGrid>
+        </SectionCard>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private IReadOnlyList<PeriodItemModel> _periods = Array.Empty<PeriodItemModel>();
+    private string _newCode = string.Empty;
+    private string _newCycle = string.Empty;
+
+    protected override void OnInitialized() => Reload();
+
+    private void Reload() => _periods = SettingsSvc.GetPeriods().ToList();
+
+    private string ActiveSummary =>
+        SettingsSvc.ActivePeriod is { } p
+            ? $"Periodo activo: {p.Code} ({p.SchoolCycle})"
+            : "No hay ningún periodo activo — actívalo antes de capturar.";
+
+    private void AddPeriod()
+    {
+        if (string.IsNullOrWhiteSpace(_newCode) || string.IsNullOrWhiteSpace(_newCycle))
+        {
+            Snackbar.Add("Captura el código y el ciclo escolar.", Severity.Warning);
+            return;
+        }
+
+        if (!SettingsSvc.AddPeriod(_newCode.Trim(), _newCycle.Trim()))
+        {
+            Snackbar.Add($"Ya existe un periodo con el código '{_newCode.Trim()}'.", Severity.Error);
+            return;
+        }
+
+        Reload();
+        Snackbar.Add($"Periodo '{_newCode.Trim()}' agregado. Actívalo cuando corresponda.", Severity.Success);
+        _newCode = _newCycle = string.Empty;
+    }
+
+    private void Activate(PeriodItemModel period)
+    {
+        SettingsSvc.ActivatePeriod(period.Code);
+        Reload();
+        Snackbar.Add($"'{period.Code}' es ahora el periodo activo.", Severity.Success);
+    }
+}

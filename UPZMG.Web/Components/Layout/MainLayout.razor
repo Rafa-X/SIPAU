@@ -1,0 +1,254 @@
+@inherits LayoutComponentBase
+@inject NavigationManager Nav
+@inject IIntelligenceService Ai
+
+<MudThemeProvider @ref="_themeProvider" @bind-IsDarkMode="_isDarkMode" Theme="AppTheme.Institutional" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout Class="@(_isDarkMode ? "sigie-dark" : "sigie-light")">
+
+    @* ─────────────────────────── Header ─────────────────────────── *@
+    <MudAppBar Elevation="0">
+        <MudTooltip Text="@(_drawerOpen ? "Contraer menú" : "Expandir menú")" Placement="Placement.Bottom">
+            <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                           Class="sigie-appbar-btn" OnClick="ToggleDrawer" aria-label="Alternar menú" />
+        </MudTooltip>
+
+        <a class="sigie-brand ml-2" href="/dashboard" title="Ir al tablero de control">
+            <span class="sigie-brand-mark">S</span>
+            <div>
+                <div class="sigie-brand-name">SIGIE</div>
+                <div class="sigie-appbar-sub d-none d-md-block" style="font-size:10.5px;opacity:.6;letter-spacing:.04em">
+                    UPZMG · Planeación
+                </div>
+            </div>
+        </a>
+
+        <MudSpacer />
+
+        @* Quick-nav sits with the other tools on the right, not floating in
+           the middle of the bar. *@
+        <MudAutocomplete T="NavTarget" @ref="_quickNavRef"
+                         Value="_quickNav" ValueChanged="GoToAsync"
+                         SearchFunc="SearchNavAsync"
+                         ToStringFunc="@(t => t?.Label ?? string.Empty)"
+                         Placeholder="Buscar módulo…   Ctrl+K"
+                         Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
+                         Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                         ResetValueOnEmptyText="true" CoerceText="true" MaxItems="8"
+                         Class="sigie-quicknav d-none d-md-flex mr-2">
+            <ItemTemplate Context="target">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                    <MudIcon Icon="@target.Icon" Size="Size.Small" Color="Color.Secondary" />
+                    <MudText Typo="Typo.body2">@target.Label</MudText>
+                </MudStack>
+            </ItemTemplate>
+        </MudAutocomplete>
+
+        @* Anomalies detected by the intelligent layer, surfaced globally. *@
+        <MudMenu @bind-Open="_alertsOpen" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+            <ActivatorContent>
+                @* A plain div, not a MudIconButton: a real <button> swallows the
+                   click and the menu never opens. *@
+                <div class="sigie-appbar-trigger" role="button" tabindex="0" title="Alertas del modelo"
+                     aria-label="Alertas del modelo"
+                     @onclick="@(() => _alertsOpen = !_alertsOpen)" @onclick:stopPropagation="true">
+                    <MudBadge Content="@_anomalies.Count" Color="Color.Error" Overlap="true" Bordered="true"
+                              Visible="@(_anomalies.Count > 0)">
+                        <MudIcon Icon="@Icons.Material.Filled.NotificationsNone" />
+                    </MudBadge>
+                </div>
+            </ActivatorContent>
+            <ChildContent>
+                <div class="px-4 pt-3 pb-2" style="min-width:330px;max-width:390px">
+                    <MudText Typo="Typo.subtitle2" Style="font-weight:700">Detección automática</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Desviaciones encontradas por el modelo estadístico</MudText>
+                </div>
+                <MudDivider />
+                @foreach (var a in _anomalies)
+                {
+                    <div class="px-4 py-3" style="max-width:390px">
+                        <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="3">
+                            <MudIcon Icon="@SeverityIcon(a.Severity)" Size="Size.Small" Color="@SeverityColor(a.Severity)" />
+                            <div>
+                                <MudText Typo="Typo.body2" Style="font-weight:650;line-height:1.3">@a.Title</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@a.Detail</MudText>
+                            </div>
+                        </MudStack>
+                    </div>
+                }
+                <MudDivider />
+                <MudButton FullWidth="true" Variant="Variant.Text" Color="Color.Secondary"
+                           StartIcon="@Icons.Material.Filled.SpaceDashboard"
+                           OnClick="@(() => { _alertsOpen = false; Nav.NavigateTo("/dashboard"); })">
+                    Ver en el tablero
+                </MudButton>
+            </ChildContent>
+        </MudMenu>
+
+        <MudTooltip Text="@(_isDarkMode ? "Modo claro" : "Modo oscuro")" Placement="Placement.Bottom">
+            <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                           Color="Color.Inherit" Class="sigie-appbar-btn sigie-theme-btn"
+                           OnClick="@(() => _isDarkMode = !_isDarkMode)" aria-label="Cambiar tema" />
+        </MudTooltip>
+
+        <AuthorizeView Context="auth">
+            <Authorized>
+                <MudMenu @bind-Open="_userMenuOpen" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="true">
+                    <ActivatorContent>
+                        <div class="sigie-user-trigger ml-2" @onclick="@(() => _userMenuOpen = !_userMenuOpen)" @onclick:stopPropagation="true">
+                            <MudAvatar Size="Size.Small" Style="background:var(--sigie-grad-brand);color:#fff;font-weight:700">
+                                @Initials(auth.User)
+                            </MudAvatar>
+                            <span class="d-none d-sm-flex">@DisplayName(auth.User)</span>
+                            <MudIcon Icon="@Icons.Material.Filled.ExpandMore" Size="Size.Small" />
+                        </div>
+                    </ActivatorContent>
+                    <ChildContent>
+                        <div class="px-4 py-3" style="min-width:250px">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                                <MudAvatar Style="background:var(--sigie-grad-brand);color:#fff;font-weight:700">
+                                    @Initials(auth.User)
+                                </MudAvatar>
+                                <div>
+                                    <MudText Typo="Typo.body1" Style="font-weight:700;line-height:1.2">@DisplayName(auth.User)</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@Email(auth.User)</MudText>
+                                </div>
+                            </MudStack>
+                            <div class="mt-3">
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary"
+                                         Icon="@Icons.Material.Filled.VerifiedUser">@Role(auth.User)</MudChip>
+                            </div>
+                        </div>
+                        <MudDivider />
+                        <form method="post" action="/Account/Logout" style="margin:0">
+                            <AntiforgeryToken />
+                            <button type="submit" class="sigie-logout-btn">
+                                <MudIcon Icon="@Icons.Material.Filled.Logout" Size="Size.Small" Class="mr-2" />
+                                Cerrar sesión
+                            </button>
+                        </form>
+                    </ChildContent>
+                </MudMenu>
+            </Authorized>
+        </AuthorizeView>
+    </MudAppBar>
+
+    @* ──────────────────── Navigation rail (collapsible) ──────────────────── *@
+    @* Mini rail. It expands only from the header button — never on hover. *@
+    <MudDrawer @bind-Open="_drawerOpen" Variant="DrawerVariant.Mini" OpenMiniOnHover="false"
+               Breakpoint="Breakpoint.Md" ClipMode="DrawerClipMode.Always" Elevation="0">
+        <NavMenu />
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-6">
+            @* Keyed on the route so the entrance animation replays on every navigation. *@
+            <div class="sigie-page" @key="Nav.Uri">
+                @Body
+            </div>
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+<div id="blazor-error-ui">
+    Ocurrió un error inesperado.
+    <a href="" class="reload">Recargar</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    private MudThemeProvider _themeProvider = null!;
+    private bool _isDarkMode;
+    private bool _drawerOpen = true;
+    private bool _userMenuOpen;
+    private bool _alertsOpen;
+
+    private IReadOnlyList<AnomalyAlert> _anomalies = Array.Empty<AnomalyAlert>();
+
+    protected override void OnInitialized() => _anomalies = Ai.Anomalies();
+
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    // ── Quick navigation ────────────────────────────────────────────────────
+    /// <summary>A searchable destination in the header's quick-nav field.</summary>
+    public sealed record NavTarget(string Label, string Href, string Icon);
+
+    private NavTarget? _quickNav;
+    private MudAutocomplete<NavTarget>? _quickNavRef;
+
+    private static readonly NavTarget[] NavTargets =
+    {
+        new("Tablero de Control", "/dashboard", Icons.Material.Filled.SpaceDashboard),
+        new("Captura de Datos", "/datacapture", Icons.Material.Filled.EditNote),
+        new("Captura · Alumnos", "/datacapture/students", Icons.Material.Filled.School),
+        new("Captura · Docentes", "/datacapture/teachers", Icons.Material.Filled.Groups),
+        new("Captura · Infraestructura", "/datacapture/infrastructure", Icons.Material.Filled.Domain),
+        new("Captura · Finanzas", "/datacapture/finance", Icons.Material.Filled.Payments),
+        new("Captura · Extensión", "/datacapture/extension", Icons.Material.Filled.Diversity3),
+        new("Captura · Importación masiva", "/datacapture/bulk", Icons.Material.Filled.UploadFile),
+        new("Gráficas", "/charts", Icons.Material.Filled.BarChart),
+        new("Reportes 911 / SII", "/reports", Icons.Material.Filled.Description),
+        new("Informe de Junta", "/boardreport", Icons.Material.Filled.Article),
+        new("Actas de Junta", "/minutes", Icons.Material.Filled.Gavel),
+        new("Configuración", "/settings", Icons.Material.Filled.Settings),
+        new("Usuarios", "/users", Icons.Material.Filled.People),
+        new("Seguridad", "/security", Icons.Material.Filled.Shield),
+    };
+
+    private Task<IEnumerable<NavTarget>> SearchNavAsync(string? value, CancellationToken token)
+    {
+        var matches = string.IsNullOrWhiteSpace(value)
+            ? NavTargets.AsEnumerable()
+            : NavTargets.Where(t => t.Label.Contains(value, StringComparison.OrdinalIgnoreCase));
+        return Task.FromResult(matches);
+    }
+
+    private async Task GoToAsync(NavTarget? target)
+    {
+        _quickNav = null;
+        if (target is null) return; // re-entry from the Clear below
+
+        // Reset the field *and* its text, otherwise the old query stays visible
+        // and an empty dropdown lingers under the header after navigating.
+        if (_quickNavRef is not null) await _quickNavRef.ClearAsync();
+        Nav.NavigateTo(target.Href);
+    }
+
+    // ── Alert presentation ──────────────────────────────────────────────────
+    private static string SeverityIcon(string severity) => severity switch
+    {
+        "error" or "danger" => Icons.Material.Filled.ErrorOutline,
+        "warning"           => Icons.Material.Filled.WarningAmber,
+        _                   => Icons.Material.Filled.Info,
+    };
+
+    private static Color SeverityColor(string severity) => severity switch
+    {
+        "error" or "danger" => Color.Error,
+        "warning"           => Color.Warning,
+        _                   => Color.Info,
+    };
+
+    // ── Identity helpers ────────────────────────────────────────────────────
+    private static string Email(ClaimsPrincipal u) => u.FindFirst(ClaimTypes.Email)?.Value ?? string.Empty;
+    private static string Role(ClaimsPrincipal u) => u.FindFirst(ClaimTypes.Role)?.Value ?? "—";
+
+    private static string DisplayName(ClaimsPrincipal u)
+    {
+        var email = Email(u);
+        if (string.IsNullOrWhiteSpace(email)) return "Usuario";
+        var parts = email.Split('@')[0].Split('.', StringSplitOptions.RemoveEmptyEntries);
+        return string.Join(" ", parts.Select(p => char.ToUpperInvariant(p[0]) + p[1..]));
+    }
+
+    private static string Initials(ClaimsPrincipal u)
+    {
+        var name = DisplayName(u);
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var ini = string.Concat(parts.Take(2).Select(p => char.ToUpperInvariant(p[0])));
+        return string.IsNullOrEmpty(ini) ? "U" : ini;
+    }
+}

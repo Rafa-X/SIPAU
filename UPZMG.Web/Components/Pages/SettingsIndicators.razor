@@ -1,0 +1,72 @@
+@page "/settings/indicators"
+@attribute [Authorize(Roles = "Admin")]
+@inject ISettingsService SettingsSvc
+@inject ISnackbar Snackbar
+
+<PageTitle>Indicadores — SIGIE</PageTitle>
+
+<PageHeader Eyebrow="Administración" Title="Indicadores configurables" Subtitle="Agrega indicadores a cada hoja de reporte sin ayuda de un desarrollador" BackHref="/settings" />
+
+<MudPaper Elevation="1" Class="pa-4 mb-4">
+    <MudText Typo="Typo.subtitle1" Class="mb-2">Agregar indicador</MudText>
+    <MudGrid>
+        <MudItem xs="12" md="4"><MudTextField @bind-Value="_sheet" Label="Hoja de reporte" /></MudItem>
+        <MudItem xs="12" md="4"><MudTextField @bind-Value="_name" Label="Nombre del indicador" /></MudItem>
+        <MudItem xs="12" md="2">
+            <MudSelect T="string" @bind-Value="_dataType" Label="Tipo de dato">
+                @foreach (var t in SettingsSvc.IndicatorDataTypes) { <MudSelectItem T="string" Value="@t">@t</MudSelectItem> }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="2" Class="d-flex align-center">
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Add" OnClick="AddIndicator">Agregar</MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+<MudPaper Elevation="1" Class="pa-2">
+    <MudDataGrid T="IndicatorItemModel" Items="_indicators" Hover="true" Dense="true" Elevation="0" Groupable="false">
+        <Columns>
+            <PropertyColumn Property="x => x.ReportSheet" Title="Hoja" />
+            <PropertyColumn Property="x => x.Name" Title="Indicador" />
+            <TemplateColumn Title="Tipo">
+                <CellTemplate>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary">@context.Item.DataType</MudChip>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Estado">
+                <CellTemplate>
+                    @if (context.Item.IsActive)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text">Activo</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Text">Inactivo</MudChip>
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+</MudPaper>
+
+@code {
+    private IReadOnlyList<IndicatorItemModel> _indicators = System.Array.Empty<IndicatorItemModel>();
+    private string _sheet = string.Empty;
+    private string _name = string.Empty;
+    private string _dataType = "Número";
+
+    protected override void OnInitialized() => _indicators = SettingsSvc.GetIndicators();
+
+    private void AddIndicator()
+    {
+        if (string.IsNullOrWhiteSpace(_sheet) || string.IsNullOrWhiteSpace(_name))
+        {
+            Snackbar.Add("Captura la hoja y el nombre del indicador.", Severity.Warning);
+            return;
+        }
+        SettingsSvc.AddIndicator(_sheet.Trim(), _name.Trim(), _dataType);
+        _indicators = SettingsSvc.GetIndicators().ToList();
+        Snackbar.Add($"Indicador '{_name}' agregado a la hoja '{_sheet}'.", Severity.Success);
+        _sheet = _name = string.Empty;
+    }
+}

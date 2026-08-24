@@ -1,0 +1,85 @@
+@page "/datacapture"
+@attribute [Authorize]
+@inject IDataCaptureService CaptureSvc
+@inject NavigationManager Nav
+
+<PageTitle>Captura de Datos — SIGIE</PageTitle>
+
+<PageHeader Eyebrow="Captura de datos" Title="Captura de Datos" Subtitle="Registra la información de cada área institucional del periodo activo">
+    <Actions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.UploadFile" Href="/datacapture/bulk">
+            Importación masiva
+        </MudButton>
+    </Actions>
+</PageHeader>
+
+<MudGrid>
+    @foreach (var area in _model.Areas)
+    {
+        var meta = MetaFor(area.ActionName);
+        <MudItem xs="12" sm="6" md="4">
+            <MudCard Elevation="1" Class="d-flex flex-column" Style="height:100%">
+                <MudCardContent Class="flex-grow-1">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+                        <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Rounded="true">
+                            <MudIcon Icon="@meta.Icon" />
+                        </MudAvatar>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@SigieUi.StatusColor(area.Status)">
+                            @area.Status
+                        </MudChip>
+                    </MudStack>
+
+                    <MudText Typo="Typo.h6">@area.AreaName</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Responsable: @area.ResponsiblePerson</MudText>
+
+                    <div class="mt-4">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mb-1">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Avance</MudText>
+                            <MudText Typo="Typo.caption" Style="font-weight:700">@area.Percentage%</MudText>
+                        </MudStack>
+                        <MudProgressLinear Color="@SigieUi.ProgressColor(area.Percentage)" Value="area.Percentage"
+                                           Rounded="true" Style="height:8px" />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
+                            Actualizado: @area.LastUpdated.ToString("dd/MM/yyyy")
+                        </MudText>
+                    </div>
+                </MudCardContent>
+                <MudCardActions>
+                    @if (meta.IsBlazor)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Secondary" FullWidth="true"
+                                   StartIcon="@Icons.Material.Filled.EditNote" Href="@meta.Href">
+                            Capturar
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Secondary" FullWidth="true"
+                                   StartIcon="@Icons.Material.Filled.EditNote"
+                                   OnClick="@(() => Nav.NavigateTo(meta.Href, forceLoad: true))">
+                            Capturar
+                        </MudButton>
+                    }
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    private DataCaptureIndexViewModel _model = new();
+
+    protected override void OnInitialized() => _model = CaptureSvc.GetIndex();
+
+    private sealed record AreaMeta(string Icon, string Href, bool IsBlazor);
+
+    private static AreaMeta MetaFor(string action) => action switch
+    {
+        "Students"       => new(Icons.Material.Filled.School, "/datacapture/students", true),
+        "Teachers"       => new(Icons.Material.Filled.Groups, "/datacapture/teachers", true),
+        "Infrastructure" => new(Icons.Material.Filled.Apartment, "/datacapture/infrastructure", true),
+        "Extension"      => new(Icons.Material.Filled.Handshake, "/datacapture/extension", true),
+        "Finance"        => new(Icons.Material.Filled.Payments, "/datacapture/finance", true),
+        _                => new(Icons.Material.Filled.EditNote, "/datacapture", true),
+    };
+}

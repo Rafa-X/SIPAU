@@ -1,0 +1,84 @@
+@page "/minutes/{Id:int}"
+@attribute [Authorize]
+@inject IMinutesService MinutesSvc
+
+<PageTitle>Detalle de Acta — SIGIE</PageTitle>
+
+@if (_model is null)
+{
+    <PageHeader Eyebrow="Junta directiva" Title="Acta no encontrada" BackHref="/minutes" />
+    <MudAlert Severity="Severity.Warning">No se encontró el acta solicitada.</MudAlert>
+}
+else
+{
+    <PageHeader Eyebrow="Junta directiva" Title="@_model.SessionName" Subtitle="@($"Sesión del {_model.Date:dd 'de' MMMM 'de' yyyy}")" BackHref="/minutes">
+        <Actions>
+            <MudChip T="string" Color="@SigieUi.StatusColor(_model.Status)" Variant="Variant.Filled">@_model.Status</MudChip>
+        </Actions>
+    </PageHeader>
+
+    <MudGrid>
+        <MudItem xs="12" md="4">
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-2">Resumen de firmas</MudText>
+                <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mb-1">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Firmadas</MudText>
+                    <MudText Typo="Typo.body2" Style="font-weight:700">@_signed / @_model.Signatories.Count</MudText>
+                </MudStack>
+                <MudProgressLinear Color="Color.Success" Value="@_signedPct" Rounded="true" Style="height:8px" Class="mb-3" />
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    El acta se considera oficial cuando todos los integrantes de la junta la han firmado.
+                </MudText>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="8">
+            <MudPaper Elevation="1" Class="pa-2">
+                <MudList T="string" Dense="false">
+                    @foreach (var s in _model.Signatories)
+                    {
+                        <MudListItem T="string">
+                            <div class="d-flex align-center" style="gap:12px">
+                                <MudAvatar Color="@(s.Status == "Firmado" ? Color.Success : Color.Default)" Size="Size.Medium">@s.Initials</MudAvatar>
+                                <div class="flex-grow-1">
+                                    <MudText Typo="Typo.body1" Style="font-weight:600">@s.Name</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@s.Title</MudText>
+                                </div>
+                                <div class="text-right">
+                                    @if (s.Status == "Firmado")
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text" Icon="@Icons.Material.Filled.CheckCircle">Firmado</MudChip>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@s.SignedDate?.ToString("dd/MM/yyyy")</MudText>
+                                    }
+                                    else
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text" Icon="@Icons.Material.Filled.Schedule">Pendiente</MudChip>
+                                    }
+                                </div>
+                            </div>
+                        </MudListItem>
+                        <MudDivider />
+                    }
+                </MudList>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private MinuteDetailViewModel? _model;
+    private int _signed;
+    private double _signedPct;
+
+    protected override void OnInitialized()
+    {
+        _model = MinutesSvc.GetDetail(Id);
+        if (_model is not null)
+        {
+            _signed = _model.Signatories.Count(s => s.Status == "Firmado");
+            _signedPct = _model.Signatories.Count == 0 ? 0 : (double)_signed / _model.Signatories.Count * 100;
+        }
+    }
+}

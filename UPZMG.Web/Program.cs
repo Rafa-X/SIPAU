@@ -1,5 +1,8 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
+using MudBlazor.Services;
+using UPZMG.Web.Components;
 using UPZMG.Web.Services;
 using UPZMG.Persistence;
 
@@ -23,6 +26,11 @@ try
         options.Cookie.IsEssential = true;
     });
 
+    // Blazor Web App (Interactive Server) + MudBlazor, coexisting with MVC.
+    builder.Services.AddRazorComponents()
+        .AddInteractiveServerComponents();
+    builder.Services.AddMudServices();
+
     builder.Services.AddDbContext<AppDBContext>(opt =>
         opt.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
 
@@ -30,7 +38,7 @@ try
     builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
         .AddCookie(options =>
         {
-            options.LoginPath = "/Account/Login";
+            options.LoginPath = "/login";
             options.AccessDeniedPath = "/Account/AccessDenied";
             options.Cookie.Name = "UPZMG.Auth";
             options.SlidingExpiration = true;
@@ -44,8 +52,22 @@ try
     builder.Services.AddScoped<ApiClient>();
     builder.Services.AddScoped<IAuthService, AuthService>();
     builder.Services.AddSingleton<ISecurityEventLogger, SecurityLogger>();
+    builder.Services.AddScoped<IDashboardService, DashboardService>();
+    builder.Services.AddSingleton<IUsersService, UsersService>();
+    builder.Services.AddScoped<IDataCaptureService, DataCaptureService>();
+    builder.Services.AddScoped<IMinutesService, MinutesService>();
+    builder.Services.AddScoped<IBoardReportService, BoardReportService>();
+    builder.Services.AddSingleton<ISettingsService, SettingsService>();
+    builder.Services.AddScoped<IReportsService, ReportsService>();
+    builder.Services.AddScoped<ISecurityService, SecurityService>();
+    builder.Services.AddSingleton<IIntelligenceService, IntelligenceService>();
 
     builder.Services.AddAuthorization();
+
+    // Bridge the cookie principal into Blazor's auth state.
+    builder.Services.AddHttpContextAccessor();
+    builder.Services.AddCascadingAuthenticationState();
+    builder.Services.AddScoped<AuthenticationStateProvider, PersistentCookieAuthenticationStateProvider>();
 
     // HttpClient to call API (server-to-server)
     var apiClientBuilder = builder.Services.AddHttpClient("UpzmgApi", client =>
@@ -82,8 +104,13 @@ try
 
     app.UseAuthentication();
     app.UseAuthorization();
+    app.UseAntiforgery();
 
-    //default route: HomeController -> Index action
+    // Blazor components (Interactive Server) own the migrated pages.
+    app.MapRazorComponents<App>()
+        .AddInteractiveServerRenderMode();
+
+    // MVC still serves the login flow and not-yet-migrated modules.
     app.MapControllerRoute(
         name: "default",
         pattern: "{controller=Home}/{action=Index}/{id?}");

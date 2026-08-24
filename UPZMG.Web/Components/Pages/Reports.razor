@@ -1,0 +1,393 @@
+@page "/reports"
+@attribute [Authorize]
+@inject IReportsService ReportsSvc
+@inject AuthenticationStateProvider AuthState
+@inject ISnackbar Snackbar
+
+<PageTitle>Reportes 911 — SIGIE</PageTitle>
+
+<PageHeader Eyebrow="Reportes oficiales" Title="Reportes 911 / SII" Subtitle="Captura de los formatos estadísticos oficiales, versionados por JSON" />
+
+@if (_template is null)
+{
+    @* ── Catálogo de plantillas ───────────────────────────────────────── *@
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3" Wrap="Wrap.Wrap">
+        <MudText Typo="Typo.h6">Nuevo reporte</MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            @_templates.Count @(_templates.Count == 1 ? "plantilla disponible" : "plantillas disponibles")
+        </MudText>
+    </MudStack>
+
+    @if (_templates.Count == 0)
+    {
+        <SectionCard FullHeight="false" Class="mb-6">
+            <EmptyState Icon="@Icons.Material.Filled.FolderOff"
+                        Title="No hay plantillas disponibles"
+                        Description="Agrega un archivo JSON en Views/Reports/Templates para habilitar un formato oficial." />
+        </SectionCard>
+    }
+    else
+    {
+        <MudGrid Class="mb-6">
+            @foreach (var t in _templates)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudPaper Elevation="0" Class="pa-5 d-flex flex-column sigie-lift" Style="height:100%">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
+                            <span class="sigie-icon-badge teal">
+                                <MudIcon Icon="@Icons.Material.Filled.Description" />
+                            </span>
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">
+                                @($"{t.ReportType} · v{t.Version}")
+                            </MudChip>
+                        </MudStack>
+
+                        <MudText Typo="Typo.subtitle1" Style="font-weight:700;line-height:1.3">@t.DisplayName</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1 flex-grow-1">
+                            @t.Sections.Count @(t.Sections.Count == 1 ? "sección" : "secciones")
+                        </MudText>
+
+                        <MudButton Variant="Variant.Filled" Color="Color.Secondary" Class="mt-4" FullWidth="true"
+                                   StartIcon="@Icons.Material.Filled.Add" OnClick="() => StartNew(t)">
+                            Iniciar captura
+                        </MudButton>
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+
+    @* ── Historial reciente ───────────────────────────────────────────── *@
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3" Wrap="Wrap.Wrap">
+        <MudText Typo="Typo.h6">Mis reportes recientes</MudText>
+        @if (_recent.Count > 0)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Últimos @_recent.Count</MudText>
+        }
+    </MudStack>
+
+    <SectionCard Flush="true" FullHeight="false">
+        @if (_recent.Count == 0)
+        {
+            <EmptyState Icon="@Icons.Material.Filled.HistoryToggleOff"
+                        Title="Aún no has capturado reportes"
+                        Description="El historial empieza a guardarse en cuanto exista la tabla 'reports' en la base de datos." />
+        }
+        else
+        {
+            <MudList T="string" Dense="true">
+                @foreach (var r in _recent)
+                {
+                    <MudListItem T="string" OnClick="() => Resume(r.Id)">
+                        <div class="d-flex justify-space-between align-center">
+                            <div>
+                                <MudText Typo="Typo.body2" Style="font-weight:650">@r.DisplayName</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    @($"{r.ReportType} · v{r.Version}") · @r.LastModified.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                </MudText>
+                            </div>
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@StatusColor(r.Status)">@StatusLabel(r.Status)</MudChip>
+                        </div>
+                    </MudListItem>
+                    <MudDivider />
+                }
+            </MudList>
+        }
+    </SectionCard>
+}
+else
+{
+    var sec = _template.Sections.Count > 0 ? _template.Sections[_sectionIndex] : null;
+
+    <MudPaper Elevation="1" Class="pa-4 mb-4">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+            <div>
+                <MudText Typo="Typo.h6">@_template.DisplayName</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@($"{_template.ReportType} · v{_template.Version}")</MudText>
+            </div>
+            @if (_template.Sections.Count > 0)
+            {
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    @if (_missing.Count > 0)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text"
+                                 Icon="@Icons.Material.Filled.ErrorOutline">
+                            @_missing.Count obligatorio@(_missing.Count == 1 ? "" : "s") pendiente@(_missing.Count == 1 ? "" : "s")
+                        </MudChip>
+                    }
+                    <MudChip T="string" Color="Color.Secondary" Variant="Variant.Text">
+                        Sección @(_sectionIndex + 1) de @_template.Sections.Count
+                    </MudChip>
+                </MudStack>
+            }
+        </MudStack>
+
+        @* Progress reflects how much is actually answered, not how far the user
+           has clicked — a capture form that reports 100% while empty is a lie. *@
+        <MudProgressLinear Color="@(_missing.Count == 0 ? Color.Success : Color.Secondary)"
+                           Value="@CompletionProgress" Rounded="true" Class="mt-2" Style="height:6px" />
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
+            @_answeredRequired de @_totalRequired campos obligatorios capturados
+        </MudText>
+    </MudPaper>
+
+    @if (sec is not null)
+    {
+        <MudPaper Elevation="1" Class="pa-6 mb-4">
+            <MudText Typo="Typo.h6">@(_sectionIndex + 1). @sec.Title</MudText>
+            @if (!string.IsNullOrWhiteSpace(sec.Description))
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">@sec.Description</MudText>
+            }
+
+            @foreach (var q in sec.Questions)
+            {
+                <div class="mb-5">
+                    <MudText Typo="Typo.subtitle2">
+                        @q.Text @if (q.Required) { <span style="color:var(--mud-palette-error)">*</span> }
+                    </MudText>
+                    @if (!string.IsNullOrWhiteSpace(q.HelpText))
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block mb-2">@q.HelpText</MudText>
+                    }
+
+                    @switch (q.Type.ToLowerInvariant())
+                    {
+                        case "boolean":
+                            <MudSelect T="string" Value="@Get(q.Key)" ValueChanged="@(v => Set(q.Key, v))" Style="max-width:280px">
+                                <MudSelectItem T="string" Value="@("true")">Sí</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("false")">No</MudSelectItem>
+                            </MudSelect>
+                            break;
+                        case "number":
+                            <MudTextField T="string" Value="@Get(q.Key)" ValueChanged="@(v => Set(q.Key, v))" InputType="InputType.Number" Style="max-width:280px" />
+                            break;
+                        case "matrix":
+                            <MudSimpleTable Dense="true" Bordered="true" Style="max-width:520px">
+                                <thead>
+                                    <tr><th>Concepto</th>@foreach (var col in q.Columns) { <th>@col</th> }</tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var row in q.Rows)
+                                    {
+                                        <tr>
+                                            <td>@row</td>
+                                            @foreach (var col in q.Columns)
+                                            {
+                                                var key = $"{q.Key}[{row}][{col}]";
+                                                <td><MudTextField T="string" Value="@Get(key)" ValueChanged="@(v => Set(key, v))" InputType="InputType.Number" Margin="Margin.Dense" /></td>
+                                            }
+                                        </tr>
+                                    }
+                                </tbody>
+                            </MudSimpleTable>
+                            break;
+                        default:
+                            <MudTextField T="string" Value="@Get(q.Key)" ValueChanged="@(v => Set(q.Key, v))" />
+                            break;
+                    }
+                </div>
+            }
+        </MudPaper>
+    }
+
+    <MudStack Row="true" Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap">
+        <MudButton Variant="Variant.Outlined" OnClick="Back">
+            @(_sectionIndex == 0 ? "Cambiar plantilla" : "Sección anterior")
+        </MudButton>
+        <MudStack Row="true" Spacing="2">
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Save"
+                       OnClick="() => Save(ReportStatus.draft)">Guardar borrador</MudButton>
+            @if (IsLastSection)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Secondary" EndIcon="@Icons.Material.Filled.Send"
+                           OnClick="() => Save(ReportStatus.submitted)">Enviar reporte</MudButton>
+            }
+            else
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Secondary" EndIcon="@Icons.Material.Filled.ArrowForward"
+                           OnClick="Next">Siguiente sección</MudButton>
+            }
+        </MudStack>
+    </MudStack>
+}
+
+@code {
+    private Guid _userId = Guid.Empty;
+    private IReadOnlyList<ReportTemplateDefinition> _templates = System.Array.Empty<ReportTemplateDefinition>();
+    private IReadOnlyList<RecentReport> _recent = System.Array.Empty<RecentReport>();
+
+    private ReportTemplateDefinition? _template;
+
+    /// <summary>Row being edited. Null for a capture that has never been saved.</summary>
+    private Guid? _reportId;
+
+    private string _reportType = string.Empty;
+    private string _version = string.Empty;
+    private int _sectionIndex;
+    private readonly Dictionary<string, string?> _answers = new(StringComparer.OrdinalIgnoreCase);
+
+    // Completion state, recomputed whenever an answer changes.
+    private List<MissingAnswer> _missing = new();
+    private int _totalRequired;
+    private int _answeredRequired;
+
+    /// <summary>A required field still to be captured, with where to find it.</summary>
+    private sealed record MissingAnswer(int SectionIndex, string SectionTitle, string QuestionText);
+
+    private bool IsLastSection => _template is not null && _sectionIndex >= _template.Sections.Count - 1;
+
+    private double CompletionProgress =>
+        _totalRequired == 0 ? 100 : (double)_answeredRequired / _totalRequired * 100;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        _userId = Guid.TryParse(state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var id) ? id : Guid.Empty;
+        await LoadOverview();
+    }
+
+    private async Task LoadOverview()
+    {
+        _templates = await ReportsSvc.GetTemplatesAsync();
+        _recent = await ReportsSvc.GetRecentReportsAsync(_userId);
+    }
+
+    private void StartNew(ReportTemplateDefinition t)
+    {
+        _template = t;
+        _reportId = null;                 // brand new capture
+        _reportType = t.ReportType;
+        _version = t.Version;
+        _sectionIndex = 0;
+        _answers.Clear();
+        Recompute();
+    }
+
+    private async Task Resume(Guid id)
+    {
+        var draft = await ReportsSvc.GetReportAsync(id, _userId);
+        if (draft is null) { Snackbar.Add("No se pudo cargar el reporte.", Severity.Warning); return; }
+
+        var template = await ReportsSvc.GetTemplateAsync(draft.ReportType, draft.Version);
+        if (template is null) { Snackbar.Add("No se encontró la plantilla del reporte.", Severity.Warning); return; }
+
+        _template = template;
+        _reportId = draft.Id;             // keep editing the same row
+        _reportType = draft.ReportType;
+        _version = draft.Version;
+        _sectionIndex = 0;
+        _answers.Clear();
+        foreach (var kv in draft.Answers) _answers[kv.Key] = kv.Value;
+        Recompute();
+    }
+
+    private string Get(string key) => _answers.TryGetValue(key, out var v) ? v ?? string.Empty : string.Empty;
+
+    private void Set(string key, string value)
+    {
+        _answers[key] = value;
+        Recompute();
+    }
+
+    /// <summary>
+    /// Walks the whole template (not just the visible section) and works out
+    /// which required answers are still missing. A matrix counts as answered
+    /// only when every cell has a value — a partially filled official table is
+    /// not a valid submission.
+    /// </summary>
+    private void Recompute()
+    {
+        _missing = new List<MissingAnswer>();
+        _totalRequired = 0;
+
+        if (_template is null) { _answeredRequired = 0; return; }
+
+        for (int s = 0; s < _template.Sections.Count; s++)
+        {
+            var section = _template.Sections[s];
+            foreach (var q in section.Questions.Where(q => q.Required))
+            {
+                _totalRequired++;
+                if (!IsAnswered(q))
+                    _missing.Add(new MissingAnswer(s, section.Title, q.Text));
+            }
+        }
+
+        _answeredRequired = _totalRequired - _missing.Count;
+    }
+
+    private bool IsAnswered(ReportTemplateQuestion q)
+    {
+        if (!q.Type.Equals("matrix", StringComparison.OrdinalIgnoreCase))
+            return !string.IsNullOrWhiteSpace(Get(q.Key));
+
+        foreach (var row in q.Rows)
+            foreach (var col in q.Columns)
+                if (string.IsNullOrWhiteSpace(Get($"{q.Key}[{row}][{col}]")))
+                    return false;
+
+        return q.Rows.Count > 0 && q.Columns.Count > 0;
+    }
+
+    private void Back()
+    {
+        if (_sectionIndex == 0) { _template = null; _reportId = null; }
+        else { _sectionIndex--; }
+    }
+
+    private void Next() { if (!IsLastSection) _sectionIndex++; }
+
+    private async Task Save(ReportStatus status)
+    {
+        // A draft may be incomplete by definition; a submission may not.
+        if (status == ReportStatus.submitted && _missing.Count > 0)
+        {
+            var first = _missing[0];
+            _sectionIndex = first.SectionIndex;
+            Snackbar.Add(
+                $"Faltan {_missing.Count} campo(s) obligatorio(s). Revisa «{first.SectionTitle}»: {first.QuestionText}.",
+                Severity.Warning);
+            return;
+        }
+
+        var savedId = await ReportsSvc.SaveAsync(_userId, _reportId, _reportType, _version, status, _answers);
+
+        if (savedId is null)
+        {
+            Snackbar.Add("No se pudo persistir: la tabla 'reports' aún no existe en la base de datos.", Severity.Warning);
+        }
+        else
+        {
+            _reportId = savedId;   // subsequent saves update this same row
+            Snackbar.Add(status == ReportStatus.submitted
+                ? "Reporte enviado correctamente."
+                : "Borrador guardado.", Severity.Success);
+        }
+
+        // Submitting closes the capture; saving a draft keeps you where you were.
+        if (status == ReportStatus.submitted)
+        {
+            _template = null;
+            _reportId = null;
+        }
+
+        await LoadOverview();
+    }
+
+    private static string StatusLabel(ReportStatus s) => s switch
+    {
+        ReportStatus.submitted => "Enviado",
+        ReportStatus.approved  => "Aprobado",
+        ReportStatus.rejected  => "Rechazado",
+        _                      => "Borrador",
+    };
+
+    private static Color StatusColor(ReportStatus s) => s switch
+    {
+        ReportStatus.submitted => Color.Info,
+        ReportStatus.approved  => Color.Success,
+        ReportStatus.rejected  => Color.Error,
+        _                      => Color.Default,
+    };
+}
