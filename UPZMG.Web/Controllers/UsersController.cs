@@ -1,7 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using UPZMG.Implementations;
 using UPZMG.Web.Models.Users;
+using UPZMG.Web.Services;
+using UPZMG.Implementations.Users;
+using System.Security.Claims;
 
 namespace UPZMG.Web.Controllers;
 
@@ -10,77 +14,117 @@ namespace UPZMG.Web.Controllers;
 /// create or edit them, assigning exactly one role per user. All writes are mocked.
 /// </summary>
 [Authorize(Roles = "Admin")]
-public class UsersController : SigieBaseController
+public class UsersController(DataService dataService): SigieBaseController
 {
-    // Mock in-memory catalog (to be replaced with real DB/API queries later)
-    private static readonly List<UserListItemModel> MockUsers = new()
+    public async Task<IActionResult> Index()
     {
-        new() { Id = 1, FullName = "Francisco Subdirección", Email = "francisco.planeacion@upzmg.edu.mx", RoleName = "Admin", IsActive = true, LastLogin = DateTime.Now.AddHours(-3) },
-        new() { Id = 2, FullName = "Karla Asistente", Email = "karla.asistente@upzmg.edu.mx", RoleName = "Planeación", IsActive = true, LastLogin = DateTime.Now.AddDays(-1) },
-        new() { Id = 3, FullName = "Ana Martínez", Email = "ana.martinez@upzmg.edu.mx", RoleName = "Control Escolar", IsActive = true, LastLogin = DateTime.Now.AddDays(-2) },
-        new() { Id = 4, FullName = "Carlos López", Email = "carlos.lopez@upzmg.edu.mx", RoleName = "Recursos Humanos", IsActive = false, LastLogin = DateTime.Now.AddDays(-30) },
-    };
+        if (!Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var requesterKey))
+            return Unauthorized();
 
-    public IActionResult Index()
-    {
         SetUserViewData();
-
         if (TempData["UsersStatus"] is string statusMessage)
             ViewData["UsersStatus"] = statusMessage;
 
-        return View(new UsersIndexViewModel { Users = MockUsers });
+        var request = new GetAllUsers
+        {
+            RequesterKey = requesterKey,
+        };
+        var users = await dataService.GetAllUsers(request); // Replace with actual method to get users from DB/API
+
+        return View(new UsersIndexViewModel { Users = users });
     }
 
     [HttpGet]
-    public IActionResult Create()
+    public async Task<IActionResult> CreateTemplate()
     {
-        SetUserViewData();
-        return View(new UserFormViewModel { Roles = GetMockRoles() });
+        if (!Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var requesterKey))
+            return Unauthorized();
+        //SetUserViewData();
+
+        var request = new GetAllRoles
+        {
+            RequesterKey = requesterKey,
+        };
+        var roles = await dataService.GetAllRoles(request);
+        return View("UserTemplate", new UserFormViewModel
+        {
+            Roles = [.. roles.Select(role => new SelectListItem(role.Name, role.Id.ToString()))]
+        });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Create(UserFormViewModel model)
+    public async Task<IActionResult> CreateAction(UserFormViewModel model)
     {
+        if (!Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var requesterKey))
+            return Unauthorized();
+
+        var createRequest = new CreateUser
+        {
+            RequesterKey = requesterKey,
+            UserName = model.UserName,
+            Email = model.Email,
+            RoleId = model.RoleId,
+            IsActive = model.IsActive,
+            Password = model.Password
+        };
+        var result = await dataService.CreateUser(createRequest);
+
         TempData["UsersStatus"] = $"Usuario '{model.Email}' creado correctamente.";
         return RedirectToAction(nameof(Index));
     }
 
     [HttpGet]
-    public IActionResult Edit(int id)
+    public async Task<IActionResult> EditTemplate(Guid userId)
     {
-        SetUserViewData();
+        //SetUserViewData();
+        if (!Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var requesterKey))
+            return Unauthorized();
 
-        var user = MockUsers.FirstOrDefault(u => u.Id == id) ?? MockUsers[0];
+        var request = new GetUserById
+        {
+            RequesterKey = requesterKey,
+            UserId = userId
+        };
+        var user = await dataService.GetUserById(request);
+        var roles = await dataService.GetAllRoles(new GetAllRoles
+        {
+            RequesterKey = requesterKey,
+        });
 
         var model = new UserFormViewModel
         {
             Id = user.Id,
-            FullName = user.FullName,
+            UserName = user.UserName ?? string.Empty,
             Email = user.Email,
-            RoleId = user.RoleName,
+            RoleId = user.Role?.Id.ToString() ?? string.Empty,
             IsActive = user.IsActive,
-            Roles = GetMockRoles()
+            Roles = [.. roles.Select(role => new SelectListItem(role.Name, role.Id.ToString()))]
         };
 
-        return View(model);
+        return View("UserTemplate", model);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Edit(UserFormViewModel model)
+    public async Task<IActionResult> EditAction(UserFormViewModel model)
     {
+        if (!Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var requesterKey))
+            return Unauthorized();
+
+        var request = new EditUser
+        {
+            RequesterKey = requesterKey,
+            UserId = model.Id,
+            UserName = model.UserName,
+            Password = model.Password,
+            RoleId = model.RoleId,
+            IsActive = model.IsActive
+        };
+
+        var result = await dataService.EditUser(request);
+        
         TempData["UsersStatus"] = $"Usuario '{model.Email}' actualizado correctamente.";
         return RedirectToAction(nameof(Index));
     }
-
-    private static List<SelectListItem> GetMockRoles() => new()
-    {
-        new SelectListItem("Admin", "Admin"),
-        new SelectListItem("Rectoría", "Rectoría"),
-        new SelectListItem("Planeación", "Planeación"),
-        new SelectListItem("Control Escolar", "Control Escolar"),
-        new SelectListItem("Recursos Humanos", "Recursos Humanos"),
-        new SelectListItem("Finanzas", "Finanzas"),
-    };
 }

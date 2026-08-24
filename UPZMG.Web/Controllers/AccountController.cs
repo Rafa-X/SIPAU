@@ -2,19 +2,19 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using UPZMG.Persistence;
 using UPZMG.Persistence.Models;
 using UPZMG.Web.Models;
+using UPZMG.Implementations;
 using UPZMG.Web.Services;
-using UPZMG.Persistence.Queries;
-using Microsoft.EntityFrameworkCore;
 
 namespace UPZMG.Web.Controllers;
 
-public class AccountController(AppDBContext _db, ISecurityEventLogger _securityLogger) : Controller
+public class AccountController(DataService dataService, ISecurityEventLogger securityLogger, IConfiguration configuration) : Controller
 {
+    private readonly DataService _dataService = dataService;
+    private readonly ISecurityEventLogger _securityLogger = securityLogger;
+    private readonly IConfiguration _configuration = configuration;
 
     [AllowAnonymous]
     [HttpGet]
@@ -55,38 +55,48 @@ public class AccountController(AppDBContext _db, ISecurityEventLogger _securityL
                 return View(model);
             }
 
-            // 1) Find active user
-            var user = await _db.GetSystemUserAsync(email);
+            var sharedSecret = _configuration["InternalAuth:WebSharedSecret"]
+                ?? throw new InvalidOperationException("Missing internal shared secret configuration.");
 
-            if (user is null || user.IsActive == false || user.Role is null || string.IsNullOrWhiteSpace(user.Password))
+            // 1) Resolve and validate user through the API layer
+            var request = new AccountWebLoginRequest
+            {
+                Email = email,
+                Password = model.Password,
+                SharedSecret = sharedSecret
+            };
+            var authenticatedUser = await _dataService.AuthenticateUserAsync(request);
+
+            if (authenticatedUser is null || authenticatedUser.UserId == Guid.Empty || string.IsNullOrWhiteSpace(authenticatedUser.RoleName))
             {
                 _securityLogger.LogLoginRejected(email, "User not found or inactive");
                 model.ErrorMessage = "Credenciales inválidas.";
                 return View(model);
             }
 
-            // 2) Verify password hash
-            var hasher = new PasswordHasher<SystemUser>();
-            var result = hasher.VerifyHashedPassword(user, user.Password, model.Password);
+            var claimEmail = authenticatedUser.Email?.Trim() ?? string.Empty;
+            var claimRole = authenticatedUser.RoleName?.Trim() ?? string.Empty;
 
-            if (result == PasswordVerificationResult.Failed)
+            if (string.IsNullOrWhiteSpace(claimEmail) || string.IsNullOrWhiteSpace(claimRole))
             {
-                _securityLogger.LogLoginRejected(email, "Invalid password");
+                _securityLogger.LogLoginRejected(email, "Authenticated user returned invalid claim values");
                 model.ErrorMessage = "Credenciales inválidas.";
                 return View(model);
             }
 
-            // 3) Create cookie claims
-            claims.Add(new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()));
-            claims.Add(new Claim(ClaimTypes.Email, user.Email));
-            claims.Add(new Claim(ClaimTypes.Role, user.Role.Name));
+            // 2) Create cookie claims from API-authenticated user
+            claims.Add(new Claim(ClaimTypes.NameIdentifier, authenticatedUser.UserId.ToString()));
+            claims.Add(new Claim(ClaimTypes.Email, claimEmail));
+            claims.Add(new Claim(ClaimTypes.Role, claimRole));
 
             identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             await HttpContext.SignInAsync(
                     CookieAuthenticationDefaults.AuthenticationScheme,
                     new ClaimsPrincipal(identity),
                     props);
-                _securityLogger.LogLoginSucceeded(user.Email, user.Role);
+            _securityLogger.LogLoginSucceeded(
+                claimEmail,
+                new Role { Name = claimRole });
         }
         catch (Exception ex)
         {

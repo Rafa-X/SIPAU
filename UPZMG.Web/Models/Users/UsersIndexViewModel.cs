@@ -1,3 +1,5 @@
+using UPZMG.Persistence.Models;
+
 namespace UPZMG.Web.Models.Users;
 
 /// <summary>
@@ -6,13 +8,13 @@ namespace UPZMG.Web.Models.Users;
 /// </summary>
 public class UsersIndexViewModel
 {
-    public List<UserListItemModel> Users { get; set; } = new();
+    public List<SystemUser> Users { get; set; } = new();
 }
 
 /// <summary>
 /// Represents a single user row in the user management listing.
 /// </summary>
-public class UserListItemModel
+public class UserListModel
 {
     public int Id { get; set; }
     public string FullName { get; set; } = string.Empty;

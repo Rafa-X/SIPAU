@@ -1,25 +1,74 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using UPZMG.Api.Services;
 using UPZMG.Persistence;
-using UPZMG.Persistence.Queries;
-using Microsoft.EntityFrameworkCore;
+using UPZMG.Persistence.Models;
+using UPZMG.Persistence.Repository;
 
 namespace UPZMG.Api.Controllers;
 
 [ApiController]
 [Route("auth")]
-public class AuthController(AppDBContext db, IConfiguration cfg, ISecurityEventLogger securityLogger) : ControllerBase
+public class AuthController(
+    UsersRepository usersRepository, 
+    SecurityRepository securityRepository, 
+    IConfiguration _cfg, 
+    ISecurityEventLogger _securityLogger) : ControllerBase
 {
-    private readonly AppDBContext _db = db;
-    private readonly IConfiguration _cfg = cfg;
-    private readonly ISecurityEventLogger _securityLogger = securityLogger;
-
     public record TokenExchangeRequest(Guid UserId, string SharedSecret);
+    public record WebLoginRequest(string Email, string Password, string SharedSecret);
+    public record WebLoginResponse(Guid UserId, string Email, string RoleName);
+
+    [AllowAnonymous]
+    [HttpPost("web-login")]
+    // Used by the web application to authenticate credentials through the API
+    // and avoid direct DB queries from the web layer.
+    public async Task<IActionResult> WebLogin([FromBody] WebLoginRequest req)
+    {
+        var expected = _cfg["InternalAuth:WebSharedSecret"];
+        if (string.IsNullOrWhiteSpace(expected) || req.SharedSecret != expected)
+        {
+            _securityLogger.LogTokenExchangeRejected(Guid.Empty, "Web login shared secret mismatch or missing");
+            return Unauthorized();
+        }
+
+        var email = req.Email?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(req.Password))
+        {
+            _securityLogger.LogTokenExchangeRejected(Guid.Empty, "Web login missing credentials");
+            return Unauthorized();
+        }
+
+        var user = await usersRepository.GetSystemUserByEmailAsync(email);
+        if (user.Id == Guid.Empty || user.IsActive == false || user.Role is null || string.IsNullOrWhiteSpace(user.Password))
+        {
+            _securityLogger.LogTokenExchangeRejected(Guid.Empty, "Web login user not found or inactive");
+            return Unauthorized();
+        }
+
+        var responseEmail = user.Email?.Trim() ?? string.Empty;
+        var responseRole = user.Role.Name?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(responseEmail) || string.IsNullOrWhiteSpace(responseRole))
+        {
+            _securityLogger.LogTokenExchangeRejected(user.Id, "Web login user has invalid email/role data");
+            return Unauthorized();
+        }
+
+        var hasher = new PasswordHasher<SystemUser>();
+        var passwordResult = hasher.VerifyHashedPassword(user, user.Password, req.Password);
+        if (passwordResult == PasswordVerificationResult.Failed)
+        {
+            _securityLogger.LogTokenExchangeRejected(user.Id, "Web login invalid password");
+            return Unauthorized();
+        }
+
+        return Ok(new WebLoginResponse(user.Id, responseEmail, responseRole));
+    }
 
     [HttpPost("token")]
     // Used by the web application to exchange a shared secret for a JWT token.
@@ -33,7 +82,7 @@ public class AuthController(AppDBContext db, IConfiguration cfg, ISecurityEventL
             return Unauthorized();
         }
 
-        var user = await _db.GetSystemUserAsync(req.UserId);
+        var user = await usersRepository.GetSystemUserByIdAsync(req.UserId);
         if (user is null || user.Id == Guid.Empty || user.Role is null)
         {
             _securityLogger.LogTokenExchangeRejected(req.UserId, "User not found or inactive");
@@ -77,7 +126,7 @@ public class AuthController(AppDBContext db, IConfiguration cfg, ISecurityEventL
         if (!Guid.TryParse(userIdValue, out var userId))
             return Unauthorized();
 
-        var userPermissions = await _db.GetSystemUserPermissionsAsync(userId);
+        var userPermissions = await securityRepository.GetSystemUserPermissionsAsync(userId);
 
         return Ok(userPermissions);
     }

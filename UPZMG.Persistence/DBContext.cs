@@ -51,12 +51,12 @@ public class AppDBContext : DbContext
     // public DbSet<ParkingLots> ParkingLots => Set<ParkingLots>();
     // public DbSet<SchoolFacility> SchoolFacilities => Set<SchoolFacility>();
 
-    // // RRHH
+    // RRHH
+    public DbSet<Employee> Employees => Set<Employee>();
     // public DbSet<AcademicGoals> AcademicGoals => Set<AcademicGoals>();
     // public DbSet<AcademicStaff> AcademicStaffs => Set<AcademicStaff>();
     // public DbSet<ASTeacher> ASTeachers => Set<ASTeacher>();
     // public DbSet<Contracts> Contracts => Set<Contracts>();
-    // public DbSet<Employee> Employees => Set<Employee>();
     // public DbSet<InternalAreas> InternalAreas => Set<InternalAreas>();
     // public DbSet<PositionsMapping> PositionsMappings => Set<PositionsMapping>();
     // public DbSet<ResearchAreas> ResearchAreas => Set<ResearchAreas>();
@@ -99,7 +99,8 @@ public class AppDBContext : DbContext
         });
         modelBuilder.Entity<RolePermission>(entity => {
             entity.ToTable("rolePermissions");
-            entity.HasKey(x => new { x.RoleId, x.PermissionId });
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.RoleId, x.PermissionId }).IsUnique();
             entity.HasOne<Role>()
                 .WithMany()
                 .HasForeignKey(x => x.RoleId)
@@ -111,7 +112,8 @@ public class AppDBContext : DbContext
         });
         modelBuilder.Entity<RoleReportPermission>(entity => {
             entity.ToTable("roleReportsPermissions");
-            entity.HasKey(x => new { x.RoleId, x.ReportsPermissionId });
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.RoleId, x.ReportsPermissionId }).IsUnique();
             entity.Property(x => x.CanEdit).HasDefaultValue(false);
             entity.Property(x => x.CanSign).HasDefaultValue(false);
             entity.HasOne<Role>()
@@ -238,6 +240,9 @@ public class AppDBContext : DbContext
         modelBuilder.Entity<Student>(entity => {
             entity.ToTable("students");
             entity.HasKey(x => x.Id);
+            entity.Property(x => x.Gender)
+                .HasConversion<string>()
+                .HasColumnType("char(1)");
             entity.HasOne<IndigenousLanguages>()
                 .WithMany()
                 .HasForeignKey(x => x.IndigenousLanguageId);
@@ -320,7 +325,14 @@ public class AppDBContext : DbContext
         //     entity.HasKey(x => x.Id);
         // });
 
-        // // RRHH
+        // RRHH
+        modelBuilder.Entity<Employee>(entity => {
+            entity.ToTable("employees");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Gender)
+                .HasConversion<string>()
+                .HasColumnType("char(1)");
+        });
         // modelBuilder.Entity<AcademicGoals>(entity => {
         //     entity.ToTable("academicGoals");
         //     entity.HasKey(x => x.Id);
@@ -335,10 +347,6 @@ public class AppDBContext : DbContext
         // });
         // modelBuilder.Entity<Contracts>(entity => {
         //     entity.ToTable("contracts");
-        //     entity.HasKey(x => x.Id);
-        // });
-        // modelBuilder.Entity<Employee>(entity => {
-        //     entity.ToTable("employees");
         //     entity.HasKey(x => x.Id);
         // });
         // modelBuilder.Entity<InternalAreas>(entity => {

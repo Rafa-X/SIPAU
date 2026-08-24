@@ -14,11 +14,13 @@ public class Employee
     public required Guid EmployeeNumber { get; set; }
     [MaxLength(200)]
     public required string FullName { get; set; }
+    [MaxLength(100)]
+    public string Email { get; set; } = null!;
     [MaxLength(13)]
     public required string Rfc { get; set; }
     [MaxLength(18)]
     public required string Curp { get; set; }
-    public Gender Gender { get; set; }
+    public required Gender Gender { get; set; }
     public DateOnly BirthDate { get; set; }
     public EducationLevel HighestEducationLevel { get; set; }
     public TitleStatus TitleStatus { get; set; }

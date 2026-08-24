@@ -12,7 +12,7 @@ using UPZMG.Persistence;
 namespace UPZMG.Persistence.Migrations
 {
     [DbContext(typeof(AppDBContext))]
-    [Migration("20260729065642_ConsolidatedInitial")]
+    [Migration("20260824233633_ConsolidatedInitial")]
     partial class ConsolidatedInitial
     {
         /// <inheritdoc />
@@ -239,6 +239,11 @@ namespace UPZMG.Persistence.Migrations
                         .HasMaxLength(18)
                         .HasColumnType("nvarchar(18)");
 
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<Guid>("EmployeeNumber")
                         .HasColumnType("uniqueidentifier");
 
@@ -253,8 +258,9 @@ namespace UPZMG.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<int>("Gender")
-                        .HasColumnType("int");
+                    b.Property<string>("Gender")
+                        .IsRequired()
+                        .HasColumnType("char(1)");
 
                     b.Property<bool>("HasDisability")
                         .HasColumnType("bit");
@@ -275,7 +281,7 @@ namespace UPZMG.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Employee");
+                    b.ToTable("employees", (string)null);
                 });
 
             modelBuilder.Entity("UPZMG.Persistence.Models.IndigenousLanguages", b =>
@@ -477,7 +483,6 @@ namespace UPZMG.Persistence.Migrations
                         .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("TemplateVersion")
-                        .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
@@ -522,28 +527,30 @@ namespace UPZMG.Persistence.Migrations
 
             modelBuilder.Entity("UPZMG.Persistence.Models.RolePermission", b =>
                 {
-                    b.Property<Guid>("RoleId")
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("PermissionId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("RoleId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.HasKey("RoleId", "PermissionId");
+                    b.HasKey("Id");
 
                     b.HasIndex("PermissionId");
+
+                    b.HasIndex("RoleId", "PermissionId")
+                        .IsUnique();
 
                     b.ToTable("rolePermissions", (string)null);
                 });
 
             modelBuilder.Entity("UPZMG.Persistence.Models.RoleReportPermission", b =>
                 {
-                    b.Property<Guid>("RoleId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("ReportsPermissionId")
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("CanEdit")
@@ -556,12 +563,18 @@ namespace UPZMG.Persistence.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
 
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("ReportsPermissionId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.HasKey("RoleId", "ReportsPermissionId");
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
 
                     b.HasIndex("ReportsPermissionId");
+
+                    b.HasIndex("RoleId", "ReportsPermissionId")
+                        .IsUnique();
 
                     b.ToTable("roleReportsPermissions", (string)null);
                 });
@@ -692,8 +705,9 @@ namespace UPZMG.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<int>("Gender")
-                        .HasColumnType("int");
+                    b.Property<string>("Gender")
+                        .IsRequired()
+                        .HasColumnType("char(1)");
 
                     b.Property<string>("HighSchoolCountry")
                         .HasMaxLength(100)
@@ -782,13 +796,18 @@ namespace UPZMG.Persistence.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
-                    b.Property<DateTime>("LastLogin")
+                    b.Property<DateTime?>("LastLogin")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Password")
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("UserName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
 

@@ -41,7 +41,9 @@ try
         });
 
     builder.Services.AddScoped<ApiTokenService>();
+    builder.Services.AddScoped<SecurityService>();
     builder.Services.AddScoped<ApiClient>();
+    builder.Services.AddScoped<DataService>();
     builder.Services.AddScoped<IAuthService, AuthService>();
     builder.Services.AddSingleton<ISecurityEventLogger, SecurityLogger>();
 
