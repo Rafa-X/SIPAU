@@ -5,22 +5,38 @@
 <MudDialog>
     <DialogContent>
         <MudForm @ref="_form">
-            <MudTextField @bind-Value="_model.FullName" Label="Nombre completo"
+            <MudTextField @bind-Value="_model.UserName" Label="Nombre completo"
                           Required="true" RequiredError="El nombre es obligatorio."
                           Immediate="true" Class="mb-3" />
 
+            @* The EditUser contract carries no Email and the repository never
+               updates it, so allowing edits here would silently discard them.
+               The address also links the account to its employee record. *@
             <MudTextField @bind-Value="_model.Email" Label="Correo electrónico"
                           InputType="InputType.Email" Required="true"
                           Validation="@(new Func<string, string?>(ValidateEmail))"
+                          Disabled="@_model.IsEditing"
+                          HelperText="@(_model.IsEditing ? "El correo no se puede cambiar: identifica la cuenta y su empleado." : "Debe coincidir con el correo de un empleado registrado.")"
                           Immediate="true" Class="mb-3" />
 
+            @* Bound by role id (what the API expects), shown by name. *@
             <MudSelect T="string" @bind-Value="_model.RoleId" Label="Rol"
                        Required="true" RequiredError="Selecciona un rol." Class="mb-3">
                 @foreach (var role in Roles)
                 {
-                    <MudSelectItem T="string" Value="@role">@role</MudSelectItem>
+                    <MudSelectItem T="string" Value="@role.Id.ToString()">@role.Name</MudSelectItem>
                 }
             </MudSelect>
+
+            @* A user with no password cannot sign in (AccountController rejects a
+               blank hash) and the API's CreateUser contract marks it required,
+               so it is mandatory on create and "leave blank to keep" on edit. *@
+            <MudTextField @bind-Value="_model.Password" Label="@(_model.IsEditing ? "Nueva contraseña (opcional)" : "Contraseña")"
+                          InputType="InputType.Password"
+                          Required="@(!_model.IsEditing)" RequiredError="La contraseña es obligatoria."
+                          Validation="@(new Func<string, string?>(ValidatePassword))"
+                          HelperText="@(_model.IsEditing ? "Déjala en blanco para conservar la contraseña actual." : "Mínimo 8 caracteres.")"
+                          Immediate="true" Class="mb-3" />
 
             <MudSwitch T="bool" @bind-Value="_model.IsActive" Color="Color.Secondary" Label="Usuario activo" />
         </MudForm>
@@ -37,7 +53,7 @@
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
 
     [Parameter] public UserFormViewModel Model { get; set; } = new();
-    [Parameter] public IReadOnlyList<string> Roles { get; set; } = System.Array.Empty<string>();
+    [Parameter] public IReadOnlyList<Role> Roles { get; set; } = Array.Empty<Role>();
 
     private MudForm _form = null!;
     private UserFormViewModel _model = new();
@@ -48,10 +64,12 @@
         _model = new UserFormViewModel
         {
             Id = Model.Id,
-            FullName = Model.FullName,
+            UserName = Model.UserName,
             Email = Model.Email,
             RoleId = Model.RoleId,
             IsActive = Model.IsActive,
+            // Never round-trip the stored password into the form.
+            Password = string.Empty,
         };
     }
 
@@ -60,6 +78,16 @@
         if (string.IsNullOrWhiteSpace(email)) return "El correo es obligatorio.";
         if (!email.Contains('@') || !email.Contains('.')) return "Correo no válido.";
         return null;
+    }
+
+    private string? ValidatePassword(string? password)
+    {
+        // Blank on edit means "unchanged"; blank on create means an account
+        // nobody can sign in with.
+        if (string.IsNullOrWhiteSpace(password))
+            return _model.IsEditing ? null : "La contraseña es obligatoria.";
+
+        return password.Length < 8 ? "Debe tener al menos 8 caracteres." : null;
     }
 
     private async Task Submit()

@@ -4,6 +4,7 @@
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthState
 
 <PageTitle>Usuarios y Roles — SIGIE</PageTitle>
 
@@ -20,23 +21,28 @@
     <DataToolbar @bind-Search="_search" Placeholder="Buscar usuario, correo o rol…"
                  Count="Filtered.Count" Total="_users.Count" OnExport="ExportAsync">
         <Filters>
-            <MudSelect T="string" Value="_state" ValueChanged="@(v => _state = v)" Dense="true"
+            @* The API's users/get-all filters `where su.IsActive`, so an
+               "inactive" option here could never match anything. Filtering by
+               role is what actually helps on this screen. *@
+            <MudSelect T="string" Value="_roleFilter" ValueChanged="@(v => _roleFilter = v)" Dense="true"
                        Variant="Variant.Outlined" Margin="Margin.Dense" Class="sigie-toolbar-filter mt-0"
-                       Placeholder="Estado" Clearable="true">
-                <MudSelectItem T="string" Value="@(null!)">Todos</MudSelectItem>
-                <MudSelectItem T="string" Value="@("activos")">Solo activos</MudSelectItem>
-                <MudSelectItem T="string" Value="@("inactivos")">Solo inactivos</MudSelectItem>
+                       Placeholder="Rol" Clearable="true">
+                <MudSelectItem T="string" Value="@(null!)">Todos los roles</MudSelectItem>
+                @foreach (var role in _roles)
+                {
+                    <MudSelectItem T="string" Value="@role.Name">@role.Name</MudSelectItem>
+                }
             </MudSelect>
         </Filters>
     </DataToolbar>
 
-    <MudDataGrid T="UserListItemModel" Items="Filtered" Hover="true" Dense="true" Elevation="0"
+    <MudDataGrid T="UserListModel" Items="Filtered" Hover="true" Dense="true" Elevation="0"
                  Filterable="false" SortMode="SortMode.Multiple">
         <Columns>
-            <TemplateColumn Title="Usuario" SortBy="x => x.FullName">
+            <TemplateColumn Title="Usuario" SortBy="x => x.UserName">
                 <CellTemplate>
                     <div>
-                        <MudText Typo="Typo.body2" Style="font-weight:600">@context.Item.FullName</MudText>
+                        <MudText Typo="Typo.body2" Style="font-weight:600">@context.Item.UserName</MudText>
                         <MudText Typo="Typo.caption" Color="Color.Secondary">@context.Item.Email</MudText>
                     </div>
                 </CellTemplate>
@@ -71,32 +77,54 @@
             </TemplateColumn>
         </Columns>
         <NoRecordsContent>
-            <EmptyState Icon="@Icons.Material.Filled.PersonSearch"
-                        Title="Sin coincidencias"
-                        Description="Ningún usuario coincide con la búsqueda o el filtro de estado." />
+            @if (_users.Count == 0)
+            {
+                <EmptyState Icon="@Icons.Material.Filled.CloudOff"
+                            Title="Sin catálogo de usuarios"
+                            Description="No se recibieron usuarios de la API. Verifica que UPZMG.API esté corriendo y que la base de datos tenga los datos de prueba cargados." />
+            }
+            else
+            {
+                <EmptyState Icon="@Icons.Material.Filled.PersonSearch"
+                            Title="Sin coincidencias"
+                            Description="Ningún usuario coincide con la búsqueda o el filtro de rol." />
+            }
         </NoRecordsContent>
     </MudDataGrid>
 </SectionCard>
 
 @code {
-    private IReadOnlyList<UserListItemModel> _users = System.Array.Empty<UserListItemModel>();
+    private IReadOnlyList<UserListModel> _users = Array.Empty<UserListModel>();
+    private IReadOnlyList<Role> _roles = Array.Empty<Role>();
     private string _search = string.Empty;
-    private string? _state;
+    private string? _roleFilter;
 
-    protected override void OnInitialized() => Reload();
+    /// <summary>The signed-in user; every API call is authorised against it.</summary>
+    private Guid _requesterKey = Guid.Empty;
 
-    private void Reload() => _users = UsersSvc.GetUsers().ToList();
-
-    private List<UserListItemModel> Filtered => _users.Where(Matches).ToList();
-
-    private bool Matches(UserListItemModel user)
+    protected override async Task OnInitializedAsync()
     {
-        if (_state == "activos" && !user.IsActive) return false;
-        if (_state == "inactivos" && user.IsActive) return false;
+        var state = await AuthState.GetAuthenticationStateAsync();
+        _requesterKey = Guid.TryParse(state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var id)
+            ? id : Guid.Empty;
+
+        _roles = await UsersSvc.GetRolesAsync(_requesterKey);
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync() => _users = await UsersSvc.GetUsersAsync(_requesterKey);
+
+    private List<UserListModel> Filtered => _users.Where(Matches).ToList();
+
+    private bool Matches(UserListModel user)
+    {
+        if (!string.IsNullOrWhiteSpace(_roleFilter) &&
+            !string.Equals(user.RoleName, _roleFilter, StringComparison.OrdinalIgnoreCase))
+            return false;
 
         if (string.IsNullOrWhiteSpace(_search)) return true;
         var s = _search.Trim();
-        return user.FullName.Contains(s, StringComparison.OrdinalIgnoreCase)
+        return user.UserName.Contains(s, StringComparison.OrdinalIgnoreCase)
             || user.Email.Contains(s, StringComparison.OrdinalIgnoreCase)
             || user.RoleName.Contains(s, StringComparison.OrdinalIgnoreCase);
     }
@@ -104,7 +132,7 @@
     private async Task ExportAsync()
     {
         var csv = CsvExport.Build(Filtered,
-            ("Nombre", u => u.FullName),
+            ("Nombre", u => u.UserName),
             ("Correo", u => u.Email),
             ("Rol", u => u.RoleName),
             ("Activo", u => u.IsActive),
@@ -115,21 +143,28 @@
 
     private Task OpenCreate() => ShowDialog("Nuevo Usuario", new UserFormViewModel(), created: true);
 
-    private Task OpenEdit(UserListItemModel user) => ShowDialog("Editar Usuario", new UserFormViewModel
+    private Task OpenEdit(UserListModel user) => ShowDialog("Editar Usuario", new UserFormViewModel
     {
         Id = user.Id,
-        FullName = user.FullName,
+        UserName = user.UserName,
         Email = user.Email,
-        RoleId = user.RoleName,
+        // The form binds the role by id; the listing only carries its name.
+        RoleId = _roles.FirstOrDefault(r => r.Name == user.RoleName)?.Id.ToString() ?? string.Empty,
         IsActive = user.IsActive,
     }, created: false);
 
     private async Task ShowDialog(string title, UserFormViewModel model, bool created)
     {
+        if (_roles.Count == 0)
+        {
+            Snackbar.Add("No hay roles disponibles. Verifica que la API esté corriendo.", Severity.Warning);
+            return;
+        }
+
         var parameters = new DialogParameters<UserDialog>
         {
             { x => x.Model, model },
-            { x => x.Roles, UsersSvc.GetRoles() },
+            { x => x.Roles, _roles },
         };
         var options = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, CloseButton = true };
 
@@ -138,7 +173,18 @@
 
         if (result is not null && !result.Canceled && result.Data is UserFormViewModel saved)
         {
-            var outcome = UsersSvc.Save(saved);
+            // Catch the duplicate before the round-trip: the email is the sign-in
+            // identity and the API does not reject a repeat on its own.
+            var clash = _users.FirstOrDefault(u =>
+                u.Id != saved.Id && string.Equals(u.Email, saved.Email?.Trim(), StringComparison.OrdinalIgnoreCase));
+
+            if (clash is not null)
+            {
+                Snackbar.Add($"Ya existe un usuario con el correo '{saved.Email}' ({clash.UserName}).", Severity.Error);
+                return;
+            }
+
+            var outcome = await UsersSvc.SaveAsync(_requesterKey, saved);
 
             if (!outcome.Success)
             {
@@ -146,7 +192,7 @@
                 return;
             }
 
-            Reload();
+            await ReloadAsync();
             Snackbar.Add(created
                 ? $"Usuario '{saved.Email}' creado correctamente."
                 : $"Usuario '{saved.Email}' actualizado correctamente.", Severity.Success);
