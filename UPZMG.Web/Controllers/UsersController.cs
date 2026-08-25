@@ -14,14 +14,14 @@ namespace UPZMG.Web.Controllers;
 /// create or edit them, assigning exactly one role per user. All writes are mocked.
 /// </summary>
 [Authorize(Roles = "Admin")]
-public class UsersController(DataService dataService): SigieBaseController
+public class UsersController(DataService dataService) : Controller
 {
     public async Task<IActionResult> Index()
     {
         if (!Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var requesterKey))
             return Unauthorized();
 
-        SetUserViewData();
+        //SetUserViewData();
         if (TempData["UsersStatus"] is string statusMessage)
             ViewData["UsersStatus"] = statusMessage;
 
