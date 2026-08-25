@@ -13,7 +13,7 @@ public class HomeController : Controller
     /// </summary>
     public IActionResult Index()
     {
-        return RedirectToAction("Index", "Dashboard");
+        return LocalRedirect("/dashboard");
     }
 
     public IActionResult Privacy()

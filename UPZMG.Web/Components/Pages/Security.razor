@@ -1,0 +1,97 @@
+@page "/security"
+@attribute [Authorize(Roles = "Admin")]
+@inject ISecurityService SecuritySvc
+@inject ISnackbar Snackbar
+
+<PageTitle>Seguridad — SIGIE</PageTitle>
+
+<PageHeader Eyebrow="Administración" Title="Seguridad — Roles y permisos" Subtitle="Asignación de permisos por rol de acceso" />
+
+@if (_data is null)
+{
+    <MudProgressLinear Color="Color.Secondary" Indeterminate="true" />
+}
+else if (!_data.DbAvailable)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+        No se pudo consultar el catálogo de roles y permisos. Es probable que las tablas
+        <b>roles</b> / <b>permissions</b> / <b>role_permissions</b> aún no existan en la base de datos.
+    </MudAlert>
+}
+else
+{
+    <MudGrid>
+        <MudItem xs="12" md="4">
+            <MudPaper Elevation="1" Class="pa-2">
+                <MudList T="Guid" @bind-SelectedValue="_selectedRoleId" Color="Color.Secondary">
+                    @foreach (var role in _data.Roles)
+                    {
+                        <MudListItem T="Guid" Value="@role.Id" OnClick="@(() => SelectRole(role.Id))">
+                            <div class="d-flex justify-space-between align-center">
+                                <MudText>@role.Name</MudText>
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">@role.PermissionCount</MudChip>
+                            </div>
+                        </MudListItem>
+                    }
+                    @if (_data.Roles.Count == 0)
+                    {
+                        <MudListItem T="Guid"><MudText Color="Color.Secondary">No hay roles registrados.</MudText></MudListItem>
+                    }
+                </MudList>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="8">
+            <MudPaper Elevation="1" Class="pa-4">
+                @if (string.IsNullOrEmpty(_data.SelectedRoleName))
+                {
+                    <MudText Color="Color.Secondary">Selecciona un rol para ver y editar sus permisos.</MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.h6" Class="mb-3">Permisos de: @_data.SelectedRoleName</MudText>
+                    @if (_data.Permissions.Count == 0)
+                    {
+                        <MudText Color="Color.Secondary">No hay permisos registrados en el catálogo.</MudText>
+                    }
+                    else
+                    {
+                        @foreach (var perm in _data.Permissions)
+                        {
+                            <div class="d-flex justify-space-between align-center py-1">
+                                <div>
+                                    <MudText Typo="Typo.body2">@perm.Name</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@string.Join(", ", perm.AssignedRoleNames)</MudText>
+                                </div>
+                                <MudSwitch T="bool" Value="@perm.IsAssignedToSelectedRole" Color="Color.Secondary"
+                                           ValueChanged="@(v => Toggle(perm.Name, v))" />
+                            </div>
+                            <MudDivider />
+                        }
+                    }
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private SecurityData? _data;
+    private Guid _selectedRoleId;
+
+    protected override async Task OnInitializedAsync() => _data = await SecuritySvc.LoadAsync(null);
+
+    private async Task SelectRole(Guid roleId)
+    {
+        _selectedRoleId = roleId;
+        _data = await SecuritySvc.LoadAsync(roleId);
+    }
+
+    private async Task Toggle(string permissionName, bool enable)
+    {
+        if (_data?.SelectedRoleId is null) return;
+        var message = await SecuritySvc.ToggleAsync(_data.SelectedRoleId.Value, permissionName, enable);
+        if (!string.IsNullOrEmpty(message)) Snackbar.Add(message, Severity.Success);
+        _data = await SecuritySvc.LoadAsync(_data.SelectedRoleId);
+    }
+}

@@ -1,0 +1,137 @@
+@page "/charts"
+@attribute [Authorize]
+@inject IIntelligenceService Ai
+
+<PageTitle>Gráficas — SIGIE</PageTitle>
+
+<PageHeader Eyebrow="Analítica"
+            Title="Gráficas"
+            Subtitle="Visualización estadística institucional con proyección de tendencias">
+    <Actions>
+        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Tertiary"
+                 Icon="@Icons.Material.Filled.Functions">Mínimos cuadrados</MudChip>
+    </Actions>
+</PageHeader>
+
+<MudGrid>
+    <MudItem xs="12" lg="7">
+        <SectionCard Title="Matrícula histórica y proyección"
+                     Subtitle="@($"Regresión lineal · los últimos {ForecastAhead} periodos son pronóstico del modelo")"
+                     Icon="@Icons.Material.Filled.Timeline" Accent="violet">
+            <Actions>
+                <MudChip T="string" Size="Size.Small" Color="Color.Tertiary" Variant="Variant.Text">
+                    R² @_fc.R2.ToString("0.00")
+                </MudChip>
+            </Actions>
+            <ChildContent>
+                <TrendChart Labels="_fc.Labels" Series="_enrollment" Height="300"
+                            ForecastFromIndex="_fc.HistoricalCount"
+                            AriaLabel="Matrícula histórica y su proyección" />
+            </ChildContent>
+            <Footer>
+                Pendiente estimada: <b>@_fc.Slope.ToString("0.0")</b> alumnos por periodo ·
+                ordenada al origen <b>@_fc.Intercept.ToString("0.0")</b>
+            </Footer>
+        </SectionCard>
+    </MudItem>
+
+    <MudItem xs="12" lg="5">
+        <SectionCard Title="Distribución por carrera"
+                     Subtitle="Matrícula del periodo activo por programa educativo"
+                     Icon="@Icons.Material.Filled.School" Accent="teal">
+            <ChildContent>
+                <BarChart Labels="_careerLabels" Series="_careers" Height="300"
+                          AriaLabel="Alumnos por carrera" />
+            </ChildContent>
+            <Footer>
+                Programa con mayor matrícula: <b>@_topCareer</b> · total <b>@_totalStudents.ToString("N0")</b> alumnos
+            </Footer>
+        </SectionCard>
+    </MudItem>
+
+    <MudItem xs="12" lg="7">
+        <SectionCard Title="Aprobación vs. reprobación"
+                     Subtitle="Índices institucionales de aprovechamiento por periodo"
+                     Icon="@Icons.Material.Filled.FactCheck" Accent="navy">
+            <ChildContent>
+                <BarChart Labels="_achievementLabels" Series="_achievement" Height="290"
+                          ValueFormat="0.0" Unit="%" AriaLabel="Aprobación contra reprobación" />
+            </ChildContent>
+            <Footer>
+                La reprobación acumula cuatro periodos a la baja
+                (<b>@($"{_failureDrop:0.0}")</b> puntos porcentuales desde @_achievementLabels[0]).
+            </Footer>
+        </SectionCard>
+    </MudItem>
+
+    <MudItem xs="12" lg="5">
+        <SectionCard Title="Becas por fuente"
+                     Subtitle="Distribución de becas vigentes por financiamiento"
+                     Icon="@Icons.Material.Filled.Savings" Accent="gold">
+            <ChildContent>
+                <BarChart Labels="_scholarshipLabels" Series="_scholarships" Height="290"
+                          AriaLabel="Becas por tipo y fuente" />
+            </ChildContent>
+            <Footer>
+                Total de becas vigentes: <b>@_totalScholarships.ToString("N0")</b> ·
+                fuente principal: <b>@_topScholarship</b>
+            </Footer>
+        </SectionCard>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private const int ForecastAhead = 2;
+
+    // Accents mirror the theme: cyan = observado, índigo = modelo, oro =
+    // financiamiento, rosa = indicador negativo.
+    private const string Cyan = "#0FB5A0";
+    private const string Indigo = "#6D5CE7";
+    private const string Gold = "#D4A02C";
+    private const string Rose = "#E5484D";
+
+    private EnrollmentForecast _fc = null!;
+    private List<ChartSeriesData> _enrollment = new();
+
+    protected override void OnInitialized()
+    {
+        _fc = Ai.ForecastEnrollment(ForecastAhead);
+
+        _enrollment = new()
+        {
+            new ChartSeriesData("Matrícula", _fc.Actual, Cyan, Filled: true),
+            new ChartSeriesData("Tendencia del modelo", _fc.Trend, Indigo, Dashed: true),
+        };
+    }
+
+    // ── Carreras ────────────────────────────────────────────────────────────
+    private readonly string[] _careerLabels = { "Sistemas", "Industrial", "Biotec.", "Admón." };
+    private readonly double[] _careerData = { 420, 355, 210, 260 };
+    private List<ChartSeriesData> _careers => new() { new ChartSeriesData("Alumnos", _careerData, Cyan) };
+
+    private string _topCareer => _careerLabels[MaxIndex(_careerData)];
+    private double _totalStudents => _careerData.Sum();
+
+    // ── Aprovechamiento ─────────────────────────────────────────────────────
+    private readonly string[] _achievementLabels = { "2024-1", "2024-2", "2025-1", "2025-2" };
+    private readonly double[] _approval = { 84.2, 85.6, 86.9, 87.5 };
+    private readonly double[] _failure = { 15.8, 14.4, 13.1, 12.5 };
+
+    private List<ChartSeriesData> _achievement => new()
+    {
+        new ChartSeriesData("Aprobación", _approval, Cyan),
+        new ChartSeriesData("Reprobación", _failure, Rose),
+    };
+    private double _failureDrop => _failure[0] - _failure[^1];
+
+    // ── Becas ───────────────────────────────────────────────────────────────
+    private readonly string[] _scholarshipLabels = { "Excelencia", "Manutención", "Deportiva", "Federal" };
+    private readonly double[] _scholarshipData = { 180, 260, 65, 340 };
+
+    private List<ChartSeriesData> _scholarships => new() { new ChartSeriesData("Becas", _scholarshipData, Gold) };
+    private double _totalScholarships => _scholarshipData.Sum();
+    private string _topScholarship => _scholarshipLabels[MaxIndex(_scholarshipData)];
+
+    private static int MaxIndex(IReadOnlyList<double> values) =>
+        values.Select((v, i) => (v, i)).OrderByDescending(t => t.v).First().i;
+}

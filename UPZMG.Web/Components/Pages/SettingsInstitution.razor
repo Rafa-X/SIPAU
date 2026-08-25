@@ -1,0 +1,65 @@
+@page "/settings/institution"
+@attribute [Authorize(Roles = "Admin")]
+@inject ISettingsService SettingsSvc
+@inject ISnackbar Snackbar
+
+<PageTitle>Datos de la institución — SIGIE</PageTitle>
+
+<PageHeader Eyebrow="Administración" Title="Datos de la institución" Subtitle="Información maestra que encabeza los reportes generados" BackHref="/settings" />
+
+<MudForm @ref="_form">
+    <MudPaper Elevation="1" Class="pa-6 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-3">Identificación</MudText>
+        <MudGrid>
+            <MudItem xs="12" md="8"><MudTextField @bind-Value="_m.InstitutionName" Label="Nombre de la institución" Required="true" RequiredError="Requerido." /></MudItem>
+            <MudItem xs="12" md="4"><MudTextField @bind-Value="_m.InstitutionKey" Label="Clave institucional" /></MudItem>
+            <MudItem xs="12" md="4"><MudTextField @bind-Value="_m.CampusName" Label="Plantel / Campus" /></MudItem>
+            <MudItem xs="12" md="4"><MudTextField @bind-Value="_m.CctKey" Label="Clave CCT" /></MudItem>
+            <MudItem xs="12" md="4"><MudTextField @bind-Value="_m.RectorName" Label="Rector(a)" /></MudItem>
+            <MudItem xs="12" md="4">
+                <MudSelect T="string" @bind-Value="_m.Sostenimiento" Label="Sostenimiento">
+                    @foreach (var o in SettingsSvc.SostenimientoOptions) { <MudSelectItem T="string" Value="@o.Value">@o.Text</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="4"><MudTextField @bind-Value="_m.Phone" Label="Teléfono" /></MudItem>
+            <MudItem xs="12" md="4"><MudTextField @bind-Value="_m.Website" Label="Sitio web" /></MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <MudPaper Elevation="1" Class="pa-6 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-3">Responsable de captura</MudText>
+        <MudGrid>
+            <MudItem xs="12" md="4"><MudTextField @bind-Value="_m.ResponsibleName" Label="Nombre" /></MudItem>
+            <MudItem xs="12" md="4"><MudTextField @bind-Value="_m.ResponsiblePosition" Label="Cargo" /></MudItem>
+            <MudItem xs="12" md="4"><MudTextField @bind-Value="_m.ResponsibleEmail" Label="Correo" InputType="InputType.Email" /></MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <MudPaper Elevation="1" Class="pa-6 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-3">Domicilio</MudText>
+        <MudGrid>
+            <MudItem xs="12" md="6"><MudTextField @bind-Value="_m.Street" Label="Calle" /></MudItem>
+            <MudItem xs="12" md="2"><MudTextField @bind-Value="_m.StreetNumber" Label="Número" /></MudItem>
+            <MudItem xs="12" md="4"><MudTextField @bind-Value="_m.Neighborhood" Label="Colonia" /></MudItem>
+            <MudItem xs="12" md="4"><MudTextField @bind-Value="_m.Municipality" Label="Municipio" /></MudItem>
+            <MudItem xs="12" md="4"><MudTextField @bind-Value="_m.State" Label="Estado" /></MudItem>
+            <MudItem xs="12" md="4"><MudTextField @bind-Value="_m.PostalCode" Label="Código postal" /></MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Save" OnClick="Submit">Guardar configuración</MudButton>
+</MudForm>
+
+@code {
+    private MudForm _form = null!;
+    private InstitutionSettingsViewModel _m = new();
+
+    protected override void OnInitialized() => _m = SettingsSvc.GetInstitution();
+
+    private async Task Submit()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid) return;
+        Snackbar.Add("Configuración institucional guardada correctamente.", Severity.Success);
+    }
+}

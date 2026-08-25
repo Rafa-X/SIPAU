@@ -9,35 +9,38 @@
 <aside class="sidebar" id="sidebar">
     <nav class="sidebar-nav">
         <span class="sidebar-nav-section">Operación</span>
-        <a asp-controller="Dashboard" asp-action="Index" class="sidebar-nav-link @Active("Dashboard")">
+        <a href="/dashboard" class="sidebar-nav-link @Active("Dashboard")">
             <icon name="dashboard" /> Tablero de Control
         </a>
-        <a asp-controller="DataCapture" asp-action="Index" class="sidebar-nav-link @Active("DataCapture")">
+        <a href="/datacapture" class="sidebar-nav-link @Active("DataCapture")">
             <icon name="capture" /> Captura de Datos
         </a>
-        <a asp-controller="Charts" asp-action="Index" class="sidebar-nav-link @Active("Charts")">
+        <a href="/charts" class="sidebar-nav-link @Active("Charts")">
             <icon name="chart" /> Gráficas
         </a>
 
         <span class="sidebar-nav-section">Reportes</span>
-        <a asp-controller="Reports" asp-action="Index" class="sidebar-nav-link @Active("Reports")">
+        <a href="/reports" class="sidebar-nav-link @Active("Reports")">
             <icon name="report" /> Reportes 911 / SII
         </a>
-        <a asp-controller="BoardReport" asp-action="Index" class="sidebar-nav-link @Active("BoardReport")">
+        <a href="/boardreport" class="sidebar-nav-link @Active("BoardReport")">
             <icon name="board" /> Informe de Junta
         </a>
-        <a asp-controller="Minutes" asp-action="Index" class="sidebar-nav-link @Active("Minutes")">
+        <a href="/minutes" class="sidebar-nav-link @Active("Minutes")">
             <icon name="minutes" /> Actas de Junta
         </a>
 
         @if (User.IsInRole("Admin"))
         {
             <span class="sidebar-nav-section">Administración</span>
-            <a asp-controller="Settings" asp-action="Index" class="sidebar-nav-link @Active("Settings")">
+            <a href="/settings" class="sidebar-nav-link @Active("Settings")">
                 <icon name="settings" /> Configuración
             </a>
-            <a asp-controller="Users" asp-action="Index" class="sidebar-nav-link @Active("Users")">
+            <a href="/users" class="sidebar-nav-link @Active("Users")">
                 <icon name="users" /> Usuarios
+            </a>
+            <a href="/security" class="sidebar-nav-link @Active("Security")">
+                <icon name="shield" /> Seguridad
             </a>
         }
     </nav>

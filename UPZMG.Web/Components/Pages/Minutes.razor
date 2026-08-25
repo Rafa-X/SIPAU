@@ -1,0 +1,89 @@
+@page "/minutes"
+@attribute [Authorize]
+@inject IMinutesService MinutesSvc
+@inject IJSRuntime JS
+
+<PageTitle>Actas de Junta — SIGIE</PageTitle>
+
+<PageHeader Eyebrow="Junta directiva" Title="Actas de Junta Directiva" Subtitle="Seguimiento de firmas de las actas de sesión" />
+
+<SectionCard Flush="true" FullHeight="false">
+    <DataToolbar @bind-Search="_search" Placeholder="Buscar sesión…"
+                 Count="Filtered.Count" Total="_minutes.Count" OnExport="ExportAsync">
+        <Filters>
+            <MudSelect T="string" Value="_status" ValueChanged="@(v => _status = v)" Dense="true"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Class="sigie-toolbar-filter mt-0"
+                       Placeholder="Estado" Clearable="true">
+                <MudSelectItem T="string" Value="@(null!)">Todos los estados</MudSelectItem>
+                @foreach (var s in _statuses)
+                {
+                    <MudSelectItem T="string" Value="@s">@s</MudSelectItem>
+                }
+            </MudSelect>
+        </Filters>
+    </DataToolbar>
+
+    <MudDataGrid T="MinuteListItemModel" Items="Filtered" Hover="true" Dense="true" Elevation="0"
+                 SortMode="SortMode.Multiple">
+        <Columns>
+            <PropertyColumn Property="x => x.SessionName" Title="Sesión" />
+            <PropertyColumn Property="x => x.Date" Title="Fecha" Format="dd/MM/yyyy" />
+            <TemplateColumn Title="Estado" SortBy="x => x.Status">
+                <CellTemplate>
+                    <StatusChip Status="@context.Item.Status" />
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Acción" CellClass="d-flex justify-end" Sortable="false">
+                <CellTemplate>
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Visibility" Href="@($"/minutes/{context.Item.Id}")">
+                        Ver detalle
+                    </MudButton>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <NoRecordsContent>
+            <EmptyState Icon="@Icons.Material.Filled.SearchOff"
+                        Title="Sin coincidencias"
+                        Description="Ninguna acta coincide con la búsqueda o el filtro de estado." />
+        </NoRecordsContent>
+    </MudDataGrid>
+</SectionCard>
+
+@code {
+    private IReadOnlyList<MinuteListItemModel> _minutes = Array.Empty<MinuteListItemModel>();
+    private string _search = string.Empty;
+    private string? _status;
+
+    private string[] _statuses = Array.Empty<string>();
+
+    protected override void OnInitialized()
+    {
+        _minutes = MinutesSvc.GetAll();
+        _statuses = _minutes.Select(m => m.Status).Distinct().OrderBy(s => s).ToArray();
+    }
+
+    private List<MinuteListItemModel> Filtered => _minutes.Where(Matches).ToList();
+
+    private bool Matches(MinuteListItemModel m)
+    {
+        if (!string.IsNullOrWhiteSpace(_status) && !string.Equals(m.Status, _status, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (string.IsNullOrWhiteSpace(_search)) return true;
+        var q = _search.Trim();
+        return m.SessionName.Contains(q, StringComparison.OrdinalIgnoreCase)
+            || m.Status.Contains(q, StringComparison.OrdinalIgnoreCase)
+            || m.Date.ToString("dd/MM/yyyy").Contains(q, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task ExportAsync()
+    {
+        var csv = CsvExport.Build(Filtered,
+            ("Sesión", m => m.SessionName),
+            ("Fecha", m => m.Date),
+            ("Estado", m => m.Status));
+
+        await JS.InvokeVoidAsync("sigieDownload", CsvExport.FileName("actas-junta"), csv);
+    }
+}

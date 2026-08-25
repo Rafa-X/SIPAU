@@ -1,0 +1,60 @@
+@*
+    Toolbar shared by every listing: free-text search, an optional slot for
+    module-specific filters, the visible/total counter and CSV export.
+    Keeping it in one component means all listings behave identically.
+*@
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="pa-2 pb-3" Style="flex-wrap:wrap">
+
+    <MudTextField T="string" Value="Search" ValueChanged="SearchChanged"
+                  Placeholder="@Placeholder" Immediate="true" Clearable="true"
+                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                  Variant="Variant.Outlined" Margin="Margin.Dense"
+                  Class="sigie-toolbar-search mt-0" />
+
+    @Filters
+
+    <MudSpacer />
+
+    <MudText Typo="Typo.caption" Color="Color.Secondary">
+        @if (Total > 0 && Count != Total)
+        {
+            @($"{Count} de {Total} registros")
+        }
+        else
+        {
+            @($"{Total} {(Total == 1 ? "registro" : "registros")}")
+        }
+    </MudText>
+
+    @if (OnExport.HasDelegate)
+    {
+        <MudTooltip Text="Descargar la vista actual en CSV" Placement="Placement.Top">
+            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary"
+                       StartIcon="@Icons.Material.Filled.FileDownload" OnClick="OnExport"
+                       Disabled="@(Count == 0)">
+                Exportar
+            </MudButton>
+        </MudTooltip>
+    }
+
+</MudStack>
+
+@code {
+    /// <summary>Free-text query. Bind with <c>@bind-Search</c>.</summary>
+    [Parameter] public string Search { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> SearchChanged { get; set; }
+
+    [Parameter] public string Placeholder { get; set; } = "Buscar…";
+
+    /// <summary>Rows currently visible after search + filters.</summary>
+    [Parameter] public int Count { get; set; }
+
+    /// <summary>Rows before filtering.</summary>
+    [Parameter] public int Total { get; set; }
+
+    /// <summary>Module-specific filters (selects, date pickers…).</summary>
+    [Parameter] public RenderFragment? Filters { get; set; }
+
+    /// <summary>Omit to hide the export button.</summary>
+    [Parameter] public EventCallback OnExport { get; set; }
+}

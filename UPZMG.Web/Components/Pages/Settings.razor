@@ -1,0 +1,38 @@
+@page "/settings"
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>Configuración — SIGIE</PageTitle>
+
+<PageHeader Eyebrow="Administración" Title="Configuración" Subtitle="Administración de datos maestros del sistema" />
+
+<MudGrid>
+    @foreach (var card in _cards)
+    {
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="1" Class="d-flex flex-column" Style="height:100%">
+                <MudCardContent class="flex-grow-1">
+                    <MudAvatar Color="Color.Secondary" Variant="Variant.Filled" Rounded="true" Class="mb-3">
+                        <MudIcon Icon="@card.Icon" />
+                    </MudAvatar>
+                    <MudText Typo="Typo.h6">@card.Title</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@card.Description</MudText>
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Href="@card.Href" EndIcon="@Icons.Material.Filled.ArrowForward">Abrir</MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    private sealed record Card(string Title, string Description, string Icon, string Href);
+
+    private readonly Card[] _cards =
+    {
+        new("Datos de la institución", "Nombre, rector, clave CCT y domicilio que aparecen en los encabezados de reportes.", Icons.Material.Filled.AccountBalance, "/settings/institution"),
+        new("Periodos escolares", "Ciclos y cuatrimestres. Define cuál es el periodo activo del sistema.", Icons.Material.Filled.CalendarMonth, "/settings/periods"),
+        new("Indicadores", "Agrega nuevos indicadores a cada hoja de reporte conforme cambian cada año.", Icons.Material.Filled.Tune, "/settings/indicators"),
+        new("Usuarios y roles", "Da de alta usuarios, asigna su rol y controla el acceso al sistema.", Icons.Material.Filled.People, "/users"),
+    };
+}
