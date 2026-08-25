@@ -8,17 +8,12 @@ namespace UPZMG.Web.Models.Users;
 /// </summary>
 public class UserFormViewModel
 {
-    public int? Id { get; set; }
-    public string FullName { get; set; } = string.Empty;
+    public Guid Id { get; set; }
+    public string UserName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
-
-    /// <summary> Single role assignment (one user has exactly one role). </summary>
     public string RoleId { get; set; } = string.Empty;
-
     public bool IsActive { get; set; } = true;
-
-    // Dropdown options (mock data, populated by the controller)
-    public List<SelectListItem> Roles { get; set; } = new();
-
-    public bool IsEditing => Id.HasValue;
+    public List<SelectListItem> Roles { get; set; } = [];
+    public bool IsEditing => Id != Guid.Empty;
+    public string Password { get; set; } = string.Empty;
 }

@@ -45,15 +45,16 @@ namespace UPZMG.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Employee",
+                name: "employees",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     EmployeeNumber = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     FullName = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    Email = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     Rfc = table.Column<string>(type: "nvarchar(13)", maxLength: 13, nullable: false),
                     Curp = table.Column<string>(type: "nvarchar(18)", maxLength: 18, nullable: false),
-                    Gender = table.Column<int>(type: "int", nullable: false),
+                    Gender = table.Column<string>(type: "char(1)", nullable: false),
                     BirthDate = table.Column<DateOnly>(type: "date", nullable: false),
                     HighestEducationLevel = table.Column<int>(type: "int", nullable: false),
                     TitleStatus = table.Column<int>(type: "int", nullable: false),
@@ -64,7 +65,7 @@ namespace UPZMG.Persistence.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Employee", x => x.Id);
+                    table.PrimaryKey("PK_employees", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -133,7 +134,7 @@ namespace UPZMG.Persistence.Migrations
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     ReportType = table.Column<string>(type: "nvarchar(40)", maxLength: 40, nullable: false),
-                    TemplateVersion = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    TemplateVersion = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
                     Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
                     AnswersJson = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     DateCreated = table.Column<DateTime>(type: "datetime2", nullable: false),
@@ -206,10 +207,11 @@ namespace UPZMG.Persistence.Migrations
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     EmployeeId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UserName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     Email = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     Password = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
-                    LastLogin = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    LastLogin = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -260,7 +262,7 @@ namespace UPZMG.Persistence.Migrations
                     MiddleName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     LastName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     BirthDate = table.Column<DateOnly>(type: "date", nullable: false),
-                    Gender = table.Column<int>(type: "int", nullable: false),
+                    Gender = table.Column<string>(type: "char(1)", nullable: false),
                     SpeaksIndigenousLanguage = table.Column<bool>(type: "bit", nullable: false),
                     IndigenousLanguageId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     PostalCode = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
@@ -310,13 +312,13 @@ namespace UPZMG.Persistence.Migrations
                 name: "rolePermissions",
                 columns: table => new
                 {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     RoleId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    PermissionId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                    PermissionId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_rolePermissions", x => new { x.RoleId, x.PermissionId });
+                    table.PrimaryKey("PK_rolePermissions", x => x.Id);
                     table.ForeignKey(
                         name: "FK_rolePermissions_permissions_PermissionId",
                         column: x => x.PermissionId,
@@ -333,15 +335,15 @@ namespace UPZMG.Persistence.Migrations
                 name: "roleReportsPermissions",
                 columns: table => new
                 {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     RoleId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     ReportsPermissionId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     CanEdit = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     CanSign = table.Column<bool>(type: "bit", nullable: false, defaultValue: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_roleReportsPermissions", x => new { x.RoleId, x.ReportsPermissionId });
+                    table.PrimaryKey("PK_roleReportsPermissions", x => x.Id);
                     table.ForeignKey(
                         name: "FK_roleReportsPermissions_reportsPermissions_ReportsPermissionId",
                         column: x => x.ReportsPermissionId,
@@ -371,11 +373,6 @@ namespace UPZMG.Persistence.Migrations
                 {
                     table.PrimaryKey("PK_classGroups", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_classGroups_Employee_TeacherId",
-                        column: x => x.TeacherId,
-                        principalTable: "Employee",
-                        principalColumn: "Id");
-                    table.ForeignKey(
                         name: "FK_classGroups_SchoolFacility_FacilityId",
                         column: x => x.FacilityId,
                         principalTable: "SchoolFacility",
@@ -384,6 +381,11 @@ namespace UPZMG.Persistence.Migrations
                         name: "FK_classGroups_carrers_CareerId",
                         column: x => x.CareerId,
                         principalTable: "carrers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_classGroups_employees_TeacherId",
+                        column: x => x.TeacherId,
+                        principalTable: "employees",
                         principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_classGroups_periods_PeriodId",
@@ -521,14 +523,14 @@ namespace UPZMG.Persistence.Migrations
                 {
                     table.PrimaryKey("PK_titulationProcesses", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_titulationProcesses_Employee_TitulationAssessorId",
-                        column: x => x.TitulationAssessorId,
-                        principalTable: "Employee",
-                        principalColumn: "Id");
-                    table.ForeignKey(
                         name: "FK_titulationProcesses_carrers_CareerId",
                         column: x => x.CareerId,
                         principalTable: "carrers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_titulationProcesses_employees_TitulationAssessorId",
+                        column: x => x.TitulationAssessorId,
+                        principalTable: "employees",
                         principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_titulationProcesses_students_StudentId",
@@ -552,11 +554,6 @@ namespace UPZMG.Persistence.Migrations
                 {
                     table.PrimaryKey("PK_academicLoads", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_academicLoads_Employee_TeacherId",
-                        column: x => x.TeacherId,
-                        principalTable: "Employee",
-                        principalColumn: "Id");
-                    table.ForeignKey(
                         name: "FK_academicLoads_SchoolFacility_FacilityId",
                         column: x => x.FacilityId,
                         principalTable: "SchoolFacility",
@@ -570,6 +567,11 @@ namespace UPZMG.Persistence.Migrations
                         name: "FK_academicLoads_classGroups_GroupId",
                         column: x => x.GroupId,
                         principalTable: "classGroups",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_academicLoads_employees_TeacherId",
+                        column: x => x.TeacherId,
+                        principalTable: "employees",
                         principalColumn: "Id");
                 });
 
@@ -742,9 +744,21 @@ namespace UPZMG.Persistence.Migrations
                 column: "PermissionId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_rolePermissions_RoleId_PermissionId",
+                table: "rolePermissions",
+                columns: new[] { "RoleId", "PermissionId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_roleReportsPermissions_ReportsPermissionId",
                 table: "roleReportsPermissions",
                 column: "ReportsPermissionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_roleReportsPermissions_RoleId_ReportsPermissionId",
+                table: "roleReportsPermissions",
+                columns: new[] { "RoleId", "ReportsPermissionId" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_scolarshipAssigneds_PeriodId",
@@ -885,13 +899,13 @@ namespace UPZMG.Persistence.Migrations
                 name: "systemUser");
 
             migrationBuilder.DropTable(
-                name: "Employee");
-
-            migrationBuilder.DropTable(
                 name: "SchoolFacility");
 
             migrationBuilder.DropTable(
                 name: "carrers");
+
+            migrationBuilder.DropTable(
+                name: "employees");
 
             migrationBuilder.DropTable(
                 name: "periods");

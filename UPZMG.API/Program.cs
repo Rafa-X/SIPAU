@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using UPZMG.Persistence;
+using UPZMG.Persistence.Repository;
 
 Console.Title = "UPZMG.API";
 var builder = WebApplication.CreateBuilder(args);
@@ -17,8 +18,13 @@ try
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
 
+    // Add database context and repositories
     builder.Services.AddDbContext<AppDBContext>(opt =>
         opt.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
+    builder.Services.AddScoped<UsersRepository>();
+    builder.Services.AddScoped<ReportsRepository>();
+    builder.Services.AddScoped<RolesRepository>();
+    builder.Services.AddScoped<SecurityRepository>();
 
     var jwt = builder.Configuration.GetSection("Jwt");
     var jwtSigningKey = GetRequiredSecret(builder.Configuration, "Jwt:Key", 32, startupLogger);
