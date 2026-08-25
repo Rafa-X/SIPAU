@@ -83,13 +83,6 @@
 @code {
     private const int ForecastAhead = 2;
 
-    // Accents mirror the theme: cyan = observado, índigo = modelo, oro =
-    // financiamiento, rosa = indicador negativo.
-    private const string Cyan = "#0FB5A0";
-    private const string Indigo = "#6D5CE7";
-    private const string Gold = "#D4A02C";
-    private const string Rose = "#E5484D";
-
     private EnrollmentForecast _fc = null!;
     private List<ChartSeriesData> _enrollment = new();
 
@@ -99,15 +92,15 @@
 
         _enrollment = new()
         {
-            new ChartSeriesData("Matrícula", _fc.Actual, Cyan, Filled: true),
-            new ChartSeriesData("Tendencia del modelo", _fc.Trend, Indigo, Dashed: true),
+            new ChartSeriesData("Matrícula", _fc.Actual, ChartPalette.Teal, Filled: true),
+            new ChartSeriesData("Tendencia del modelo", _fc.Trend, ChartPalette.Indigo, Dashed: true),
         };
     }
 
     // ── Carreras ────────────────────────────────────────────────────────────
     private readonly string[] _careerLabels = { "Sistemas", "Industrial", "Biotec.", "Admón." };
     private readonly double[] _careerData = { 420, 355, 210, 260 };
-    private List<ChartSeriesData> _careers => new() { new ChartSeriesData("Alumnos", _careerData, Cyan) };
+    private List<ChartSeriesData> _careers => new() { new ChartSeriesData("Alumnos", _careerData, ChartPalette.Teal) };
 
     private string _topCareer => _careerLabels[MaxIndex(_careerData)];
     private double _totalStudents => _careerData.Sum();
@@ -119,8 +112,8 @@
 
     private List<ChartSeriesData> _achievement => new()
     {
-        new ChartSeriesData("Aprobación", _approval, Cyan),
-        new ChartSeriesData("Reprobación", _failure, Rose),
+        new ChartSeriesData("Aprobación", _approval, ChartPalette.Teal),
+        new ChartSeriesData("Reprobación", _failure, ChartPalette.Clay),
     };
     private double _failureDrop => _failure[0] - _failure[^1];
 
@@ -128,7 +121,7 @@
     private readonly string[] _scholarshipLabels = { "Excelencia", "Manutención", "Deportiva", "Federal" };
     private readonly double[] _scholarshipData = { 180, 260, 65, 340 };
 
-    private List<ChartSeriesData> _scholarships => new() { new ChartSeriesData("Becas", _scholarshipData, Gold) };
+    private List<ChartSeriesData> _scholarships => new() { new ChartSeriesData("Becas", _scholarshipData, ChartPalette.Ochre) };
     private double _totalScholarships => _scholarshipData.Sum();
     private string _topScholarship => _scholarshipLabels[MaxIndex(_scholarshipData)];
 
