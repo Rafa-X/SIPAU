@@ -1,4 +1,5 @@
-using UPZMG.Implementations;
+using System.Net;
+using System.Text.Json;
 using UPZMG.Implementations.Users;
 using UPZMG.Persistence.Models;
 using UPZMG.Web.Models.Users;
@@ -8,62 +9,58 @@ namespace UPZMG.Web.Services;
 /// <summary>Outcome of a save attempt: the stored user, or why it was rejected.</summary>
 public sealed record UserSaveResult(bool Success, SystemUser? User, string? Error);
 
-/// <summary>
-/// User catalog for the admin module, backed by the real API (users/roles
-/// endpoints) through <see cref="DataService"/>.
-///
-/// The page depends on this interface rather than on DataService directly, so
-/// transport concerns (tokens, DTOs, status codes) never leak into the UI.
-/// Every call degrades to an empty result if the API is unreachable — the admin
-/// screen must not break when the backend is down.
-/// </summary>
-public interface IUsersService
+public sealed class UsersService(DataService data, SecurityService securityService, ILogger<UsersService> logger)
 {
-    Task<IReadOnlyList<UserListModel>> GetUsersAsync(Guid requesterKey);
-    Task<IReadOnlyList<Role>> GetRolesAsync(Guid requesterKey);
-    Task<UserSaveResult> SaveAsync(Guid requesterKey, UserFormViewModel model);
-}
+    // API serializes responses using camelCase; match it here so property names bind correctly.
+    private static readonly JsonSerializerOptions ResponseOptions = new(JsonSerializerDefaults.Web);
 
-public sealed class UsersService(DataService data, ILogger<UsersService> logger) : IUsersService
-{
-    public async Task<IReadOnlyList<UserListModel>> GetUsersAsync(Guid requesterKey)
+    public async Task<List<SystemUser>> GetAllUsers(GetAllUsers request)
     {
-        if (requesterKey == Guid.Empty) return [];
+        var response = await securityService.SendPostRequestAsync<GetAllUsers, List<SystemUser>>(
+            $"users/get-all", JsonSerializer.Serialize(request), request.RequesterKey);
 
-        try
+        if(response.StatusCode == HttpStatusCode.OK && response.Result is not null)
         {
-            var users = await data.GetAllUsers(new GetAllUsers { RequesterKey = requesterKey });
-
-            return users.Select(u => new UserListModel
-            {
-                Id = u.Id,
-                UserName = u.UserName,
-                Email = u.Email,
-                RoleName = u.Role?.Name ?? "—",
-                IsActive = u.IsActive,
-                LastLogin = u.LastLogin,
-            }).ToList();
+            return JsonSerializer.Deserialize<List<SystemUser>>(response.Result, ResponseOptions) ?? [];
         }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "No se pudo obtener el catálogo de usuarios desde la API.");
-            return [];
-        }
+        return [];
     }
 
-    public async Task<IReadOnlyList<Role>> GetRolesAsync(Guid requesterKey)
+    public async Task<SystemUser> GetUserById(GetUserById request)
     {
-        if (requesterKey == Guid.Empty) return [];
+        var response = await securityService.SendPostRequestAsync<GetUserById, SystemUser>(
+            $"users/get", JsonSerializer.Serialize(request), request.RequesterKey);
 
-        try
+        if(response.StatusCode == HttpStatusCode.OK && response.Result is not null)
         {
-            return await data.GetAllRoles(new GetAllRoles { RequesterKey = requesterKey });
+            return JsonSerializer.Deserialize<SystemUser>(response.Result, ResponseOptions) ?? new SystemUser();
         }
-        catch (Exception ex)
+        return new SystemUser();
+    }
+
+    public async Task<SystemUser> CreateUser(CreateUser request)
+    {
+        var response = await securityService.SendPostRequestAsync<CreateUser, SystemUser>(
+            $"users/create", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        if ((response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.Created)
+            && response.Result is not null)
         {
-            logger.LogWarning(ex, "No se pudo obtener el catálogo de roles desde la API.");
-            return [];
+            return JsonSerializer.Deserialize<SystemUser>(response.Result, ResponseOptions) ?? new SystemUser();
         }
+        return new SystemUser();
+    }
+
+    public async Task<SystemUser> EditUser(EditUser request)
+    {
+        var response = await securityService.SendPostRequestAsync<EditUser, SystemUser>(
+            $"users/edit", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        if(response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<SystemUser>(response.Result, ResponseOptions) ?? new SystemUser();
+        }
+        return new SystemUser();
     }
 
     public async Task<UserSaveResult> SaveAsync(Guid requesterKey, UserFormViewModel model)

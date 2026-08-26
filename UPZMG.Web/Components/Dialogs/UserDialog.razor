@@ -14,6 +14,7 @@
                The address also links the account to its employee record. *@
             <MudTextField @bind-Value="_model.Email" Label="Correo electrónico"
                           InputType="InputType.Email" Required="true"
+                          ReadOnly="@_model.IsEditing"
                           Validation="@(new Func<string, string?>(ValidateEmail))"
                           Disabled="@_model.IsEditing"
                           HelperText="@(_model.IsEditing ? "El correo no se puede cambiar: identifica la cuenta y su empleado." : "Debe coincidir con el correo de un empleado registrado.")"

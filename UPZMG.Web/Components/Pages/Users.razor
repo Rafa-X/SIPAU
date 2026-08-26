@@ -1,10 +1,13 @@
 @page "/users"
 @attribute [Authorize(Roles = "Admin")]
-@inject IUsersService UsersSvc
+@using UPZMG.Implementations
+@using UPZMG.Implementations.Users
+@inject DataService _dataService
+@inject UsersService _userService
+@inject SecurityService _securityService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
-@inject AuthenticationStateProvider AuthState
 
 <PageTitle>Usuarios y Roles — SIGIE</PageTitle>
 
@@ -18,8 +21,14 @@
 </PageHeader>
 
 <SectionCard Flush="true" FullHeight="false">
+    @if (_isLoading)
+    {
+        <LoadingState Text="Cargando usuarios…" />
+    }
+    else
+    {
     <DataToolbar @bind-Search="_search" Placeholder="Buscar usuario, correo o rol…"
-                 Count="Filtered.Count" Total="_users.Count" OnExport="ExportAsync">
+                 Count="_users.Count" Total="_users.Count">
         <Filters>
             @* The API's users/get-all filters `where su.IsActive`, so an
                "inactive" option here could never match anything. Filtering by
@@ -36,7 +45,7 @@
         </Filters>
     </DataToolbar>
 
-    <MudDataGrid T="UserListModel" Items="Filtered" Hover="true" Dense="true" Elevation="0"
+    <MudDataGrid T="SystemUser" Items="_users" Hover="true" Dense="true" Elevation="0"
                  Filterable="false" SortMode="SortMode.Multiple">
         <Columns>
             <TemplateColumn Title="Usuario" SortBy="x => x.UserName">
@@ -47,9 +56,9 @@
                     </div>
                 </CellTemplate>
             </TemplateColumn>
-            <TemplateColumn Title="Rol" SortBy="x => x.RoleName">
+            <TemplateColumn Title="Rol" SortBy="x => x.Role!.Name">
                 <CellTemplate>
-                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">@context.Item.RoleName</MudChip>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">@context.Item.Role?.Name</MudChip>
                 </CellTemplate>
             </TemplateColumn>
             <TemplateColumn Title="Estado" SortBy="x => x.IsActive">
@@ -91,65 +100,62 @@
             }
         </NoRecordsContent>
     </MudDataGrid>
+    }
 </SectionCard>
 
 @code {
-    private IReadOnlyList<UserListModel> _users = Array.Empty<UserListModel>();
+    private IReadOnlyList<SystemUser> _users = Array.Empty<SystemUser>();
     private IReadOnlyList<Role> _roles = Array.Empty<Role>();
     private string _search = string.Empty;
     private string? _roleFilter;
-
-    /// <summary>The signed-in user; every API call is authorised against it.</summary>
-    private Guid _requesterKey = Guid.Empty;
+    private bool _isLoading = true;
 
     protected override async Task OnInitializedAsync()
     {
-        var state = await AuthState.GetAuthenticationStateAsync();
-        _requesterKey = Guid.TryParse(state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var id)
-            ? id : Guid.Empty;
+        var requesterKey = await _securityService.GetRequesterKeyAsync();
+        if (requesterKey == Guid.Empty)
+        {
+            Snackbar.Add("No se pudo identificar al usuario actual.", Severity.Error);
+            _isLoading = false;
+            return;
+        }
 
-        _roles = await UsersSvc.GetRolesAsync(_requesterKey);
-        await ReloadAsync();
+        try
+        {
+            _roles = await _dataService.GetAllRoles(new GetAllRoles { RequesterKey = requesterKey });
+            await ReloadAsync(requesterKey);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
     }
 
-    private async Task ReloadAsync() => _users = await UsersSvc.GetUsersAsync(_requesterKey);
+    private async Task ReloadAsync(Guid requesterKey) =>
+        _users = await _userService.GetAllUsers(new GetAllUsers { RequesterKey = requesterKey });
 
-    private List<UserListModel> Filtered => _users.Where(Matches).ToList();
-
-    private bool Matches(UserListModel user)
+    private bool Matches(SystemUser user)
     {
         if (!string.IsNullOrWhiteSpace(_roleFilter) &&
-            !string.Equals(user.RoleName, _roleFilter, StringComparison.OrdinalIgnoreCase))
+            !string.Equals(user.Role?.Name, _roleFilter, StringComparison.OrdinalIgnoreCase))
             return false;
 
         if (string.IsNullOrWhiteSpace(_search)) return true;
         var s = _search.Trim();
         return user.UserName.Contains(s, StringComparison.OrdinalIgnoreCase)
             || user.Email.Contains(s, StringComparison.OrdinalIgnoreCase)
-            || user.RoleName.Contains(s, StringComparison.OrdinalIgnoreCase);
+            || (user.Role?.Name?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false);
     }
-
-    private async Task ExportAsync()
-    {
-        var csv = CsvExport.Build(Filtered,
-            ("Nombre", u => u.UserName),
-            ("Correo", u => u.Email),
-            ("Rol", u => u.RoleName),
-            ("Activo", u => u.IsActive),
-            ("Último acceso", u => u.LastLogin));
-
-        await JS.InvokeVoidAsync("sigieDownload", CsvExport.FileName("usuarios"), csv);
-    }
-
+    private List<SystemUser> UsersFiltered => _users.Where(Matches).ToList();
+    
     private Task OpenCreate() => ShowDialog("Nuevo Usuario", new UserFormViewModel(), created: true);
 
-    private Task OpenEdit(UserListModel user) => ShowDialog("Editar Usuario", new UserFormViewModel
+    private Task OpenEdit(SystemUser user) => ShowDialog("Editar Usuario", new UserFormViewModel
     {
         Id = user.Id,
         UserName = user.UserName,
         Email = user.Email,
-        // The form binds the role by id; the listing only carries its name.
-        RoleId = _roles.FirstOrDefault(r => r.Name == user.RoleName)?.Id.ToString() ?? string.Empty,
+        RoleId = user.Role?.Id.ToString() ?? string.Empty,
         IsActive = user.IsActive,
     }, created: false);
 
@@ -157,7 +163,7 @@
     {
         if (_roles.Count == 0)
         {
-            Snackbar.Add("No hay roles disponibles. Verifica que la API esté corriendo.", Severity.Warning);
+            Snackbar.Add("No hay roles disponibles.", Severity.Warning);
             return;
         }
 
@@ -166,33 +172,51 @@
             { x => x.Model, model },
             { x => x.Roles, _roles },
         };
-        var options = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, CloseButton = true };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true };
 
         var dialog = await DialogService.ShowAsync<UserDialog>(title, parameters, options);
         var result = await dialog.Result;
 
         if (result is not null && !result.Canceled && result.Data is UserFormViewModel saved)
         {
-            // Catch the duplicate before the round-trip: the email is the sign-in
-            // identity and the API does not reject a repeat on its own.
-            var clash = _users.FirstOrDefault(u =>
-                u.Id != saved.Id && string.Equals(u.Email, saved.Email?.Trim(), StringComparison.OrdinalIgnoreCase));
+            var requesterKey = await _securityService.GetRequesterKeyAsync();
+            if (requesterKey == Guid.Empty) return;
 
-            if (clash is not null)
+            try
             {
-                Snackbar.Add($"Ya existe un usuario con el correo '{saved.Email}' ({clash.UserName}).", Severity.Error);
+                if (created)
+                {
+                    await _userService.CreateUser(new CreateUser
+                    {
+                        RequesterKey = requesterKey,
+                        UserName = saved.UserName,
+                        Email = saved.Email,
+                        RoleId = saved.RoleId,
+                        IsActive = saved.IsActive,
+                        Password = saved.Password,
+                    });
+                }
+                else
+                {
+                    await _userService.EditUser(new EditUser
+                    {
+                        RequesterKey = requesterKey,
+                        UserId = saved.Id,
+                        UserName = saved.UserName,
+                        RoleId = saved.RoleId,
+                        IsActive = saved.IsActive,
+                        Password = string.IsNullOrWhiteSpace(saved.Password) ? null : saved.Password,
+                    });
+                }
+
+                await ReloadAsync(requesterKey);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add(ex.Message, Severity.Error);
                 return;
             }
 
-            var outcome = await UsersSvc.SaveAsync(_requesterKey, saved);
-
-            if (!outcome.Success)
-            {
-                Snackbar.Add(outcome.Error ?? "No se pudo guardar el usuario.", Severity.Error);
-                return;
-            }
-
-            await ReloadAsync();
             Snackbar.Add(created
                 ? $"Usuario '{saved.Email}' creado correctamente."
                 : $"Usuario '{saved.Email}' actualizado correctamente.", Severity.Success);

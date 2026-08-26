@@ -56,12 +56,13 @@ try
     builder.Services.AddSingleton<ISecurityEventLogger, SecurityLogger>();
     builder.Services.AddScoped<IDashboardService, DashboardService>();
     // Scoped, not singleton: it now talks to the API per request/circuit.
-    builder.Services.AddScoped<IUsersService, UsersService>();
+    builder.Services.AddScoped<UsersService>();
     builder.Services.AddScoped<IDataCaptureService, DataCaptureService>();
     builder.Services.AddScoped<IMinutesService, MinutesService>();
     builder.Services.AddScoped<IBoardReportService, BoardReportService>();
     builder.Services.AddSingleton<ISettingsService, SettingsService>();
     builder.Services.AddScoped<IReportsService, ReportsService>();
+    builder.Services.AddScoped<SecurityService, SecurityService>();
     builder.Services.AddSingleton<IIntelligenceService, IntelligenceService>();
 
     builder.Services.AddAuthorization();

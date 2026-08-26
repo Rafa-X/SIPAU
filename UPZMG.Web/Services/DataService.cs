@@ -50,19 +50,17 @@ public sealed class DataService(SecurityService securityService)
         return new SystemUser();
     }
 
-    public async Task<SystemUser?> CreateUser(CreateUser request)
+    public async Task<SystemUser> CreateUser(CreateUser request)
     {
         var response = await securityService.SendPostRequestAsync<CreateUser, SystemUser>(
             $"users/create", JsonSerializer.Serialize(request), request.RequesterKey);
 
-        // users/create answers 201 Created with a single user — not 200 with a
-        // list. Checking only for OK made every successful creation look like a
-        // failure to the caller.
-        if (response.Sucess && response.Result is not null)
+        if ((response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.Created)
+            && response.Result is not null)
         {
-            return JsonSerializer.Deserialize<SystemUser>(response.Result, ResponseOptions);
+            return JsonSerializer.Deserialize<SystemUser>(response.Result, ResponseOptions) ?? new SystemUser();
         }
-        return null;
+        return new SystemUser();
     }
 
     public async Task<SystemUser> EditUser(EditUser request)

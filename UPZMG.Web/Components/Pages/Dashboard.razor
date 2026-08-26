@@ -236,7 +236,6 @@
     private readonly List<SyncEvent> _events = new();
 
     private PeriodicTimer? _timer;
-    private readonly CancellationTokenSource _cts = new();
 
     private int GlobalProgress => _model.AreaProgress.Count == 0
         ? 0
@@ -273,19 +272,16 @@
     private async Task RunSyncLoopAsync()
     {
         _timer = new PeriodicTimer(TimeSpan.FromSeconds(3));
-        try
+        // Disposing the timer makes WaitForNextTickAsync return false, ending the loop without an exception.
+        while (await _timer.WaitForNextTickAsync())
         {
-            while (await _timer.WaitForNextTickAsync(_cts.Token))
+            if (SimulateDepartmentSync())
             {
-                if (SimulateDepartmentSync())
-                {
-                    _lastSync = DateTime.Now;
-                    RecomputeCompleted();
-                    await InvokeAsync(StateHasChanged);
-                }
+                _lastSync = DateTime.Now;
+                RecomputeCompleted();
+                await InvokeAsync(StateHasChanged);
             }
         }
-        catch (OperationCanceledException) { /* disposed */ }
     }
 
     /// <summary>Bumps an in-progress area as if a department just pushed its data.</summary>
@@ -317,10 +313,9 @@
         await JS.InvokeVoidAsync("sigieDownload", CsvExport.FileName("captura-por-area"), csv);
     }
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
-        await _cts.CancelAsync();
         _timer?.Dispose();
-        _cts.Dispose();
+        return ValueTask.CompletedTask;
     }
 }
