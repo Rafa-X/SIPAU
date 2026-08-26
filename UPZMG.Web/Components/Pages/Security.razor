@@ -1,6 +1,7 @@
 @page "/security"
 @attribute [Authorize(Roles = "Admin")]
-@inject ISecurityService SecuritySvc
+@inject DataService DataSvc
+@inject AuthenticationStateProvider AuthState
 @inject ISnackbar Snackbar
 
 <PageTitle>Seguridad — SIGIE</PageTitle>
@@ -10,13 +11,6 @@
 @if (_data is null)
 {
     <MudProgressLinear Color="Color.Secondary" Indeterminate="true" />
-}
-else if (!_data.DbAvailable)
-{
-    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
-        No se pudo consultar el catálogo de roles y permisos. Es probable que las tablas
-        <b>roles</b> / <b>permissions</b> / <b>role_permissions</b> aún no existan en la base de datos.
-    </MudAlert>
 }
 else
 {
@@ -76,22 +70,36 @@ else
 }
 
 @code {
-    private SecurityData? _data;
+    private SecurityService.SecurityData? _data;
     private Guid _selectedRoleId;
 
-    protected override async Task OnInitializedAsync() => _data = await SecuritySvc.LoadAsync(null);
+    protected override async Task OnInitializedAsync()
+    {
+        var requesterKey = await GetRequesterKeyAsync();
+        _data = await DataSvc.LoadSecurityAsync(requesterKey, null);
+    }
 
     private async Task SelectRole(Guid roleId)
     {
         _selectedRoleId = roleId;
-        _data = await SecuritySvc.LoadAsync(roleId);
+        var requesterKey = await GetRequesterKeyAsync();
+        _data = await DataSvc.LoadSecurityAsync(requesterKey, roleId);
     }
 
     private async Task Toggle(string permissionName, bool enable)
     {
-        if (_data?.SelectedRoleId is null) return;
-        var message = await SecuritySvc.ToggleAsync(_data.SelectedRoleId.Value, permissionName, enable);
-        if (!string.IsNullOrEmpty(message)) Snackbar.Add(message, Severity.Success);
-        _data = await SecuritySvc.LoadAsync(_data.SelectedRoleId);
+        if (_data?.SelectedRoleId is null)
+            return;
+
+        Snackbar.Add("La actualización de permisos aún no está expuesta por la API.", Severity.Info);
+        var requesterKey = await GetRequesterKeyAsync();
+        _data = await DataSvc.LoadSecurityAsync(requesterKey, _data.SelectedRoleId);
+    }
+
+    private async Task<Guid> GetRequesterKeyAsync()
+    {
+        var authState = await AuthState.GetAuthenticationStateAsync();
+        var id = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        return Guid.TryParse(id, out var requesterKey) ? requesterKey : Guid.Empty;
     }
 }

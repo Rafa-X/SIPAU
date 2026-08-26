@@ -5,12 +5,13 @@
 <MudDialog>
     <DialogContent>
         <MudForm @ref="_form">
-            <MudTextField @bind-Value="_model.FullName" Label="Nombre completo"
+            <MudTextField @bind-Value="_model.UserName" Label="Nombre completo"
                           Required="true" RequiredError="El nombre es obligatorio."
                           Immediate="true" Class="mb-3" />
 
             <MudTextField @bind-Value="_model.Email" Label="Correo electrónico"
                           InputType="InputType.Email" Required="true"
+                          ReadOnly="@_model.IsEditing"
                           Validation="@(new Func<string, string?>(ValidateEmail))"
                           Immediate="true" Class="mb-3" />
 
@@ -18,9 +19,14 @@
                        Required="true" RequiredError="Selecciona un rol." Class="mb-3">
                 @foreach (var role in Roles)
                 {
-                    <MudSelectItem T="string" Value="@role">@role</MudSelectItem>
+                    <MudSelectItem T="string" Value="@role.Id.ToString()">@role.Name</MudSelectItem>
                 }
             </MudSelect>
+
+            <MudTextField @bind-Value="_model.Password" Label="Contraseña"
+                          InputType="InputType.Password" Required="@(!_model.IsEditing)"
+                          RequiredError="La contraseña es obligatoria para un usuario nuevo."
+                          Placeholder="Dejar en blanco para conservarla" Class="mb-3" />
 
             <MudSwitch T="bool" @bind-Value="_model.IsActive" Color="Color.Secondary" Label="Usuario activo" />
         </MudForm>
@@ -37,7 +43,7 @@
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
 
     [Parameter] public UserFormViewModel Model { get; set; } = new();
-    [Parameter] public IReadOnlyList<string> Roles { get; set; } = System.Array.Empty<string>();
+    [Parameter] public IReadOnlyList<Role> Roles { get; set; } = Array.Empty<Role>();
 
     private MudForm _form = null!;
     private UserFormViewModel _model = new();
@@ -48,10 +54,11 @@
         _model = new UserFormViewModel
         {
             Id = Model.Id,
-            FullName = Model.FullName,
+            UserName = Model.UserName,
             Email = Model.Email,
             RoleId = Model.RoleId,
             IsActive = Model.IsActive,
+            Password = Model.Password,
         };
     }
 

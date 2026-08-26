@@ -3,6 +3,7 @@ using System.Text.Json;
 using UPZMG.Implementations;
 using UPZMG.Implementations.Users;
 using UPZMG.Persistence.Models;
+using UPZMG.Web.Models.Security;
 
 namespace UPZMG.Web.Services;
 
@@ -50,16 +51,17 @@ public sealed class DataService(SecurityService securityService)
         return new SystemUser();
     }
 
-    public async Task<List<SystemUser>> CreateUser(CreateUser request)
+    public async Task<SystemUser> CreateUser(CreateUser request)
     {
         var response = await securityService.SendPostRequestAsync<CreateUser, List<SystemUser>>(
             $"users/create", JsonSerializer.Serialize(request), request.RequesterKey);
 
-        if(response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+        if((response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.Created)
+            && response.Result is not null)
         {
-            return JsonSerializer.Deserialize<List<SystemUser>>(response.Result, ResponseOptions) ?? [];
+            return JsonSerializer.Deserialize<SystemUser>(response.Result, ResponseOptions) ?? new SystemUser();
         }
-        return [];
+        return new SystemUser();
     }
 
     public async Task<SystemUser> EditUser(EditUser request)
@@ -86,6 +88,32 @@ public sealed class DataService(SecurityService securityService)
             return JsonSerializer.Deserialize<List<Role>>(response.Result, ResponseOptions) ?? new List<Role>();
         }
         return [];
+    }
+
+    public async Task<SecurityService.SecurityData> LoadSecurityAsync(Guid requesterKey, Guid? selectedRoleId = null)
+    {
+        var roles = await GetAllRoles(new GetAllRoles { RequesterKey = requesterKey });
+
+        var roleItems = roles
+            .OrderBy(r => r.Name)
+            .Select(r => new RoleListItemViewModel
+            {
+                Id = r.Id,
+                Name = r.Name,
+                PermissionCount = 0
+            })
+            .ToList();
+
+        var selected = selectedRoleId is Guid roleId
+            ? roleItems.FirstOrDefault(r => r.Id == roleId)
+            : null;
+
+        return new SecurityService.SecurityData(
+            roleItems,
+            selected?.Id,
+            selected?.Name ?? string.Empty,
+            [],
+            true);
     }
 #endregion
 }

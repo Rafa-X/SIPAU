@@ -8,7 +8,7 @@ namespace UPZMG.Api.Controllers;
 
 [ApiController]
 [Route("roles")]
-public class RolesController(RolesRepository rolesRepository, IConfiguration cfg, ISecurityEventLogger securityLogger) : ControllerBase
+public class RolesController(RolesRepository rolesRepository) : ControllerBase
 {
     [HttpPost("get-all")]
     [Authorize]

@@ -1,6 +1,9 @@
 @page "/users"
 @attribute [Authorize(Roles = "Admin")]
-@inject IUsersService UsersSvc
+@using UPZMG.Implementations
+@using UPZMG.Implementations.Users
+@inject DataService _dataService
+@inject AuthenticationStateProvider AuthState
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
@@ -18,7 +21,7 @@
 
 <SectionCard Flush="true" FullHeight="false">
     <DataToolbar @bind-Search="_search" Placeholder="Buscar usuario, correo o rol…"
-                 Count="Filtered.Count" Total="_users.Count" OnExport="ExportAsync">
+                 Count="UsersFiltered.Count" Total="_users.Count" OnExport="ExportAsync">
         <Filters>
             <MudSelect T="string" Value="_state" ValueChanged="@(v => _state = v)" Dense="true"
                        Variant="Variant.Outlined" Margin="Margin.Dense" Class="sigie-toolbar-filter mt-0"
@@ -30,20 +33,20 @@
         </Filters>
     </DataToolbar>
 
-    <MudDataGrid T="UserListItemModel" Items="Filtered" Hover="true" Dense="true" Elevation="0"
+    <MudDataGrid T="SystemUser" Items="UsersFiltered" Hover="true" Dense="true" Elevation="0"
                  Filterable="false" SortMode="SortMode.Multiple">
         <Columns>
-            <TemplateColumn Title="Usuario" SortBy="x => x.FullName">
+            <TemplateColumn Title="Usuario" SortBy="x => x.UserName">
                 <CellTemplate>
                     <div>
-                        <MudText Typo="Typo.body2" Style="font-weight:600">@context.Item.FullName</MudText>
+                        <MudText Typo="Typo.body2" Style="font-weight:600">@context.Item.UserName</MudText>
                         <MudText Typo="Typo.caption" Color="Color.Secondary">@context.Item.Email</MudText>
                     </div>
                 </CellTemplate>
             </TemplateColumn>
-            <TemplateColumn Title="Rol" SortBy="x => x.RoleName">
+            <TemplateColumn Title="Rol" SortBy="x => x.Role!.Name">
                 <CellTemplate>
-                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">@context.Item.RoleName</MudChip>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">@context.Item.Role?.Name</MudChip>
                 </CellTemplate>
             </TemplateColumn>
             <TemplateColumn Title="Estado" SortBy="x => x.IsActive">
@@ -79,48 +82,60 @@
 </SectionCard>
 
 @code {
-    private IReadOnlyList<UserListItemModel> _users = System.Array.Empty<UserListItemModel>();
+    private IReadOnlyList<SystemUser> _users = Array.Empty<SystemUser>();
+    private IReadOnlyList<Role> _roles = Array.Empty<Role>();
     private string _search = string.Empty;
     private string? _state;
 
-    protected override void OnInitialized() => Reload();
+    protected override async Task OnInitializedAsync()
+    {
+        var requesterKey = await GetRequesterKeyAsync();
+        if (requesterKey == Guid.Empty)
+        {
+            Snackbar.Add("No se pudo identificar al usuario actual.", Severity.Error);
+            return;
+        }
 
-    private void Reload() => _users = UsersSvc.GetUsers().ToList();
+        _roles = await _dataService.GetAllRoles(new GetAllRoles { RequesterKey = requesterKey });
+        await ReloadAsync(requesterKey);
+    }
 
-    private List<UserListItemModel> Filtered => _users.Where(Matches).ToList();
+    private async Task ReloadAsync(Guid requesterKey) =>
+        _users = await _dataService.GetAllUsers(new GetAllUsers { RequesterKey = requesterKey });
 
-    private bool Matches(UserListItemModel user)
+    private bool Matches(SystemUser user)
     {
         if (_state == "activos" && !user.IsActive) return false;
         if (_state == "inactivos" && user.IsActive) return false;
 
         if (string.IsNullOrWhiteSpace(_search)) return true;
         var s = _search.Trim();
-        return user.FullName.Contains(s, StringComparison.OrdinalIgnoreCase)
+        return user.UserName.Contains(s, StringComparison.OrdinalIgnoreCase)
             || user.Email.Contains(s, StringComparison.OrdinalIgnoreCase)
-            || user.RoleName.Contains(s, StringComparison.OrdinalIgnoreCase);
+            || (user.Role?.Name?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false);
     }
+    private List<SystemUser> UsersFiltered => _users.Where(Matches).ToList();
 
     private async Task ExportAsync()
     {
-        var csv = CsvExport.Build(Filtered,
-            ("Nombre", u => u.FullName),
+        var csv = CsvExport.Build(UsersFiltered,
+            ("Nombre", u => u.UserName),
             ("Correo", u => u.Email),
-            ("Rol", u => u.RoleName),
+            ("Rol", u => u.Role?.Name),
             ("Activo", u => u.IsActive),
             ("Último acceso", u => u.LastLogin));
 
         await JS.InvokeVoidAsync("sigieDownload", CsvExport.FileName("usuarios"), csv);
     }
-
+    
     private Task OpenCreate() => ShowDialog("Nuevo Usuario", new UserFormViewModel(), created: true);
 
-    private Task OpenEdit(UserListItemModel user) => ShowDialog("Editar Usuario", new UserFormViewModel
+    private Task OpenEdit(SystemUser user) => ShowDialog("Editar Usuario", new UserFormViewModel
     {
         Id = user.Id,
-        FullName = user.FullName,
+        UserName = user.UserName,
         Email = user.Email,
-        RoleId = user.RoleName,
+        RoleId = user.Role?.Id.ToString() ?? string.Empty,
         IsActive = user.IsActive,
     }, created: false);
 
@@ -129,27 +144,66 @@
         var parameters = new DialogParameters<UserDialog>
         {
             { x => x.Model, model },
-            { x => x.Roles, UsersSvc.GetRoles() },
+            { x => x.Roles, _roles },
         };
-        var options = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, CloseButton = true };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true };
 
         var dialog = await DialogService.ShowAsync<UserDialog>(title, parameters, options);
         var result = await dialog.Result;
 
         if (result is not null && !result.Canceled && result.Data is UserFormViewModel saved)
         {
-            var outcome = UsersSvc.Save(saved);
-
-            if (!outcome.Success)
+            var requesterKey = await GetRequesterKeyAsync();
+            if (requesterKey == Guid.Empty)
             {
-                Snackbar.Add(outcome.Error ?? "No se pudo guardar el usuario.", Severity.Error);
                 return;
             }
 
-            Reload();
+            try
+            {
+                if (created)
+                {
+                    await _dataService.CreateUser(new CreateUser
+                    {
+                        RequesterKey = requesterKey,
+                        UserName = saved.UserName,
+                        Email = saved.Email,
+                        RoleId = saved.RoleId,
+                        IsActive = saved.IsActive,
+                        Password = saved.Password,
+                    });
+                }
+                else
+                {
+                    await _dataService.EditUser(new EditUser
+                    {
+                        RequesterKey = requesterKey,
+                        UserId = saved.Id,
+                        UserName = saved.UserName,
+                        RoleId = saved.RoleId,
+                        IsActive = saved.IsActive,
+                        Password = string.IsNullOrWhiteSpace(saved.Password) ? null : saved.Password,
+                    });
+                }
+
+                await ReloadAsync(requesterKey);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add(ex.Message, Severity.Error);
+                return;
+            }
+
             Snackbar.Add(created
                 ? $"Usuario '{saved.Email}' creado correctamente."
                 : $"Usuario '{saved.Email}' actualizado correctamente.", Severity.Success);
         }
+    }
+
+    private async Task<Guid> GetRequesterKeyAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var value = state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return Guid.TryParse(value, out var requesterKey) ? requesterKey : Guid.Empty;
     }
 }
