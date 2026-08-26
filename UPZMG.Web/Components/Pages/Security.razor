@@ -1,6 +1,9 @@
 @page "/security"
 @attribute [Authorize(Roles = "Admin")]
-@inject ISecurityService SecuritySvc
+@* SecurityService is injected as a concrete type: the backend refactor turned it
+   into an HTTP wrapper and dropped ISecurityService, so there is no abstraction
+   to depend on yet. Re-introduce one when the API migration settles. *@
+@inject SecurityService SecuritySvc
 @inject ISnackbar Snackbar
 
 <PageTitle>Seguridad — SIGIE</PageTitle>
@@ -76,7 +79,7 @@ else
 }
 
 @code {
-    private SecurityData? _data;
+    private SecurityService.SecurityData? _data;
     private Guid _selectedRoleId;
 
     protected override async Task OnInitializedAsync() => _data = await SecuritySvc.LoadAsync(null);

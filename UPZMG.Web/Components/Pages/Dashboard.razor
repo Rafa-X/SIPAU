@@ -254,8 +254,8 @@
 
         _enrollmentSeries = new()
         {
-            new ChartSeriesData("Matrícula", _fc.Actual, "#0FB5A0", Filled: true),
-            new ChartSeriesData("Tendencia del modelo", _fc.Trend, "#6D5CE7", Dashed: true),
+            new ChartSeriesData("Matrícula", _fc.Actual, ChartPalette.Teal, Filled: true),
+            new ChartSeriesData("Tendencia del modelo", _fc.Trend, ChartPalette.Indigo, Dashed: true),
         };
 
         // Deltas come straight from the regression inputs — no invented numbers.

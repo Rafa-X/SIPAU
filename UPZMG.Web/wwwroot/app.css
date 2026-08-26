@@ -30,38 +30,45 @@
     --mud-typography-h5-family: var(--sigie-font-display);
     --mud-typography-h6-family: var(--sigie-font-display);
 
-    /* A tighter, more editorial scale than MudBlazor's default */
-    --mud-typography-h4-size: 1.75rem;
-    --mud-typography-h4-weight: 800;
-    --mud-typography-h4-lineheight: 1.2;
-    --mud-typography-h4-letterspacing: -0.022em;
-    --mud-typography-h5-size: 1.3rem;
-    --mud-typography-h5-weight: 750;
-    --mud-typography-h5-letterspacing: -0.018em;
-    --mud-typography-h6-size: 1.0625rem;
+    /* Type scale — a step larger than before. This is a data-entry tool read
+       for long stretches; small type was the main legibility complaint. */
+    --mud-typography-h4-size: 1.9rem;
+    --mud-typography-h4-weight: 750;
+    --mud-typography-h4-lineheight: 1.22;
+    --mud-typography-h4-letterspacing: -0.018em;
+    --mud-typography-h5-size: 1.45rem;
+    --mud-typography-h5-weight: 700;
+    --mud-typography-h5-letterspacing: -0.014em;
+    --mud-typography-h6-size: 1.15rem;
     --mud-typography-h6-weight: 700;
-    --mud-typography-h6-letterspacing: -0.012em;
-    --mud-typography-body2-size: 0.875rem;
-    --mud-typography-caption-size: 0.775rem;
-    --mud-typography-button-weight: 650;
+    --mud-typography-h6-letterspacing: -0.008em;
+    --mud-typography-body1-size: 1rem;
+    --mud-typography-body2-size: 0.9375rem;
+    --mud-typography-body2-lineheight: 1.6;
+    --mud-typography-caption-size: 0.8125rem;
+    --mud-typography-subtitle1-size: 1.05rem;
+    --mud-typography-subtitle2-size: 0.95rem;
+    --mud-typography-button-size: 0.9rem;
+    --mud-typography-button-weight: 600;
     --mud-typography-button-letterspacing: 0.005em;
 
-    /* Brand ramp (mirrors Theme/AppTheme.cs) */
-    --sigie-navy: #0B1B3A;
-    --sigie-navy-2: #143063;
-    --sigie-cyan: #0FB5A0;
-    --sigie-cyan-up: #22D3BF;
-    --sigie-indigo: #6D5CE7;
-    --sigie-indigo-up: #8C7CF7;
-    --sigie-gold: #D4A02C;
-    --sigie-rose: #E5484D;
+    /* Brand ramp (mirrors Theme/AppTheme.cs). Deliberately desaturated. */
+    --sigie-navy: #1B2E4D;
+    --sigie-navy-2: #2E4C7E;
+    --sigie-teal: #1B7F73;
+    --sigie-teal-up: #4FA396;
+    --sigie-indigo: #54539B;
+    --sigie-indigo-up: #8C8ACB;
+    --sigie-ochre: #B0862F;
+    --sigie-clay: #B4443F;
 
-    --sigie-grad-brand: linear-gradient(135deg, var(--sigie-cyan-up) 0%, var(--sigie-cyan) 45%, var(--sigie-indigo) 130%);
-    --sigie-grad-cool: linear-gradient(135deg, #22D3BF 0%, #2F80ED 100%);
-    --sigie-grad-violet: linear-gradient(135deg, #8C7CF7 0%, #5B45D6 100%);
-    --sigie-grad-gold: linear-gradient(135deg, #EFC35C 0%, #C98B1D 100%);
-    --sigie-grad-rose: linear-gradient(135deg, #F4757A 0%, #C6323B 100%);
-    --sigie-grad-navy: linear-gradient(135deg, #2A4C86 0%, #0B1B3A 100%);
+    /* Accents are flat, not gradients: one tone per meaning keeps the whole
+       product reading as a single system instead of a colour sampler. */
+    --sigie-accent-navy: #2E4C7E;
+    --sigie-accent-teal: #1B7F73;
+    --sigie-accent-indigo: #54539B;
+    --sigie-accent-ochre: #A87F2C;
+    --sigie-accent-clay: #A94540;
 
     /* Motion */
     --sigie-ease: cubic-bezier(0.22, 1, 0.36, 1);      /* decelerate, "expo out" */
@@ -77,10 +84,12 @@
        with a solid background-color and any decoration is theme-independent. */
     --sigie-theme-dur: 0.35s;
 
-    /* Geometry */
-    --sigie-radius: 18px;
-    --sigie-radius-sm: 12px;
-    --sigie-radius-xs: 9px;
+    /* Geometry — squarer than before. Rounded-everything read as consumer-app;
+       this is an institutional reporting tool. */
+    --sigie-radius: 10px;
+    --sigie-radius-sm: 8px;
+    --sigie-radius-xs: 6px;
+    --sigie-radius-pill: 6px;   /* chips/pills: rounded rectangles, not lozenges */
 
     /* Elevation (soft, wide, low-opacity — modern rather than material) */
     --sigie-shadow-1: 0 1px 2px rgba(11, 27, 58, 0.05), 0 8px 24px -10px rgba(11, 27, 58, 0.14);
@@ -124,18 +133,17 @@ body,
 }
 
 /* ------------------------------------------------------- 2. Ambient canvas */
-/* Two slow aurora fields behind everything. Cheap (no repaint), decorative. */
+/* A single, very faint tint so the canvas is not flat white. Kept subtle and
+   static — a moving coloured backdrop competed with the data on top of it. */
 body::before {
     content: '';
     position: fixed;
-    inset: -10%;
+    inset: 0;
     z-index: 0;
     pointer-events: none;
     background:
-        radial-gradient(46rem 30rem at 8% -6%, color-mix(in srgb, var(--mud-palette-secondary) 16%, transparent), transparent 62%),
-        radial-gradient(40rem 28rem at 98% 4%, color-mix(in srgb, var(--mud-palette-tertiary) 14%, transparent), transparent 60%),
-        radial-gradient(38rem 26rem at 60% 106%, color-mix(in srgb, var(--mud-palette-primary) 12%, transparent), transparent 62%);
-    animation: sigie-aurora 26s var(--sigie-ease-soft) infinite alternate;
+        radial-gradient(52rem 34rem at 12% -8%, color-mix(in srgb, var(--mud-palette-primary) 6%, transparent), transparent 66%),
+        radial-gradient(46rem 30rem at 96% 2%, color-mix(in srgb, var(--mud-palette-secondary) 5%, transparent), transparent 64%);
 }
 
 @keyframes sigie-aurora {
@@ -185,15 +193,13 @@ body::before {
 body.sigie-header-hidden .mud-appbar { transform: translateY(-100%); }
 body.sigie-header-hidden .mud-drawer { top: 0 !important; height: 100% !important; }
 
-/* A hairline of brand colour along the very top edge. */
+/* A neutral hairline under the header once the page scrolls. */
 .mud-appbar::after {
     content: '';
     position: absolute;
     inset: auto 0 0 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent,
-                color-mix(in srgb, var(--mud-palette-secondary) 55%, transparent) 22%,
-                color-mix(in srgb, var(--mud-palette-tertiary) 45%, transparent) 68%, transparent);
+    background: var(--sigie-hairline);
     opacity: 0;
     transition: opacity var(--sigie-mid) var(--sigie-ease-soft);
 }
@@ -214,21 +220,20 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 /* Brand — clickable, routes home to the dashboard. */
 .sigie-brand {
     display: flex; align-items: center; gap: 11px;
-    padding: 4px 10px 4px 4px; border-radius: 12px;
+    padding: 4px 10px 4px 4px; border-radius: var(--sigie-radius-sm);
     color: inherit; text-decoration: none;
     transition: background var(--sigie-fast) var(--sigie-ease), transform var(--sigie-mid) var(--sigie-spring);
 }
 .sigie-brand:hover { background: color-mix(in srgb, var(--mud-palette-appbar-text) 9%, transparent); }
-.sigie-brand:hover .sigie-brand-mark { box-shadow: 0 8px 22px -4px color-mix(in srgb, var(--sigie-cyan) 75%, transparent); }
+.sigie-brand:hover .sigie-brand-mark { box-shadow: 0 8px 22px -4px color-mix(in srgb, var(--sigie-teal) 75%, transparent); }
 .sigie-brand-mark {
     position: relative;
     display: inline-flex; align-items: center; justify-content: center;
     width: 36px; height: 36px;
-    border-radius: 11px;
+    border-radius: var(--sigie-radius-sm);
     font-family: var(--sigie-font-display);
-    font-weight: 800; font-size: 15px; color: #fff;
-    background: var(--sigie-grad-brand);
-    box-shadow: 0 6px 18px -4px color-mix(in srgb, var(--sigie-cyan) 60%, transparent);
+    font-weight: 800; font-size: 16px; color: #fff;
+    background: var(--sigie-accent-navy);
     overflow: hidden;
 }
 /* Light sweep across the logo tile — on hover only. A permanent loop in the
@@ -249,19 +254,19 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 /* Quick-nav (⌘K style search field in the header) */
 .sigie-quicknav { width: 280px; max-width: 32vw; }
 .sigie-quicknav .mud-input-slot,
-.sigie-quicknav .mud-input.mud-input-outlined { border-radius: 999px !important; }
+.sigie-quicknav .mud-input.mud-input-outlined { border-radius: var(--sigie-radius-sm) !important; }
 .sigie-quicknav .mud-input-outlined-border {
-    border-radius: 999px !important;
+    border-radius: var(--sigie-radius-sm) !important;
     border-color: color-mix(in srgb, var(--mud-palette-appbar-text) 22%, transparent) !important;
 }
-.sigie-quicknav .mud-input > input { font-size: 0.84rem; }
+.sigie-quicknav .mud-input > input { font-size: 0.88rem; }
 .sigie-quicknav .mud-input-root,
 .sigie-quicknav .mud-input-adornment .mud-icon-root { color: var(--mud-palette-appbar-text) !important; }
 .sigie-quicknav .mud-input-root::placeholder { color: color-mix(in srgb, var(--mud-palette-appbar-text) 55%, transparent) !important; }
 
 /* Round icon buttons in the header get a soft hover plate. */
 .sigie-appbar-btn {
-    border-radius: 12px !important;
+    border-radius: var(--sigie-radius-sm) !important;
     transition: background var(--sigie-fast) var(--sigie-ease), transform var(--sigie-mid) var(--sigie-spring);
 }
 .sigie-appbar-btn:hover {
@@ -273,7 +278,7 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 .sigie-appbar-trigger {
     display: inline-flex; align-items: center; justify-content: center;
     width: 42px; height: 42px;
-    border-radius: 12px; cursor: pointer;
+    border-radius: var(--sigie-radius-sm); cursor: pointer;
     color: var(--mud-palette-appbar-text);
     transition: background var(--sigie-fast) var(--sigie-ease), transform var(--sigie-mid) var(--sigie-spring);
 }
@@ -290,9 +295,9 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 .sigie-user-trigger {
     display: flex; align-items: center; gap: 9px;
     padding: 5px 10px 5px 5px;
-    border-radius: 999px;
+    border-radius: var(--sigie-radius-sm);
     cursor: pointer;
-    font-size: 0.85rem; font-weight: 600;
+    font-size: 0.9rem; font-weight: 600;
     color: var(--mud-palette-appbar-text);
     border: 1px solid color-mix(in srgb, var(--mud-palette-appbar-text) 14%, transparent);
     background: color-mix(in srgb, var(--mud-palette-appbar-text) 5%, transparent);
@@ -335,7 +340,7 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 .sigie-nav-section {
     display: block;
     padding: 18px 22px 7px;
-    font-size: 0.66rem; font-weight: 700;
+    font-size: 0.75rem; font-weight: 700;
     letter-spacing: 0.14em; text-transform: uppercase;
     white-space: nowrap;
     transition: opacity var(--sigie-mid) var(--sigie-ease);
@@ -349,7 +354,7 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
     margin: 3px 12px;
     padding: 10px 14px;
     border-radius: var(--sigie-radius-sm);
-    font-size: 0.875rem; font-weight: 550;
+    font-size: 0.9375rem; font-weight: 550;
     overflow: hidden;
     transition: color var(--sigie-fast) var(--sigie-ease),
                 background var(--sigie-fast) var(--sigie-ease),
@@ -362,36 +367,34 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 .mud-drawer .mud-nav-link:hover { transform: translateX(3px); }
 .mud-drawer .mud-nav-link:hover .mud-nav-link-icon { transform: scale(1.08); }
 
-/* Light rail */
+/* Light rail — idle + hover (NOT the active item; that is handled below). */
 .sigie-light .mud-drawer .mud-nav-link { color: #41506A; }
 .sigie-light .mud-drawer .mud-nav-link .mud-nav-link-icon { color: #7C8AA3; }
-.sigie-light .mud-drawer .mud-nav-link:hover,
-.sigie-light .mud-drawer .mud-nav-link:hover .mud-nav-link-text {
+.sigie-light .mud-drawer .mud-nav-link:not(.active):hover {
     background-color: color-mix(in srgb, var(--mud-palette-secondary) 11%, transparent);
     color: var(--mud-palette-text-primary);
 }
-.sigie-light .mud-drawer .mud-nav-link:hover .mud-nav-link-text { background-color: transparent; }
-.sigie-light .mud-drawer .mud-nav-link:hover .mud-nav-link-icon { color: var(--sigie-cyan); }
+.sigie-light .mud-drawer .mud-nav-link:not(.active):hover .mud-nav-link-icon { color: var(--sigie-teal); }
 
-/* The active item keeps its white label on hover — never inherit the theme
-   text colour there, or it disappears into the coloured plate. */
-.mud-drawer .mud-nav-link.active:hover,
-.mud-drawer .mud-nav-link.active:hover .mud-nav-link-text,
-.mud-drawer .mud-nav-link.active:hover .mud-nav-link-icon { color: #fff !important; }
-
-/* Dark rail */
+/* Dark rail — idle + hover. */
 .sigie-dark .mud-drawer .mud-nav-link { color: rgba(255, 255, 255, 0.78); }
 .sigie-dark .mud-drawer .mud-nav-link .mud-nav-link-icon { color: rgba(255, 255, 255, 0.58); }
-.sigie-dark .mud-drawer .mud-nav-link:hover { background: rgba(255, 255, 255, 0.07); color: #fff; }
-.sigie-dark .mud-drawer .mud-nav-link:hover .mud-nav-link-icon { color: var(--sigie-cyan-up); }
+.sigie-dark .mud-drawer .mud-nav-link:not(.active):hover { background: rgba(255, 255, 255, 0.07); color: #fff; }
+.sigie-dark .mud-drawer .mud-nav-link:not(.active):hover .mud-nav-link-icon { color: var(--sigie-teal-up); }
 
-/* Active: gradient plate + glow + animated left marker.
-   The gradient is fully opaque on purpose — a translucent plate over the light
-   rail left the white label unreadable. */
-.mud-drawer .mud-nav-link.active {
-    background: linear-gradient(100deg, var(--sigie-cyan) 0%, var(--sigie-indigo) 125%);
-    font-weight: 700;
-    box-shadow: 0 10px 26px -10px color-mix(in srgb, var(--sigie-cyan) 85%, transparent);
+/* Active: solid plate + animated left marker.
+   Declared with !important and theme-scoped selectors on purpose. Both the
+   per-theme hover rules above and MudBlazor's own `.mud-nav-link.active` carry
+   HIGHER specificity than a bare `.mud-drawer .mud-nav-link.active`, and either
+   one winning repaints the plate pale — which left the white label invisible in
+   light mode. This rule must not be out-ranked. */
+.sigie-light .mud-drawer .mud-nav-link.active,
+.sigie-dark .mud-drawer .mud-nav-link.active,
+.sigie-light .mud-drawer .mud-nav-link.active:hover,
+.sigie-dark .mud-drawer .mud-nav-link.active:hover {
+    background-color: var(--sigie-accent-teal) !important;
+    background-image: none !important;
+    font-weight: 650;
     transform: none;
 }
 .mud-drawer .mud-nav-link.active::before {
@@ -404,10 +407,14 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 }
 @keyframes sigie-marker { to { height: 58%; } }
 
-/* MudBlazor tints the selected link with the theme colour — force white. */
+/* The label on the coloured plate is always white, idle or hovered, in both
+   themes — MudBlazor would otherwise tint it with the palette colour. */
 .mud-drawer .mud-nav-link.active,
+.mud-drawer .mud-nav-link.active:hover,
 .mud-drawer .mud-nav-link.active .mud-nav-link-text,
+.mud-drawer .mud-nav-link.active:hover .mud-nav-link-text,
 .mud-drawer .mud-nav-link.active .mud-nav-link-icon,
+.mud-drawer .mud-nav-link.active:hover .mud-nav-link-icon,
 .mud-drawer .mud-nav-link.active .mud-icon-root { color: #fff !important; }
 
 /* Rail footer (version / environment badge) */
@@ -464,17 +471,8 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
                 border-color var(--sigie-theme-dur) var(--sigie-ease-soft);
 }
 
-/* Specular hairline along the top edge — what sells the "glass". */
-.mud-main-content .mud-paper::before {
-    content: '';
-    position: absolute; inset: 0 0 auto 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent,
-                color-mix(in srgb, var(--mud-palette-secondary) 42%, transparent) 30%,
-                color-mix(in srgb, var(--mud-palette-tertiary) 34%, transparent) 72%, transparent);
-    opacity: 0.7;
-    pointer-events: none;
-}
+/* No decorative hairline: cards are defined by their border alone, so every
+   surface in the product looks like the same surface. */
 
 /* Plain cards deliberately do NOT react to the pointer — see MOTION POLICY.
    A card holding a table is not a button and should not bob when the cursor
@@ -526,9 +524,9 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
     background: color-mix(in srgb, var(--sigie-navy) 95%, transparent) !important;
     color: #FFFFFF !important;
     border: 1px solid rgba(255, 255, 255, 0.14) !important;
-    border-radius: 10px !important;
+    border-radius: var(--sigie-radius-sm) !important;
     padding: 6px 11px;
-    font-size: 0.75rem; font-weight: 600; letter-spacing: 0.01em;
+    font-size: 0.8rem; font-weight: 600; letter-spacing: 0.01em;
     box-shadow: var(--sigie-shadow-2) !important;
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
@@ -572,7 +570,7 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 /* Chips are labels by default (status, period, counts): they must stay put.
    Only genuinely clickable chips get feedback. */
 .mud-chip {
-    border-radius: 999px !important;
+    border-radius: var(--sigie-radius-pill) !important;
     font-weight: 600;
 }
 .mud-chip.mud-clickable {
@@ -602,7 +600,7 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 /* ------------------------------------------------------ 8. Tables & grids */
 .mud-table-container .mud-table-head .mud-table-cell,
 .mud-datagrid .mud-table-head .mud-table-cell {
-    font-size: 0.7rem; font-weight: 700;
+    font-size: 0.75rem; font-weight: 700;
     letter-spacing: 0.09em; text-transform: uppercase;
     color: var(--mud-palette-text-secondary);
     border-bottom: 1px solid var(--sigie-hairline);
@@ -731,45 +729,42 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 .sigie-icon-badge {
     display: inline-flex; align-items: center; justify-content: center;
     width: 46px; height: 46px;
-    border-radius: 14px; color: #fff;
+    border-radius: var(--sigie-radius-sm); color: #fff;
     flex: 0 0 auto;
     transition: transform var(--sigie-mid) var(--sigie-spring), box-shadow var(--sigie-mid) var(--sigie-ease);
 }
 /* Only the badge of a card that is itself interactive responds — the small
    tilt is the one flourish worth keeping on the KPI tiles. */
 .sigie-lift:hover .sigie-icon-badge { transform: translateY(-2px) rotate(-5deg) scale(1.06); }
-.sigie-icon-badge.navy   { background: var(--sigie-grad-navy);   box-shadow: 0 10px 22px -8px rgba(23, 58, 109, 0.85); }
-.sigie-icon-badge.teal   { background: var(--sigie-grad-cool);   box-shadow: 0 10px 22px -8px rgba(15, 181, 160, 0.9); }
-.sigie-icon-badge.violet { background: var(--sigie-grad-violet); box-shadow: 0 10px 22px -8px rgba(109, 92, 231, 0.9); }
-.sigie-icon-badge.gold   { background: var(--sigie-grad-gold);   box-shadow: 0 10px 22px -8px rgba(212, 160, 44, 0.85); }
-.sigie-icon-badge.red    { background: var(--sigie-grad-rose);   box-shadow: 0 10px 22px -8px rgba(229, 72, 77, 0.85); }
+/* Flat tones, no gradients and no coloured glow: the badge marks a category,
+   it is not meant to be the loudest thing on the card. */
+.sigie-icon-badge.navy   { background: var(--sigie-accent-navy); }
+.sigie-icon-badge.teal   { background: var(--sigie-accent-teal); }
+.sigie-icon-badge.violet { background: var(--sigie-accent-indigo); }
+.sigie-icon-badge.gold   { background: var(--sigie-accent-ochre); }
+.sigie-icon-badge.red    { background: var(--sigie-accent-clay); }
 
 /* Eyebrow label above page titles. */
 .sigie-eyebrow {
     display: inline-flex; align-items: center; gap: 7px;
-    font-size: 0.68rem; font-weight: 700;
+    font-size: 0.73rem; font-weight: 700;
     letter-spacing: 0.16em; text-transform: uppercase;
     color: var(--mud-palette-secondary);
 }
 .sigie-eyebrow::before {
     content: '';
-    width: 18px; height: 2px; border-radius: 2px;
-    background: var(--sigie-grad-brand);
+    width: 18px; height: 2px; border-radius: 1px;
+    background: currentColor;
 }
 
-/* Title with a subtle gradient wash (kept legible, not neon). */
-.sigie-title {
-    background: linear-gradient(100deg, var(--mud-palette-text-primary) 30%,
-                color-mix(in srgb, var(--mud-palette-text-primary) 55%, var(--mud-palette-secondary)) 100%);
-    -webkit-background-clip: text; background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
+/* Flat ink. A gradient wash on the page title fought with the data below it. */
+.sigie-title { color: var(--mud-palette-text-primary); }
 
 /* Delta pill: "+4.2%" next to a KPI. */
 .sigie-delta {
     display: inline-flex; align-items: center; gap: 3px;
-    padding: 2px 8px; border-radius: 999px;
-    font-size: 0.7rem; font-weight: 700; line-height: 1.5;
+    padding: 2px 8px; border-radius: 5px;
+    font-size: 0.75rem; font-weight: 700; line-height: 1.5;
 }
 .sigie-delta.up   { color: var(--mud-palette-success); background: color-mix(in srgb, var(--mud-palette-success) 14%, transparent); }
 .sigie-delta.down { color: var(--mud-palette-error);   background: color-mix(in srgb, var(--mud-palette-error) 14%, transparent); }
@@ -778,8 +773,8 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 /* "En vivo" indicator with a breathing halo. */
 .sigie-live {
     display: inline-flex; align-items: center; gap: 7px;
-    padding: 4px 12px 4px 10px; border-radius: 999px;
-    font-size: 0.72rem; font-weight: 700;
+    padding: 4px 12px 4px 10px; border-radius: var(--sigie-radius-pill);
+    font-size: 0.77rem; font-weight: 700;
     color: var(--mud-palette-success);
     background: color-mix(in srgb, var(--mud-palette-success) 12%, transparent);
     border: 1px solid color-mix(in srgb, var(--mud-palette-success) 28%, transparent);
@@ -808,7 +803,7 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 .sigie-card-titles { flex: 1 1 auto; min-width: 0; }
 .sigie-card-eyebrow {
     display: block;
-    font-size: 0.64rem; font-weight: 700;
+    font-size: 0.75rem; font-weight: 700;
     letter-spacing: 0.14em; text-transform: uppercase;
     color: var(--mud-palette-secondary);
     margin-bottom: 3px;
@@ -826,7 +821,7 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
     padding: 13px 22px;
     border-top: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 55%, transparent);
     background: color-mix(in srgb, var(--mud-palette-text-secondary) 4%, transparent);
-    font-size: 0.79rem;
+    font-size: 0.85rem;
     color: var(--mud-palette-text-secondary);
 }
 
@@ -835,7 +830,7 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 .sigie-empty-icon {
     display: inline-flex; align-items: center; justify-content: center;
     width: 62px; height: 62px; margin-bottom: 14px;
-    border-radius: 20px;
+    border-radius: var(--sigie-radius);
     color: var(--mud-palette-text-secondary);
     background: color-mix(in srgb, var(--mud-palette-text-secondary) 9%, transparent);
     border: 1px solid var(--sigie-hairline);
@@ -866,7 +861,7 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 .sigie-chart-yaxis span {
     position: absolute; right: 0;
     transform: translateY(-50%);
-    font-size: 0.72rem; font-weight: 500; white-space: nowrap;
+    font-size: 0.78rem; font-weight: 500; white-space: nowrap;
     color: var(--mud-palette-text-secondary);
 }
 
@@ -876,7 +871,7 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 .sigie-chart-xaxis span {
     position: absolute; top: 7px;
     transform: translateX(-50%);
-    font-size: 0.72rem; font-weight: 500; white-space: nowrap;
+    font-size: 0.78rem; font-weight: 500; white-space: nowrap;
     color: var(--mud-palette-text-secondary);
     transition: color var(--sigie-fast) var(--sigie-ease), font-weight var(--sigie-fast) var(--sigie-ease);
 }
@@ -889,7 +884,7 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 }
 .sigie-chart-key {
     display: inline-flex; align-items: center; gap: 7px;
-    font-size: 0.76rem; font-weight: 600;
+    font-size: 0.8rem; font-weight: 600;
     color: var(--mud-palette-text-secondary);
 }
 .sigie-chart-key i { width: 14px; height: 3px; border-radius: 2px; }
@@ -913,7 +908,7 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 .sigie-chart-tag {
     position: absolute; top: 8px;
     margin-left: 8px;
-    font-size: 0.6rem; font-weight: 700;
+    font-size: 0.66rem; font-weight: 700;
     letter-spacing: 0.14em; text-transform: uppercase;
     color: var(--mud-palette-tertiary);
     pointer-events: none;
@@ -965,7 +960,7 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
     position: absolute; top: 6px;
     transform: translateX(-50%);
     min-width: 150px; padding: 9px 12px;
-    border-radius: 12px;
+    border-radius: var(--sigie-radius-sm);
     background: color-mix(in srgb, var(--sigie-navy) 95%, transparent);
     border: 1px solid rgba(255, 255, 255, 0.14);
     box-shadow: var(--sigie-shadow-2);
@@ -977,14 +972,14 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
     animation: sigie-fade-in 0.14s var(--sigie-ease) both;
 }
 .sigie-chart-tip-head {
-    font-size: 0.72rem; font-weight: 700;
+    font-size: 0.77rem; font-weight: 700;
     letter-spacing: 0.06em; text-transform: uppercase;
     color: rgba(255, 255, 255, 0.6);
     margin-bottom: 5px;
 }
 .sigie-chart-tip-row {
     display: flex; align-items: center; gap: 8px;
-    font-size: 0.79rem; line-height: 1.7;
+    font-size: 0.84rem; line-height: 1.7;
     white-space: nowrap;
 }
 .sigie-chart-tip-row i { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
@@ -1018,7 +1013,7 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 }
 .sigie-ring-label {
     margin-top: 5px;
-    font-size: 0.68rem; font-weight: 700;
+    font-size: 0.73rem; font-weight: 700;
     letter-spacing: 0.12em; text-transform: uppercase;
     color: var(--mud-palette-text-secondary);
 }
@@ -1027,7 +1022,7 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 .sigie-logout-btn {
     display: flex; align-items: center; width: 100%;
     padding: 11px 16px; border: 0; background: transparent;
-    color: var(--mud-palette-error); font: inherit; font-size: 0.86rem; font-weight: 600;
+    color: var(--mud-palette-error); font: inherit; font-size: 0.9rem; font-weight: 600;
     cursor: pointer; text-align: left;
     transition: background var(--sigie-fast) var(--sigie-ease);
 }
@@ -1150,7 +1145,7 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
     animation: sigie-hero-in 0.7s var(--sigie-ease) 0.05s both;
 }
 .sigie-hero-lead {
-    font-size: 0.98rem; line-height: 1.65;
+    font-size: 1.03rem; line-height: 1.65;
     color: rgba(255, 255, 255, 0.66);
     max-width: 52ch; margin: 0 0 30px;
     animation: sigie-hero-in 0.7s var(--sigie-ease) 0.15s both;
@@ -1163,13 +1158,13 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 .sigie-hero-list li:nth-child(1) { animation-delay: 0.26s; }
 .sigie-hero-list li:nth-child(2) { animation-delay: 0.34s; }
 .sigie-hero-list li:nth-child(3) { animation-delay: 0.42s; }
-.sigie-hero-list b { display: block; font-size: 0.9rem; font-weight: 700; margin-bottom: 2px; }
-.sigie-hero-list span { font-size: 0.85rem; color: rgba(255, 255, 255, 0.58); line-height: 1.5; }
+.sigie-hero-list b { display: block; font-size: 0.95rem; font-weight: 700; margin-bottom: 2px; }
+.sigie-hero-list span { font-size: 0.9rem; color: rgba(255, 255, 255, 0.58); line-height: 1.5; }
 .sigie-hero-ico {
     display: inline-flex; align-items: center; justify-content: center;
     width: 36px; height: 36px; flex: 0 0 auto;
-    border-radius: 11px;
-    color: var(--sigie-cyan-up);
+    border-radius: var(--sigie-radius-sm);
+    color: var(--sigie-teal-up);
     background: rgba(255, 255, 255, 0.07);
     border: 1px solid rgba(255, 255, 255, 0.12);
 }
@@ -1184,48 +1179,48 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
     padding: 40px 36px;
     background: rgba(255, 255, 255, 0.065);
     border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 24px;
+    border-radius: var(--sigie-radius);
     box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.8);
     -webkit-backdrop-filter: blur(22px) saturate(150%);
     backdrop-filter: blur(22px) saturate(150%);
     color: #fff;
     animation: sigie-page-in 0.7s var(--sigie-ease) both;
 }
-.sigie-brand-mark.lg { width: 46px; height: 46px; border-radius: 14px; font-size: 20px; }
+.sigie-brand-mark.lg { width: 46px; height: 46px; border-radius: var(--sigie-radius-sm); font-size: 20px; }
 .sigie-login-brand {
     display: flex; align-items: center; gap: 13px; margin-bottom: 28px;
     animation: sigie-hero-in 0.6s var(--sigie-ease) both;
 }
 .sigie-login-title { font-family: var(--sigie-font-display); font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
-.sigie-login-sub { font-size: 11.5px; color: rgba(255,255,255,0.58); max-width: 34ch; line-height: 1.4; }
+.sigie-login-sub { font-size: 12.5px; color: rgba(255,255,255,0.58); max-width: 34ch; line-height: 1.4; }
 
 /* The card repeats the brand only when the institutional panel is hidden. */
 @media (min-width: 1024px) { .sigie-login-brand.compact { display: none; } }
 .sigie-login-h1 { font-family: var(--sigie-font-display); font-size: 27px; font-weight: 800; letter-spacing: -0.025em; margin: 0 0 6px; }
-.sigie-login-lead { font-size: 13.5px; color: rgba(255,255,255,0.62); margin: 0 0 24px; }
+.sigie-login-lead { font-size: 14.5px; color: rgba(255,255,255,0.62); margin: 0 0 24px; }
 
-.sigie-login-label { display: block; font-size: 11.5px; font-weight: 700; letter-spacing: 0.04em; color: rgba(255,255,255,0.70); margin: 16px 0 7px; }
+.sigie-login-label { display: block; font-size: 12.5px; font-weight: 700; letter-spacing: 0.04em; color: rgba(255,255,255,0.70); margin: 16px 0 7px; }
 .sigie-login-input {
-    width: 100%; padding: 13px 15px; border-radius: 13px;
+    width: 100%; padding: 13px 15px; border-radius: var(--sigie-radius-sm);
     background: rgba(255, 255, 255, 0.07);
     border: 1px solid rgba(255, 255, 255, 0.15);
-    color: #fff; font: inherit; font-size: 14px; outline: none;
+    color: #fff; font: inherit; font-size: 15px; outline: none;
     transition: border-color var(--sigie-fast) var(--sigie-ease),
                 box-shadow var(--sigie-fast) var(--sigie-ease),
                 background var(--sigie-fast) var(--sigie-ease);
 }
 .sigie-login-input::placeholder { color: rgba(255,255,255,0.36); }
 .sigie-login-input:focus {
-    border-color: var(--sigie-cyan-up);
+    border-color: var(--sigie-teal-up);
     box-shadow: 0 0 0 4px rgba(34, 211, 191, 0.18);
     background: rgba(255, 255, 255, 0.11);
 }
 .sigie-login-btn {
     position: relative; overflow: hidden;
     width: 100%; margin-top: 28px; padding: 14px 16px; border: 0; cursor: pointer;
-    border-radius: 14px; font-family: var(--sigie-font-display);
+    border-radius: var(--sigie-radius-sm); font-family: var(--sigie-font-display);
     font-size: 15px; font-weight: 700; color: #fff;
-    background: var(--sigie-grad-brand);
+    background: var(--sigie-accent-teal);
     box-shadow: 0 16px 34px -12px rgba(15, 181, 160, 0.85);
     transition: transform var(--sigie-fast) var(--sigie-spring),
                 box-shadow var(--sigie-fast) var(--sigie-ease),
@@ -1242,7 +1237,7 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 .sigie-login-btn:hover::after { transform: translateX(130%); }
 .sigie-login-btn:active { transform: translateY(0) scale(0.99); }
 .sigie-login-error {
-    padding: 12px 14px; border-radius: 13px; font-size: 13px;
+    padding: 12px 14px; border-radius: var(--sigie-radius-sm); font-size: 13px;
     background: rgba(229, 72, 77, 0.16);
     border: 1px solid rgba(229, 72, 77, 0.38);
     color: #FFD7D8;
@@ -1254,7 +1249,7 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
     45% { transform: translateX(5px); }
     70% { transform: translateX(-3px); }
 }
-.sigie-login-foot { margin-top: 24px; text-align: center; font-size: 11px; color: rgba(255,255,255,0.38); }
+.sigie-login-foot { margin-top: 24px; text-align: center; font-size: 12px; color: rgba(255,255,255,0.38); }
 
 /* ------------------------------------------------------ 13. Accessibility */
 @media (prefers-reduced-motion: reduce) {
@@ -1284,7 +1279,7 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 
 /* ----------------------------------------------- 14. Blazor error overlay */
 #blazor-error-ui {
-    background: var(--sigie-rose); color: #fff;
+    background: var(--sigie-clay); color: #fff;
     bottom: 0; left: 0; width: 100%;
     display: none; position: fixed; z-index: 2000;
     padding: 0.85rem 1.2rem;

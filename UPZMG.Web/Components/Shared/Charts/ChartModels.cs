@@ -19,6 +19,31 @@ public sealed record ChartSeriesData(
     bool Filled = false);
 
 /// <summary>
+/// The only colours charts may use.
+///
+/// These resolve to the MudBlazor theme variables rather than fixed hex values,
+/// so a chart repaints itself correctly when the user switches light/dark and
+/// the palette stays in sync with the rest of the UI by construction.
+/// </summary>
+public static class ChartPalette
+{
+    /// <summary>Observed / primary measure.</summary>
+    public const string Teal = "var(--mud-palette-secondary)";
+
+    /// <summary>Modelled or projected values.</summary>
+    public const string Indigo = "var(--mud-palette-tertiary)";
+
+    /// <summary>Institutional / structural measure.</summary>
+    public const string Navy = "var(--mud-palette-primary)";
+
+    /// <summary>Funding and resources.</summary>
+    public const string Ochre = "var(--mud-palette-warning)";
+
+    /// <summary>Negative indicators (failure, dropout).</summary>
+    public const string Clay = "var(--mud-palette-error)";
+}
+
+/// <summary>
 /// Maps data values to SVG coordinates inside a plot rectangle.
 ///
 /// Single responsibility: this type knows nothing about drawing — it only does

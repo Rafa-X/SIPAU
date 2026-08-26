@@ -13,11 +13,15 @@ public class UsersIndexViewModel
 
 /// <summary>
 /// Represents a single user row in the user management listing.
+///
+/// Shaped after <see cref="SystemUser"/> (Guid key, UserName) so the listing can
+/// be switched from the in-memory mock to the real API through DataService
+/// without touching the page.
 /// </summary>
 public class UserListModel
 {
-    public int Id { get; set; }
-    public string FullName { get; set; } = string.Empty;
+    public Guid Id { get; set; }
+    public string UserName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string RoleName { get; set; } = string.Empty;
     public bool IsActive { get; set; }

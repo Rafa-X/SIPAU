@@ -99,7 +99,7 @@
                 <MudMenu @bind-Open="_userMenuOpen" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="true">
                     <ActivatorContent>
                         <div class="sigie-user-trigger ml-2" @onclick="@(() => _userMenuOpen = !_userMenuOpen)" @onclick:stopPropagation="true">
-                            <MudAvatar Size="Size.Small" Style="background:var(--sigie-grad-brand);color:#fff;font-weight:700">
+                            <MudAvatar Size="Size.Small" Style="background:var(--sigie-accent-teal);color:#fff;font-weight:700">
                                 @Initials(auth.User)
                             </MudAvatar>
                             <span class="d-none d-sm-flex">@DisplayName(auth.User)</span>
@@ -109,7 +109,7 @@
                     <ChildContent>
                         <div class="px-4 py-3" style="min-width:250px">
                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
-                                <MudAvatar Style="background:var(--sigie-grad-brand);color:#fff;font-weight:700">
+                                <MudAvatar Style="background:var(--sigie-accent-teal);color:#fff;font-weight:700">
                                     @Initials(auth.User)
                                 </MudAvatar>
                                 <div>
