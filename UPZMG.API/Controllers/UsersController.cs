@@ -7,6 +7,7 @@ namespace UPZMG.Api.Controllers;
 
 [ApiController]
 [Route("users")]
+[Authorize(Roles = "Admin")]
 public class UsersController(SecurityRepository securityRepository, UsersRepository usersRepository) : ControllerBase
 {
     private async Task<bool> ValidatePermissions<T>(T request)
@@ -20,7 +21,6 @@ public class UsersController(SecurityRepository securityRepository, UsersReposit
 
 
     [HttpPost("get-all")]
-    [Authorize]
     // Retrieve all active users
     public async Task<IActionResult> GetAllUsers([FromBody] GetAllUsers request)
     {
@@ -31,7 +31,6 @@ public class UsersController(SecurityRepository securityRepository, UsersReposit
     }
 
     [HttpPost("get")]
-    [Authorize]
     // Retrieve user information by ID
     public async Task<IActionResult> GetUserById([FromBody] GetUserById request)
     {
@@ -41,7 +40,6 @@ public class UsersController(SecurityRepository securityRepository, UsersReposit
     }
 
     [HttpPost("create")]
-    [Authorize]
     public async Task<IActionResult> CreateUser([FromBody] CreateUser request)
     {
         var user = await usersRepository.CreateUserAsync(request);
@@ -50,7 +48,6 @@ public class UsersController(SecurityRepository securityRepository, UsersReposit
     }
 
     [HttpPost("edit")]
-    [Authorize]
     public async Task<IActionResult> EditUser([FromBody] EditUser request)
     {
         var user = await usersRepository.EditUserAsync(request);

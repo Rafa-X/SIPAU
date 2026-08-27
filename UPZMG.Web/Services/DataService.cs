@@ -2,6 +2,8 @@ using System.Net;
 using System.Text.Json;
 using UPZMG.Implementations;
 using UPZMG.Implementations.Users;
+using UPZMG.Implementations.Roles;
+using UPZMG.Implementations.Permissions;
 using UPZMG.Persistence.Models;
 
 namespace UPZMG.Web.Services;
@@ -87,6 +89,90 @@ public sealed class DataService(SecurityService securityService)
             return JsonSerializer.Deserialize<List<Role>>(response.Result, ResponseOptions) ?? new List<Role>();
         }
         return [];
+    }
+
+    public async Task<Role> CreateRole(CreateRole request)
+    {
+        var response = await securityService.SendPostRequestAsync<CreateRole, Role>(
+            $"roles/create", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        if ((response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.Created)
+            && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<Role>(response.Result, ResponseOptions) ?? new Role();
+        }
+        return new Role();
+    }
+
+    public async Task<Role> EditRole(EditRole request)
+    {
+        var response = await securityService.SendPostRequestAsync<EditRole, Role>(
+            $"roles/edit", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        if(response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<Role>(response.Result, ResponseOptions) ?? new Role();
+        }
+        return new Role();
+    }
+
+    public async Task<List<Guid>> GetRolePermissions(GetRolePermissions request)
+    {
+        var response = await securityService.SendPostRequestAsync<GetRolePermissions, List<Guid>>(
+            $"roles/get-permissions", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        if(response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<List<Guid>>(response.Result, ResponseOptions) ?? [];
+        }
+        return [];
+    }
+
+    public async Task<bool> SetRolePermissions(SetRolePermissions request)
+    {
+        var response = await securityService.SendPostRequestAsync<SetRolePermissions, object>(
+            $"roles/set-permissions", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        return response.StatusCode == HttpStatusCode.OK;
+    }
+#endregion
+
+#region Permissions
+    public async Task<List<Permission>> GetAllPermissions(GetAllPermissions request)
+    {
+        var response = await securityService.SendPostRequestAsync<GetAllPermissions, List<Permission>>(
+            $"permissions/get-all", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        if(response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<List<Permission>>(response.Result, ResponseOptions) ?? [];
+        }
+        return [];
+    }
+
+    public async Task<Permission> CreatePermission(CreatePermission request)
+    {
+        var response = await securityService.SendPostRequestAsync<CreatePermission, Permission>(
+            $"permissions/create", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        if ((response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.Created)
+            && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<Permission>(response.Result, ResponseOptions) ?? new Permission();
+        }
+        return new Permission();
+    }
+
+    public async Task<Permission> EditPermission(EditPermission request)
+    {
+        var response = await securityService.SendPostRequestAsync<EditPermission, Permission>(
+            $"permissions/edit", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        if(response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<Permission>(response.Result, ResponseOptions) ?? new Permission();
+        }
+        return new Permission();
     }
 #endregion
 }

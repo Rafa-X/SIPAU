@@ -1,0 +1,270 @@
+@page "/permissions"
+@attribute [Authorize(Roles = "Admin")]
+@using UPZMG.Implementations
+@using UPZMG.Implementations.Roles
+@using UPZMG.Implementations.Permissions
+@inject DataService _dataService
+@inject SecurityService _securityService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Roles y Permisos — SIGIE</PageTitle>
+
+<PageHeader Eyebrow="Administración" Title="Roles y Permisos" Subtitle="Da de alta roles, asigna permisos y controla el acceso al sistema." />
+
+<MudGrid>
+    <MudItem xs="12" md="6">
+        <SectionCard Title="Roles" Subtitle="Roles disponibles para asignar a los usuarios." Flush="true">
+            <Actions>
+                <MudButton Variant="Variant.Filled" Color="Color.Secondary"
+                           StartIcon="@Icons.Material.Filled.AddModerator" OnClick="OpenCreateRole">
+                    Nuevo rol
+                </MudButton>
+            </Actions>
+            <ChildContent>
+                @if (_isLoading)
+                {
+                    <LoadingState Text="Cargando roles…" />
+                }
+                else
+                {
+                    <DataToolbar @bind-Search="_roleSearch" Placeholder="Buscar rol…"
+                                 Count="RolesFiltered.Count" Total="_roles.Count" />
+
+                    <MudDataGrid T="Role" Items="RolesFiltered" Hover="true" Dense="true" Elevation="0"
+                                 Filterable="false" SortMode="SortMode.Multiple">
+                        <Columns>
+                            <PropertyColumn Property="x => x.Name" Title="Rol" />
+                            <TemplateColumn Title="Acciones" CellClass="d-flex justify-end" Sortable="false">
+                                <CellTemplate>
+                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary"
+                                               StartIcon="@Icons.Material.Filled.Key" Class="mr-2"
+                                               OnClick="() => OpenRolePermissions(context.Item)">
+                                        Permisos
+                                    </MudButton>
+                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                                               StartIcon="@Icons.Material.Filled.Edit" OnClick="() => OpenEditRole(context.Item)">
+                                        Editar
+                                    </MudButton>
+                                </CellTemplate>
+                            </TemplateColumn>
+                        </Columns>
+                        <NoRecordsContent>
+                            <EmptyState Icon="@Icons.Material.Filled.PersonSearch"
+                                        Title="Sin roles"
+                                        Description="No se encontraron roles con ese criterio." />
+                        </NoRecordsContent>
+                    </MudDataGrid>
+                }
+            </ChildContent>
+        </SectionCard>
+    </MudItem>
+
+    <MudItem xs="12" md="6">
+        <SectionCard Title="Permisos" Subtitle="Catálogo de permisos que pueden asignarse a los roles." Flush="true">
+            <Actions>
+                <MudButton Variant="Variant.Filled" Color="Color.Secondary"
+                           StartIcon="@Icons.Material.Filled.AddCircle" OnClick="OpenCreatePermission">
+                    Nuevo permiso
+                </MudButton>
+            </Actions>
+            <ChildContent>
+                @if (_isLoading)
+                {
+                    <LoadingState Text="Cargando permisos…" />
+                }
+                else
+                {
+                    <DataToolbar @bind-Search="_permissionSearch" Placeholder="Buscar permiso…"
+                                 Count="PermissionsFiltered.Count" Total="_permissions.Count" />
+
+                    <MudDataGrid T="Permission" Items="PermissionsFiltered" Hover="true" Dense="true" Elevation="0"
+                                 Filterable="false" SortMode="SortMode.Multiple">
+                        <Columns>
+                            <PropertyColumn Property="x => x.Name" Title="Permiso" />
+                            <TemplateColumn Title="Acciones" CellClass="d-flex justify-end" Sortable="false">
+                                <CellTemplate>
+                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                                               StartIcon="@Icons.Material.Filled.Edit" OnClick="() => OpenEditPermission(context.Item)">
+                                        Editar
+                                    </MudButton>
+                                </CellTemplate>
+                            </TemplateColumn>
+                        </Columns>
+                        <NoRecordsContent>
+                            <EmptyState Icon="@Icons.Material.Filled.SearchOff"
+                                        Title="Sin permisos"
+                                        Description="No se encontraron permisos con ese criterio." />
+                        </NoRecordsContent>
+                    </MudDataGrid>
+                }
+            </ChildContent>
+        </SectionCard>
+    </MudItem>
+</MudGrid>
+
+
+@code {
+    private IReadOnlyList<Role> _roles = Array.Empty<Role>();
+    private IReadOnlyList<Permission> _permissions = Array.Empty<Permission>();
+    private string _roleSearch = string.Empty;
+    private string _permissionSearch = string.Empty;
+    private bool _isLoading = true;
+
+    private List<Role> RolesFiltered => string.IsNullOrWhiteSpace(_roleSearch)
+        ? _roles.ToList()
+        : _roles.Where(r => r.Name.Contains(_roleSearch, StringComparison.OrdinalIgnoreCase)).ToList();
+
+    private List<Permission> PermissionsFiltered => string.IsNullOrWhiteSpace(_permissionSearch)
+        ? _permissions.ToList()
+        : _permissions.Where(p => p.Name.Contains(_permissionSearch, StringComparison.OrdinalIgnoreCase)).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var requesterKey = await _securityService.GetRequesterKeyAsync();
+        if (requesterKey == Guid.Empty)
+        {
+            Snackbar.Add("No se pudo identificar al usuario actual.", Severity.Error);
+            _isLoading = false;
+            return;
+        }
+
+        try
+        {
+            await ReloadAsync(requesterKey);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ReloadAsync(Guid requesterKey)
+    {
+        _roles = await _dataService.GetAllRoles(new GetAllRoles { RequesterKey = requesterKey });
+        _permissions = await _dataService.GetAllPermissions(new GetAllPermissions { RequesterKey = requesterKey });
+    }
+
+/*///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+    private Task OpenCreateRole() => ShowRoleDialog("Nuevo rol", new RoleFormViewModel());
+
+    private Task OpenEditRole(Role role) => ShowRoleDialog("Editar rol", new RoleFormViewModel
+    {
+        Id = role.Id,
+        Name = role.Name,
+    });
+
+    private async Task ShowRoleDialog(string title, RoleFormViewModel model)
+    {
+        var parameters = new DialogParameters<RoleDialog> { { x => x.Model, model } };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+
+        var dialog = await DialogService.ShowAsync<RoleDialog>(title, parameters, options);
+        var result = await dialog.Result;
+
+        if (result is null || result.Canceled || result.Data is not RoleFormViewModel saved) return;
+
+        var requesterKey = await _securityService.GetRequesterKeyAsync();
+        if (requesterKey == Guid.Empty) return;
+
+        try
+        {
+            if (saved.IsEditing)
+                await _dataService.EditRole(new EditRole { RequesterKey = requesterKey, RoleId = saved.Id, Name = saved.Name });
+            else
+                await _dataService.CreateRole(new CreateRole { RequesterKey = requesterKey, Name = saved.Name });
+
+            await ReloadAsync(requesterKey);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            return;
+        }
+
+        Snackbar.Add(saved.IsEditing
+            ? $"Rol '{saved.Name}' actualizado correctamente."
+            : $"Rol '{saved.Name}' creado correctamente.", Severity.Success);
+    }
+
+    private async Task OpenRolePermissions(Role role)
+    {
+        var requesterKey = await _securityService.GetRequesterKeyAsync();
+        if (requesterKey == Guid.Empty) return;
+
+        if (_permissions.Count == 0)
+        {
+            Snackbar.Add("No hay permisos disponibles.", Severity.Warning);
+            return;
+        }
+
+        var assigned = await _dataService.GetRolePermissions(new GetRolePermissions { RequesterKey = requesterKey, RoleId = role.Id });
+
+        var parameters = new DialogParameters<RolePermissionsDialog>
+        {
+            { x => x.RoleName, role.Name },
+            { x => x.Permissions, _permissions },
+            { x => x.SelectedPermissionIds, assigned },
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+
+        var dialog = await DialogService.ShowAsync<RolePermissionsDialog>($"Permisos de \"{role.Name}\"", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is null || result.Canceled || result.Data is not List<Guid> selected) return;
+
+        try
+        {
+            await _dataService.SetRolePermissions(new SetRolePermissions { RequesterKey = requesterKey, RoleId = role.Id, PermissionIds = selected });
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            return;
+        }
+
+        Snackbar.Add($"Permisos de '{role.Name}' actualizados correctamente.", Severity.Success);
+    }
+
+/*///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+    private Task OpenCreatePermission() => ShowPermissionDialog("Nuevo permiso", new PermissionFormViewModel());
+
+    private Task OpenEditPermission(Permission permission) => ShowPermissionDialog("Editar permiso", new PermissionFormViewModel
+    {
+        Id = permission.Id,
+        Name = permission.Name,
+    });
+
+    private async Task ShowPermissionDialog(string title, PermissionFormViewModel model)
+    {
+        var parameters = new DialogParameters<PermissionDialog> { { x => x.Model, model } };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+
+        var dialog = await DialogService.ShowAsync<PermissionDialog>(title, parameters, options);
+        var result = await dialog.Result;
+
+        if (result is null || result.Canceled || result.Data is not PermissionFormViewModel saved) return;
+
+        var requesterKey = await _securityService.GetRequesterKeyAsync();
+        if (requesterKey == Guid.Empty) return;
+
+        try
+        {
+            if (saved.IsEditing)
+                await _dataService.EditPermission(new EditPermission { RequesterKey = requesterKey, PermissionId = saved.Id, Name = saved.Name });
+            else
+                await _dataService.CreatePermission(new CreatePermission { RequesterKey = requesterKey, Name = saved.Name });
+
+            await ReloadAsync(requesterKey);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            return;
+        }
+
+        Snackbar.Add(saved.IsEditing
+            ? $"Permiso '{saved.Name}' actualizado correctamente."
+            : $"Permiso '{saved.Name}' creado correctamente.", Severity.Success);
+    }
+}

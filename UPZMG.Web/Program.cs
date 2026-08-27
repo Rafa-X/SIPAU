@@ -95,7 +95,7 @@ try
 
     if (!app.Environment.IsDevelopment())
     {
-        app.UseExceptionHandler("/Home/Error");
+        app.UseExceptionHandler("/error", createScopeForErrors: true);
         app.UseHsts();
     }
 
