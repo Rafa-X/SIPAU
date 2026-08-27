@@ -1,0 +1,35 @@
+@page "/error"
+@using System.Diagnostics
+
+<PageTitle>Error — SIGIE</PageTitle>
+
+<h1 class="text-danger">Error.</h1>
+<h2 class="text-danger">Ocurrió un error al procesar la solicitud.</h2>
+
+@if (ShowRequestId)
+{
+    <p>
+        <strong>Request ID:</strong> <code>@RequestId</code>
+    </p>
+}
+
+<h3>Modo de desarrollo</h3>
+<p>
+    Cambiar al ambiente <strong>Development</strong> mostrará información más detallada sobre el error ocurrido.
+</p>
+<p>
+    <strong>El ambiente Development no debe habilitarse en aplicaciones desplegadas.</strong>
+    Puede exponer información sensible de las excepciones a los usuarios finales.
+</p>
+
+@code {
+    // Reached via app.UseExceptionHandler("/error") when an unhandled exception occurs.
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private string? RequestId { get; set; }
+    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+
+    protected override void OnInitialized() =>
+        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+}

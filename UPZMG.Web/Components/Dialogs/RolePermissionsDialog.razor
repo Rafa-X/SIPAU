@@ -1,0 +1,52 @@
+@*
+    Assign permissions to a role via a checklist. Returns the selected
+    permission ids (List<Guid>) on OK.
+*@
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+            Selecciona los permisos que tendrá el rol "@RoleName".
+        </MudText>
+        @if (Permissions.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary">No hay permisos disponibles.</MudText>
+        }
+        else
+        {
+            @foreach (var permission in Permissions)
+            {
+                <MudCheckBox T="bool" Value="@_selected.Contains(permission.Id)"
+                             ValueChanged="@(v => Toggle(permission.Id, v))"
+                             Label="@permission.Name" Color="Color.Secondary" Dense="true" />
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Secondary" Variant="Variant.Filled" OnClick="Submit">
+            Guardar
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public string RoleName { get; set; } = string.Empty;
+    [Parameter] public IReadOnlyList<Permission> Permissions { get; set; } = Array.Empty<Permission>();
+    [Parameter] public IReadOnlyList<Guid> SelectedPermissionIds { get; set; } = Array.Empty<Guid>();
+
+    private HashSet<Guid> _selected = [];
+
+    protected override void OnInitialized() => _selected = [.. SelectedPermissionIds];
+
+    private void Toggle(Guid permissionId, bool isChecked)
+    {
+        if (isChecked) _selected.Add(permissionId);
+        else _selected.Remove(permissionId);
+    }
+
+    private void Submit() => MudDialog.Close(DialogResult.Ok(_selected.ToList()));
+
+    private void Cancel() => MudDialog.Cancel();
+}

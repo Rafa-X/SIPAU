@@ -1,0 +1,46 @@
+@*
+    Create / edit a role. Returns the edited RoleFormViewModel on OK.
+*@
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form">
+            <MudTextField @bind-Value="_model.Name" Label="Nombre del rol"
+                          Required="true" RequiredError="El nombre es obligatorio."
+                          Immediate="true" Class="mb-3" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Secondary" Variant="Variant.Filled" OnClick="Submit">
+            @(_model.IsEditing ? "Guardar cambios" : "Crear rol")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public RoleFormViewModel Model { get; set; } = new();
+
+    private MudForm _form = null!;
+    private RoleFormViewModel _model = new();
+
+    protected override void OnInitialized()
+    {
+        // Work on a copy so a cancel leaves the source untouched.
+        _model = new RoleFormViewModel
+        {
+            Id = Model.Id,
+            Name = Model.Name,
+        };
+    }
+
+    private async Task Submit()
+    {
+        await _form.ValidateAsync();
+        if (_form.IsValid)
+            MudDialog.Close(DialogResult.Ok(_model));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

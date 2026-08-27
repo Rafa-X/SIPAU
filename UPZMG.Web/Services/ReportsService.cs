@@ -46,7 +46,7 @@ public sealed class ReportsService : IReportsService
         _scopeFactory = scopeFactory;
     }
 
-    private string TemplatesDir => Path.Combine(_env.ContentRootPath, "Views", "Reports", "Templates");
+    private string TemplatesDir => Path.Combine(_env.ContentRootPath, "Components", "ReportsTemplates");
 
     // Cached once per process. Avoids spamming EF with failing queries (which log
     // at 'fail' level) when the 'reports' table hasn't been migrated yet.

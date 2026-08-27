@@ -24,6 +24,7 @@ try
     builder.Services.AddScoped<UsersRepository>();
     builder.Services.AddScoped<ReportsRepository>();
     builder.Services.AddScoped<RolesRepository>();
+    builder.Services.AddScoped<PermissionsRepository>();
     builder.Services.AddScoped<SecurityRepository>();
 
     var jwt = builder.Configuration.GetSection("Jwt");
