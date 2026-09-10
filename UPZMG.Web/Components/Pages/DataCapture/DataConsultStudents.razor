@@ -1,0 +1,124 @@
+@page "/datacapture/students/consult"
+@attribute [Authorize]
+@using UPZMG.Implementations.DataCapture
+@inject IDataCaptureService CaptureSvc
+@inject IStudentsService StudentsSvc
+@inject ISecurityService SecuritySvc
+
+<PageTitle>Consultar Alumnos — SIGIE</PageTitle>
+
+<PageHeader Eyebrow="Captura de datos" Title="Consultar Alumnos" Subtitle="Alumnos ya capturados en el periodo activo" BackHref="/datacapture" />
+
+<MudPaper Elevation="1" Class="pa-2">
+    <DataToolbar Search="@_name" SearchChanged="OnNameChanged"
+                 Placeholder="Buscar por nombre…"
+                 Count="_totalCount" Total="_totalCount">
+        <Filters>
+            <MudTextField T="string" Value="@_enrollmentNumber" ValueChanged="OnEnrollmentNumberChanged"
+                          Placeholder="Matrícula" Immediate="true" Clearable="true"
+                          Variant="Variant.Outlined" Margin="Margin.Dense" Class="sigie-toolbar-filter mt-0" />
+            <MudSelect T="string" Value="@_careerId" ValueChanged="OnCareerChanged" Dense="true"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Class="sigie-toolbar-filter-wide mt-0"
+                       Placeholder="Carrera" Clearable="true">
+                <MudSelectItem T="string" Value="@(null!)">Todas las carreras</MudSelectItem>
+                @foreach (var c in CaptureSvc.Careers)
+                {
+                    <MudSelectItem T="string" Value="@c.Value">@c.Text</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect T="string" Value="@_periodId" ValueChanged="OnPeriodChanged" Dense="true"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Class="sigie-toolbar-filter-wide mt-0"
+                       Placeholder="Periodo" Clearable="true">
+                <MudSelectItem T="string" Value="@(null!)">Todos los periodos</MudSelectItem>
+                @foreach (var p in CaptureSvc.Periods)
+                {
+                    <MudSelectItem T="string" Value="@p.Value">@p.Text</MudSelectItem>
+                }
+            </MudSelect>
+        </Filters>
+    </DataToolbar>
+
+    <MudDataGrid T="StudentListItem" @ref="_grid" ServerData="LoadServerDataAsync"
+                 Hover="true" Dense="true" Elevation="0" SortMode="SortMode.None">
+        <Columns>
+            <PropertyColumn Property="x => x.EnrollmentNumber" Title="Matrícula" />
+            <PropertyColumn Property="x => x.Name" Title="Nombre" />
+            <PropertyColumn Property="x => x.Career" Title="Carrera" />
+            <PropertyColumn Property="x => x.Period" Title="Periodo" />
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager T="StudentListItem" RowsPerPageString="Filas por página" InfoFormat="{first_item}-{last_item} de {all_items}" />
+        </PagerContent>
+        <NoRecordsContent>
+            <EmptyState Icon="@Icons.Material.Filled.SearchOff"
+                        Title="Sin coincidencias"
+                        Description="Ningún alumno coincide con la búsqueda o los filtros aplicados." />
+        </NoRecordsContent>
+    </MudDataGrid>
+</MudPaper>
+
+@code {
+    private MudDataGrid<StudentListItem>? _grid;
+    private string _name = string.Empty;
+    private string _enrollmentNumber = string.Empty;
+    private string? _careerId;
+    private string? _periodId;
+    private int _totalCount;
+    private int _nameSearchVersion;
+    private int _enrollmentNumberSearchVersion;
+
+    private async Task<GridData<StudentListItem>> LoadServerDataAsync(GridState<StudentListItem> state, CancellationToken cancellationToken)
+    {
+        var careerId = Guid.TryParse(_careerId, out var cid) ? cid : (Guid?)null;
+        var periodId = Guid.TryParse(_periodId, out var pid) ? pid : (Guid?)null;
+        var request = new StudentsListRequest
+        {
+            RequesterKey = await SecuritySvc.GetRequesterKeyAsync(),
+            Name = _name.Trim(),
+            EnrollmentNumber = _enrollmentNumber.Trim(),
+            CareerId = careerId,
+            PeriodId = periodId,
+            Page = state.Page + 1,
+            PageSize = state.PageSize
+        };
+
+        var result = await StudentsSvc.GetStudentsListAsync(request);
+        _totalCount = result.TotalCount;
+
+        return new GridData<StudentListItem> { TotalItems = result.TotalCount, Items = result.Items };
+    }
+
+    // Debounce keystrokes so we don't hit the API on every character typed.
+    private async Task OnNameChanged(string value)
+    {
+        _name = value;
+        if (!await DebounceAsync(++_nameSearchVersion, () => _nameSearchVersion)) return;
+        if (_grid is not null) await _grid.ReloadServerData();
+    }
+
+    private async Task OnEnrollmentNumberChanged(string value)
+    {
+        _enrollmentNumber = value;
+        if (!await DebounceAsync(++_enrollmentNumberSearchVersion, () => _enrollmentNumberSearchVersion)) return;
+        if (_grid is not null) await _grid.ReloadServerData();
+    }
+
+    // Waits, then reports whether a newer keystroke arrived meanwhile - no cancellation exceptions involved.
+    private static async Task<bool> DebounceAsync(int version, Func<int> currentVersion)
+    {
+        await Task.Delay(350);
+        return version == currentVersion();
+    }
+
+    private async Task OnCareerChanged(string? value)
+    {
+        _careerId = value;
+        if (_grid is not null) await _grid.ReloadServerData();
+    }
+
+    private async Task OnPeriodChanged(string? value)
+    {
+        _periodId = value;
+        if (_grid is not null) await _grid.ReloadServerData();
+    }
+}

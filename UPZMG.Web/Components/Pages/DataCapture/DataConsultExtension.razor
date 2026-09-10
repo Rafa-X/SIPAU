@@ -1,0 +1,30 @@
+@page "/datacapture/extension/consult"
+@attribute [Authorize]
+@inject IDataCaptureService CaptureSvc
+
+<PageTitle>Consultar Extensión — SIGIE</PageTitle>
+
+<CaptureQueryView TItem="ExtensionListItemModel"
+                  Title="Consultar Extensión y Vinculación" Subtitle="Proyectos ya capturados en el periodo activo"
+                  BackHref="/datacapture" SearchPlaceholder="Buscar por nombre del proyecto…"
+                  Items="_projects" Periods="_periods"
+                  NameSelector="@(p => p.Name)"
+                  PeriodSelector="@(p => p.Period)">
+    <Columns>
+        <PropertyColumn T="ExtensionListItemModel" TProperty="string" Property="x => x.Name" Title="Proyecto" />
+        <PropertyColumn T="ExtensionListItemModel" TProperty="string" Property="x => x.OrganizationName" Title="Organización" />
+        <PropertyColumn T="ExtensionListItemModel" TProperty="string" Property="x => x.ActivityType" Title="Tipo de actividad" />
+        <PropertyColumn T="ExtensionListItemModel" TProperty="string" Property="x => x.Period" Title="Periodo" />
+    </Columns>
+</CaptureQueryView>
+
+@code {
+    private IReadOnlyList<ExtensionListItemModel> _projects = Array.Empty<ExtensionListItemModel>();
+    private IReadOnlyList<string> _periods = Array.Empty<string>();
+
+    protected override void OnInitialized()
+    {
+        _projects = CaptureSvc.GetExtensionList();
+        _periods = CaptureSvc.Periods.Select(p => p.Text).ToList();
+    }
+}

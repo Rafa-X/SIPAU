@@ -45,21 +45,27 @@
                     </div>
                 </MudCardContent>
                 <MudCardActions>
-                    @if (meta.IsBlazor)
-                    {
-                        <MudButton Variant="Variant.Filled" Color="Color.Secondary" FullWidth="true"
-                                   StartIcon="@Icons.Material.Filled.EditNote" Href="@meta.Href">
-                            Capturar
+                    <MudStack Row="true" Spacing="2" Class="flex-grow-1">
+                        @if (meta.IsBlazor)
+                        {
+                            <MudButton Variant="Variant.Filled" Color="Color.Secondary" FullWidth="true"
+                                       StartIcon="@Icons.Material.Filled.EditNote" Href="@meta.Href">
+                                Capturar
+                            </MudButton>
+                        }
+                        else
+                        {
+                            <MudButton Variant="Variant.Filled" Color="Color.Secondary" FullWidth="true"
+                                       StartIcon="@Icons.Material.Filled.EditNote"
+                                       OnClick="@(() => Nav.NavigateTo(meta.Href, forceLoad: true))">
+                                Capturar
+                            </MudButton>
+                        }
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true"
+                                   StartIcon="@Icons.Material.Filled.Search" Href="@meta.ConsultHref">
+                            Consultar
                         </MudButton>
-                    }
-                    else
-                    {
-                        <MudButton Variant="Variant.Filled" Color="Color.Secondary" FullWidth="true"
-                                   StartIcon="@Icons.Material.Filled.EditNote"
-                                   OnClick="@(() => Nav.NavigateTo(meta.Href, forceLoad: true))">
-                            Capturar
-                        </MudButton>
-                    }
+                    </MudStack>
                 </MudCardActions>
             </MudCard>
         </MudItem>
@@ -71,15 +77,15 @@
 
     protected override void OnInitialized() => _model = CaptureSvc.GetIndex();
 
-    private sealed record AreaMeta(string Icon, string Href, bool IsBlazor);
+    private sealed record AreaMeta(string Icon, string Href, string ConsultHref, bool IsBlazor);
 
     private static AreaMeta MetaFor(string action) => action switch
     {
-        "Students"       => new(Icons.Material.Filled.School, "/datacapture/students", true),
-        "Teachers"       => new(Icons.Material.Filled.Groups, "/datacapture/teachers", true),
-        "Infrastructure" => new(Icons.Material.Filled.Apartment, "/datacapture/infrastructure", true),
-        "Extension"      => new(Icons.Material.Filled.Handshake, "/datacapture/extension", true),
-        "Finance"        => new(Icons.Material.Filled.Payments, "/datacapture/finance", true),
-        _                => new(Icons.Material.Filled.EditNote, "/datacapture", true),
+        "Students"       => new(Icons.Material.Filled.School, "/datacapture/students", "/datacapture/students/consult", true),
+        "Teachers"       => new(Icons.Material.Filled.Groups, "/datacapture/teachers", "/datacapture/teachers/consult", true),
+        "Infrastructure" => new(Icons.Material.Filled.Apartment, "/datacapture/infrastructure", "/datacapture/infrastructure/consult", true),
+        "Extension"      => new(Icons.Material.Filled.Handshake, "/datacapture/extension", "/datacapture/extension/consult", true),
+        "Finance"        => new(Icons.Material.Filled.Payments, "/datacapture/finance", "/datacapture/finance/consult", true),
+        _                => new(Icons.Material.Filled.EditNote, "/datacapture", "/datacapture", true),
     };
 }

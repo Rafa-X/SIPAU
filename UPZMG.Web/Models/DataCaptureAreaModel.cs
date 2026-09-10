@@ -3,7 +3,7 @@ namespace UPZMG.Web.Models;
 /// <summary>
 /// Represents a data capture area within the DataCapture module.
 /// </summary>
-public class CaptureAreaModel
+public class DataCaptureAreaModel
 {
     public int Id { get; set; }
     public string AreaName { get; set; } = string.Empty;

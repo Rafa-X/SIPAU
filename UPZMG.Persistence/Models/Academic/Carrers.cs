@@ -8,7 +8,7 @@ namespace UPZMG.Persistence.Models;
 /// Represents a career in the academic system.
 /// </summary>
 
-public class Carrers
+public class Careers
 {
     public Guid Id { get; set; }
     [MaxLength(200)]

@@ -1,17 +1,42 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Claims;
-
+using System.Text.Json;
 using Microsoft.AspNetCore.Components.Authorization;
+using UPZMG.Implementations;
+using UPZMG.Implementations.Permissions;
+using UPZMG.Implementations.Roles;
+using UPZMG.Persistence.Models;
 
 namespace UPZMG.Web.Services;
 
-public sealed class SecurityService(IHttpClientFactory httpClientFactory, ApiTokenService apiTokenService, AuthenticationStateProvider authState)
+public sealed class SecurityService(
+    IHttpClientFactory httpClientFactory, 
+    ApiTokenService apiTokenService, 
+    AuthenticationStateProvider authState) : ISecurityService
 {
+    private static readonly JsonSerializerOptions ResponseOptions = new(JsonSerializerDefaults.Web);
+
     public Task<string> GetTokenAsync(Guid userId)
     {
         return apiTokenService.GetTokenAsync(userId);
     }
+
+#region Account
+    public async Task<AccountWebLoginResponse> AuthenticateUserAsync(AccountWebLoginRequest request)
+    {
+        var response = await SendPostRequestAsync<AccountWebLoginRequest, AccountWebLoginResponse>(
+            $"auth/web-login", JsonSerializer.Serialize(request));
+
+        if(response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<AccountWebLoginResponse>(response.Result, ResponseOptions) ?? new AccountWebLoginResponse();
+        }
+        return new AccountWebLoginResponse();
+    }
+#endregion
+
+#region GetPost Requests
 
     /// <summary>Resolves the current user's id claim as a <see cref="Guid"/>, or <see cref="Guid.Empty"/> if unavailable.</summary>
     public async Task<Guid> GetRequesterKeyAsync()
@@ -114,4 +139,103 @@ public sealed class SecurityService(IHttpClientFactory httpClientFactory, ApiTok
         public bool Sucess { get; set; }
         public string? ErrorMessage { get; set; }
     }
+#endregion
+
+#region Roles
+    public async Task<List<Role>> GetAllRoles(GetAllRoles request)
+    {
+        var response = await SendPostRequestAsync<GetAllRoles, List<Role>>(
+            $"roles/get-all", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        if(response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<List<Role>>(response.Result, ResponseOptions) ?? new List<Role>();
+        }
+        return [];
+    }
+
+    public async Task<Role> CreateRole(CreateRole request)
+    {
+        var response = await SendPostRequestAsync<CreateRole, Role>(
+            $"roles/create", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        if ((response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.Created)
+            && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<Role>(response.Result, ResponseOptions) ?? new Role();
+        }
+        return new Role();
+    }
+
+    public async Task<Role> EditRole(EditRole request)
+    {
+        var response = await SendPostRequestAsync<EditRole, Role>(
+            $"roles/edit", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        if(response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<Role>(response.Result, ResponseOptions) ?? new Role();
+        }
+        return new Role();
+    }
+
+    public async Task<List<Guid>> GetRolePermissions(GetRolePermissions request)
+    {
+        var response = await SendPostRequestAsync<GetRolePermissions, List<Guid>>(
+            $"roles/get-permissions", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        if(response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<List<Guid>>(response.Result, ResponseOptions) ?? [];
+        }
+        return [];
+    }
+
+    public async Task<bool> SetRolePermissions(SetRolePermissions request)
+    {
+        var response = await SendPostRequestAsync<SetRolePermissions, object>(
+            $"roles/set-permissions", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        return response.StatusCode == HttpStatusCode.OK;
+    }
+#endregion
+
+#region Permissions
+    public async Task<List<Permission>> GetAllPermissions(GetAllPermissions request)
+    {
+        var response = await SendPostRequestAsync<GetAllPermissions, List<Permission>>(
+            $"permissions/get-all", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        if(response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<List<Permission>>(response.Result, ResponseOptions) ?? [];
+        }
+        return [];
+    }
+
+    public async Task<Permission> CreatePermission(CreatePermission request)
+    {
+        var response = await SendPostRequestAsync<CreatePermission, Permission>(
+            $"permissions/create", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        if ((response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.Created)
+            && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<Permission>(response.Result, ResponseOptions) ?? new Permission();
+        }
+        return new Permission();
+    }
+
+    public async Task<Permission> EditPermission(EditPermission request)
+    {
+        var response = await SendPostRequestAsync<EditPermission, Permission>(
+            $"permissions/edit", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        if(response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<Permission>(response.Result, ResponseOptions) ?? new Permission();
+        }
+        return new Permission();
+    }
+#endregion
 }

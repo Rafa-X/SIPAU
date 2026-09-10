@@ -1,0 +1,67 @@
+@*
+    Generic "Consultar" list view shared by every data-capture area: a search
+    + period toolbar on top of a paged MudDataGrid. Paging keeps rendering
+    cheap regardless of how many records exist, without pulling in a whole
+    virtualization setup for what is still a simple listing.
+*@
+@typeparam TItem
+
+<PageHeader Eyebrow="Captura de datos" Title="@Title" Subtitle="@Subtitle" BackHref="@BackHref" />
+
+<MudPaper Elevation="1" Class="pa-2">
+    <DataToolbar @bind-Search="_search" Placeholder="@SearchPlaceholder"
+                 Count="Filtered.Count" Total="Items.Count">
+        <Filters>
+            <MudSelect T="string" Value="_period" ValueChanged="@(v => _period = v)" Dense="true"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Class="sigie-toolbar-filter mt-0"
+                       Placeholder="Periodo" Clearable="true">
+                <MudSelectItem T="string" Value="@(null!)">Todos los periodos</MudSelectItem>
+                @foreach (var p in Periods)
+                {
+                    <MudSelectItem T="string" Value="@p">@p</MudSelectItem>
+                }
+            </MudSelect>
+        </Filters>
+    </DataToolbar>
+
+    <MudDataGrid T="TItem" Items="Filtered" Hover="true" Dense="true" Elevation="0"
+                 SortMode="SortMode.Multiple">
+        <Columns>
+            @Columns
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager T="TItem" RowsPerPageString="Filas por página" InfoFormat="{first_item}-{last_item} de {all_items}" />
+        </PagerContent>
+        <NoRecordsContent>
+            <EmptyState Icon="@Icons.Material.Filled.SearchOff"
+                        Title="Sin coincidencias"
+                        Description="Ningún registro coincide con la búsqueda o el filtro de periodo." />
+        </NoRecordsContent>
+    </MudDataGrid>
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter] public string Subtitle { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string BackHref { get; set; } = string.Empty;
+    [Parameter] public string SearchPlaceholder { get; set; } = "Buscar por nombre…";
+    [Parameter, EditorRequired] public IReadOnlyList<TItem> Items { get; set; } = Array.Empty<TItem>();
+    [Parameter] public IReadOnlyList<string> Periods { get; set; } = Array.Empty<string>();
+    [Parameter, EditorRequired] public Func<TItem, string> NameSelector { get; set; } = _ => string.Empty;
+    [Parameter, EditorRequired] public Func<TItem, string> PeriodSelector { get; set; } = _ => string.Empty;
+    [Parameter, EditorRequired] public RenderFragment Columns { get; set; } = default!;
+
+    private string _search = string.Empty;
+    private string? _period;
+
+    private List<TItem> Filtered => Items.Where(Matches).ToList();
+
+    private bool Matches(TItem item)
+    {
+        if (!string.IsNullOrWhiteSpace(_period) && !string.Equals(PeriodSelector(item), _period, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        return string.IsNullOrWhiteSpace(_search)
+            || NameSelector(item).Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase);
+    }
+}

@@ -3,8 +3,7 @@
 @using UPZMG.Implementations
 @using UPZMG.Implementations.Roles
 @using UPZMG.Implementations.Permissions
-@inject DataService _dataService
-@inject SecurityService _securityService
+@inject ISecurityService _securityService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 
@@ -141,8 +140,8 @@
 
     private async Task ReloadAsync(Guid requesterKey)
     {
-        _roles = await _dataService.GetAllRoles(new GetAllRoles { RequesterKey = requesterKey });
-        _permissions = await _dataService.GetAllPermissions(new GetAllPermissions { RequesterKey = requesterKey });
+        _roles = await _securityService.GetAllRoles(new GetAllRoles { RequesterKey = requesterKey });
+        _permissions = await _securityService.GetAllPermissions(new GetAllPermissions { RequesterKey = requesterKey });
     }
 
 /*///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
@@ -170,9 +169,9 @@
         try
         {
             if (saved.IsEditing)
-                await _dataService.EditRole(new EditRole { RequesterKey = requesterKey, RoleId = saved.Id, Name = saved.Name });
+                await _securityService.EditRole(new EditRole { RequesterKey = requesterKey, RoleId = saved.Id, Name = saved.Name });
             else
-                await _dataService.CreateRole(new CreateRole { RequesterKey = requesterKey, Name = saved.Name });
+                await _securityService.CreateRole(new CreateRole { RequesterKey = requesterKey, Name = saved.Name });
 
             await ReloadAsync(requesterKey);
         }
@@ -198,7 +197,7 @@
             return;
         }
 
-        var assigned = await _dataService.GetRolePermissions(new GetRolePermissions { RequesterKey = requesterKey, RoleId = role.Id });
+        var assigned = await _securityService.GetRolePermissions(new GetRolePermissions { RequesterKey = requesterKey, RoleId = role.Id });
 
         var parameters = new DialogParameters<RolePermissionsDialog>
         {
@@ -215,7 +214,7 @@
 
         try
         {
-            await _dataService.SetRolePermissions(new SetRolePermissions { RequesterKey = requesterKey, RoleId = role.Id, PermissionIds = selected });
+            await _securityService.SetRolePermissions(new SetRolePermissions { RequesterKey = requesterKey, RoleId = role.Id, PermissionIds = selected });
         }
         catch (Exception ex)
         {
@@ -251,9 +250,9 @@
         try
         {
             if (saved.IsEditing)
-                await _dataService.EditPermission(new EditPermission { RequesterKey = requesterKey, PermissionId = saved.Id, Name = saved.Name });
+                await _securityService.EditPermission(new EditPermission { RequesterKey = requesterKey, PermissionId = saved.Id, Name = saved.Name });
             else
-                await _dataService.CreatePermission(new CreatePermission { RequesterKey = requesterKey, Name = saved.Name });
+                await _securityService.CreatePermission(new CreatePermission { RequesterKey = requesterKey, Name = saved.Name });
 
             await ReloadAsync(requesterKey);
         }

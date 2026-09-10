@@ -28,5 +28,5 @@ public class DashboardViewModel
     public List<AlertBannerModel> Alerts { get; set; } = new();
 
     // Capture progress
-    public List<CaptureAreaProgress> AreaProgress { get; set; } = new();
+    public List<DataCaptureAreaProgress> AreaProgress { get; set; } = new();
 }

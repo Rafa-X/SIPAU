@@ -11,11 +11,11 @@ namespace UPZMG.Persistence.Models;
 public class Employee
 {
     public Guid Id { get; set; }
-    public required Guid EmployeeNumber { get; set; }
+    public required int EmployeeNumber { get; set; }
     [MaxLength(200)]
     public required string FullName { get; set; }
     [MaxLength(100)]
-    public string Email { get; set; } = null!;
+    public required string Email { get; set; } = null!;
     [MaxLength(13)]
     public required string Rfc { get; set; }
     [MaxLength(18)]
@@ -24,7 +24,7 @@ public class Employee
     public DateOnly BirthDate { get; set; }
     public EducationLevel HighestEducationLevel { get; set; }
     public TitleStatus TitleStatus { get; set; }
-    public bool SpeaksIndigenousLanguage { get; set; }
+    public List<Guid>? IndigenousLanguages { get; set; }
     public bool HasDisability { get; set; }
     public int ExternalXPYears { get; set; }
     public DateOnly FirstHiredDate { get; set; }

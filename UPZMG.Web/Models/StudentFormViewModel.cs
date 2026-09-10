@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc.Rendering;
+using UPZMG.Shared.Enums;
 
 namespace UPZMG.Web.Models;
 
@@ -13,13 +14,22 @@ public class StudentFormViewModel
     public string LastName { get; set; } = string.Empty;
     public string MiddleName { get; set; } = string.Empty;
     public DateTime? BirthDate { get; set; }
-    public string Gender { get; set; } = string.Empty;
-    public int CareerId { get; set; }
-    public int PeriodId { get; set; }
-    public bool SpeaksIndigenousLanguage { get; set; }
-    public string MaritalStatus { get; set; } = string.Empty;
+    public Gender Gender { get; set; }
+    public Guid CareerId { get; set; }
+    public Guid PeriodIdStart { get; set; }
+    public IReadOnlyCollection<string> IndigenousLanguages { get; set; } = [];
+    public EnglishLevel EnglishLevel { get; set; }
+    public MaritalStatus MaritalStatus { get; set; } = MaritalStatus.Soltero;
+    public int NumberOfChildren { get; set; } = 0;
+    public bool Works { get; set; }
+    public string BirthCountry { get; set; } = string.Empty;
+    public string BirthState { get; set; } = string.Empty;
+    public string Address { get; set; } = string.Empty;
 
     // Dropdown options (mock data, populated by the controller)
-    public List<SelectListItem> Careers { get; set; } = new();
-    public List<SelectListItem> Periods { get; set; } = new();
+    public List<SelectListItem> Careers { get; set; } = [];
+    public List<SelectListItem> Periods { get; set; } = [];
 }
+
+
+public sealed record IndigenousLanguageOption(Guid Id, string Name);

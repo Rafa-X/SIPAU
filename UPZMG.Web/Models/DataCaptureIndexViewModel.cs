@@ -6,5 +6,5 @@ namespace UPZMG.Web.Models;
 public class DataCaptureIndexViewModel
 {
     public string ActivePeriod { get; set; } = string.Empty;
-    public List<CaptureAreaModel> Areas { get; set; } = new();
+    public List<DataCaptureAreaModel> Areas { get; set; } = new();
 }

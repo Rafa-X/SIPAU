@@ -1,0 +1,30 @@
+@page "/datacapture/infrastructure/consult"
+@attribute [Authorize]
+@inject IDataCaptureService CaptureSvc
+
+<PageTitle>Consultar Infraestructura — SIGIE</PageTitle>
+
+<CaptureQueryView TItem="InfrastructureListItemModel"
+                  Title="Consultar Infraestructura" Subtitle="Espacios ya capturados en el periodo activo"
+                  BackHref="/datacapture" SearchPlaceholder="Buscar por nombre del espacio…"
+                  Items="_spaces" Periods="_periods"
+                  NameSelector="@(s => s.Name)"
+                  PeriodSelector="@(s => s.Period)">
+    <Columns>
+        <PropertyColumn T="InfrastructureListItemModel" TProperty="string" Property="x => x.Name" Title="Espacio" />
+        <PropertyColumn T="InfrastructureListItemModel" TProperty="string" Property="x => x.UseType" Title="Tipo de uso" />
+        <PropertyColumn T="InfrastructureListItemModel" TProperty="int" Property="x => x.Capacity" Title="Capacidad" />
+        <PropertyColumn T="InfrastructureListItemModel" TProperty="string" Property="x => x.Period" Title="Periodo" />
+    </Columns>
+</CaptureQueryView>
+
+@code {
+    private IReadOnlyList<InfrastructureListItemModel> _spaces = Array.Empty<InfrastructureListItemModel>();
+    private IReadOnlyList<string> _periods = Array.Empty<string>();
+
+    protected override void OnInitialized()
+    {
+        _spaces = CaptureSvc.GetInfrastructureList();
+        _periods = CaptureSvc.Periods.Select(p => p.Text).ToList();
+    }
+}

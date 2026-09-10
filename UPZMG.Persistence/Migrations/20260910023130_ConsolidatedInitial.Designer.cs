@@ -12,7 +12,7 @@ using UPZMG.Persistence;
 namespace UPZMG.Persistence.Migrations
 {
     [DbContext(typeof(AppDBContext))]
-    [Migration("20260824233633_ConsolidatedInitial")]
+    [Migration("20260910023130_ConsolidatedInitial")]
     partial class ConsolidatedInitial
     {
         /// <inheritdoc />
@@ -126,7 +126,7 @@ namespace UPZMG.Persistence.Migrations
                     b.ToTable("asignaturesPrograms", (string)null);
                 });
 
-            modelBuilder.Entity("UPZMG.Persistence.Models.Carrers", b =>
+            modelBuilder.Entity("UPZMG.Persistence.Models.Careers", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -166,7 +166,7 @@ namespace UPZMG.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("carrers", (string)null);
+                    b.ToTable("careers", (string)null);
                 });
 
             modelBuilder.Entity("UPZMG.Persistence.Models.ClassGroups", b =>
@@ -244,8 +244,8 @@ namespace UPZMG.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<Guid>("EmployeeNumber")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<int>("EmployeeNumber")
+                        .HasColumnType("int");
 
                     b.Property<int>("ExternalXPYears")
                         .HasColumnType("int");
@@ -268,13 +268,13 @@ namespace UPZMG.Persistence.Migrations
                     b.Property<int>("HighestEducationLevel")
                         .HasColumnType("int");
 
+                    b.PrimitiveCollection<string>("IndigenousLanguages")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Rfc")
                         .IsRequired()
                         .HasMaxLength(13)
                         .HasColumnType("nvarchar(13)");
-
-                    b.Property<bool>("SpeaksIndigenousLanguage")
-                        .HasColumnType("bit");
 
                     b.Property<int>("TitleStatus")
                         .HasColumnType("int");
@@ -290,13 +290,36 @@ namespace UPZMG.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("LanguageName")
+                    b.Property<string>("Language")
+                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
 
-                    b.ToTable("IndigenousLanguages");
+                    b.ToTable("IndigenousLanguages", (string)null);
+                });
+
+            modelBuilder.Entity("UPZMG.Persistence.Models.IndigenousLanguagesSpeakers", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("LanguageId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SpeakerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LanguageId");
+
+                    b.HasIndex("SpeakerId", "LanguageId")
+                        .IsUnique();
+
+                    b.ToTable("IndigenousLanguagesSpeakers", (string)null);
                 });
 
             modelBuilder.Entity("UPZMG.Persistence.Models.InstitutionalConfiguration", b =>
@@ -681,6 +704,10 @@ namespace UPZMG.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("Address")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("BirthCountry")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -697,6 +724,9 @@ namespace UPZMG.Persistence.Migrations
                         .HasMaxLength(18)
                         .HasColumnType("nvarchar(18)");
 
+                    b.Property<Guid>("CareerId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<int>("EnglishLevel")
                         .HasColumnType("int");
 
@@ -709,16 +739,9 @@ namespace UPZMG.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("char(1)");
 
-                    b.Property<string>("HighSchoolCountry")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("HighSchoolEntity")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<Guid>("IndigenousLanguageId")
-                        .HasColumnType("uniqueidentifier");
+                    b.PrimitiveCollection<string>("IndigenousLanguages")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("LastName")
                         .IsRequired()
@@ -741,19 +764,17 @@ namespace UPZMG.Persistence.Migrations
                     b.Property<int>("NumberOfChildren")
                         .HasColumnType("int");
 
+                    b.Property<Guid>("PeriodIdStart")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("PostalCode")
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
-
-                    b.Property<bool>("SpeaksIndigenousLanguage")
-                        .HasColumnType("bit");
 
                     b.Property<bool>("Works")
                         .HasColumnType("bit");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("IndigenousLanguageId");
 
                     b.ToTable("students", (string)null);
                 });
@@ -976,7 +997,7 @@ namespace UPZMG.Persistence.Migrations
 
             modelBuilder.Entity("UPZMG.Persistence.Models.AsignaturesProgram", b =>
                 {
-                    b.HasOne("UPZMG.Persistence.Models.Carrers", null)
+                    b.HasOne("UPZMG.Persistence.Models.Careers", null)
                         .WithMany()
                         .HasForeignKey("CareerId")
                         .OnDelete(DeleteBehavior.NoAction)
@@ -985,7 +1006,7 @@ namespace UPZMG.Persistence.Migrations
 
             modelBuilder.Entity("UPZMG.Persistence.Models.ClassGroups", b =>
                 {
-                    b.HasOne("UPZMG.Persistence.Models.Carrers", null)
+                    b.HasOne("UPZMG.Persistence.Models.Careers", null)
                         .WithMany()
                         .HasForeignKey("CareerId")
                         .OnDelete(DeleteBehavior.NoAction)
@@ -1091,15 +1112,6 @@ namespace UPZMG.Persistence.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("UPZMG.Persistence.Models.Student", b =>
-                {
-                    b.HasOne("UPZMG.Persistence.Models.IndigenousLanguages", null)
-                        .WithMany()
-                        .HasForeignKey("IndigenousLanguageId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("UPZMG.Persistence.Models.StudentDisabilities", b =>
                 {
                     b.HasOne("UPZMG.Persistence.Models.Disabilities", null)
@@ -1117,7 +1129,7 @@ namespace UPZMG.Persistence.Migrations
 
             modelBuilder.Entity("UPZMG.Persistence.Models.TitulationProcess", b =>
                 {
-                    b.HasOne("UPZMG.Persistence.Models.Carrers", null)
+                    b.HasOne("UPZMG.Persistence.Models.Careers", null)
                         .WithMany()
                         .HasForeignKey("CareerId")
                         .OnDelete(DeleteBehavior.NoAction)

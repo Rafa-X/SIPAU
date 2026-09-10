@@ -1,0 +1,193 @@
+@page "/datacapture/students"
+@attribute [Authorize]
+@using UPZMG.Implementations.DataCapture
+@using UPZMG.Shared.Enums
+@using UPZMG.Web.Services
+@inject IStudentsService _studentsService
+@inject IGeneralDataService _generalService
+@inject ISecurityService _securityService
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Captura de Alumnos — SIGIE</PageTitle>
+
+<PageHeader Eyebrow="Captura de datos" Title="Captura de Alumnos" Subtitle="Registro individual de alumnos del periodo activo" BackHref="/datacapture" />
+
+<MudPaper Elevation="1" Class="pa-6">
+    <MudForm @ref="_form">
+        <MudText Typo="Typo.h6" Class="mb-3">Datos del alumno</MudText>
+        <MudGrid>
+            <MudItem md="4">
+                <MudTextField @bind-Value="_model.EnrollmentNumber" Label="Matrícula"
+                              Required="true" RequiredError="La matrícula es obligatoria." />
+            </MudItem>
+            <MudItem md="4">
+                <MudTextField @bind-Value="_model.Curp" Label="CURP"
+                              Validation="@(new Func<string, string?>(ValidateCurp))" Immediate="true" />
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid>
+            <MudItem md="4">
+                <MudTextField @bind-Value="_model.FirstName" Label="Nombre(s)"
+                              Required="true" RequiredError="El nombre es obligatorio." />
+            </MudItem>
+            <MudItem md="4">
+                <MudTextField @bind-Value="_model.LastName" Label="Apellido paterno"
+                              Required="true" RequiredError="El apellido es obligatorio." />
+            </MudItem>
+            <MudItem md="4">
+                <MudTextField @bind-Value="_model.MiddleName" Label="Apellido materno" />
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid>
+            <MudItem md="8">
+                <MudTextField @bind-Value="_model.Address" Label="Domicilio"
+                              Required="true" RequiredError="El domicilio es obligatorio." />
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid>
+            <MudItem md="4">
+                <MudDatePicker @bind-Date="_model.BirthDate" Label="Fecha de nacimiento"
+                               MaxDate="DateTime.Today" Required="true" RequiredError="La fecha de nacimiento es obligatoria." />
+            </MudItem>
+            <MudItem md="4">
+                <MudSelect T="Gender" @bind-Value="_model.Gender" Label="Sexo">
+                    @foreach (var g in Enum.GetValues(typeof(Gender)).Cast<Gender>())
+                    {
+                        <MudSelectItem T="Gender" Value="@g">@g</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid Class="mt-2">
+            <MudItem md="4">
+                <MudSelect T="MaritalStatus" @bind-Value="_model.MaritalStatus" Label="Estado civil">
+                    @foreach (var m in Enum.GetValues(typeof(MaritalStatus)).Cast<MaritalStatus>())
+                    {
+                        <MudSelectItem T="MaritalStatus" Value="@m">@m</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem md="4">
+                <MudTextField @bind-Value="_model.NumberOfChildren" Label="Numero de hijos"
+                              Required="true" RequiredError="El numero es obligatorio." />
+            </MudItem>
+            <MudItem md="4">
+                <MudSelect T="bool" @bind-Value="_model.Works" Label="Trabaja">
+                    <MudSelectItem T="bool" Value="true">Sí</MudSelectItem>
+                    <MudSelectItem T="bool" Value="false">No</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid Class="mt-2">
+            <MudItem md="6">
+                <MudSelect T="string"
+                           Label="Lenguas indígenas que habla"
+                           MultiSelection="true"
+                           @bind-SelectedValues="_model.IndigenousLanguages"
+                           Placeholder="Selecciona una o varias lenguas">
+                    @foreach (var language in Enum.GetValues(typeof(IndigenousLanguage)).Cast<IndigenousLanguage>())
+                    {
+                        <MudSelectItem T="string" Value="@language.ToString()">@language</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid Class="mt-2">
+            <MudItem md="4">
+                <MudSelect T="Guid" @bind-Value="_model.CareerId" Label="Carrera"
+                           Required="true" RequiredError="Selecciona una carrera.">
+                    @foreach (var c in _careers)
+                    {
+                        <MudSelectItem T="Guid" Value="@c.Id">@c.Value</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem md="4">
+                <MudSelect T="Guid" @bind-Value="_model.PeriodIdStart" Label="Periodo de Inicio"
+                           Required="true" RequiredError="Selecciona un periodo.">
+                    @foreach (var p in _periods)
+                    {
+                        <MudSelectItem T="Guid" Value="@p.Id">@p.Value</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid Class="mt-2">
+            <MudItem md="4">
+                <MudTextField @bind-Value="_model.BirthCountry" Label="País de nacimiento"
+                              Required="true" RequiredError="El país de nacimiento es obligatorio." />
+            </MudItem>
+            <MudItem md="4">
+                <MudTextField @bind-Value="_model.BirthState" Label="Estado de nacimiento"
+                              Required="true" RequiredError="El estado de nacimiento es obligatorio." />
+            </MudItem>
+        </MudGrid>
+
+        <MudStack Row="true" Spacing="2" Class="mt-6">
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Save"
+                       OnClick="Submit">Guardar Alumno</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Default"
+                       OnClick="@(() => Nav.NavigateTo("/datacapture"))">Cancelar</MudButton>
+        </MudStack>
+    </MudForm>
+</MudPaper>
+
+
+@code {
+    private MudForm _form = null!;
+    private StudentFormViewModel _model = new();
+    private IReadOnlyList<LookupOption> _careers = [];
+    private IReadOnlyList<LookupOption> _periods = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _careers = await _generalService.GetCareersAsync();
+        _periods = await _generalService.GetPeriodsAsync();
+    }
+
+    private static string? ValidateCurp(string? curp)
+    {
+        if (string.IsNullOrWhiteSpace(curp)) return null; // optional
+        return curp.Trim().Length == 18 ? null : "La CURP debe tener 18 caracteres.";
+    }
+
+    private async Task Submit()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid) return;
+
+        var request = new CreateStudent
+        {
+            RequesterKey = await _securityService.GetRequesterKeyAsync(),
+            EnrollmentNumber = _model.EnrollmentNumber.Trim(),
+            CURP = _model.Curp.Trim(),
+            Name = _model.FirstName.Trim(),
+            MiddleName = _model.MiddleName.Trim(),
+            LastName = _model.LastName.Trim(),
+            BirthDate = _model.BirthDate is { } birthDate ? DateOnly.FromDateTime(birthDate) : default,
+            Gender = _model.Gender,
+            IndigenousLanguages = _model.IndigenousLanguages.ToList(),
+            EnglishLevel = _model.EnglishLevel,
+            MaritalStatus = _model.MaritalStatus,
+            NumberOfChildren = _model.NumberOfChildren,
+            Works = _model.Works,
+            Address = _model.Address.Trim(),
+            CareerId = _model.CareerId,
+            PeriodIdStart = _model.PeriodIdStart,
+            BirthCountry = _model.BirthCountry.Trim(),
+            BirthState = _model.BirthState.Trim(),
+        };
+
+        await _studentsService.CreateStudent(request);
+        Snackbar.Add($"Alumno {_model.FirstName} {_model.LastName} guardado correctamente.", Severity.Success);
+        Nav.NavigateTo("/datacapture");
+    }
+}
