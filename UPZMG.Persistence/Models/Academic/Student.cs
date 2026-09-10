@@ -23,8 +23,9 @@ public class Student
     public required string LastName { get; set; }
     public DateOnly BirthDate { get; set; }
     public Gender Gender { get; set; }
-    public bool SpeaksIndigenousLanguage { get; set; }
-    public Guid IndigenousLanguageId { get; set; }
+    public Guid CareerId { get; set; }
+    public required Guid PeriodIdStart { get; set; }
+    public List<Guid> IndigenousLanguages { get; set; } = [];
     [MaxLength(10)]
     public string? PostalCode { get; set; }
     public EnglishLevel EnglishLevel { get; set; }
@@ -36,7 +37,5 @@ public class Student
     [MaxLength(100)]
     public string? BirthState { get; set; }
     [MaxLength(100)]
-    public string? HighSchoolCountry { get; set; }
-    [MaxLength(100)]
-    public string? HighSchoolEntity { get; set; }
+    public string? Address { get; set; }
 }

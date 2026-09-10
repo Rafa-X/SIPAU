@@ -1,0 +1,31 @@
+@page "/datacapture/teachers/consult"
+@attribute [Authorize]
+@inject IDataCaptureService CaptureSvc
+
+<PageTitle>Consultar Docentes — SIGIE</PageTitle>
+
+<CaptureQueryView TItem="TeacherListItemModel"
+                  Title="Consultar Docentes / RRHH" Subtitle="Personal ya capturado en el periodo activo"
+                  BackHref="/datacapture" SearchPlaceholder="Buscar por nombre o número de empleado…"
+                  Items="_teachers" Periods="_periods"
+                  NameSelector="@(t => $"{t.Name} {t.EmployeeNumber}")"
+                  PeriodSelector="@(t => t.Period)">
+    <Columns>
+        <PropertyColumn T="TeacherListItemModel" TProperty="string" Property="x => x.EmployeeNumber" Title="Número de empleado" />
+        <PropertyColumn T="TeacherListItemModel" TProperty="string" Property="x => x.Name" Title="Nombre" />
+        <PropertyColumn T="TeacherListItemModel" TProperty="string" Property="x => x.Area" Title="Área" />
+        <PropertyColumn T="TeacherListItemModel" TProperty="string" Property="x => x.ContractType" Title="Tipo de contrato" />
+        <PropertyColumn T="TeacherListItemModel" TProperty="string" Property="x => x.Period" Title="Periodo" />
+    </Columns>
+</CaptureQueryView>
+
+@code {
+    private IReadOnlyList<TeacherListItemModel> _teachers = Array.Empty<TeacherListItemModel>();
+    private IReadOnlyList<string> _periods = Array.Empty<string>();
+
+    protected override void OnInitialized()
+    {
+        _teachers = CaptureSvc.GetTeachersList();
+        _periods = CaptureSvc.Periods.Select(p => p.Text).ToList();
+    }
+}

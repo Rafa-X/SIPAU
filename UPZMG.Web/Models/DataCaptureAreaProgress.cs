@@ -3,7 +3,7 @@ namespace UPZMG.Web.Models;
 /// <summary>
 /// Represents the capture progress of a single area for the dashboard.
 /// </summary>
-public class CaptureAreaProgress
+public class DataCaptureAreaProgress
 {
     public string AreaName { get; set; } = string.Empty;
     public string ResponsiblePerson { get; set; } = string.Empty;

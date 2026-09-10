@@ -1,0 +1,30 @@
+@page "/datacapture/finance/consult"
+@attribute [Authorize]
+@inject IDataCaptureService CaptureSvc
+
+<PageTitle>Consultar Finanzas — SIGIE</PageTitle>
+
+<CaptureQueryView TItem="FinanceListItemModel"
+                  Title="Consultar Finanzas" Subtitle="Resúmenes financieros ya capturados"
+                  BackHref="/datacapture" SearchPlaceholder="Buscar por nombre del resumen…"
+                  Items="_summaries" Periods="_periods"
+                  NameSelector="@(f => f.Name)"
+                  PeriodSelector="@(f => f.Period)">
+    <Columns>
+        <PropertyColumn T="FinanceListItemModel" TProperty="string" Property="x => x.Name" Title="Resumen" />
+        <PropertyColumn T="FinanceListItemModel" TProperty="decimal" Property="x => x.TotalIncome" Title="Ingresos" Format="N2" />
+        <PropertyColumn T="FinanceListItemModel" TProperty="decimal" Property="x => x.TotalExpense" Title="Egresos" Format="N2" />
+        <PropertyColumn T="FinanceListItemModel" TProperty="string" Property="x => x.Period" Title="Periodo" />
+    </Columns>
+</CaptureQueryView>
+
+@code {
+    private IReadOnlyList<FinanceListItemModel> _summaries = Array.Empty<FinanceListItemModel>();
+    private IReadOnlyList<string> _periods = Array.Empty<string>();
+
+    protected override void OnInitialized()
+    {
+        _summaries = CaptureSvc.GetFinanceList();
+        _periods = CaptureSvc.Periods.Select(p => p.Text).ToList();
+    }
+}

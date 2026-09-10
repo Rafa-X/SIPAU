@@ -592,6 +592,7 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 /* Listing toolbar: search grows, filters stay compact. */
 .sigie-toolbar-search { min-width: 240px; max-width: 340px; flex: 1 1 240px; }
 .sigie-toolbar-filter { min-width: 150px; max-width: 200px; }
+.sigie-toolbar-filter-wide { min-width: 220px; max-width: 280px; }
 
 /* Progress bars: rounded, with a soft glow at the leading edge. */
 .mud-progress-linear { border-radius: 999px; overflow: hidden; }
@@ -710,7 +711,7 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; transform: translateY(-4px);
 }
 
 /* Cards cascade in rather than appearing all at once. */
-.sigie-page .mud-grid > .mud-grid-item { animation: sigie-rise 0.55s var(--sigie-ease) both; }
+/* .sigie-page .mud-grid > .mud-grid-item { animation: sigie-rise 0.55s var(--sigie-ease) both; } */
 .sigie-page .mud-grid > .mud-grid-item:nth-child(1) { animation-delay: 0.04s; }
 .sigie-page .mud-grid > .mud-grid-item:nth-child(2) { animation-delay: 0.09s; }
 .sigie-page .mud-grid > .mud-grid-item:nth-child(3) { animation-delay: 0.14s; }

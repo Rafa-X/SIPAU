@@ -19,7 +19,7 @@ public class AppDBContext : DbContext
 
     // Academic
     public DbSet<AcademicLoad> AcademicLoads => Set<AcademicLoad>();
-    public DbSet<Carrers> Carrers => Set<Carrers>();
+    public DbSet<Careers> Careers => Set<Careers>();
     public DbSet<ClassGroups> ClassGroups => Set<ClassGroups>();
     public DbSet<AsignaturesProgram> CoursesPrograms => Set<AsignaturesProgram>();
     public DbSet<InstitutionalConfiguration> InstitutionalConfigurations => Set<InstitutionalConfiguration>();
@@ -43,7 +43,8 @@ public class AppDBContext : DbContext
     // public DbSet<Disabilities> Disabilities => Set<Disabilities>();
     // public DbSet<ScolarshipProgram> ScolarshipPrograms => Set<ScolarshipProgram>();
     // public DbSet<WithdrawReason> WithdrawReasons => Set<WithdrawReason>();
-    //public DbSet<IndigenousLanguages> IndigenousLanguages => Set<IndigenousLanguages>();
+    public DbSet<IndigenousLanguages> IndigenousLanguages => Set<IndigenousLanguages>();
+    public DbSet<IndigenousLanguagesSpeakers> IndigenousLanguagesSpeakers => Set<IndigenousLanguagesSpeakers>();
 
     // // Resources
     // public DbSet<AnnualTICInventory> AnnualTICInventories => Set<AnnualTICInventory>();
@@ -153,8 +154,8 @@ public class AppDBContext : DbContext
                 .WithMany()
                 .HasForeignKey(x => x.FacilityId);
         });
-        modelBuilder.Entity<Carrers>(entity => {
-            entity.ToTable("carrers");
+        modelBuilder.Entity<Careers>(entity => {
+            entity.ToTable("careers");
             entity.HasKey(x => x.Id);
         });
         modelBuilder.Entity<ClassGroups>(entity => {
@@ -163,7 +164,7 @@ public class AppDBContext : DbContext
             entity.HasOne<Periods>()
                 .WithMany()
                 .HasForeignKey(x => x.PeriodId);
-            entity.HasOne<Carrers>()
+            entity.HasOne<Careers>()
                 .WithMany()
                 .HasForeignKey(x => x.CareerId);
             entity.HasOne<Employee>()
@@ -176,7 +177,7 @@ public class AppDBContext : DbContext
         modelBuilder.Entity<AsignaturesProgram>(entity => {
             entity.ToTable("asignaturesPrograms");
             entity.HasKey(x => x.Id);
-            entity.HasOne<Carrers>()
+            entity.HasOne<Careers>()
                 .WithMany()
                 .HasForeignKey(x => x.CareerId);
         });
@@ -243,9 +244,16 @@ public class AppDBContext : DbContext
             entity.Property(x => x.Gender)
                 .HasConversion<string>()
                 .HasColumnType("char(1)");
-            entity.HasOne<IndigenousLanguages>()
-                .WithMany()
-                .HasForeignKey(x => x.IndigenousLanguageId);
+        });
+        modelBuilder.Entity<IndigenousLanguages>(entity => {
+            entity.ToTable("IndigenousLanguages");
+            entity.HasKey(x => x.Id);
+        });
+        modelBuilder.Entity<IndigenousLanguagesSpeakers>(entity => {
+            entity.ToTable("IndigenousLanguagesSpeakers");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.SpeakerId, x.LanguageId }).IsUnique();
+            entity.HasIndex(x => x.LanguageId);
         });
         modelBuilder.Entity<StudentDisabilities>(entity => {
             entity.ToTable("studentDisabilities");
@@ -263,7 +271,7 @@ public class AppDBContext : DbContext
             entity.HasOne<Student>()
                 .WithMany()
                 .HasForeignKey(x => x.StudentId);
-            entity.HasOne<Carrers>()
+            entity.HasOne<Careers>()
                 .WithMany()
                 .HasForeignKey(x => x.CareerId);
             entity.HasOne<Employee>()

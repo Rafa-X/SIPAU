@@ -10,9 +10,12 @@ using UPZMG.Web.Services;
 
 namespace UPZMG.Web.Controllers;
 
-public class AccountController(DataService dataService, ISecurityEventLogger securityLogger, IConfiguration configuration) : Controller
+public class AccountController(
+    ISecurityService securityService, 
+    ISecurityEventLogger securityLogger, 
+    IConfiguration configuration) : Controller
 {
-    private readonly DataService _dataService = dataService;
+    private readonly ISecurityService _securityService = securityService;
     private readonly ISecurityEventLogger _securityLogger = securityLogger;
     private readonly IConfiguration _configuration = configuration;
 
@@ -35,7 +38,7 @@ public class AccountController(DataService dataService, ISecurityEventLogger sec
             var props = new AuthenticationProperties
             {
                 IsPersistent = false,
-                AllowRefresh = false
+                AllowRefresh = true
             };
 
             var email = model.Email?.Trim() ?? string.Empty;
@@ -57,7 +60,7 @@ public class AccountController(DataService dataService, ISecurityEventLogger sec
                 Password = model.Password,
                 SharedSecret = sharedSecret
             };
-            var authenticatedUser = await _dataService.AuthenticateUserAsync(request);
+            var authenticatedUser = await _securityService.AuthenticateUserAsync(request);
 
             if (authenticatedUser is null || authenticatedUser.UserId == Guid.Empty || string.IsNullOrWhiteSpace(authenticatedUser.RoleName))
             {
@@ -118,4 +121,11 @@ public class AccountController(DataService dataService, ISecurityEventLogger sec
     // middleware ever hits this path, send the user somewhere valid.
     [AllowAnonymous]
     public IActionResult AccessDenied() => LocalRedirect("/dashboard");
+
+    // Heartbeat hit by client-side JS only while the user is active; the request
+    // itself is what triggers the cookie middleware's sliding-expiration renewal.
+    [Authorize]
+    [HttpPost("/account/keepalive")]
+    [ValidateAntiForgeryToken]
+    public IActionResult KeepAlive() => NoContent();
 }

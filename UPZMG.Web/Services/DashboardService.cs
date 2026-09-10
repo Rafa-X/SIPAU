@@ -49,7 +49,7 @@ public sealed class DashboardService : IDashboardService
                 new() { Message = "Reporte 911 debe enviarse en 15 días", Type = "info", Priority = "Alta" },
             },
 
-            AreaProgress = new List<CaptureAreaProgress>
+            AreaProgress = new List<DataCaptureAreaProgress>
             {
                 new() { AreaName = "Servicios Escolares", ResponsiblePerson = "Lic. Ana Martínez", Percentage = 100, Status = "Completo" },
                 new() { AreaName = "Recursos Humanos", ResponsiblePerson = "Lic. Carlos López", Percentage = 100, Status = "Completo" },

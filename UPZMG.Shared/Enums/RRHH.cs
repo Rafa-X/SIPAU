@@ -126,3 +126,16 @@ public enum StatusAS
     EnConsolidacion,
     Consolidado
 }
+
+public enum IndigenousLanguage
+{
+    Nahuatl,
+    Maya,
+    Zapoteco,
+    Mixteco,
+    Otomi,
+    Tzotzil,
+    Tzeltal,
+    Huichol,
+    Otro
+}

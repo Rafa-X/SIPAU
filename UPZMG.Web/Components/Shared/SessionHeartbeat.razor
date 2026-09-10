@@ -1,0 +1,51 @@
+@* Keeps the auth cookie alive while the user is active; stays silent (and
+   sends nothing) once idle, letting the cookie expire on schedule. *@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthProvider
+@using UPZMG.Web.Security
+
+<div id="upzmg-session-heartbeat" style="display:none">
+    <AntiforgeryToken />
+</div>
+
+@code {
+    private DotNetObjectReference<SessionHeartbeat>? _selfRef;
+    private IJSObjectReference? _module;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        var state = await AuthProvider.GetAuthenticationStateAsync();
+        if (state.User.Identity?.IsAuthenticated != true)
+            return;
+
+        _selfRef = DotNetObjectReference.Create(this);
+        _module = await JS.InvokeAsync<IJSObjectReference>("import", "/js/sessionHeartbeat.js");
+        await _module.InvokeVoidAsync(
+            "start",
+            _selfRef,
+            "upzmg-session-heartbeat",
+            (int)SessionPolicy.HeartbeatInterval.TotalMilliseconds);
+    }
+
+    [JSInvokable]
+    public void OnSessionRefreshed()
+    {
+        if (AuthProvider is PersistentCookieAuthenticationStateProvider provider)
+        {
+            provider.ExtendSession(SessionPolicy.IdleTimeout);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _selfRef?.Dispose();
+        if (_module is not null)
+        {
+            await _module.DisposeAsync();
+        }
+    }
+}

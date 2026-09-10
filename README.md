@@ -32,6 +32,8 @@ Administration system for UPZMG - Modular project
   2. Web requests a JWT from API via `POST /auth/token` (internal shared secret)
   3. Web calls API endpoints using `Authorization: Bearer <token>`
 
+**Session lifecycle:** the Web cookie expires after 20 minutes of inactivity (`UPZMG.Web/Security/SessionPolicy.cs`). A client-side heartbeat pings `POST /account/keepalive` every 15 minutes, but only while the user is actively interacting with the page, keeping the session alive; idle tabs are logged out automatically instead of staying signed in indefinitely.
+
 ### Secrets Configuration
 
 Secrets must not be stored in `appsettings*.json`.

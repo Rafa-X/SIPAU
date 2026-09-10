@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
 using UPZMG.Web.Components;
+using UPZMG.Web.Security;
 using UPZMG.Web.Services;
 using UPZMG.Persistence;
 
@@ -42,27 +43,27 @@ try
             options.AccessDeniedPath = "/Account/AccessDenied";
             options.Cookie.Name = "UPZMG.Auth";
             options.SlidingExpiration = true;
-            options.ExpireTimeSpan = TimeSpan.FromHours(3);
+            options.ExpireTimeSpan = SessionPolicy.IdleTimeout;
             options.Cookie.HttpOnly = true;
             options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
             options.Cookie.SameSite = SameSiteMode.Lax;
         });
 
     builder.Services.AddScoped<ApiTokenService>();
-    builder.Services.AddScoped<SecurityService>();
+    builder.Services.AddScoped<ISecurityService, SecurityService>();
     builder.Services.AddScoped<ApiClient>();
-    builder.Services.AddScoped<DataService>();
     builder.Services.AddScoped<IAuthService, AuthService>();
     builder.Services.AddSingleton<ISecurityEventLogger, SecurityLogger>();
     builder.Services.AddScoped<IDashboardService, DashboardService>();
     // Scoped, not singleton: it now talks to the API per request/circuit.
     builder.Services.AddScoped<UsersService>();
     builder.Services.AddScoped<IDataCaptureService, DataCaptureService>();
+    builder.Services.AddScoped<IStudentsService, StudentsService>();
+    builder.Services.AddScoped<IGeneralDataService, GeneralDataService>();
     builder.Services.AddScoped<IMinutesService, MinutesService>();
     builder.Services.AddScoped<IBoardReportService, BoardReportService>();
     builder.Services.AddSingleton<ISettingsService, SettingsService>();
     builder.Services.AddScoped<IReportsService, ReportsService>();
-    builder.Services.AddScoped<SecurityService, SecurityService>();
     builder.Services.AddSingleton<IIntelligenceService, IntelligenceService>();
 
     builder.Services.AddAuthorization();

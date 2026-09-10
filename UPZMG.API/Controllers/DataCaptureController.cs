@@ -1,0 +1,53 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using UPZMG.Persistence.Repository;
+using UPZMG.Implementations.DataCapture;
+
+namespace UPZMG.Api.Controllers;
+
+[ApiController]
+[Route("data-capture")]
+[Authorize(Roles = "Admin")]
+public class DataCaptureController(
+    SecurityRepository securityRepository, 
+    EmployeesRepository employeesRepository, 
+    StudentsRepository studentsRepository) : ControllerBase
+{
+    private async Task<bool> ValidatePermissions<T>(T request)
+    {
+        var requester_key = typeof(T).GetProperty("RequesterKey")?.GetValue(request) as Guid? 
+            ?? throw new UnauthorizedAccessException("RequesterKey is missing or invalid.");
+        var required = new List<string> { typeof(T).Name, "FullAccess", "ServiceAccess" };
+        var authenticate = await securityRepository.CheckPermissions(requester_key, required);
+        return authenticate.Success;
+    }
+
+
+    [HttpPost("students/create")]
+    // Create a new student
+    public async Task<IActionResult> CreateStudent([FromBody] CreateStudent request)
+    {
+        //if (!await ValidatePermissions(request)) return Unauthorized();
+        var student = await studentsRepository.CreateStudentAsync(request);
+
+        return Created($"/api/students/{student.Id}", student);
+    }
+
+    [HttpGet("students/list")]
+    // Search + paginate captured students
+    public async Task<IActionResult> GetStudentsList([FromQuery] StudentsListRequest request)
+    {
+        var result = await studentsRepository.GetStudentsListAsync(request);
+        return Ok(result);
+    }
+
+    [HttpPost("employees/create")]
+    // Create a new employee
+    public async Task<IActionResult> CreateEmployee([FromBody] CreateEmployee request)
+    {
+        //if (!await ValidatePermissions(request)) return Unauthorized();
+        var employee = await employeesRepository.CreateEmployeeAsync(request);
+
+        return Created($"/api/employees/{employee.Id}", employee);
+    }
+}

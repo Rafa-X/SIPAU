@@ -9,7 +9,9 @@ namespace UPZMG.Web.Services;
 /// <summary>Outcome of a save attempt: the stored user, or why it was rejected.</summary>
 public sealed record UserSaveResult(bool Success, SystemUser? User, string? Error);
 
-public sealed class UsersService(DataService data, SecurityService securityService, ILogger<UsersService> logger)
+public sealed class UsersService(
+    ISecurityService securityService, 
+    ILogger<UsersService> logger)
 {
     // API serializes responses using camelCase; match it here so property names bind correctly.
     private static readonly JsonSerializerOptions ResponseOptions = new(JsonSerializerDefaults.Web);
@@ -83,7 +85,7 @@ public sealed class UsersService(DataService data, SecurityService securityServi
         {
             if (model.IsEditing)
             {
-                var edited = await data.EditUser(new EditUser
+                var edited = await EditUser(new EditUser
                 {
                     RequesterKey = requesterKey,
                     UserId = model.Id,
@@ -98,7 +100,7 @@ public sealed class UsersService(DataService data, SecurityService securityServi
                     : new UserSaveResult(true, edited, null);
             }
 
-            var created = await data.CreateUser(new CreateUser
+            var created = await CreateUser(new CreateUser
             {
                 RequesterKey = requesterKey,
                 UserName = model.UserName,

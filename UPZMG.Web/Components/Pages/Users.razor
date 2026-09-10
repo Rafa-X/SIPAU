@@ -2,9 +2,8 @@
 @attribute [Authorize(Roles = "Admin")]
 @using UPZMG.Implementations
 @using UPZMG.Implementations.Users
-@inject DataService _dataService
 @inject UsersService _userService
-@inject SecurityService _securityService
+@inject ISecurityService _securityService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
@@ -122,7 +121,7 @@
 
         try
         {
-            _roles = await _dataService.GetAllRoles(new GetAllRoles { RequesterKey = requesterKey });
+            _roles = await _securityService.GetAllRoles(new GetAllRoles { RequesterKey = requesterKey });
             await ReloadAsync(requesterKey);
         }
         finally

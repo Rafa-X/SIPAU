@@ -1,0 +1,181 @@
+@page "/datacapture/teachers"
+@attribute [Authorize]
+@using UPZMG.Implementations.DataCapture
+@using UPZMG.Shared.Enums
+@inject IDataCaptureService _captureService
+@inject IGeneralDataService _generalService
+@inject ISecurityService _securityService
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Captura de Docentes — SIGIE</PageTitle>
+
+<PageHeader Eyebrow="Captura de datos" Title="Captura de Docentes / RRHH" Subtitle="Registro de personal docente y administrativo" BackHref="/datacapture" />
+
+<MudPaper Elevation="1" Class="pa-6">
+    <MudForm @ref="_form">
+        <MudText Typo="Typo.h6" Class="mb-3">Datos del empleado</MudText>
+        <MudGrid>
+            <MudItem md="4">
+                <MudNumericField T="int" @bind-Value="_model.EmployeeNumber" Label="Número de empleado"
+                                 Min="1" Required="true" RequiredError="El número de empleado es obligatorio." />
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid>
+            <MudItem md="4">
+                <MudTextField @bind-Value="_model.Email" Label="Correo electrónico" InputType="InputType.Email"
+                              Required="true" RequiredError="El correo electrónico es obligatorio." />
+            </MudItem>
+            <MudItem md="4">
+                <MudTextField @bind-Value="_model.Rfc" Label="RFC" />
+            </MudItem>
+            <MudItem md="4">
+                <MudTextField @bind-Value="_model.Curp" Label="CURP" />
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid Class="mt-1">
+            <MudItem md="4">
+                <MudTextField @bind-Value="_model.FirstName" Label="Nombre(s)" Required="true" RequiredError="Requerido." />
+            </MudItem>
+            <MudItem md="4">
+                <MudTextField @bind-Value="_model.LastName" Label="Apellido paterno" Required="true" RequiredError="Requerido." />
+            </MudItem>
+            <MudItem md="4">
+                <MudTextField @bind-Value="_model.MiddleName" Label="Apellido materno" />
+            </MudItem>
+        </MudGrid>
+        <MudGrid>
+            <MudItem md="4">
+                <MudSelect T="Gender" @bind-Value="_model.Gender" Label="Sexo">
+                    @foreach (var g in Enum.GetValues(typeof(Gender)).Cast<Gender>()) { <MudSelectItem T="Gender" Value="@g">@g</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+            <MudItem md="4">
+                <MudDatePicker @bind-Date="_model.BirthDate" Label="Fecha de nacimiento" MaxDate="DateTime.Today" />
+            </MudItem>
+            <MudItem md="4">
+                <MudSelect T="string" @bind-Value="_model.MaxDegree" Label="Grado máximo de estudios">
+                    @foreach (var d in _generalService.GetMaxDegreesAsync().Result) { <MudSelectItem T="string" Value="@d.Value">@d.Value</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid Class="mt-2">
+            <MudItem md="4">
+                <MudSelect T="string" @bind-Value="_model.ContractType" Label="Tipo de contrato">
+                    @foreach (var c in _generalService.GetContractTypesAsync().Result) { <MudSelectItem T="string" Value="@c.Value">@c.Value</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+            <MudItem md="4">
+                <MudNumericField T="int" @bind-Value="_model.WeeklyHours" Label="Horas semanales" Min="0" Max="48" />
+            </MudItem>
+            <MudItem md="4">
+                <MudSelect T="int" @bind-Value="_model.AreaId" Label="Área de adscripción">
+                    @foreach (var a in _generalService.GetInternalAreasAsync().Result) 
+                    { 
+                        <MudSelectItem T="int" Value="@int.Parse(a.Value)">@a.Value</MudSelectItem> 
+                    }
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid Class="mt-2">
+            <MudItem md="4">
+                <MudSelect T="EducationLevel" @bind-Value="_model.HighestEducationLevel" Label="Nivel máximo de estudios">
+                    @foreach (var educationLevel in Enum.GetValues(typeof(EducationLevel)).Cast<EducationLevel>())
+                    {
+                        <MudSelectItem T="EducationLevel" Value="@educationLevel">@educationLevel</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem md="4">
+                <MudSelect T="TitleStatus" @bind-Value="_model.TitleStatus" Label="Estatus de titulación">
+                    @foreach (var titleStatus in Enum.GetValues(typeof(TitleStatus)).Cast<TitleStatus>())
+                    {
+                        <MudSelectItem T="TitleStatus" Value="@titleStatus">@titleStatus</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem md="4">
+                <MudDatePicker @bind-Date="_model.FirstHiredDate" Label="Fecha de primera contratación" MaxDate="DateTime.Today" />
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid Class="mt-2">
+            <MudItem md="6">
+                <MudSelect T="string"
+                           Label="Lenguas indígenas que habla"
+                           MultiSelection="true"
+                           @bind-SelectedValues="_model.IndigenousLanguages"
+                           Placeholder="Selecciona una o varias lenguas">
+                    @foreach (var language in Enum.GetValues(typeof(IndigenousLanguage)).Cast<IndigenousLanguage>())
+                    {
+                        <MudSelectItem T="string" Value="@language.ToString()">@language</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem md="6" Class="d-flex align-center">
+                <MudSwitch T="bool" @bind-Value="_model.HasPostgraduate" Color="Color.Secondary" Label="Cuenta con posgrado" />
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid Class="mt-2">
+            <MudItem md="4">
+                <MudSwitch T="bool" @bind-Value="_model.HasDisability" Color="Color.Secondary" Label="Tiene alguna discapacidad" />
+            </MudItem>
+            <MudItem md="4">
+                <MudNumericField T="int" @bind-Value="_model.ExternalXPYears" Label="Años de experiencia externa" Min="0" />
+            </MudItem>
+        </MudGrid>
+
+        <MudStack Row="true" Spacing="2" Class="mt-6">
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Save" OnClick="Submit">Guardar Empleado</MudButton>
+            <MudButton Variant="Variant.Outlined" OnClick="@(() => Nav.NavigateTo("/datacapture"))">Cancelar</MudButton>
+        </MudStack>
+    </MudForm>
+</MudPaper>
+
+@code {
+    private MudForm _form = null!;
+    private EmployeeFormViewModel _model = new();
+    private IReadOnlyList<LookupOption> _maxDegrees = [];
+    private IReadOnlyList<LookupOption> _contractTypes = [];
+    private IReadOnlyList<LookupOption> _internalAreas = [];
+        
+    protected override async Task OnInitializedAsync()
+    {
+        _maxDegrees = await _generalService.GetMaxDegreesAsync();
+        _contractTypes = await _generalService.GetContractTypesAsync();
+        _internalAreas = await _generalService.GetInternalAreasAsync();
+    }
+
+    private async Task Submit()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid) return;
+
+        var request = new CreateEmployee
+        {
+            RequesterKey = await _securityService.GetRequesterKeyAsync(),
+            EmployeeNumber = _model.EmployeeNumber,
+            FullName = string.Join(' ', new[] { _model.FirstName, _model.MiddleName, _model.LastName }).Trim(),
+            Email = _model.Email.Trim(),
+            Rfc = _model.Rfc.Trim(),
+            Curp = _model.Curp.Trim(),
+            Gender = _model.Gender,
+            BirthDate = _model.BirthDate is { } birthDate ? DateOnly.FromDateTime(birthDate) : default,
+            HighestEducationLevel = _model.HighestEducationLevel,
+            TitleStatus = _model.TitleStatus,
+            IndigenousLanguages = _model.IndigenousLanguages.ToList(),
+            HasDisability = _model.HasDisability,
+            ExternalXPYears = _model.ExternalXPYears,
+            FirstHiredDate = _model.FirstHiredDate is { } firstHiredDate ? DateOnly.FromDateTime(firstHiredDate) : default,
+        };
+
+        await _captureService.CreateTeacher(request);
+        Snackbar.Add($"Docente {_model.FirstName} {_model.LastName} guardado correctamente.", Severity.Success);
+        Nav.NavigateTo("/datacapture");
+    }
+}

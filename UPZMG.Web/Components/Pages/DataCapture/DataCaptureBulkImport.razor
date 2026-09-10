@@ -11,13 +11,13 @@
 <MudPaper Elevation="1" Class="pa-6">
     <MudForm @ref="_form">
         <MudGrid>
-            <MudItem xs="12" md="6">
+            <MudItem md="6">
                 <MudSelect T="string" @bind-Value="_model.AreaKey" Label="Área destino"
                            Required="true" RequiredError="Selecciona un área.">
                     @foreach (var a in CaptureSvc.BulkAreas) { <MudSelectItem T="string" Value="@a.Value">@a.Text</MudSelectItem> }
                 </MudSelect>
             </MudItem>
-            <MudItem xs="12" md="6">
+            <MudItem md="6">
                 <MudSelect T="string" @bind-Value="_model.Delimiter" Label="Delimitador">
                     @foreach (var d in CaptureSvc.Delimiters) { <MudSelectItem T="string" Value="@d.Value">@d.Text</MudSelectItem> }
                 </MudSelect>
