@@ -36,7 +36,7 @@
                     <PropertyColumn Property="x => x.SchoolCycle" Title="Ciclo" />
                     <PropertyColumn Property="x => x.StartDate" Title="Inicio" Format="dd/MM/yyyy" />
                     <PropertyColumn Property="x => x.EndDate" Title="Fin" Format="dd/MM/yyyy" />
-                    <TemplateColumn Title="Estado" CellClass="d-flex justify-end" Sortable="false">
+                    <TemplateColumn Title="Estado" CellClass="sigie-cell-end" HeaderClass="sigie-cell-end" Sortable="false">
                         <CellTemplate>
                             @if (context.Item.IsActive)
                             {

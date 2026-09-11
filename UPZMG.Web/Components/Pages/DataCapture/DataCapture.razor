@@ -37,8 +37,8 @@
                             <MudText Typo="Typo.caption" Color="Color.Secondary">Avance</MudText>
                             <MudText Typo="Typo.caption" Style="font-weight:700">@area.Percentage%</MudText>
                         </MudStack>
-                        <MudProgressLinear Color="@SigieUi.ProgressColor(area.Percentage)" Value="area.Percentage"
-                                           Rounded="true" Style="height:8px" />
+                        <MudProgressLinear Color="Color.Primary" Value="area.Percentage"
+                                           Style="height:8px" />
                         <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
                             Actualizado: @area.LastUpdated.ToString("dd/MM/yyyy")
                         </MudText>

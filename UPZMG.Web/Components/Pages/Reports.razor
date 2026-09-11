@@ -125,7 +125,7 @@ else
         @* Progress reflects how much is actually answered, not how far the user
            has clicked — a capture form that reports 100% while empty is a lie. *@
         <MudProgressLinear Color="@(_missing.Count == 0 ? Color.Success : Color.Secondary)"
-                           Value="@CompletionProgress" Rounded="true" Class="mt-2" Style="height:6px" />
+                           Value="@CompletionProgress" Class="mt-2" Style="height:6px" />
         <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
             @_answeredRequired de @_totalRequired campos obligatorios capturados
         </MudText>
