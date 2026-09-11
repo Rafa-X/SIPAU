@@ -3,22 +3,18 @@ using MudBlazor;
 namespace UPZMG.Web.Theme;
 
 /// <summary>
-/// Institutional MudBlazor theme for SIGIE / UPZMG — "Cantera y Cal".
+/// Institutional MudBlazor theme for SIGIE / UPZMG.
 /// </summary>
 public static class AppTheme
 {
     // ── The five inks ────────────────────────────────────────────────────────
-    public const string Cal = "#EAEDE7";
-
-    public const string Recinto = "#1E1C1A";
-
-    public const string Anil = "#1B3A6B";
-
-    public const string AnilLight = "#2A5590";
-
-    public const string Rosa = "#C4325F";
-    public const string Cempasuchil = "#D99A0B";
-    public const string Nopal = "#3F6B4A";
+    public const string Cal = "#F4F7FB";
+    public const string Recinto = "#081E33";
+    public const string Anil = "#073B68";
+    public const string AnilLight = "#0B6DB8";
+    public const string Rosa = "#B93854";
+    public const string Cempasuchil = "#C98211";
+    public const string Nopal = "#167451";
 
     public static readonly MudTheme Institutional = new()
     {
@@ -33,69 +29,69 @@ public static class AppTheme
             Error     = Rosa,
 
             AppbarBackground = Anil,
-            AppbarText       = "#F2F4F0",
+            AppbarText       = "#F8FBFF",
             DrawerBackground = Anil,
-            DrawerText       = "rgba(242,244,240,0.86)",
-            DrawerIcon       = "rgba(242,244,240,0.64)",
+            DrawerText       = "rgba(248,251,255,0.86)",
+            DrawerIcon       = "rgba(248,251,255,0.64)",
 
             Background     = Cal,
-            BackgroundGray = "#DFE3DB",
-            Surface        = "#F5F7F3",
+            BackgroundGray = "#E8EEF5",
+            Surface        = "#FFFFFF",
 
-            TextPrimary   = "#1C201B",
-            TextSecondary = "#585F55",
-            TextDisabled  = "rgba(28,32,27,0.38)",
+            TextPrimary   = "#142B42",
+            TextSecondary = "#5D6D7E",
+            TextDisabled  = "rgba(20,43,66,0.38)",
 
-            ActionDefault  = "#585F55",
-            ActionDisabled = "rgba(28,32,27,0.26)",
+            ActionDefault  = "#5D6D7E",
+            ActionDisabled = "rgba(20,43,66,0.26)",
 
-            Divider      = "#CBD1C6",
-            DividerLight = "#DCE1D6",
-            LinesDefault = "#CBD1C6",
-            LinesInputs  = "#B4BCAE",
-            TableLines   = "#D5DACE",
-            TableHover   = "#E4E8DF",
-            GrayLight    = "#E4E8DF",
+            Divider      = "#D7E1EC",
+            DividerLight = "#E8EEF5",
+            LinesDefault = "#D7E1EC",
+            LinesInputs  = "#AEBED0",
+            TableLines   = "#E2E9F1",
+            TableHover   = "#F0F6FB",
+            GrayLight    = "#EEF4F9",
         },
         PaletteDark = new PaletteDark
         {
-            Primary   = "#8FB0DE",
-            Secondary = "#8FB0DE",
-            Tertiary  = "#8FB0DE",
-            Info      = "#8FB0DE",
-            Success   = "#7FB48C",
-            Warning   = "#E0B255",
-            Error     = "#E4738F",
+            Primary   = "#67B9F4",
+            Secondary = "#67B9F4",
+            Tertiary  = "#67B9F4",
+            Info      = "#67B9F4",
+            Success   = "#63C49A",
+            Warning   = "#F2B95D",
+            Error     = "#F08398",
 
-            AppbarBackground = "#16223A",
-            AppbarText       = "#E9EDE6",
+            AppbarBackground = "#071B2F",
+            AppbarText       = "#F4F8FC",
 
-            DrawerBackground = "#16223A",
-            DrawerText       = "rgba(233,237,230,0.86)",
-            DrawerIcon       = "rgba(233,237,230,0.62)",
+            DrawerBackground = "#071B2F",
+            DrawerText       = "rgba(244,248,252,0.86)",
+            DrawerIcon       = "rgba(244,248,252,0.62)",
 
             Background     = Recinto,
-            BackgroundGray = "#262320",
-            Surface        = "#272421",
+            BackgroundGray = "#102B45",
+            Surface        = "#112D48",
 
-            TextPrimary   = "#E9EDE6",
-            TextSecondary = "#A3A79D",
-            TextDisabled  = "rgba(233,237,230,0.36)",
+            TextPrimary   = "#F4F8FC",
+            TextSecondary = "#AABACA",
+            TextDisabled  = "rgba(244,248,252,0.36)",
 
-            ActionDefault  = "#A3A79D",
-            ActionDisabled = "rgba(233,237,230,0.26)",
+            ActionDefault  = "#AABACA",
+            ActionDisabled = "rgba(244,248,252,0.26)",
 
-            Divider      = "rgba(233,237,230,0.12)",
-            DividerLight = "rgba(233,237,230,0.07)",
-            LinesDefault = "rgba(233,237,230,0.14)",
-            LinesInputs  = "rgba(233,237,230,0.22)",
-            TableLines   = "rgba(233,237,230,0.09)",
-            TableHover   = "rgba(233,237,230,0.05)",
-            GrayLight    = "#2E2A27",
+            Divider      = "rgba(244,248,252,0.12)",
+            DividerLight = "rgba(244,248,252,0.07)",
+            LinesDefault = "rgba(244,248,252,0.14)",
+            LinesInputs  = "rgba(244,248,252,0.22)",
+            TableLines   = "rgba(244,248,252,0.09)",
+            TableHover   = "rgba(244,248,252,0.05)",
+            GrayLight    = "#173754",
         },
         LayoutProperties = new LayoutProperties
         {
-            DefaultBorderRadius = "2px",
+            DefaultBorderRadius = "6px",
             DrawerWidthLeft     = "264px",
             DrawerMiniWidthLeft = "76px",
             AppbarHeight        = "64px",

@@ -45,7 +45,14 @@
         _selfRef?.Dispose();
         if (_module is not null)
         {
-            await _module.DisposeAsync();
+            try
+            {
+                await _module.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // The browser circuit ended before this server-side component disposed.
+            }
         }
     }
 }
