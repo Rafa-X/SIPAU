@@ -12,6 +12,6 @@ public class InternalAreas
     public Guid Id { get; set; }
     [MaxLength(150)]
     public string? Name { get; set; }
-    public Guid ParentAreaId { get; set; } // Self-referencing fk
+    public Guid? ParentAreaId { get; set; }
     public InternalAreaType? Type { get; set; }
 }

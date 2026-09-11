@@ -12,12 +12,24 @@ public class GeneralDataController(
     GeneralDataRepository generalDataRepository) : ControllerBase
 {
 
-[HttpGet("lookups/careers")]
+    [HttpGet("lookups/careers")]
     public async Task<ActionResult<List<LookupOption>>> GetCareers() =>
-        Ok(await generalDataRepository.GetCareersAsync());
+            Ok(await generalDataRepository.GetCareersAsync());
 
     [HttpGet("lookups/periods")]
     public async Task<ActionResult<List<LookupOption>>> GetPeriods() =>
         Ok(await generalDataRepository.GetPeriodsAsync());
+
+    [HttpGet("lookups/max-degrees")]
+    public async Task<ActionResult<List<LookupOption>>> GetMaxDegrees() =>
+        Ok(await generalDataRepository.GetMaxDegreesAsync());
+
+    [HttpGet("lookups/contract-types")]
+    public async Task<ActionResult<List<LookupOption>>> GetContractTypes() =>
+        Ok(await generalDataRepository.GetContractTypesAsync());
+
+    [HttpGet("lookups/internal-areas")]
+    public async Task<ActionResult<List<LookupOption>>> GetInternalAreas() =>
+        Ok(await generalDataRepository.GetInternalAreasAsync());
 
 }

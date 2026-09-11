@@ -149,8 +149,12 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _careers = await _generalService.GetCareersAsync();
-        _periods = await _generalService.GetPeriodsAsync();
+        var careersTask = _generalService.GetCareersAsync();
+        var periodsTask = _generalService.GetPeriodsAsync();
+        await Task.WhenAll(careersTask, periodsTask);
+
+        _careers = await careersTask;
+        _periods = await periodsTask;
     }
 
     private static string? ValidateCurp(string? curp)

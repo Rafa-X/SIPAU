@@ -142,7 +142,44 @@ BEGIN
         (@CareerIndustrial, 'Ingeniería Industrial', 'IND-001', 4, 0, 0, 10, 5, 240, '2024-01-01', '2024-01-01');
 END;
 
--- 9) Periods for testing
+-- 9) Internal Areas
+DECLARE @RectoryAreaId UNIQUEIDENTIFIER = '33333333-3333-3333-3333-333333333301';
+DECLARE @AcademicAreaId UNIQUEIDENTIFIER = '33333333-3333-3333-3333-333333333302';
+DECLARE @SchoolServicesAreaId UNIQUEIDENTIFIER = '33333333-3333-3333-3333-333333333303';
+DECLARE @HumanResourcesAreaId UNIQUEIDENTIFIER = '33333333-3333-3333-3333-333333333304';
+DECLARE @PlanningAreaId UNIQUEIDENTIFIER = '33333333-3333-3333-3333-333333333305';
+
+BEGIN
+    INSERT INTO internalAreas (Id, Name, ParentAreaId, Type)
+    VALUES
+        (@RectoryAreaId, 'Rectoría', NULL, 1),
+        (@AcademicAreaId, 'Dirección Académica', @RectoryAreaId, 0),
+        (@SchoolServicesAreaId, 'Servicios Escolares', @AcademicAreaId, 0),
+        (@HumanResourcesAreaId, 'Recursos Humanos', @RectoryAreaId, 1),
+        (@PlanningAreaId, 'Planeación', @RectoryAreaId, 1);
+END;
+
+    -- 10) Maximum Degrees
+    BEGIN
+        INSERT INTO maxDegrees (Id, Name)
+        VALUES
+        ('44444444-4444-4444-4444-444444444401', 'Bachillerato'),
+        ('44444444-4444-4444-4444-444444444402', 'Técnico Superior Universitario'),
+        ('44444444-4444-4444-4444-444444444403', 'Licenciatura'),
+        ('44444444-4444-4444-4444-444444444404', 'Maestría'),
+        ('44444444-4444-4444-4444-444444444405', 'Doctorado');
+    END;
+
+-- 11) Contract Types
+BEGIN
+    INSERT INTO contractTypes (Id, Name)
+    VALUES
+        ('55555555-5555-5555-5555-555555555501', 'Tiempo completo'),
+        ('55555555-5555-5555-5555-555555555502', 'Medio tiempo'),
+        ('55555555-5555-5555-5555-555555555503', 'Asignatura / Honorarios');
+END;
+
+-- 12) Periods for testing
 DECLARE @Period2025A UNIQUEIDENTIFIER; SET @Period2025A = '22222222-2222-2222-2222-222222222201';
 DECLARE @Period2025B UNIQUEIDENTIFIER; SET @Period2025B = '22222222-2222-2222-2222-222222222202';
 
@@ -154,7 +191,7 @@ BEGIN
         (@Period2025B, '2025-B', '2025-2', '2025-07-01', '2025-12-31', 0);
 END;
 
--- 10) Students for testing
+-- 13) Students for testing
 DECLARE @StudentOneId UNIQUEIDENTIFIER; SET @StudentOneId = NEWID();
 DECLARE @StudentTwoId UNIQUEIDENTIFIER; SET @StudentTwoId = NEWID();
 

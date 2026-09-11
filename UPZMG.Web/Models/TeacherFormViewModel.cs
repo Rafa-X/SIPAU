@@ -27,7 +27,7 @@ public class EmployeeFormViewModel
     
     public string MaxDegree { get; set; } = string.Empty;
     public string ContractType { get; set; } = string.Empty;
-    public int AreaId { get; set; }
+    public Guid? AreaId { get; set; }
     public int WeeklyHours { get; set; }
     public bool HasPostgraduate { get; set; }
 
