@@ -33,6 +33,18 @@ namespace UPZMG.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "contractTypes",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_contractTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Disabilities",
                 columns: table => new
                 {
@@ -110,6 +122,38 @@ namespace UPZMG.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_institutionalConfigurations", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "internalAreas",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: true),
+                    ParentAreaId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    Type = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_internalAreas", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_internalAreas_internalAreas_ParentAreaId",
+                        column: x => x.ParentAreaId,
+                        principalTable: "internalAreas",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "maxDegrees",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_maxDegrees", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -691,6 +735,12 @@ namespace UPZMG.Persistence.Migrations
                 column: "TeacherId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_contractTypes_Name",
+                table: "contractTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_IndigenousLanguagesSpeakers_LanguageId",
                 table: "IndigenousLanguagesSpeakers",
                 column: "LanguageId");
@@ -707,6 +757,18 @@ namespace UPZMG.Persistence.Migrations
                 column: "PeriodId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_internalAreas_Name",
+                table: "internalAreas",
+                column: "Name",
+                unique: true,
+                filter: "[Name] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_internalAreas_ParentAreaId",
+                table: "internalAreas",
+                column: "ParentAreaId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_kardex_AsignatureId",
                 table: "kardex",
                 column: "AsignatureId");
@@ -720,6 +782,12 @@ namespace UPZMG.Persistence.Migrations
                 name: "IX_kardex_StudentId",
                 table: "kardex",
                 column: "StudentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_maxDegrees_Name",
+                table: "maxDegrees",
+                column: "Name",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_permissions_Name",
@@ -847,6 +915,9 @@ namespace UPZMG.Persistence.Migrations
                 name: "academicLoads");
 
             migrationBuilder.DropTable(
+                name: "contractTypes");
+
+            migrationBuilder.DropTable(
                 name: "IndigenousLanguages");
 
             migrationBuilder.DropTable(
@@ -859,7 +930,13 @@ namespace UPZMG.Persistence.Migrations
                 name: "institutionalEvaluations");
 
             migrationBuilder.DropTable(
+                name: "internalAreas");
+
+            migrationBuilder.DropTable(
                 name: "kardex");
+
+            migrationBuilder.DropTable(
+                name: "maxDegrees");
 
             migrationBuilder.DropTable(
                 name: "registrations");

@@ -54,6 +54,9 @@ public class AppDBContext : DbContext
 
     // RRHH
     public DbSet<Employee> Employees => Set<Employee>();
+    public DbSet<InternalAreas> InternalAreas => Set<InternalAreas>();
+    public DbSet<MaxDegrees> MaxDegrees => Set<MaxDegrees>();
+    public DbSet<ContractTypes> ContractTypes => Set<ContractTypes>();
     // public DbSet<AcademicGoals> AcademicGoals => Set<AcademicGoals>();
     // public DbSet<AcademicStaff> AcademicStaffs => Set<AcademicStaff>();
     // public DbSet<ASTeacher> ASTeachers => Set<ASTeacher>();
@@ -341,6 +344,26 @@ public class AppDBContext : DbContext
                 .HasConversion<string>()
                 .HasColumnType("char(1)");
         });
+        modelBuilder.Entity<InternalAreas>(entity => {
+            entity.ToTable("internalAreas");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.Name).IsUnique();
+            entity.HasIndex(x => x.ParentAreaId);
+            entity.HasOne<InternalAreas>()
+                .WithMany()
+                .HasForeignKey(x => x.ParentAreaId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+            modelBuilder.Entity<MaxDegrees>(entity => {
+                entity.ToTable("maxDegrees");
+                entity.HasKey(x => x.Id);
+                entity.HasIndex(x => x.Name).IsUnique();
+            });
+            modelBuilder.Entity<ContractTypes>(entity => {
+                entity.ToTable("contractTypes");
+                entity.HasKey(x => x.Id);
+                entity.HasIndex(x => x.Name).IsUnique();
+            });
         // modelBuilder.Entity<AcademicGoals>(entity => {
         //     entity.ToTable("academicGoals");
         //     entity.HasKey(x => x.Id);
@@ -355,10 +378,6 @@ public class AppDBContext : DbContext
         // });
         // modelBuilder.Entity<Contracts>(entity => {
         //     entity.ToTable("contracts");
-        //     entity.HasKey(x => x.Id);
-        // });
-        // modelBuilder.Entity<InternalAreas>(entity => {
-        //     entity.ToTable("internalAreas");
         //     entity.HasKey(x => x.Id);
         // });
         // modelBuilder.Entity<PositionsMapping>(entity => {

@@ -57,7 +57,10 @@
             </MudItem>
             <MudItem md="4">
                 <MudSelect T="string" @bind-Value="_model.MaxDegree" Label="Grado máximo de estudios">
-                    @foreach (var d in _generalService.GetMaxDegreesAsync().Result) { <MudSelectItem T="string" Value="@d.Value">@d.Value</MudSelectItem> }
+                    @foreach (var degree in _maxDegrees)
+                    {
+                        <MudSelectItem T="string" Value="@degree.Value">@degree.Value</MudSelectItem>
+                    }
                 </MudSelect>
             </MudItem>
         </MudGrid>
@@ -65,17 +68,20 @@
         <MudGrid Class="mt-2">
             <MudItem md="4">
                 <MudSelect T="string" @bind-Value="_model.ContractType" Label="Tipo de contrato">
-                    @foreach (var c in _generalService.GetContractTypesAsync().Result) { <MudSelectItem T="string" Value="@c.Value">@c.Value</MudSelectItem> }
+                    @foreach (var contractType in _contractTypes)
+                    {
+                        <MudSelectItem T="string" Value="@contractType.Value">@contractType.Value</MudSelectItem>
+                    }
                 </MudSelect>
             </MudItem>
             <MudItem md="4">
                 <MudNumericField T="int" @bind-Value="_model.WeeklyHours" Label="Horas semanales" Min="0" Max="48" />
             </MudItem>
             <MudItem md="4">
-                <MudSelect T="int" @bind-Value="_model.AreaId" Label="Área de adscripción">
-                    @foreach (var a in _generalService.GetInternalAreasAsync().Result) 
-                    { 
-                        <MudSelectItem T="int" Value="@int.Parse(a.Value)">@a.Value</MudSelectItem> 
+                <MudSelect T="Guid?" @bind-Value="_model.AreaId" Label="Área de adscripción">
+                    @foreach (var area in _internalAreas)
+                    {
+                        <MudSelectItem T="Guid?" Value="@area.Id">@area.Value</MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
@@ -146,9 +152,14 @@
         
     protected override async Task OnInitializedAsync()
     {
-        _maxDegrees = await _generalService.GetMaxDegreesAsync();
-        _contractTypes = await _generalService.GetContractTypesAsync();
-        _internalAreas = await _generalService.GetInternalAreasAsync();
+        var maxDegreesTask = _generalService.GetMaxDegreesAsync();
+        var contractTypesTask = _generalService.GetContractTypesAsync();
+        var internalAreasTask = _generalService.GetInternalAreasAsync();
+        await Task.WhenAll(maxDegreesTask, contractTypesTask, internalAreasTask);
+
+        _maxDegrees = await maxDegreesTask;
+        _contractTypes = await contractTypesTask;
+        _internalAreas = await internalAreasTask;
     }
 
     private async Task Submit()

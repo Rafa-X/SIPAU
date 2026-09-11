@@ -12,7 +12,7 @@ using UPZMG.Persistence;
 namespace UPZMG.Persistence.Migrations
 {
     [DbContext(typeof(AppDBContext))]
-    [Migration("20260910023130_ConsolidatedInitial")]
+    [Migration("20260911182305_ConsolidatedInitial")]
     partial class ConsolidatedInitial
     {
         /// <inheritdoc />
@@ -210,6 +210,25 @@ namespace UPZMG.Persistence.Migrations
                     b.ToTable("classGroups", (string)null);
                 });
 
+            modelBuilder.Entity("UPZMG.Persistence.Models.ContractTypes", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("contractTypes", (string)null);
+                });
+
             modelBuilder.Entity("UPZMG.Persistence.Models.Disabilities", b =>
                 {
                     b.Property<Guid>("Id")
@@ -392,6 +411,33 @@ namespace UPZMG.Persistence.Migrations
                     b.ToTable("institutionalEvaluations", (string)null);
                 });
 
+            modelBuilder.Entity("UPZMG.Persistence.Models.InternalAreas", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<Guid?>("ParentAreaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("Type")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasFilter("[Name] IS NOT NULL");
+
+                    b.HasIndex("ParentAreaId");
+
+                    b.ToTable("internalAreas", (string)null);
+                });
+
             modelBuilder.Entity("UPZMG.Persistence.Models.Kardex", b =>
                 {
                     b.Property<Guid>("Id")
@@ -425,6 +471,25 @@ namespace UPZMG.Persistence.Migrations
                     b.HasIndex("StudentId");
 
                     b.ToTable("kardex", (string)null);
+                });
+
+            modelBuilder.Entity("UPZMG.Persistence.Models.MaxDegrees", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("maxDegrees", (string)null);
                 });
 
             modelBuilder.Entity("UPZMG.Persistence.Models.Periods", b =>
@@ -1038,6 +1103,14 @@ namespace UPZMG.Persistence.Migrations
                         .HasForeignKey("PeriodId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("UPZMG.Persistence.Models.InternalAreas", b =>
+                {
+                    b.HasOne("UPZMG.Persistence.Models.InternalAreas", null)
+                        .WithMany()
+                        .HasForeignKey("ParentAreaId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("UPZMG.Persistence.Models.Kardex", b =>
