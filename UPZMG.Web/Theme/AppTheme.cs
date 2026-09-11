@@ -3,105 +3,102 @@ using MudBlazor;
 namespace UPZMG.Web.Theme;
 
 /// <summary>
-/// Institutional MudBlazor theme for SIGIE / UPZMG.
-///
-/// Design language: a restrained institutional palette — deep navy as the brand
-/// anchor, a muted teal as the interactive accent, a subdued indigo as the
-/// analytical accent and a soft ochre for highlights. Colours are deliberately
-/// desaturated: this is a reporting tool for a university, read for hours at a
-/// time, not a marketing dashboard.
-///
-/// Only the palette + layout metrics live here. Typography scale, surfaces,
-/// motion and chart styling are centralised in wwwroot/app.css.
+/// Institutional MudBlazor theme for SIGIE / UPZMG — "Cantera y Cal".
 /// </summary>
 public static class AppTheme
 {
-    // Shared accent ramp — kept in sync with the CSS tokens in app.css.
-    public const string Teal   = "#1B7F73";
-    public const string TealUp = "#4FA396";
-    public const string Indigo = "#54539B";
-    public const string Navy   = "#1F3D6B";
-    public const string Ochre  = "#B0862F";
-    public const string Clay   = "#B4443F";
+    // ── The five inks ────────────────────────────────────────────────────────
+    public const string Cal = "#EAEDE7";
+
+    public const string Recinto = "#1E1C1A";
+
+    public const string Anil = "#1B3A6B";
+
+    public const string AnilLight = "#2A5590";
+
+    public const string Rosa = "#C4325F";
+    public const string Cempasuchil = "#D99A0B";
+    public const string Nopal = "#3F6B4A";
 
     public static readonly MudTheme Institutional = new()
     {
         PaletteLight = new PaletteLight
         {
-            Primary          = Navy,       // institutional navy
-            Secondary        = Teal,       // interactive accent
-            Tertiary         = Indigo,     // analytical accent
-            Info             = "#2C6099",
-            Success          = "#2F7D5B",
-            Warning          = Ochre,
-            Error            = Clay,
+            Primary   = Anil,
+            Secondary = Anil,
+            Tertiary  = AnilLight,
+            Info      = AnilLight,
+            Success   = Nopal,
+            Warning   = Cempasuchil,
+            Error     = Rosa,
 
-            // Header is a light sheet (app.css blurs it); text stays ink.
-            AppbarBackground = "#FFFFFF",
-            AppbarText       = "#1B2635",
+            AppbarBackground = Anil,
+            AppbarText       = "#F2F4F0",
+            DrawerBackground = Anil,
+            DrawerText       = "rgba(242,244,240,0.86)",
+            DrawerIcon       = "rgba(242,244,240,0.64)",
 
-            // The rail follows the theme: airy in light mode, ink in dark.
-            DrawerBackground = "#FFFFFF",
-            DrawerText       = "#44505F",
-            DrawerIcon       = "#6B7686",
+            Background     = Cal,
+            BackgroundGray = "#DFE3DB",
+            Surface        = "#F5F7F3",
 
-            Background       = "#F4F6F9",
-            BackgroundGray   = "#E9EDF2",
-            Surface          = "#FFFFFF",
-            TextPrimary      = "#1B2635",
-            TextSecondary    = "#5A6675",
-            TextDisabled     = "rgba(27,38,53,0.38)",
-            ActionDefault    = "#5A6675",
-            ActionDisabled   = "rgba(27,38,53,0.26)",
-            Divider          = "#DFE4EB",
-            DividerLight     = "#EAEDF2",
-            LinesDefault     = "#DFE4EB",
-            LinesInputs      = "#CFD6E0",
-            TableLines       = "#E7EBF0",
-            TableHover       = "#F1F4F8",
-            GrayLight        = "#F1F4F8",
+            TextPrimary   = "#1C201B",
+            TextSecondary = "#585F55",
+            TextDisabled  = "rgba(28,32,27,0.38)",
+
+            ActionDefault  = "#585F55",
+            ActionDisabled = "rgba(28,32,27,0.26)",
+
+            Divider      = "#CBD1C6",
+            DividerLight = "#DCE1D6",
+            LinesDefault = "#CBD1C6",
+            LinesInputs  = "#B4BCAE",
+            TableLines   = "#D5DACE",
+            TableHover   = "#E4E8DF",
+            GrayLight    = "#E4E8DF",
         },
         PaletteDark = new PaletteDark
         {
-            Primary          = "#7EA3D6",  // navy reads as muted sky on ink
-            Secondary        = TealUp,
-            Tertiary         = "#8C8ACB",
-            Info             = "#7BA6D9",
-            Success          = "#5CA37E",
-            Warning          = "#C9A253",
-            Error            = "#CF706B",
+            Primary   = "#8FB0DE",
+            Secondary = "#8FB0DE",
+            Tertiary  = "#8FB0DE",
+            Info      = "#8FB0DE",
+            Success   = "#7FB48C",
+            Warning   = "#E0B255",
+            Error     = "#E4738F",
 
-            AppbarBackground = "#161B23",
-            AppbarText       = "#E2E6EC",
+            AppbarBackground = "#16223A",
+            AppbarText       = "#E9EDE6",
 
-            DrawerBackground = "#12161D",
-            DrawerText       = "rgba(226,230,236,0.82)",
-            DrawerIcon       = "rgba(226,230,236,0.66)",
+            DrawerBackground = "#16223A",
+            DrawerText       = "rgba(233,237,230,0.86)",
+            DrawerIcon       = "rgba(233,237,230,0.62)",
 
-            Background       = "#10141B",
-            BackgroundGray   = "#171C24",
-            Surface          = "#181D26",
-            TextPrimary      = "#E2E6EC",
-            TextSecondary    = "#98A2B0",
-            TextDisabled     = "rgba(226,230,236,0.36)",
-            ActionDefault    = "#98A2B0",
-            ActionDisabled   = "rgba(226,230,236,0.26)",
-            Divider          = "rgba(255,255,255,0.09)",
-            DividerLight     = "rgba(255,255,255,0.05)",
-            LinesDefault     = "rgba(255,255,255,0.11)",
-            LinesInputs      = "rgba(255,255,255,0.17)",
-            TableLines       = "rgba(255,255,255,0.07)",
-            TableHover       = "rgba(255,255,255,0.04)",
-            GrayLight        = "#1E242E",
+            Background     = Recinto,
+            BackgroundGray = "#262320",
+            Surface        = "#272421",
+
+            TextPrimary   = "#E9EDE6",
+            TextSecondary = "#A3A79D",
+            TextDisabled  = "rgba(233,237,230,0.36)",
+
+            ActionDefault  = "#A3A79D",
+            ActionDisabled = "rgba(233,237,230,0.26)",
+
+            Divider      = "rgba(233,237,230,0.12)",
+            DividerLight = "rgba(233,237,230,0.07)",
+            LinesDefault = "rgba(233,237,230,0.14)",
+            LinesInputs  = "rgba(233,237,230,0.22)",
+            TableLines   = "rgba(233,237,230,0.09)",
+            TableHover   = "rgba(233,237,230,0.05)",
+            GrayLight    = "#2E2A27",
         },
         LayoutProperties = new LayoutProperties
         {
-            // Squarer corners read as more institutional and, at this density,
-            // keep tables and cards visually aligned with each other.
-            DefaultBorderRadius = "8px",
-            DrawerWidthLeft     = "268px",
-            DrawerMiniWidthLeft = "78px",
-            AppbarHeight        = "68px",
+            DefaultBorderRadius = "2px",
+            DrawerWidthLeft     = "264px",
+            DrawerMiniWidthLeft = "76px",
+            AppbarHeight        = "64px",
         },
     };
 }

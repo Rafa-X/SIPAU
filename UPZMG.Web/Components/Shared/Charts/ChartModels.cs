@@ -2,10 +2,6 @@ using System.Globalization;
 
 namespace UPZMG.Web.Components.Shared.Charts;
 
-/// <summary>
-/// One plotted series. Immutable on purpose: a chart never mutates the data it
-/// is given, it only projects it.
-/// </summary>
 /// <param name="Name">Legend label.</param>
 /// <param name="Values">Values, one per category. Must match the label count.</param>
 /// <param name="Color">Any CSS colour.</param>
@@ -39,8 +35,7 @@ public static class ChartPalette
     /// <summary>Funding and resources.</summary>
     public const string Ochre = "var(--mud-palette-warning)";
 
-    /// <summary>Negative indicators (failure, dropout).</summary>
-    public const string Clay = "var(--mud-palette-error)";
+    public const string Clay = "var(--mud-palette-warning)";
 }
 
 /// <summary>

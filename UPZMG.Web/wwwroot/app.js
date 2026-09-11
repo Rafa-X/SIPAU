@@ -94,6 +94,23 @@
         setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
     };
 
+    document.addEventListener('click', function (e) {
+        var btn = e.target && e.target.closest ? e.target.closest('[data-sigie-reveal]') : null;
+        if (!btn) { return; }
+
+        var input = document.getElementById(btn.getAttribute('data-sigie-reveal'));
+        if (!input) { return; }
+
+        var show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+
+        btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+        btn.setAttribute('aria-label', show ? 'Ocultar contraseña' : 'Mostrar contraseña');
+        btn.classList.toggle('is-on', show);
+
+        input.focus();
+    });
+
     window.addEventListener('scroll', onScroll, { passive: true, capture: true });
     window.addEventListener('resize', onScroll, { passive: true });
     window.addEventListener('keydown', reveal, { passive: true });
