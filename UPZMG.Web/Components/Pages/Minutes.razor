@@ -33,7 +33,7 @@
                     <StatusChip Status="@context.Item.Status" />
                 </CellTemplate>
             </TemplateColumn>
-            <TemplateColumn Title="Acción" CellClass="d-flex justify-end" Sortable="false">
+            <TemplateColumn Title="Acción" CellClass="sigie-cell-end" HeaderClass="sigie-cell-end" Sortable="false">
                 <CellTemplate>
                     <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
                                StartIcon="@Icons.Material.Filled.Visibility" Href="@($"/minutes/{context.Item.Id}")">

@@ -9,32 +9,29 @@ namespace UPZMG.Web.Components.Shared;
 /// </summary>
 public static class SigieUi
 {
-    /// <summary>Capture/completion percentage → progress bar color.</summary>
-    public static Color ProgressColor(int percentage) => percentage switch
-    {
-        100     => Color.Success,
-        >= 50   => Color.Warning,
-        _       => Color.Error,
-    };
+    public static Color ProgressColor(int percentage) => percentage >= 100
+        ? Color.Success
+        : Color.Warning;
 
-    /// <summary>Any module's status label → chip color (covers all modules' vocabularies).</summary>
     public static Color StatusColor(string status) => status switch
     {
-        "Completo" or "Firmada" or "Enviado"   => Color.Success,
-        "Generado" or "En revisión gobierno"   => Color.Info,
-        "En progreso"                          => Color.Warning,
-        _                                      => Color.Default, // Pendiente / Pendiente de firmas / Borrador
+        "Completo" or "Firmada" or "Enviado" => Color.Success,
+
+        "En progreso" or "En revisión gobierno" or "Pendiente de firmas" => Color.Warning,
+
+        "Generado" => Color.Info,
+
+        _ => Color.Default,
     };
 
-    /// <summary>Predicted risk level → color.</summary>
     public static Color RiskColor(string level) => level switch
     {
-        "Alto"  => Color.Error,
-        "Medio" => Color.Warning,
-        _       => Color.Success,
+        "Alto" => Color.Warning,
+        _      => Color.Primary,
     };
 
-    /// <summary>Alert "kind" string (info/warning/success/error/danger) → MudBlazor severity.</summary>
+    public static Color BalanceColor(bool balances) => balances ? Color.Default : Color.Error;
+
     public static Severity AlertSeverity(string kind) => kind switch
     {
         "error" or "danger" => Severity.Error,

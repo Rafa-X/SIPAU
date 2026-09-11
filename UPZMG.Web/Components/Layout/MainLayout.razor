@@ -55,7 +55,7 @@
                 <div class="sigie-appbar-trigger" role="button" tabindex="0" title="Alertas del modelo"
                      aria-label="Alertas del modelo"
                      @onclick="@(() => _alertsOpen = !_alertsOpen)" @onclick:stopPropagation="true">
-                    <MudBadge Content="@_anomalies.Count" Color="Color.Error" Overlap="true" Bordered="true"
+                    <MudBadge Content="@_anomalies.Count" Color="Color.Warning" Overlap="true" Bordered="true"
                               Visible="@(_anomalies.Count > 0)">
                         <MudIcon Icon="@Icons.Material.Filled.NotificationsNone" />
                     </MudBadge>
@@ -99,7 +99,7 @@
                 <MudMenu @bind-Open="_userMenuOpen" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="true">
                     <ActivatorContent>
                         <div class="sigie-user-trigger ml-2" @onclick="@(() => _userMenuOpen = !_userMenuOpen)" @onclick:stopPropagation="true">
-                            <MudAvatar Size="Size.Small" Style="background:var(--sigie-accent-teal);color:#fff;font-weight:700">
+                            <MudAvatar Size="Size.Small" Style="background:var(--sigie-plano);color:#fff;font-weight:700">
                                 @Initials(auth.User)
                             </MudAvatar>
                             <span class="d-none d-sm-flex">@DisplayName(auth.User)</span>
@@ -109,7 +109,7 @@
                     <ChildContent>
                         <div class="px-4 py-3" style="min-width:250px">
                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
-                                <MudAvatar Style="background:var(--sigie-accent-teal);color:#fff;font-weight:700">
+                                <MudAvatar Style="background:var(--sigie-plano);color:#fff;font-weight:700">
                                     @Initials(auth.User)
                                 </MudAvatar>
                                 <div>
@@ -194,7 +194,6 @@
         new("Gráficas", "/charts", Icons.Material.Filled.BarChart),
         new("Reportes 911 / SII", "/reports", Icons.Material.Filled.Description),
         new("Informe de Junta", "/boardreport", Icons.Material.Filled.Article),
-        new("Actas de Junta", "/minutes", Icons.Material.Filled.Gavel),
         new("Configuración", "/settings", Icons.Material.Filled.Settings),
         new("Usuarios", "/users", Icons.Material.Filled.People),
     };

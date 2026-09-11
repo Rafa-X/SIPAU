@@ -1,82 +1,44 @@
-@*
-    KPI tile. Gradient icon badge, optional trend delta and an optional inline
-    sparkline that draws itself in. Everything but Title/Value is optional, so
-    the card degrades cleanly when a module has no trend data yet.
-*@
-<MudPaper Elevation="0" Class="pa-4 sigie-lift" Style="height:100%">
-    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start" Spacing="2">
-        <div style="min-width:0">
-            <MudText Typo="Typo.caption" Color="Color.Secondary"
-                     Style="font-weight:650;letter-spacing:.06em;text-transform:uppercase">@Title</MudText>
+<MudPaper Elevation="0" Class="sigie-vano" Style="height:100%">
+    <div class="sigie-vano-label">@Title</div>
 
-            <MudText Typo="Typo.h4" Class="mt-1" Style="font-weight:800;line-height:1.1">@Value</MudText>
-
-            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mt-2" Style="flex-wrap:wrap">
-                @if (Delta is { } d)
-                {
-                    <span class="sigie-delta @(d > 0 ? "up" : d < 0 ? "down" : "flat")">
-                        <MudIcon Icon="@(d > 0 ? Icons.Material.Filled.TrendingUp
-                                       : d < 0 ? Icons.Material.Filled.TrendingDown
-                                               : Icons.Material.Filled.TrendingFlat)"
-                                 Size="Size.Small" Style="font-size:14px" />
-                        @($"{(d > 0 ? "+" : "")}{d:0.#}%")
-                    </span>
-                }
-                @if (!string.IsNullOrEmpty(Subtitle))
-                {
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">@Subtitle</MudText>
-                }
-            </MudStack>
-        </div>
-
-        <span class="sigie-icon-badge @BadgeClass">
-            <MudIcon Icon="@Icon" />
-        </span>
-    </MudStack>
+    <div class="sigie-vano-figure">@Value</div>
 
     @if (Spark is { Length: > 1 })
     {
-        <svg class="sigie-spark mt-3" viewBox="0 0 100 34" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-            <polyline points="@SparkPoints" vector-effect="non-scaling-stroke"
-                      style="@($"stroke:var(--mud-palette-{PaletteVar})")" />
+        <svg class="sigie-spark mt-3" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+            <polyline points="@SparkPoints" vector-effect="non-scaling-stroke" />
         </svg>
     }
+
+    <div class="sigie-vano-foot">
+        <span class="sigie-vano-rule"></span>
+
+        @if (Delta is { } d)
+        {
+            <span class="sigie-delta @(d > 0 ? "up" : d < 0 ? "down" : "flat")">
+                @($"{(d > 0 ? "+" : "")}{d:0.#}%")
+            </span>
+        }
+
+        @if (!string.IsNullOrEmpty(Subtitle))
+        {
+            <span>@Subtitle</span>
+        }
+    </div>
 </MudPaper>
 
 @code {
     [Parameter] public string Title { get; set; } = string.Empty;
     [Parameter] public string Value { get; set; } = string.Empty;
     [Parameter] public string Subtitle { get; set; } = string.Empty;
+
     [Parameter] public string Icon { get; set; } = Icons.Material.Filled.Insights;
     [Parameter] public Color Color { get; set; } = Color.Primary;
 
-    /// <summary>Percentage change vs. the previous period. Null hides the pill.</summary>
     [Parameter] public double? Delta { get; set; }
 
-    /// <summary>Recent series used for the inline sparkline. Needs 2+ points.</summary>
     [Parameter] public double[]? Spark { get; set; }
 
-    private string PaletteVar => Color switch
-    {
-        Color.Secondary => "secondary",
-        Color.Tertiary  => "tertiary",
-        Color.Info      => "info",
-        Color.Success   => "success",
-        Color.Warning   => "warning",
-        Color.Error     => "error",
-        _               => "primary",
-    };
-
-    private string BadgeClass => Color switch
-    {
-        Color.Secondary => "teal",
-        Color.Tertiary  => "violet",
-        Color.Warning   => "gold",
-        Color.Error     => "red",
-        _               => "navy",
-    };
-
-    /// <summary>Maps the series into the 100×34 sparkline viewBox.</summary>
     private string SparkPoints
     {
         get
@@ -88,7 +50,7 @@
             var points = data.Select((v, i) =>
             {
                 double x = i * 100.0 / (data.Length - 1);
-                double y = 31 - (v - min) / range * 28;
+                double y = 27 - (v - min) / range * 24;
                 return FormattableString.Invariant($"{x:0.##},{y:0.##}");
             });
 

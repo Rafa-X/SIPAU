@@ -1,7 +1,3 @@
-@*
-    Navigation rail. Every destination is a Blazor page; section captions
-    collapse automatically when the drawer is in its mini (icon-only) state.
-*@
 <MudNavMenu Class="pt-2">
 
     <span class="sigie-nav-section"><span class="sigie-nav-section-label">Operación</span></span>
@@ -12,7 +8,7 @@
     <span class="sigie-nav-section"><span class="sigie-nav-section-label">Reportes</span></span>
     <MudNavLink Href="/reports" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Description">Reportes 911 / SII</MudNavLink>
     <MudNavLink Href="/boardreport" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Article">Informe de Junta</MudNavLink>
-    <MudNavLink Href="/minutes" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Gavel">Actas de Junta</MudNavLink>
+    @* <MudNavLink Href="/minutes" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Gavel">Actas de Junta</MudNavLink> *@
 
     <AuthorizeView Roles="Admin">
         <span class="sigie-nav-section"><span class="sigie-nav-section-label">Administración</span></span>

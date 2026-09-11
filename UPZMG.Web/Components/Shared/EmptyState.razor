@@ -1,10 +1,4 @@
-@*
-    Consistent "nothing here yet" panel. Every list, grid and catalogue in the
-    app funnels through this, so an empty screen always explains itself instead
-    of leaving the user staring at a blank card.
-*@
 <div class="sigie-empty">
-    <span class="sigie-empty-icon"><MudIcon Icon="@Icon" Size="Size.Large" /></span>
     <MudText Typo="Typo.subtitle1" Style="font-weight:650">@Title</MudText>
     @if (!string.IsNullOrEmpty(Description))
     {
@@ -18,9 +12,9 @@
 
 @code {
     [Parameter] public string Icon { get; set; } = Icons.Material.Filled.Inbox;
+
     [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
     [Parameter] public string? Description { get; set; }
 
-    /// <summary>Optional call to action.</summary>
     [Parameter] public RenderFragment? ChildContent { get; set; }
 }

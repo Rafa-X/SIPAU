@@ -4,89 +4,45 @@
 @inject NavigationManager Nav
 
 <PageTitle>Iniciar sesión — SIGIE</PageTitle>
-
 <div class="sigie-login">
 
-    @* ── Animated backdrop: aurora, survey grid, and a statistical motif that
-         slowly draws itself. Decorative only. ────────────────────────────── *@
-    <div class="sigie-login-bg" aria-hidden="true">
-        <span class="sigie-orb orb-teal"></span>
-        <span class="sigie-orb orb-violet"></span>
-        <span class="sigie-orb orb-gold"></span>
-        <span class="sigie-grid"></span>
+    <section class="sigie-login-wall">
+        <p class="sigie-login-lineage">Secretaría de Educación Pública · Universidades Politécnicas</p>
 
-        <svg class="sigie-login-plot" viewBox="0 0 1200 320" preserveAspectRatio="none">
-            <polyline points="0,250 100,236 200,242 300,214 400,205 500,186 600,176 700,147 800,138 900,114 1000,92 1100,69 1200,48" />
-            <polyline class="lag" points="0,286 100,278 200,284 300,266 400,262 500,247 600,243 700,220 800,214 900,195 1000,181 1100,162 1200,148" />
-        </svg>
+        <div class="sigie-login-block">
+            <h1 class="sigie-login-institution">
+                Universidad Politécnica de la<br />Zona Metropolitana de Guadalajara
+            </h1>
 
-        <span class="sigie-node n1"></span>
-        <span class="sigie-node n2"></span>
-        <span class="sigie-node n3"></span>
-        <span class="sigie-node n4"></span>
-        <span class="sigie-node n5"></span>
-    </div>
+            <hr class="sigie-login-rule" />
 
-    <div class="sigie-login-shell">
-
-        @* ── Institutional panel (wide screens only) ── *@
-        <section class="sigie-login-hero">
-            <div class="sigie-login-brand">
-                <span class="sigie-brand-mark lg">S</span>
-                <div>
-                    <div class="sigie-login-title">SIGIE</div>
-                    <div class="sigie-login-sub">Universidad Politécnica de la Zona Metropolitana de Guadalajara</div>
-                </div>
-            </div>
-
-            <h1 class="sigie-hero-title">La información institucional,<br />en un solo lugar.</h1>
-            <p class="sigie-hero-lead">
-                Sistema Inteligente de Gestión de Información Estadística.
-                Captura, consolida y reporta los indicadores de la universidad.
+            <p class="sigie-login-system">
+                <b>SIGIE</b> · Sistema Inteligente de Gestión de Información Estadística
             </p>
+            <p class="sigie-login-dept">Dirección de Planeación, Evaluación y Calidad</p>
+        </div>
 
-            <ul class="sigie-hero-list">
-                <li>
-                    <span class="sigie-hero-ico"><MudIcon Icon="@Icons.Material.Filled.EditNote" Size="Size.Small" /></span>
-                    <div>
-                        <b>Captura por área</b>
-                        <span>Cada departamento registra lo suyo; Planeación consolida.</span>
-                    </div>
-                </li>
-                <li>
-                    <span class="sigie-hero-ico"><MudIcon Icon="@Icons.Material.Filled.Insights" Size="Size.Small" /></span>
-                    <div>
-                        <b>Indicadores en vivo</b>
-                        <span>Tablero y proyecciones actualizados conforme llegan los datos.</span>
-                    </div>
-                </li>
-                <li>
-                    <span class="sigie-hero-ico"><MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" /></span>
-                    <div>
-                        <b>Formatos 911 y SII</b>
-                        <span>Los reportes oficiales se arman con los datos ya capturados.</span>
-                    </div>
-                </li>
-            </ul>
-        </section>
+        <p class="sigie-login-lineage">Formatos 911 · SII</p>
+    </section>
 
-        @* ── Credentials ── *@
-        <section class="sigie-login-card">
-            <div class="sigie-login-brand compact">
-                <span class="sigie-brand-mark lg">S</span>
-                <div>
-                    <div class="sigie-login-title">SIGIE</div>
-                    <div class="sigie-login-sub">UPZMG · Planeación</div>
+    <section class="sigie-login-card">
+        <div class="sigie-login-inner">
+
+            <div class="sigie-login-brand">
+                <div class="sigie-login-title">
+                    Universidad Politécnica de la Zona Metropolitana de Guadalajara
                 </div>
+                <div class="sigie-login-sub">SIGIE · Planeación</div>
             </div>
 
-            <h2 class="sigie-login-h1">Bienvenido</h2>
-            <p class="sigie-login-lead">Ingresa tus credenciales institucionales para continuar</p>
+            <h2 class="sigie-login-h1">Iniciar sesión</h2>
+            <p class="sigie-login-lead">Usa tus credenciales institucionales.</p>
 
             @if (_hasError)
             {
                 <div class="sigie-login-error" role="alert">
-                    Credenciales inválidas. Verifica tu correo y contraseña.
+                    No pudimos validar esas credenciales. Revisa tu correo y tu contraseña;
+                    si el problema sigue, avisa a Tecnologías.
                 </div>
             }
 
@@ -94,21 +50,40 @@
                 <AntiforgeryToken />
 
                 <label class="sigie-login-label" for="email">Correo electrónico</label>
-                <input id="email" name="Email" type="email" class="sigie-login-input"
-                       placeholder="usuario@upzmg.edu.mx" autocomplete="username" required autofocus />
+                <div class="sigie-login-field">
+                    <input id="email" name="Email" type="email" class="sigie-login-input"
+                           placeholder="usuario@upzmg.edu.mx" autocomplete="username" required autofocus />
+                </div>
 
                 <label class="sigie-login-label" for="password">Contraseña</label>
-                <input id="password" name="Password" type="password" class="sigie-login-input"
-                       placeholder="••••••••" autocomplete="current-password" required />
+                <div class="sigie-login-field">
+                    <input id="password" name="Password" type="password" class="sigie-login-input"
+                           autocomplete="current-password" required />
 
-                <button type="submit" class="sigie-login-btn">Iniciar sesión</button>
+                    <button type="button" class="sigie-login-eye" data-sigie-reveal="password"
+                            aria-pressed="false" aria-label="Mostrar contraseña" tabindex="0">
+                        <svg class="sigie-eye-on" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+                            <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"
+                                  stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+                            <circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.6" />
+                        </svg>
+                        <svg class="sigie-eye-off" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+                            <path d="M9.9 5.8A9.6 9.6 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-3.3 4.1M6.2 7.9A17 17 0 0 0 2.5 12S6 18.5 12 18.5c1 0 1.9-.2 2.7-.5"
+                                  stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+                            <path d="M10 10a2.8 2.8 0 0 0 4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                            <path d="M4 4 20 20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                        </svg>
+                    </button>
+                </div>
+
+                <button type="submit" class="sigie-login-btn">Entrar</button>
             </form>
 
             <div class="sigie-login-foot">
-                © @DateTime.Now.Year — UPZMG · Uso exclusivo del personal autorizado
+                Uso exclusivo del personal autorizado · © @DateTime.Now.Year UPZMG
             </div>
-        </section>
-    </div>
+        </div>
+    </section>
 </div>
 
 @code {

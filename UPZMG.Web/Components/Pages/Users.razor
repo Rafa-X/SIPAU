@@ -74,8 +74,19 @@
                     }
                 </CellTemplate>
             </TemplateColumn>
-            <PropertyColumn Property="x => x.LastLogin" Title="Último acceso" Format="dd/MM/yyyy HH:mm" />
-            <TemplateColumn Title="Acción" CellClass="d-flex justify-end" Sortable="false">
+            <TemplateColumn Title="Último acceso" SortBy="x => x.LastLogin ?? DateTime.MinValue">
+                <CellTemplate>
+                    @if (context.Item.LastLogin is { } seen)
+                    {
+                        @seen.ToString("dd/MM/yyyy HH:mm")
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Nunca</MudText>
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Acción" CellClass="sigie-cell-end" HeaderClass="sigie-cell-end" Sortable="false">
                 <CellTemplate>
                     <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
                                StartIcon="@Icons.Material.Filled.Edit" OnClick="() => OpenEdit(context.Item)">

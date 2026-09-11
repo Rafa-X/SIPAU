@@ -1,10 +1,5 @@
-@*
-    Centered spinner shown while a page's initial data fetch is in flight.
-    Drop-in replacement for the page content so users see progress instead of
-    an empty grid/card flashing before data arrives.
-*@
-<div class="sigie-loading">
-    <MudProgressCircular Color="Color.Secondary" Indeterminate="true" Size="Size.Large" />
+<div class="sigie-loading" role="status" aria-live="polite">
+    <div class="sigie-loading-track" aria-hidden="true"></div>
     @if (!string.IsNullOrEmpty(Text))
     {
         <MudText Typo="Typo.body2" Color="Color.Secondary" Class="sigie-loading-text">@Text</MudText>
