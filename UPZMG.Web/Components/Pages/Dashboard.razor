@@ -7,8 +7,7 @@
 
 <PageTitle>Tablero de Control — SIGIE</PageTitle>
 
-<PageHeader Eyebrow="Planeación institucional"
-            Title="Tablero de Control"
+<PageHeader Title="Tablero de Control"
             Subtitle="Indicadores del periodo activo, consolidados en tiempo real desde las áreas">
     <Actions>
         <span class="sigie-live">Sincronización activa</span>
@@ -18,85 +17,38 @@
     </Actions>
 </PageHeader>
 
-@* ─────────────────────────── KPI row ─────────────────────────── *@
+@* ─────────────────────────── The four dataa ─────────────────────────── *@
 <MudGrid>
     <MudItem xs="12" sm="6" lg="3">
         <StatCard Title="Total Alumnos" Value="@_model.TotalStudents.ToString("N0")"
                   Subtitle="@($"{_model.NewEnrollments} nuevos ingresos")"
-                  Delta="_enrollmentDelta" Spark="_enrollmentHistory"
-                  Icon="@Icons.Material.Filled.School" Color="Color.Primary" />
+                  Delta="_enrollmentDelta" Spark="_enrollmentHistory" />
     </MudItem>
     <MudItem xs="12" sm="6" lg="3">
         <StatCard Title="Índice de Aprobación" Value="@($"{_model.ApprovalRate:0.0}%")"
-                  Subtitle="@($"Reprobación {_model.FailureRate:0.0}%")"
-                  Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Secondary" />
+                  Subtitle="@($"Reprobación {_model.FailureRate:0.0}%")" />
     </MudItem>
     <MudItem xs="12" sm="6" lg="3">
         <StatCard Title="Proyección próximo periodo" Value="@_forecastNext.ToString("N0")"
                   Subtitle="@($"Regresión lineal · R² {_fc.R2:0.00}")"
-                  Delta="_forecastDelta" Spark="_fc.Trend"
-                  Icon="@Icons.Material.Filled.AutoGraph" Color="Color.Tertiary" />
+                  Delta="_forecastDelta" Spark="_fc.Trend" />
     </MudItem>
     <MudItem xs="12" sm="6" lg="3">
         <StatCard Title="Total Docentes" Value="@_model.TotalTeachers.ToString()"
-                  Subtitle="@($"{_model.TeachersWithPostgrad} con posgrado")"
-                  Icon="@Icons.Material.Filled.Groups" Color="Color.Warning" />
+                  Subtitle="@($"{_model.TeachersWithPostgrad} con posgrado")" />
     </MudItem>
 </MudGrid>
 
-@* ───────────────── Trayectoria de matrícula + aprovechamiento ───────────── *@
-<MudGrid Class="mt-1">
-    <MudItem xs="12" lg="8">
-        <SectionCard Title="Trayectoria de matrícula"
-                     Subtitle="Serie histórica y proyección del modelo para los próximos periodos"
-                     Icon="@Icons.Material.Filled.Timeline" Accent="violet">
-            <Actions>
-                <MudChip T="string" Size="Size.Small" Color="Color.Tertiary" Variant="Variant.Text">
-                    R² @_fc.R2.ToString("0.00")
-                </MudChip>
-            </Actions>
-            <ChildContent>
-                <TrendChart Labels="_fc.Labels" Series="_enrollmentSeries" Height="250"
-                            ForecastFromIndex="_fc.HistoricalCount"
-                            AriaLabel="Matrícula histórica y proyección" />
-            </ChildContent>
-        </SectionCard>
-    </MudItem>
-
-    <MudItem xs="12" lg="4">
-        <SectionCard Title="Aprovechamiento" Subtitle="Aprobación vs. reprobación del periodo"
-                     Icon="@Icons.Material.Filled.WorkspacePremium" Accent="teal">
-            <ChildContent>
-                <div class="my-4">
-                    <MetricRing Value="@((double)_model.ApprovalRate)" Label="Aprobación" Size="200" />
-                </div>
-                <MudStack Row="true" Justify="Justify.SpaceAround" Class="mt-2">
-                    <div style="text-align:center">
-                        <MudText Typo="Typo.h6" Color="Color.Success" Style="font-weight:800">@($"{_model.ApprovalRate:0.0}%")</MudText>
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">Aprobados</MudText>
-                    </div>
-                    <MudDivider Vertical="true" FlexItem="true" />
-                    <div style="text-align:center">
-                        <MudText Typo="Typo.h6" Color="Color.Error" Style="font-weight:800">@($"{_model.FailureRate:0.0}%")</MudText>
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">Reprobados</MudText>
-                    </div>
-                </MudStack>
-            </ChildContent>
-        </SectionCard>
-    </MudItem>
-</MudGrid>
-
-@* ───────────────────── Estado de capturas por área ───────────────────── *@
 <MudGrid Class="mt-1">
     <MudItem xs="12">
         <SectionCard Title="Estado de capturas por área"
-                     Subtitle="@($"{_completed} de {_model.AreaProgress.Count} áreas completas · última sincronización {_lastSync:HH:mm:ss}")"
-                     Icon="@Icons.Material.Filled.Inventory" Accent="navy">
+                     Subtitle="@($"{_completed} de {_model.AreaProgress.Count} áreas completas · {GlobalProgress}% global · última sincronización {_lastSync:HH:mm:ss}")"
+                     Icon="@Icons.Material.Filled.Inventory">
             <Actions>
-                <div style="text-align:right">
-                    <MudText Typo="Typo.h5" Style="font-weight:800;line-height:1">@GlobalProgress%</MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">global</MudText>
-                </div>
+                @if (DemoSync)
+                {
+                    <span class="sigie-demo">Datos de demostración</span>
+                }
                 <MudTooltip Text="Descargar el avance por área en CSV" Placement="Placement.Top">
                     <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary"
                                StartIcon="@Icons.Material.Filled.FileDownload" OnClick="ExportAreasAsync">
@@ -105,8 +57,8 @@
                 </MudTooltip>
             </Actions>
             <ChildContent>
-                <MudProgressLinear Color="@SigieUi.ProgressColor(GlobalProgress)" Value="GlobalProgress"
-                                   Rounded="true" Style="height:6px" Class="mb-4" />
+                <MudProgressLinear Color="Color.Primary" Value="GlobalProgress"
+                                   Style="height:6px" Class="mb-4" />
 
                 <MudDataGrid T="DataCaptureAreaProgress" Items="_model.AreaProgress" Dense="true" Hover="true" Elevation="0">
                     <Columns>
@@ -118,8 +70,8 @@
                         <PropertyColumn Property="x => x.ResponsiblePerson" Title="Responsable" />
                         <TemplateColumn Title="Progreso">
                             <CellTemplate>
-                                <MudProgressLinear Color="@SigieUi.ProgressColor(context.Item.Percentage)"
-                                                   Value="context.Item.Percentage" Rounded="true"
+                                <MudProgressLinear Color="Color.Primary"
+                                                   Value="context.Item.Percentage"
                                                    Style="height:8px;min-width:130px" />
                             </CellTemplate>
                         </TemplateColumn>
@@ -133,6 +85,19 @@
                                 <div style="text-align:right;font-weight:800">@context.Item.Percentage%</div>
                             </CellTemplate>
                         </TemplateColumn>
+
+                        <TemplateColumn Title="" HeaderStyle="width:1%">
+                            <CellTemplate>
+                                @if (context.Item.Percentage < 100)
+                                {
+                                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
+                                               EndIcon="@Icons.Material.Filled.ArrowForward"
+                                               Href="@CaptureRoute(context.Item.AreaName)">
+                                        Capturar
+                                    </MudButton>
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
                     </Columns>
                 </MudDataGrid>
             </ChildContent>
@@ -140,11 +105,51 @@
     </MudItem>
 </MudGrid>
 
-@* ──────────── Predictive risk · anomalies · live consolidation ──────────── *@
+<MudGrid Class="mt-1">
+    <MudItem xs="12" lg="8">
+        <SectionCard Title="Trayectoria de matrícula"
+                     Subtitle="Serie histórica y proyección del modelo para los próximos periodos"
+                     Icon="@Icons.Material.Filled.Timeline">
+            <Actions>
+                <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Text">
+                    R² @_fc.R2.ToString("0.00")
+                </MudChip>
+            </Actions>
+            <ChildContent>
+                <TrendChart Labels="_fc.Labels" Series="_enrollmentSeries" Height="250"
+                            ForecastFromIndex="_fc.HistoricalCount"
+                            AriaLabel="Matrícula histórica y proyección" />
+            </ChildContent>
+        </SectionCard>
+    </MudItem>
+
+    <MudItem xs="12" lg="4">
+        <SectionCard Title="Aprovechamiento" Subtitle="Aprobación vs. reprobación del periodo"
+                     Icon="@Icons.Material.Filled.WorkspacePremium">
+            <ChildContent>
+                <div class="my-4">
+                    <MetricRing Value="@((double)_model.ApprovalRate)" Label="Aprobación" Size="200" />
+                </div>
+                <MudStack Row="true" Justify="Justify.SpaceAround" Class="mt-2">
+                    <div style="text-align:center">
+                        <MudText Typo="Typo.h6" Color="Color.Success" Style="font-weight:800">@($"{_model.ApprovalRate:0.0}%")</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Aprobados</MudText>
+                    </div>
+                    <MudDivider Vertical="true" FlexItem="true" />
+                    <div style="text-align:center">
+                        <MudText Typo="Typo.h6" Style="font-weight:800">@($"{_model.FailureRate:0.0}%")</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Reprobados</MudText>
+                    </div>
+                </MudStack>
+            </ChildContent>
+        </SectionCard>
+    </MudItem>
+</MudGrid>
+
 <MudGrid Class="mt-1">
     <MudItem xs="12" md="6" lg="4">
         <SectionCard Title="Riesgo de deserción" Subtitle="Estimado por carrera (modelo predictivo)"
-                     Icon="@Icons.Material.Filled.PersonOff" Accent="red">
+                     Icon="@Icons.Material.Filled.PersonOff">
             <ChildContent>
                 @foreach (var r in _risks)
                 {
@@ -155,7 +160,7 @@
                                 @r.RiskPct%
                             </MudChip>
                         </MudStack>
-                        <MudProgressLinear Color="@SigieUi.RiskColor(r.Level)" Value="r.RiskPct" Rounded="true" Style="height:6px" />
+                        <MudProgressLinear Color="Color.Primary" Value="r.RiskPct" Style="height:6px" />
                         <MudText Typo="Typo.caption" Color="Color.Secondary">@r.TopFactor</MudText>
                     </div>
                 }
@@ -165,7 +170,7 @@
 
     <MudItem xs="12" md="6" lg="4">
         <SectionCard Title="Detección automática" Subtitle="Desviaciones sobre la tendencia esperada"
-                     Icon="@Icons.Material.Filled.Radar" Accent="violet">
+                     Icon="@Icons.Material.Filled.Radar">
             <ChildContent>
                 @foreach (var a in _anomalies)
                 {
@@ -187,12 +192,17 @@
 
     <MudItem xs="12" md="12" lg="4">
         <SectionCard Title="Consolidación en vivo" Subtitle="Envíos recibidos de las áreas"
-                     Icon="@Icons.Material.Filled.Sync" Accent="teal">
+                     Icon="@Icons.Material.Filled.Sync">
+            <Actions>
+                @if (DemoSync)
+                {
+                    <span class="sigie-demo">Simulación</span>
+                }
+            </Actions>
             <ChildContent>
                 @if (_events.Count == 0)
                 {
-                    <EmptyState Icon="@Icons.Material.Filled.CloudQueue"
-                                Title="Esperando envíos"
+                    <EmptyState Title="Esperando envíos"
                                 Description="Las áreas sincronizan su avance de forma independiente; aquí aparecerá cada envío al llegar." />
                 }
                 else
@@ -230,6 +240,7 @@
 
     private DateTime _lastSync = DateTime.Now;
     private int _completed;
+    private static readonly bool DemoSync = true;
 
     /// <summary>An area push received by the consolidation hub.</summary>
     private sealed record SyncEvent(string Area, int Delta, int Percentage, DateTime At);
@@ -240,6 +251,16 @@
     private int GlobalProgress => _model.AreaProgress.Count == 0
         ? 0
         : (int)Math.Round(_model.AreaProgress.Average(a => a.Percentage));
+
+    private static string CaptureRoute(string area) => area switch
+    {
+        "Servicios Escolares"   => "/datacapture/students",
+        "Recursos Humanos"      => "/datacapture/teachers",
+        "Infraestructura y TIC" => "/datacapture/infrastructure",
+        "Vinculación"           => "/datacapture/extension",
+        "Finanzas"              => "/datacapture/finance",
+        _                       => "/datacapture",
+    };
 
     protected override void OnInitialized()
     {
@@ -266,7 +287,10 @@
         RecomputeCompleted();
 
         // Real-time consolidation: areas sync concurrently and are pushed live.
-        _ = RunSyncLoopAsync();
+        if (DemoSync)
+        {
+            _ = RunSyncLoopAsync();
+        }
     }
 
     private async Task RunSyncLoopAsync()
@@ -284,7 +308,6 @@
         }
     }
 
-    /// <summary>Bumps an in-progress area as if a department just pushed its data.</summary>
     private bool SimulateDepartmentSync()
     {
         var inProgress = _model.AreaProgress.Where(a => a.Percentage < 100).ToList();
