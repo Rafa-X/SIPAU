@@ -1,5 +1,5 @@
 /* ============================================================================
-   SIGIE — "CANTERA Y CAL" edition
+    SIGIE — institutional blue edition
    ----------------------------------------------------------------------------
 
 /* ---------------------------------------------------------------- 1. Tokens */
@@ -43,21 +43,21 @@
     --mud-typography-button-weight: 650;
     --mud-typography-button-letterspacing: 0.01em;
 
-    --sigie-cal: #EAEDE7;
-    --sigie-recinto: #1E1C1A;
-    --sigie-anil: #1B3A6B;
-    --sigie-anil-up: #2A5590;
-    --sigie-rosa: #C4325F;
-    --sigie-cempasuchil: #D99A0B;
-    --sigie-nopal: #3F6B4A;
+    --sigie-cal: #F4F7FB;
+    --sigie-recinto: #081E33;
+    --sigie-anil: #073B68;
+    --sigie-anil-up: #0B6DB8;
+    --sigie-rosa: #B93854;
+    --sigie-cempasuchil: #C98211;
+    --sigie-nopal: #167451;
 
     --sigie-plano: var(--sigie-anil);
 
-    --sigie-radius: 2px;
+    --sigie-radius: 6px;
     --sigie-edge: 0px;
 
-    --sigie-hairline: #CBD1C6;
-    --sigie-hairline-strong: #AEB6A8;
+    --sigie-hairline: #D7E1EC;
+    --sigie-hairline-strong: #AEBED0;
 
     --sigie-ease: cubic-bezier(0.16, 1, 0.3, 1);
     --sigie-ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
@@ -66,15 +66,15 @@
     --sigie-slow: 0.5s;
     --sigie-theme-dur: 0.3s;
 
-    --sigie-wash: rgba(28, 32, 27, 0.05);
-    --sigie-wash-strong: rgba(28, 32, 27, 0.09);
+    --sigie-wash: rgba(7, 59, 104, 0.05);
+    --sigie-wash-strong: rgba(7, 59, 104, 0.09);
 }
 
 .sigie-dark {
-    --sigie-hairline: rgba(233, 237, 230, 0.14);
-    --sigie-hairline-strong: rgba(233, 237, 230, 0.26);
-    --sigie-wash: rgba(233, 237, 230, 0.06);
-    --sigie-wash-strong: rgba(233, 237, 230, 0.11);
+    --sigie-hairline: rgba(244, 248, 252, 0.14);
+    --sigie-hairline-strong: rgba(244, 248, 252, 0.26);
+    --sigie-wash: rgba(244, 248, 252, 0.06);
+    --sigie-wash-strong: rgba(244, 248, 252, 0.11);
     --sigie-plano: var(--sigie-anil-up);
 }
 
@@ -99,11 +99,11 @@ body,
 /* ------------------------------------------ 2. Browser interfaces */
 ::selection {
     background: var(--sigie-anil);
-    color: #F2F4F0;
+    color: #F8FBFF;
 }
 .sigie-dark ::selection {
     background: var(--sigie-anil-up);
-    color: #F2F4F0;
+    color: #F8FBFF;
 }
 
 ::-webkit-scrollbar { width: 12px; height: 12px; }
@@ -124,7 +124,7 @@ body,
 :focus-visible {
     outline: 2px solid var(--mud-palette-primary);
     outline-offset: 2px;
-    border-radius: 0;
+    border-radius: 4px;
 }
 
 .mud-table-cell,
@@ -138,7 +138,13 @@ body,
 }
 
 /* ------------------------------------------------------------- 3. The wall */
-body { background-color: var(--mud-palette-background); }
+body {
+    background-color: var(--mud-palette-background);
+    background-image: linear-gradient(rgba(7, 59, 104, 0.025) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(7, 59, 104, 0.025) 1px, transparent 1px);
+    background-size: 28px 28px;
+}
+.sigie-dark { background-image: none; }
 
 .mud-layout { position: relative; }
 .mud-main-content { position: relative; }
@@ -148,7 +154,7 @@ body { background-color: var(--mud-palette-background); }
     background-color: var(--mud-palette-appbar-background) !important;
     background-image: none !important;
     box-shadow: none !important;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.16);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     transition: background-color var(--sigie-theme-dur) var(--sigie-ease-soft),
@@ -173,20 +179,20 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; }
 .sigie-brand-mark {
     display: inline-flex; align-items: center; justify-content: center;
     width: 34px; height: 34px;
-    background: #F2F4F0;
+    background: #F8FBFF;
     color: var(--sigie-anil);
     font-family: var(--sigie-font);
     font-weight: 800; font-size: 15px; letter-spacing: 0.02em;
 }
-.sigie-dark .sigie-brand-mark { background: #E9EDE6; color: #16223A; }
+.sigie-dark .sigie-brand-mark { background: #E8F3FC; color: #071B2F; }
 .sigie-brand-name {
-    font-weight: 700; font-size: 17px; letter-spacing: -0.015em; line-height: 1.1;
+    font-weight: 700; font-size: 17px; letter-spacing: 0; line-height: 1.1;
 }
 
 .sigie-appbar-btn,
 .sigie-appbar-trigger,
 .sigie-theme-btn {
-    border-radius: 0 !important;
+    border-radius: 6px !important;
     transition: background-color var(--sigie-fast) var(--sigie-ease);
 }
 .sigie-appbar-trigger {
@@ -415,7 +421,7 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; }
 .mud-tabs .mud-tab { text-transform: none; font-weight: 650; letter-spacing: 0; }
 
 .mud-progress-linear {
-    border-radius: 0; overflow: hidden;
+    border-radius: 6px; overflow: hidden;
     background-color: var(--sigie-wash-strong) !important;
     box-shadow: inset 0 0 0 1px var(--sigie-hairline);
 }
@@ -468,7 +474,7 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; }
     color: var(--mud-palette-text-secondary);
     max-width: 68ch;
 }
-.sigie-pagehead-back { border-radius: 0; }
+.sigie-pagehead-back { border-radius: 6px; }
 
 .sigie-pagehead .sigie-live {
     background: var(--sigie-anil);
@@ -875,7 +881,7 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; }
     display: none;
     position: relative;
     background: var(--sigie-anil);
-    color: #F2F4F0;
+    color: #F8FBFF;
     padding: 60px 64px 52px;
     overflow: hidden;
 }
@@ -891,49 +897,49 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; }
     font-family: var(--sigie-font-narrow);
     font-size: 0.8125rem; font-weight: 700;
     letter-spacing: 0.14em; text-transform: uppercase;
-    color: rgba(242, 244, 240, 0.72);
+    color: rgba(248, 251, 255, 0.72);
     margin: 0;
 }
 .sigie-login-institution {
     font-size: clamp(2.3rem, 4.3vw, 3.9rem);
-    font-weight: 800; letter-spacing: -0.034em; line-height: 1.05;
+    font-weight: 800; letter-spacing: 0; line-height: 1.05;
     margin: 0; text-wrap: balance;
 }
 .sigie-login-rule {
     width: 84px; height: 4px; margin: 28px 0 24px;
-    border: 0; background: #F2F4F0;
+    border: 0; background: #F8FBFF;
 }
-.sigie-login-system { font-size: 1.0625rem; line-height: 1.55; color: rgba(242, 244, 240, 0.9); margin: 0; }
+.sigie-login-system { font-size: 1.0625rem; line-height: 1.55; color: rgba(248, 251, 255, 0.9); margin: 0; }
 .sigie-login-system b { font-weight: 800; letter-spacing: 0.01em; }
-.sigie-login-dept { font-size: 0.9375rem; color: rgba(242, 244, 240, 0.66); margin: 6px 0 0; }
+.sigie-login-dept { font-size: 0.9375rem; color: rgba(248, 251, 255, 0.66); margin: 6px 0 0; }
 
 .sigie-login-card {
     display: flex; flex-direction: column; justify-content: center;
     padding: 40px 40px;
-    background: var(--sigie-cal);
+    background: #FFFFFF;
 }
 @media (min-width: 1024px) { .sigie-login-card { border-left: 1px solid var(--sigie-hairline-strong); } }
 .sigie-login-inner { width: 100%; max-width: 380px; margin: 0 auto; }
 
 .sigie-login-brand { margin-bottom: 28px; }
 @media (min-width: 1024px) { .sigie-login-brand { display: none; } }
-.sigie-login-title { font-size: 1rem; font-weight: 800; line-height: 1.35; color: #1C201B; }
+.sigie-login-title { font-size: 1rem; font-weight: 800; line-height: 1.35; color: #142B42; }
 .sigie-login-sub {
     margin-top: 4px;
     font-family: var(--sigie-font-narrow);
     font-size: 0.8125rem; letter-spacing: 0.06em; text-transform: uppercase;
-    color: #585F55;
+    color: #5D6D7E;
 }
 
-.sigie-login-h1 { font-size: 1.375rem; font-weight: 800; letter-spacing: -0.024em; margin: 0 0 6px; color: #1C201B; }
-.sigie-login-lead { font-size: 0.9375rem; color: #585F55; margin: 0 0 26px; }
+.sigie-login-h1 { font-size: 1.375rem; font-weight: 800; letter-spacing: 0; margin: 0 0 6px; color: #142B42; }
+.sigie-login-lead { font-size: 0.9375rem; color: #5D6D7E; margin: 0 0 26px; }
 
 .sigie-login-label {
     display: block;
     font-family: var(--sigie-font-narrow);
     font-size: 0.78125rem; font-weight: 700;
     letter-spacing: 0.08em; text-transform: uppercase;
-    color: #3E443B;
+    color: #40566D;
     margin: 18px 0 7px;
 }
 .sigie-login-field { position: relative; display: block; }
@@ -941,13 +947,13 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; }
     display: block;
     width: 100%; padding: 13px 14px;
     background: #FFFFFF;
-    border: 1px solid #8A9483;
-    border-radius: 0;
-    color: #1C201B; font: inherit; font-size: 0.9375rem; outline: none;
+    border: 1px solid #AEBED0;
+    border-radius: 6px;
+    color: #142B42; font: inherit; font-size: 0.9375rem; outline: none;
     transition: border-color var(--sigie-fast) var(--sigie-ease),
                 box-shadow var(--sigie-fast) var(--sigie-ease);
 }
-.sigie-login-input::placeholder { color: #5F665B; }  /* 6.10:1 sobre papel */
+.sigie-login-input::placeholder { color: #6B7B8E; }
 .sigie-login-input:focus {
     border-color: var(--sigie-anil);
     box-shadow: inset 0 0 0 1px var(--sigie-anil);
@@ -963,8 +969,8 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; }
 .sigie-login-input:-webkit-autofill:active {
     -webkit-box-shadow: 0 0 0 100px #FFFFFF inset;
     box-shadow: 0 0 0 100px #FFFFFF inset;
-    -webkit-text-fill-color: #1C201B;
-    caret-color: #1C201B;
+    -webkit-text-fill-color: #142B42;
+    caret-color: #142B42;
     transition: background-color 100000s ease-in-out 0s;
 }
 .sigie-login-input:-webkit-autofill:focus {
@@ -978,7 +984,7 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; }
     width: 46px; padding: 0;
     display: flex; align-items: center; justify-content: center;
     border: 0; background: transparent; cursor: pointer;
-    color: #5C6458;
+    color: #5D6D7E;
     transition: color var(--sigie-fast) var(--sigie-ease);
 }
 .sigie-login-eye:hover { color: var(--sigie-anil); }
@@ -990,10 +996,10 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; }
 
 .sigie-login-btn {
     width: 100%; margin-top: 28px; padding: 14px 16px;
-    border: 0; border-radius: 0; cursor: pointer;
+    border: 0; border-radius: 6px; cursor: pointer;
     font-family: var(--sigie-font);
     font-size: 0.9375rem; font-weight: 700; letter-spacing: 0.01em;
-    color: #F2F4F0;
+    color: #F8FBFF;
     background: var(--sigie-anil);
     transition: background-color var(--sigie-fast) var(--sigie-ease);
 }
@@ -1009,7 +1015,7 @@ body.sigie-scrolled .sigie-appbar-sub { opacity: 0; }
     margin-top: 26px;
     font-family: var(--sigie-font-narrow);
     font-size: 0.75rem; letter-spacing: 0.04em;
-    color: #5C6458;
+    color: #5D6D7E;
 }
 
 /* ------------------------------------------------------ 17. Accessibility */
