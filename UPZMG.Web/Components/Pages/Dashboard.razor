@@ -1,344 +1,171 @@
 @page "/dashboard"
 @attribute [Authorize]
-@implements IAsyncDisposable
+@using UPZMG.Implementations.Dashboard
 @inject IDashboardService DashboardSvc
-@inject IIntelligenceService Ai
-@inject IJSRuntime JS
 
 <PageTitle>Tablero de Control — SIGIE</PageTitle>
 
 <PageHeader Title="Tablero de Control"
-            Subtitle="Indicadores del periodo activo, consolidados en tiempo real desde las áreas">
+            Subtitle="Cifras del periodo activo, contadas directamente de los datos capturados">
     <Actions>
-        <span class="sigie-live">Sincronización activa</span>
-        <MudChip T="string" Color="Color.Secondary" Variant="Variant.Text" Icon="@Icons.Material.Filled.Event">
-            @_model.ActivePeriod
-        </MudChip>
+        @if (_summary?.ActivePeriod is { } period)
+        {
+            <MudChip T="string" Color="Color.Secondary" Variant="Variant.Text" Icon="@Icons.Material.Filled.Event">
+                Periodo @period.Period @period.SchoolCycle · @period.Code
+            </MudChip>
+        }
+        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary"
+                   StartIcon="@Icons.Material.Filled.Refresh" Disabled="_loading" OnClick="LoadAsync">
+            Actualizar
+        </MudButton>
     </Actions>
 </PageHeader>
 
-@* ─────────────────────────── The four dataa ─────────────────────────── *@
-<MudGrid>
-    <MudItem xs="12" sm="6" lg="3">
-        <StatCard Title="Total Alumnos" Value="@_model.TotalStudents.ToString("N0")"
-                  Subtitle="@($"{_model.NewEnrollments} nuevos ingresos")"
-                  Delta="_enrollmentDelta" Spark="_enrollmentHistory" />
-    </MudItem>
-    <MudItem xs="12" sm="6" lg="3">
-        <StatCard Title="Índice de Aprobación" Value="@($"{_model.ApprovalRate:0.0}%")"
-                  Subtitle="@($"Reprobación {_model.FailureRate:0.0}%")" />
-    </MudItem>
-    <MudItem xs="12" sm="6" lg="3">
-        <StatCard Title="Proyección próximo periodo" Value="@_forecastNext.ToString("N0")"
-                  Subtitle="@($"Regresión lineal · R² {_fc.R2:0.00}")"
-                  Delta="_forecastDelta" Spark="_fc.Trend" />
-    </MudItem>
-    <MudItem xs="12" sm="6" lg="3">
-        <StatCard Title="Total Docentes" Value="@_model.TotalTeachers.ToString()"
-                  Subtitle="@($"{_model.TeachersWithPostgrad} con posgrado")" />
-    </MudItem>
-</MudGrid>
+@if (_loading)
+{
+    <LoadingState Text="Contando los datos capturados…" />
+}
+else if (_summary is null)
+{
+    <SectionCard FullHeight="false">
+        <EmptyState Title="No se pudieron cargar las cifras"
+                    Description="El API no respondió. Verifica que UPZMG.API esté corriendo e intenta de nuevo.">
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="LoadAsync">Reintentar</MudButton>
+        </EmptyState>
+    </SectionCard>
+}
+else
+{
+    @if (_summary.ActivePeriod is null)
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Text" Class="mb-4">
+            No hay un periodo activo. Las cifras del periodo aparecerán cuando actives uno en
+            <MudLink Href="/settings/periods">Configuración › Periodos escolares</MudLink>.
+        </MudAlert>
+    }
 
-<MudGrid Class="mt-1">
-    <MudItem xs="12">
-        <SectionCard Title="Estado de capturas por área"
-                     Subtitle="@($"{_completed} de {_model.AreaProgress.Count} áreas completas · {GlobalProgress}% global · última sincronización {_lastSync:HH:mm:ss}")"
-                     Icon="@Icons.Material.Filled.Inventory">
-            <Actions>
-                @if (DemoSync)
+    <MudGrid>
+        <MudItem xs="12" sm="6" lg="3">
+            <StatCard Title="Alumnos activos" Value="@_summary.ActiveStudents.ToString("N0")"
+                      Subtitle="@($"{_summary.TotalStudents:N0} registrados en total")" />
+        </MudItem>
+        <MudItem xs="12" sm="6" lg="3">
+            <StatCard Title="Nuevo ingreso" Value="@_summary.NewEnrollments.ToString("N0")"
+                      Subtitle="en el periodo activo"
+                      Delta="_intakeDelta" Spark="_intakeSpark" />
+        </MudItem>
+        <MudItem xs="12" sm="6" lg="3">
+            <StatCard Title="Docentes" Value="@_summary.TotalTeachers.ToString("N0")"
+                      Subtitle="@($"{_summary.TeachersWithPostgrad:N0} con posgrado")" />
+        </MudItem>
+        <MudItem xs="12" sm="6" lg="3">
+            <StatCard Title="Grupos del periodo" Value="@_summary.ClassGroups.ToString("N0")"
+                      Subtitle="@($"{_summary.GroupEnrolled:N0} inscritos de {_summary.GroupCapacity:N0} lugares")" />
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid Class="mt-1">
+        <MudItem xs="12" lg="7">
+            <SectionCard Title="Alumnos activos por carrera"
+                         Subtitle="Alumnos con estatus activo, sin importar su periodo de ingreso"
+                         Icon="@Icons.Material.Filled.School">
+                @if (_summary.StudentsByCareer.Sum(c => c.Students) == 0)
                 {
-                    <span class="sigie-demo">Datos de demostración</span>
-                }
-                <MudTooltip Text="Descargar el avance por área en CSV" Placement="Placement.Top">
-                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary"
-                               StartIcon="@Icons.Material.Filled.FileDownload" OnClick="ExportAreasAsync">
-                        Exportar
-                    </MudButton>
-                </MudTooltip>
-            </Actions>
-            <ChildContent>
-                <MudProgressLinear Color="Color.Primary" Value="GlobalProgress"
-                                   Style="height:6px" Class="mb-4" />
-
-                <MudDataGrid T="DataCaptureAreaProgress" Items="_model.AreaProgress" Dense="true" Hover="true" Elevation="0">
-                    <Columns>
-                        <TemplateColumn Title="Área">
-                            <CellTemplate>
-                                <MudText Typo="Typo.body2" Style="font-weight:650">@context.Item.AreaName</MudText>
-                            </CellTemplate>
-                        </TemplateColumn>
-                        <PropertyColumn Property="x => x.ResponsiblePerson" Title="Responsable" />
-                        <TemplateColumn Title="Progreso">
-                            <CellTemplate>
-                                <MudProgressLinear Color="Color.Primary"
-                                                   Value="context.Item.Percentage"
-                                                   Style="height:8px;min-width:130px" />
-                            </CellTemplate>
-                        </TemplateColumn>
-                        <TemplateColumn Title="Estado">
-                            <CellTemplate>
-                                <StatusChip Status="@context.Item.Status" />
-                            </CellTemplate>
-                        </TemplateColumn>
-                        <TemplateColumn Title="%" HeaderStyle="text-align:right">
-                            <CellTemplate>
-                                <div style="text-align:right;font-weight:800">@context.Item.Percentage%</div>
-                            </CellTemplate>
-                        </TemplateColumn>
-
-                        <TemplateColumn Title="" HeaderStyle="width:1%">
-                            <CellTemplate>
-                                @if (context.Item.Percentage < 100)
-                                {
-                                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
-                                               EndIcon="@Icons.Material.Filled.ArrowForward"
-                                               Href="@CaptureRoute(context.Item.AreaName)">
-                                        Capturar
-                                    </MudButton>
-                                }
-                            </CellTemplate>
-                        </TemplateColumn>
-                    </Columns>
-                </MudDataGrid>
-            </ChildContent>
-        </SectionCard>
-    </MudItem>
-</MudGrid>
-
-<MudGrid Class="mt-1">
-    <MudItem xs="12" lg="8">
-        <SectionCard Title="Trayectoria de matrícula"
-                     Subtitle="Serie histórica y proyección del modelo para los próximos periodos"
-                     Icon="@Icons.Material.Filled.Timeline">
-            <Actions>
-                <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Text">
-                    R² @_fc.R2.ToString("0.00")
-                </MudChip>
-            </Actions>
-            <ChildContent>
-                <TrendChart Labels="_fc.Labels" Series="_enrollmentSeries" Height="250"
-                            ForecastFromIndex="_fc.HistoricalCount"
-                            AriaLabel="Matrícula histórica y proyección" />
-            </ChildContent>
-        </SectionCard>
-    </MudItem>
-
-    <MudItem xs="12" lg="4">
-        <SectionCard Title="Aprovechamiento" Subtitle="Aprobación vs. reprobación del periodo"
-                     Icon="@Icons.Material.Filled.WorkspacePremium">
-            <ChildContent>
-                <div class="my-4">
-                    <MetricRing Value="@((double)_model.ApprovalRate)" Label="Aprobación" Size="200" />
-                </div>
-                <MudStack Row="true" Justify="Justify.SpaceAround" Class="mt-2">
-                    <div style="text-align:center">
-                        <MudText Typo="Typo.h6" Color="Color.Success" Style="font-weight:800">@($"{_model.ApprovalRate:0.0}%")</MudText>
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">Aprobados</MudText>
-                    </div>
-                    <MudDivider Vertical="true" FlexItem="true" />
-                    <div style="text-align:center">
-                        <MudText Typo="Typo.h6" Style="font-weight:800">@($"{_model.FailureRate:0.0}%")</MudText>
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">Reprobados</MudText>
-                    </div>
-                </MudStack>
-            </ChildContent>
-        </SectionCard>
-    </MudItem>
-</MudGrid>
-
-<MudGrid Class="mt-1">
-    <MudItem xs="12" md="6" lg="4">
-        <SectionCard Title="Riesgo de deserción" Subtitle="Estimado por carrera (modelo predictivo)"
-                     Icon="@Icons.Material.Filled.PersonOff">
-            <ChildContent>
-                @foreach (var r in _risks)
-                {
-                    <div class="mb-3">
-                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-                            <MudText Typo="Typo.body2" Style="font-weight:600">@r.Career</MudText>
-                            <MudChip T="string" Size="Size.Small" Color="@SigieUi.RiskColor(r.Level)" Variant="Variant.Text">
-                                @r.RiskPct%
-                            </MudChip>
-                        </MudStack>
-                        <MudProgressLinear Color="Color.Primary" Value="r.RiskPct" Style="height:6px" />
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">@r.TopFactor</MudText>
-                    </div>
-                }
-            </ChildContent>
-        </SectionCard>
-    </MudItem>
-
-    <MudItem xs="12" md="6" lg="4">
-        <SectionCard Title="Detección automática" Subtitle="Desviaciones sobre la tendencia esperada"
-                     Icon="@Icons.Material.Filled.Radar">
-            <ChildContent>
-                @foreach (var a in _anomalies)
-                {
-                    <MudAlert Severity="@SigieUi.AlertSeverity(a.Severity)" Variant="Variant.Text" Dense="true" Class="mb-2">
-                        <MudText Typo="Typo.body2" Style="font-weight:650">@a.Title</MudText>
-                        <MudText Typo="Typo.caption">@a.Detail</MudText>
-                    </MudAlert>
-                }
-                @foreach (var alert in _model.Alerts)
-                {
-                    <MudAlert Severity="@SigieUi.AlertSeverity(alert.Type)" Variant="Variant.Text" Dense="true" Class="mb-2">
-                        <MudText Typo="Typo.body2">@alert.Message</MudText>
-                        <MudText Typo="Typo.caption">Prioridad @alert.Priority</MudText>
-                    </MudAlert>
-                }
-            </ChildContent>
-        </SectionCard>
-    </MudItem>
-
-    <MudItem xs="12" md="12" lg="4">
-        <SectionCard Title="Consolidación en vivo" Subtitle="Envíos recibidos de las áreas"
-                     Icon="@Icons.Material.Filled.Sync">
-            <Actions>
-                @if (DemoSync)
-                {
-                    <span class="sigie-demo">Simulación</span>
-                }
-            </Actions>
-            <ChildContent>
-                @if (_events.Count == 0)
-                {
-                    <EmptyState Title="Esperando envíos"
-                                Description="Las áreas sincronizan su avance de forma independiente; aquí aparecerá cada envío al llegar." />
+                    <EmptyState Title="Aún no hay alumnos activos"
+                                Description="Captura alumnos en Captura de datos › Alumnos y aparecerán aquí por carrera." />
                 }
                 else
                 {
-                    @foreach (var e in _events)
-                    {
-                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="mb-3">
-                            <MudIcon Icon="@Icons.Material.Filled.CloudDone" Size="Size.Small" Color="Color.Success" />
-                            <div class="flex-grow-1" style="min-width:0">
-                                <MudText Typo="Typo.body2" Style="font-weight:600">@e.Area</MudText>
-                                <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                    @e.At.ToString("HH:mm:ss") · avance @e.Percentage%
-                                </MudText>
-                            </div>
-                            <span class="sigie-delta up">+@e.Delta%</span>
-                        </MudStack>
-                    }
+                    <BarChart Labels="_careerLabels" Series="_careerSeries" Height="260"
+                              AriaLabel="Alumnos activos por carrera" />
                 }
-            </ChildContent>
-        </SectionCard>
-    </MudItem>
-</MudGrid>
+            </SectionCard>
+        </MudItem>
+
+        <MudItem xs="12" lg="5">
+            <SectionCard Title="Nuevo ingreso por periodo"
+                         Subtitle="Alumnos según el periodo en que ingresaron"
+                         Icon="@Icons.Material.Filled.Timeline">
+                @if (_summary.IntakeByPeriod.Count < 2)
+                {
+                    <EmptyState Title="Faltan periodos para trazar la serie"
+                                Description="La gráfica necesita al menos dos periodos registrados." />
+                }
+                else
+                {
+                    <TrendChart Labels="_intakeLabels" Series="_intakeSeries" Height="260" ShowLegend="false"
+                                AriaLabel="Nuevo ingreso por periodo" />
+                }
+            </SectionCard>
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid Class="mt-1">
+        <MudItem xs="12">
+            <SectionCard Title="Indicadores académicos"
+                         Subtitle="Aprovechamiento, deserción y eficiencia terminal"
+                         Icon="@Icons.Material.Filled.Insights" FullHeight="false">
+                <EmptyState Title="En construcción"
+                            Description="Estos indicadores se calcularán con las fórmulas acordadas con la universidad cuando esté listo el módulo de métricas." />
+            </SectionCard>
+        </MudItem>
+    </MudGrid>
+}
 
 @code {
-    private DashboardViewModel _model = new();
-    private IReadOnlyList<AnomalyAlert> _anomalies = Array.Empty<AnomalyAlert>();
-    private IReadOnlyList<DropoutRisk> _risks = Array.Empty<DropoutRisk>();
-    private EnrollmentForecast _fc = null!;
+    private DashboardSummary? _summary;
+    private bool _loading = true;
 
-    private double _forecastNext;
-    private double[] _enrollmentHistory = Array.Empty<double>();
-    private double? _enrollmentDelta;
-    private double? _forecastDelta;
-    private List<ChartSeriesData> _enrollmentSeries = new();
+    private IReadOnlyList<string> _careerLabels = [];
+    private IReadOnlyList<ChartSeriesData> _careerSeries = [];
+    private IReadOnlyList<string> _intakeLabels = [];
+    private IReadOnlyList<ChartSeriesData> _intakeSeries = [];
+    private double[]? _intakeSpark;
+    private double? _intakeDelta;
 
-    private DateTime _lastSync = DateTime.Now;
-    private int _completed;
-    private static readonly bool DemoSync = true;
+    protected override Task OnInitializedAsync() => LoadAsync();
 
-    /// <summary>An area push received by the consolidation hub.</summary>
-    private sealed record SyncEvent(string Area, int Delta, int Percentage, DateTime At);
-    private readonly List<SyncEvent> _events = new();
-
-    private PeriodicTimer? _timer;
-
-    private int GlobalProgress => _model.AreaProgress.Count == 0
-        ? 0
-        : (int)Math.Round(_model.AreaProgress.Average(a => a.Percentage));
-
-    private static string CaptureRoute(string area) => area switch
+    private async Task LoadAsync()
     {
-        "Servicios Escolares"   => "/datacapture/students",
-        "Recursos Humanos"      => "/datacapture/teachers",
-        "Infraestructura y TIC" => "/datacapture/infrastructure",
-        "Vinculación"           => "/datacapture/extension",
-        "Finanzas"              => "/datacapture/finance",
-        _                       => "/datacapture",
-    };
-
-    protected override void OnInitialized()
-    {
-        _model = DashboardSvc.GetDashboard();
-        _anomalies = Ai.Anomalies();
-        _risks = Ai.DropoutRisks();
-        _fc = Ai.ForecastEnrollment(2);
-
-        _enrollmentHistory = _fc.Actual[.._fc.HistoricalCount];
-        _forecastNext = _fc.Actual[_fc.HistoricalCount]; // first projected period
-
-        _enrollmentSeries = new()
+        _loading = true;
+        try
         {
-            new ChartSeriesData("Matrícula", _fc.Actual, ChartPalette.Teal, Filled: true),
-            new ChartSeriesData("Tendencia del modelo", _fc.Trend, ChartPalette.Indigo, Dashed: true),
-        };
-
-        // Deltas come straight from the regression inputs — no invented numbers.
-        var last = _enrollmentHistory[^1];
-        var prev = _enrollmentHistory[^2];
-        _enrollmentDelta = Math.Round((last - prev) / prev * 100, 1);
-        _forecastDelta = Math.Round((_forecastNext - last) / last * 100, 1);
-
-        RecomputeCompleted();
-
-        // Real-time consolidation: areas sync concurrently and are pushed live.
-        if (DemoSync)
-        {
-            _ = RunSyncLoopAsync();
+            _summary = await DashboardSvc.GetSummaryAsync();
         }
-    }
-
-    private async Task RunSyncLoopAsync()
-    {
-        _timer = new PeriodicTimer(TimeSpan.FromSeconds(3));
-        // Disposing the timer makes WaitForNextTickAsync return false, ending the loop without an exception.
-        while (await _timer.WaitForNextTickAsync())
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            if (SimulateDepartmentSync())
-            {
-                _lastSync = DateTime.Now;
-                RecomputeCompleted();
-                await InvokeAsync(StateHasChanged);
-            }
+            // API down or refused the call: show a retry instead of breaking the page.
+            _summary = null;
         }
+        finally
+        {
+            _loading = false;
+        }
+
+        if (_summary is not null)
+            BuildCharts(_summary);
     }
 
-    private bool SimulateDepartmentSync()
+    private void BuildCharts(DashboardSummary summary)
     {
-        var inProgress = _model.AreaProgress.Where(a => a.Percentage < 100).ToList();
-        if (inProgress.Count == 0) return false;
+        _careerLabels = summary.StudentsByCareer.Select(c => c.Career).ToList();
+        _careerSeries =
+        [
+            new ChartSeriesData("Alumnos activos", summary.StudentsByCareer.Select(c => (double)c.Students).ToList(), ChartPalette.Navy),
+        ];
 
-        var area = inProgress[Random.Shared.Next(inProgress.Count)];
-        var delta = Random.Shared.Next(2, 9);
-        area.Percentage = Math.Min(100, area.Percentage + delta);
-        area.Status = area.Percentage == 100 ? "Completo" : "En progreso";
+        var intake = summary.IntakeByPeriod.Select(p => (double)p.Students).ToArray();
+        _intakeLabels = summary.IntakeByPeriod.Select(p => p.Period).ToList();
+        _intakeSeries = [new ChartSeriesData("Nuevo ingreso", intake, ChartPalette.Teal, Filled: true)];
+        _intakeSpark = intake.Length > 1 ? intake : null;
 
-        _events.Insert(0, new SyncEvent(area.AreaName, delta, area.Percentage, DateTime.Now));
-        if (_events.Count > 5) _events.RemoveAt(_events.Count - 1);
-        return true;
-    }
+        // Compare against the period right before the active one, only if it had intake.
+        _intakeDelta = null;
+        var activeIndex = summary.ActivePeriod is null
+            ? -1
+            : summary.IntakeByPeriod.ToList().FindIndex(p => p.PeriodId == summary.ActivePeriod.Id);
 
-    private void RecomputeCompleted() => _completed = _model.AreaProgress.Count(a => a.Percentage == 100);
-
-    private async Task ExportAreasAsync()
-    {
-        var csv = CsvExport.Build(_model.AreaProgress,
-            ("Área", a => a.AreaName),
-            ("Responsable", a => a.ResponsiblePerson),
-            ("Avance %", a => a.Percentage),
-            ("Estado", a => a.Status));
-
-        await JS.InvokeVoidAsync("sigieDownload", CsvExport.FileName("captura-por-area"), csv);
-    }
-
-    public ValueTask DisposeAsync()
-    {
-        _timer?.Dispose();
-        return ValueTask.CompletedTask;
+        if (activeIndex > 0 && intake[activeIndex - 1] > 0)
+            _intakeDelta = Math.Round((intake[activeIndex] - intake[activeIndex - 1]) / intake[activeIndex - 1] * 100, 1);
     }
 }
