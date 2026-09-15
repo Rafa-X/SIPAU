@@ -1,0 +1,239 @@
+@page "/datacapture/class-groups"
+@attribute [Authorize]
+@using System.Text.RegularExpressions
+@using UPZMG.Implementations.DataCapture
+@using UPZMG.Persistence.Models
+@using UPZMG.Shared.Enums
+@using UPZMG.Web.Services
+@inject IDataCaptureService CaptureSvc
+@inject IGeneralDataService GeneralDataSvc
+@inject ISecurityService SecuritySvc
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Captura de Grupos de Clase — SIGIE</PageTitle>
+
+<PageHeader Eyebrow="Captura de datos" Title="Grupos de Clase"
+            Subtitle="Registra los grupos, responsables, espacios y horarios del periodo activo"
+            BackHref="/datacapture" />
+
+<MudPaper Elevation="1" Class="pa-6">
+    <MudForm @ref="_form">
+        <MudText Typo="Typo.h6" Class="mb-3">Datos del grupo</MudText>
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <MudSelect T="Guid?" @bind-Value="_model.PeriodId" Label="Periodo" Required="true"
+                           RequiredError="Selecciona un periodo.">
+                    @foreach (var period in _periods)
+                    {
+                        <MudSelectItem T="Guid?" Value="@period.Id">@period.Value</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudSelect T="Guid?" Value="@_model.CareerId" ValueChanged="OnCareerChanged" Label="Carrera" Required="true"
+                           RequiredError="Selecciona una carrera.">
+                    @foreach (var career in _careers)
+                    {
+                        <MudSelectItem T="Guid?" Value="@career.Id">@career.Value</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudSelect T="Guid?" @bind-Value="_model.AsignatureId" Label="Materia" Required="true"
+                           RequiredError="Selecciona una materia.">
+                    @foreach (var asignature in _asignatures)
+                    {
+                        <MudSelectItem T="Guid?" Value="@asignature.Id">@asignature.Value</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudSelect T="Guid?" @bind-Value="_model.TeacherId" Label="Docente responsable" Required="true"
+                           RequiredError="Selecciona un docente.">
+                    @foreach (var teacher in _teachers)
+                    {
+                        <MudSelectItem T="Guid?" Value="@teacher.Id">@teacher.Value</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudSelect T="Guid?" @bind-Value="_model.FacilityId" Label="Espacio" Required="true"
+                           RequiredError="Selecciona un espacio.">
+                    @foreach (var facility in _facilities)
+                    {
+                        <MudSelectItem T="Guid?" Value="@facility.Id">@facility.Value</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudSelect T="bool?" @bind-Value="_model.IsTheory" Label="Tipo de clase" Required="true"
+                           RequiredError="Selecciona el tipo de clase.">
+                    <MudSelectItem T="bool?" Value="true">Teoría</MudSelectItem>
+                    <MudSelectItem T="bool?" Value="false">Laboratorio</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+
+        <MudText Typo="Typo.h6" Class="mt-6 mb-3">Horario</MudText>
+        @for (var i = 0; i < _model.Schedules.Count; i++)
+        {
+            var idx = i;
+            var item = _model.Schedules[idx];
+            <MudGrid Class="align-center mb-1">
+                <MudItem xs="12" sm="4" md="3">
+                    <MudSelect T="Days?" @bind-Value="item.Day" Label="Día" Required="true" RequiredError="Selecciona un día.">
+                        @foreach (var day in Enum.GetValues<Days>())
+                        {
+                            <MudSelectItem T="Days?" Value="@day">@day</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="3" md="3">
+                    <MudSelect T="ScheduleTime?" @bind-Value="item.StartTime" Label="Inicio" Required="true" RequiredError="Hora inicio.">
+                        @foreach (var time in Enum.GetValues<ScheduleTime>())
+                        {
+                            <MudSelectItem T="ScheduleTime?" Value="@time">@FormatTime(time)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="3" md="3">
+                    <MudSelect T="ScheduleTime?" @bind-Value="item.EndTime" Label="Fin" Required="true" RequiredError="Hora término.">
+                        @foreach (var time in Enum.GetValues<ScheduleTime>())
+                        {
+                            <MudSelectItem T="ScheduleTime?" Value="@time">@FormatTime(time)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="2" md="3" Class="d-flex align-center">
+                    @if (_model.Schedules.Count >= 1)
+                    {
+                        <MudTooltip Text="Eliminar día">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                           OnClick="@(() => RemoveSchedule(idx))" aria-label="Eliminar día" />
+                        </MudTooltip>
+                    }
+                </MudItem>
+            </MudGrid>
+        }
+
+        <MudButton StartIcon="@Icons.Material.Filled.Add" Variant="Variant.Outlined" Color="Color.Primary"
+                   Size="Size.Small" Class="mt-2 mb-4" OnClick="AddSchedule">
+            Agregar otro día
+        </MudButton>
+
+        <MudText Typo="Typo.h6" Class="mt-4 mb-3">Capacidad</MudText>
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <MudNumericField T="int?" @bind-Value="_model.Capacity" Label="Capacidad" Min="1" Max="500"
+                                 Required="true" RequiredError="Indica la capacidad del grupo." />
+            </MudItem>
+        </MudGrid>
+
+        <MudStack Row="true" Spacing="2" Class="mt-6">
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Save"
+                       OnClick="Submit">Guardar grupo</MudButton>
+            <MudButton Variant="Variant.Outlined" OnClick="@(() => Nav.NavigateTo("/datacapture"))">Cancelar</MudButton>
+        </MudStack>
+    </MudForm>
+</MudPaper>
+
+@code {
+    private MudForm _form = null!;
+    private ClassGroupFormViewModel _model = new();
+    private IReadOnlyList<PeriodLookupOption> _periods = [];
+    private IReadOnlyList<LookupOption> _careers = [];
+    private IReadOnlyList<LookupOption> _asignatures = [];
+    private IReadOnlyList<LookupOption> _teachers = [];
+    private IReadOnlyList<LookupOption> _facilities = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        AddSchedule();
+        var periodsTask = GeneralDataSvc.GetPeriodsAsync();
+        var careersTask = GeneralDataSvc.GetCareersAsync();
+        var teachersTask = GeneralDataSvc.GetTeachersAsync();
+        var facilitiesTask = GeneralDataSvc.GetFacilitiesAsync();
+        await Task.WhenAll(periodsTask, careersTask, teachersTask, facilitiesTask);
+
+        _periods = await periodsTask;
+        _careers = await careersTask;
+        _teachers = await teachersTask;
+        _facilities = await facilitiesTask;
+    }
+
+    private async Task OnCareerChanged(Guid? careerId)
+    {
+        _model.CareerId = careerId;
+        _model.AsignatureId = null;
+        _asignatures = careerId.HasValue && careerId.Value != Guid.Empty ? await GeneralDataSvc.GetAsignaturesAsync(careerId.Value) : [];
+        var test = _asignatures;
+    }
+
+    private void AddSchedule() => _model.Schedules.Add(new ScheduleItemViewModel());
+    private void RemoveSchedule(int index) => _model.Schedules.RemoveAt(index);
+    private string? ValidateEnrollment(int? value) => (value ?? 0) > (_model.Capacity ?? 0) ? "Los inscritos no pueden superar la capacidad." : null;
+    private static string FormatTime(ScheduleTime? time) => time is null ? string.Empty : time.ToString()!.TrimStart('_').Replace('_', ':');
+
+    private async Task Submit()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid) return;
+
+        if (_model.PeriodId is null || _model.CareerId is null || _model.AsignatureId is null ||
+            _model.TeacherId is null || _model.FacilityId is null || _model.IsTheory is null || _model.Capacity is null)
+        {
+            Snackbar.Add("Por favor completa todos los campos requeridos.", Severity.Warning);
+            return;
+        }
+
+        foreach (var s in _model.Schedules)
+        {
+            if (s.Day is null || s.StartTime is null || s.EndTime is null)
+            {
+                Snackbar.Add("Todos los campos de día y horario son obligatorios.", Severity.Warning);
+                return;
+            }
+            if (s.EndTime <= s.StartTime)
+            {
+                Snackbar.Add($"En el día {s.Day}, la hora de fin ({FormatTime(s.EndTime)}) debe ser posterior a la hora de inicio ({FormatTime(s.StartTime)}).", Severity.Warning);
+                return;
+            }
+        }
+
+        var weekHours = _model.Schedules.Sum(schedule =>
+        {
+            var start = TimeOnly.Parse(FormatTime(schedule.StartTime));
+            var end = TimeOnly.Parse(FormatTime(schedule.EndTime));
+
+            return (end - start).TotalHours;
+        });
+
+        var result = await CaptureSvc.CreateClassGroup(new CreateClassGroup
+        {
+            RequesterKey = await SecuritySvc.GetRequesterKeyAsync(),
+            PeriodId = _model.PeriodId.Value,
+            CareerId = _model.CareerId.Value,
+            AsignatureId = _model.AsignatureId.Value,
+            TeacherId = _model.TeacherId.Value,
+            FacilityId = _model.FacilityId.Value,
+            IsTheory = _model.IsTheory.Value,
+            Capacity = _model.Capacity.Value,
+            Weekhours = weekHours,
+            Schedule = _model.Schedules.Select(s => new Schedule
+            {
+                Day = s.Day?.ToString() ?? string.Empty,
+                Time = $"{FormatTime(s.StartTime)}-{FormatTime(s.EndTime)} hrs"
+            }).ToList()
+        });
+
+        if (result is null)
+        {
+            Snackbar.Add("No fue posible guardar el grupo de clase.", Severity.Error);
+            return;
+        }
+
+        Snackbar.Add("Grupo de clase guardado correctamente.", Severity.Success);
+        Nav.NavigateTo("/datacapture");
+    }
+}

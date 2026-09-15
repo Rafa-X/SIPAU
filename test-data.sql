@@ -45,18 +45,18 @@ BEGIN
     SET @AdminEmployeeId = NEWID();
 
     INSERT INTO employees
-        (Id, EmployeeNumber, FullName, Email, Rfc, Curp, Gender, BirthDate, HighestEducationLevel, TitleStatus, HasDisability, ExternalXPYears, FirstHiredDate)
+        (Id, EmployeeNumber, FullName, Email, Rfc, Curp, Gender, BirthDate, HighestEducationLevel, TitleStatus, HasDisability, ExternalXPYears, FirstHiredDate, IsTeacher)
     VALUES
-        (@AdminEmployeeId, 1001, 'Administrador del Sistema', 'admin@upzmg.local', 'ADMJ800101AA1', 'ADMJ800101HDFRRN01', 'H', '1980-01-01', 4, 0, 0, 12, '2010-01-15');
+        (@AdminEmployeeId, 1001, 'Administrador del Sistema', 'admin@upzmg.local', 'ADMJ800101AA1', 'ADMJ800101HDFRRN01', 'H', '1980-01-01', 4, 0, 0, 12, '2010-01-15', 0);
 END;
 
 BEGIN
     SET @TeacherEmployeeId = NEWID();
 
     INSERT INTO employees
-        (Id, EmployeeNumber, FullName, Email, Rfc, Curp, Gender, BirthDate, HighestEducationLevel, TitleStatus, HasDisability, ExternalXPYears, FirstHiredDate)
+        (Id, EmployeeNumber, FullName, Email, Rfc, Curp, Gender, BirthDate, HighestEducationLevel, TitleStatus, HasDisability, ExternalXPYears, FirstHiredDate, IsTeacher)
     VALUES
-        (@TeacherEmployeeId, 1002, 'Docente de Prueba', 'teacher@upzmg.local', 'DOCJ850202BB2', 'DOCJ850202HDFRRS02', 'M', '1985-02-02', 3, 0, 0, 8, '2016-08-01');
+        (@TeacherEmployeeId, 1002, 'Docente de Prueba', 'teacher@upzmg.local', 'DOCJ850202BB2', 'DOCJ850202HDFRRS02', 'M', '1985-02-02', 3, 0, 0, 8, '2016-08-01', 1);
 END;
 
 -- 3) System users
@@ -137,9 +137,9 @@ BEGIN
     INSERT INTO careers
         (Id, Name, SEPCode, EducationalLevel, Modality, PeriodType, DurationInPeriods, DurationInYears, TotalCredits, PlanCreadtedDate, LastUpdatedDate)
     VALUES
-        (@CareerComputing, 'Ingeniería en Sistemas Computacionales', 'COMP-001', 4, 0, 0, 10, 5, 240, '2024-01-01', '2024-01-01'),
-        (@CareerBiomedic, 'Ingeniería en Biotecnología', 'BIOM-001', 4, 0, 0, 10, 5, 240, '2024-01-01', '2024-01-01'),
-        (@CareerIndustrial, 'Ingeniería Industrial', 'IND-001', 4, 0, 0, 10, 5, 240, '2024-01-01', '2024-01-01');
+        (@CareerComputing, 'Ingeniería en Sistemas Computacionales', 'COMP-001', 4, 0, 0, 15, 5, 240, '2024-01-01', '2024-01-01'),
+        (@CareerBiomedic, 'Ingeniería en Biotecnología', 'BIOM-001', 4, 0, 0, 15, 5, 240, '2024-01-01', '2024-01-01'),
+        (@CareerIndustrial, 'Ingeniería Industrial', 'IND-001', 4, 0, 0, 15, 5, 240, '2024-01-01', '2024-01-01');
 END;
 
 -- 9) Internal Areas
@@ -182,28 +182,78 @@ END;
 -- 12) Periods for testing
 DECLARE @Period2025A UNIQUEIDENTIFIER; SET @Period2025A = '22222222-2222-2222-2222-222222222201';
 DECLARE @Period2025B UNIQUEIDENTIFIER; SET @Period2025B = '22222222-2222-2222-2222-222222222202';
+DECLARE @Period2025C UNIQUEIDENTIFIER; SET @Period2025C = '22222222-2222-2222-2222-222222222203';
 
 BEGIN
     INSERT INTO periods
-        (Id, IdCode, SEP_Period, StartDate, EndDate, IsActive)
+        (Id, IdCode, SchoolCycle, SEP_Period, StartDate, EndDate, IsActive)
     VALUES
-        (@Period2025A, '2025-A', '2025-1', '2025-01-01', '2025-06-30', 1),
-        (@Period2025B, '2025-B', '2025-2', '2025-07-01', '2025-12-31', 0);
+        (@Period2025A, '2026-EA', '2026', 'Ene-Abr', '2026-01-01', '2026-04-30', 1),
+        (@Period2025B, '2026-MA', '2026', 'May-Ago', '2026-05-01', '2026-08-31', 0),
+        (@Period2025C, '2026-SD', '2026', 'Sep-Dic', '2026-09-01', '2026-12-31', 0);
 END;
 
--- 13) Students for testing
+-- 13) Class-group dependencies for testing
+DECLARE @FacilityClassroom UNIQUEIDENTIFIER = '66666666-6666-6666-6666-666666666601';
+DECLARE @FacilityLaboratory UNIQUEIDENTIFIER = '66666666-6666-6666-6666-666666666602';
+
+BEGIN
+    INSERT INTO SchoolFacility
+        (Id, Name, Type, Capacity, InUse, HasInternet, HasComputers, SupportDisabilities, Problems)
+    VALUES
+        (@FacilityClassroom, 'Aula 101', 11, 35, 1, 1, 0, 1, '[]'),
+        (@FacilityLaboratory, 'Laboratorio de Cómputo 1', 9, 30, 1, 1, 1, 1, '[]');
+END;
+
+DECLARE @AsignatureProgramming UNIQUEIDENTIFIER = '77777777-7777-7777-7777-777777777701';
+DECLARE @AsignatureMathematics UNIQUEIDENTIFIER = '77777777-7777-7777-7777-777777777702';
+DECLARE @AsignatureDatabases UNIQUEIDENTIFIER = '77777777-7777-7777-7777-777777777703';
+DECLARE @AsignatureBiology UNIQUEIDENTIFIER = '77777777-7777-7777-7777-777777777704';
+DECLARE @AsignaturePhysics UNIQUEIDENTIFIER = '77777777-7777-7777-7777-777777777705';
+DECLARE @AsignatureIndustrialSafety UNIQUEIDENTIFIER = '77777777-7777-7777-7777-777777777706';
+
+BEGIN
+    INSERT INTO asignatures
+        (Id, CareerId, AsignatureCode, AsignatureName, Credits, Cuatrimestre, IsMandatory)
+    VALUES
+        (@AsignatureProgramming, @CareerComputing, '88888888-8888-8888-8888-888888888701', 'Programación Orientada a Objetos', 8, 3, 1),
+        (@AsignatureDatabases, @CareerComputing, '88888888-8888-8888-8888-888888888703', 'Bases de Datos', 8, 4, 1),
+        (@AsignatureBiology, @CareerBiomedic, '88888888-8888-8888-8888-888888888704', 'Biología Celular', 8, 1, 1),
+        (@AsignaturePhysics, @CareerBiomedic, '88888888-8888-8888-8888-888888888705', 'Física Aplicada', 8, 2, 1),
+        (@AsignatureMathematics, @CareerIndustrial, '88888888-8888-8888-8888-888888888702', 'Cálculo Diferencial', 8, 1, 1),
+        (@AsignatureIndustrialSafety, @CareerIndustrial, '88888888-8888-8888-8888-888888888706', 'Seguridad Industrial', 8, 2, 1);
+END;
+
+DECLARE @ClassGroupProgramming UNIQUEIDENTIFIER = '99999999-9999-9999-9999-999999999701';
+DECLARE @ClassGroupMathematics UNIQUEIDENTIFIER = '99999999-9999-9999-9999-999999999702';
+
+BEGIN
+    INSERT INTO classGroups
+        (Id, FacilityId, Schedule, Capacity, Enrolled, Weekhours,
+         PeriodId, CareerId, TeacherId, AsignatureId, IsTheory)
+    VALUES
+        (@ClassGroupProgramming, @FacilityLaboratory,
+         '[{"Day":"Lunes y miércoles","Time":"11:00-13:00 hrs"}]',
+         30, 1, 4, @Period2025A, @CareerComputing, @TeacherEmployeeId, @AsignatureProgramming, 0),
+        (@ClassGroupMathematics, @FacilityClassroom,
+         '[{"Day":"Martes y jueves","Time":"09:00-11:00 hrs"}]',
+         35, 1, 4, @Period2025A, @CareerIndustrial, @TeacherEmployeeId, @AsignatureMathematics, 1);
+END;
+
+-- 14) Students for testing
 DECLARE @StudentOneId UNIQUEIDENTIFIER; SET @StudentOneId = NEWID();
 DECLARE @StudentTwoId UNIQUEIDENTIFIER; SET @StudentTwoId = NEWID();
 
 BEGIN
     INSERT INTO students
         (Id, EnrollmentNumber, CURP, Name, MiddleName, LastName, BirthDate, Gender, CareerId, PeriodIdStart,
+         InscriptionType, Status,
          IndigenousLanguages, PostalCode, EnglishLevel,
          MaritalStatus, NumberOfChildren, Works, BirthCountry, BirthState,
          Address)
     VALUES
-        (@StudentOneId, '20250001', 'ALOC950101HDFLRA09', 'Andrea', 'Lucia', 'Lopez', '1995-01-01', 'M', @CareerComputing, @Period2025A, @Language1, '97000', 0, 0, 0, 0, 'México', 'Chiapas', 'Calle 60 #123, Mérida, Yucatán'),
-        (@StudentTwoId, '20250002', 'ROGC960202HDFNTA10', 'Roberto', 'Carlos', 'García', '1996-02-02', 'H', @CareerIndustrial, @Period2025B, @Language2, '97010', 0, 0, 0, 1, 'México', 'Yucatán', 'Calle 20 #45, Valladolid, Yucatán');
+        (@StudentOneId, '20250001', 'ALOC950101HDFLRA09', 'Andrea', 'Lucia', 'Lopez', '1995-01-01', 'M', @CareerComputing, @Period2025A, 0, 0, @Language1, '97000', 0, 0, 0, 0, 'México', 'Chiapas', 'Calle 60 #123, Mérida, Yucatán'),
+        (@StudentTwoId, '20250002', 'ROGC960202HDFNTA10', 'Roberto', 'Carlos', 'García', '1996-02-02', 'H', @CareerIndustrial, @Period2025B, 0, 0, @Language2, '97010', 0, 0, 0, 1, 'México', 'Yucatán', 'Calle 20 #45, Valladolid, Yucatán');
 END;
 
 BEGIN

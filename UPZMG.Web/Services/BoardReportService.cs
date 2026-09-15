@@ -13,10 +13,10 @@ public sealed class BoardReportService : IBoardReportService
 {
     private static readonly List<BoardReportListItemModel> Reports = new()
     {
-        new() { Id = 1, Period = "2025-2026 / Cuatrimestre 1", GeneratedDate = new DateTime(2026, 6, 30), Status = "Enviado", PageCount = 42 },
-        new() { Id = 2, Period = "2024-2025 / Cuatrimestre 3", GeneratedDate = new DateTime(2026, 2, 28), Status = "Generado", PageCount = 38 },
-        new() { Id = 3, Period = "2024-2025 / Cuatrimestre 2", GeneratedDate = new DateTime(2025, 10, 15), Status = "Generado", PageCount = 40 },
-        new() { Id = 4, Period = "2025-2026 / Cuatrimestre 2", GeneratedDate = new DateTime(2026, 7, 10), Status = "Borrador", PageCount = 12 },
+        new() { Id = 1, Period = "2026 Enero - Abril", GeneratedDate = new DateTime(2026, 6, 30), Status = "Enviado", PageCount = 42 },
+        new() { Id = 2, Period = "2025 Septiembre - Diciembre", GeneratedDate = new DateTime(2026, 2, 28), Status = "Generado", PageCount = 38 },
+        new() { Id = 3, Period = "2025 Mayo - Agosto", GeneratedDate = new DateTime(2025, 10, 15), Status = "Generado", PageCount = 40 },
+        new() { Id = 4, Period = "2026 Mayo - Agosto", GeneratedDate = new DateTime(2026, 7, 10), Status = "Borrador", PageCount = 12 },
     };
 
     public IReadOnlyList<BoardReportListItemModel> GetAll() => Reports;

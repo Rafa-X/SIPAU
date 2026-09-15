@@ -25,6 +25,8 @@ public class Student
     public Gender Gender { get; set; }
     public Guid CareerId { get; set; }
     public required Guid PeriodIdStart { get; set; }
+    public InscriptionType InscriptionType { get; set; }
+    public StudentStatus Status { get; set; } = StudentStatus.Activo;
     public List<Guid> IndigenousLanguages { get; set; } = [];
     [MaxLength(10)]
     public string? PostalCode { get; set; }

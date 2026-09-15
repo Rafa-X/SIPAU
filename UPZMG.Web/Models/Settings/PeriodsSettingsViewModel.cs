@@ -15,6 +15,7 @@ public class PeriodsSettingsViewModel
 public class PeriodItemModel
 {
     public string Code { get; set; } = string.Empty;
+    public string Period { get; set; } = string.Empty;
     public string SchoolCycle { get; set; } = string.Empty;
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }

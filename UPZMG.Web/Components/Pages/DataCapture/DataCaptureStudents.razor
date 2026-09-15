@@ -110,6 +110,25 @@
                 </MudSelect>
             </MudItem>
             <MudItem md="4">
+                <MudSelect T="InscriptionType" @bind-Value="_model.InscriptionType" Label="Tipo de inscripción"
+                           Required="true" RequiredError="Selecciona un tipo de inscripción.">
+                    <MudSelectItem T="InscriptionType" Value="InscriptionType.NuevoIngreso">Nuevo ingreso</MudSelectItem>
+                    <MudSelectItem T="InscriptionType" Value="InscriptionType.Reingreso">Reingreso</MudSelectItem>
+                    <MudSelectItem T="InscriptionType" Value="InscriptionType.Reinscripcion">Reinscripción</MudSelectItem>
+                    <MudSelectItem T="InscriptionType" Value="InscriptionType.Egreso">Egreso</MudSelectItem>
+                    <MudSelectItem T="InscriptionType" Value="InscriptionType.Baja">Baja</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem md="4">
+                <MudSelect T="StudentStatus" @bind-Value="_model.Status" Label="Estatus del alumno"
+                           Required="true" RequiredError="Selecciona un estatus.">
+                    <MudSelectItem T="StudentStatus" Value="StudentStatus.Activo">Activo</MudSelectItem>
+                    <MudSelectItem T="StudentStatus" Value="StudentStatus.BajaTemporal">Baja temporal</MudSelectItem>
+                    <MudSelectItem T="StudentStatus" Value="StudentStatus.BajaDefinitiva">Baja definitiva</MudSelectItem>
+                    <MudSelectItem T="StudentStatus" Value="StudentStatus.Egresado">Egresado</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem md="4">
                 <MudSelect T="Guid" @bind-Value="_model.PeriodIdStart" Label="Periodo de Inicio"
                            Required="true" RequiredError="Selecciona un periodo.">
                     @foreach (var p in _periods)
@@ -145,7 +164,7 @@
     private MudForm _form = null!;
     private StudentFormViewModel _model = new();
     private IReadOnlyList<LookupOption> _careers = [];
-    private IReadOnlyList<LookupOption> _periods = [];
+    private IReadOnlyList<PeriodLookupOption> _periods = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -186,6 +205,8 @@
             Address = _model.Address.Trim(),
             CareerId = _model.CareerId,
             PeriodIdStart = _model.PeriodIdStart,
+            InscriptionType = _model.InscriptionType,
+            Status = _model.Status,
             BirthCountry = _model.BirthCountry.Trim(),
             BirthState = _model.BirthState.Trim(),
         };

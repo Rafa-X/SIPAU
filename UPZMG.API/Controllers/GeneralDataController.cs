@@ -16,8 +16,12 @@ public class GeneralDataController(
     public async Task<ActionResult<List<LookupOption>>> GetCareers() =>
             Ok(await generalDataRepository.GetCareersAsync());
 
+    [HttpGet("lookups/asignatures/{careerId:guid}")]
+    public async Task<ActionResult<List<LookupOption>>> GetAsignatures(Guid careerId) =>
+        Ok(await generalDataRepository.GetAsignaturesAsync(careerId));
+
     [HttpGet("lookups/periods")]
-    public async Task<ActionResult<List<LookupOption>>> GetPeriods() =>
+    public async Task<ActionResult<List<PeriodLookupOption>>> GetPeriods() =>
         Ok(await generalDataRepository.GetPeriodsAsync());
 
     [HttpGet("lookups/max-degrees")]
@@ -31,5 +35,13 @@ public class GeneralDataController(
     [HttpGet("lookups/internal-areas")]
     public async Task<ActionResult<List<LookupOption>>> GetInternalAreas() =>
         Ok(await generalDataRepository.GetInternalAreasAsync());
+
+    [HttpGet("lookups/teachers")]
+    public async Task<ActionResult<List<LookupOption>>> GetTeachers() =>
+        Ok(await generalDataRepository.GetTeachersAsync());
+
+    [HttpGet("lookups/facilities")]
+    public async Task<ActionResult<List<LookupOption>>> GetFacilities() =>
+        Ok(await generalDataRepository.GetFacilitiesAsync());
 
 }

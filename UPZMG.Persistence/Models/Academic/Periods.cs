@@ -12,7 +12,9 @@ public class Periods
     public Guid Id { get; set; }
     [MaxLength(20)]
     public string IdCode { get; set; } = null!;
-    [MaxLength(20)]
+    [MaxLength(4)]
+    public string SchoolCycle { get; set; } = null!;
+    [MaxLength(8)]
     public string SEP_Period { get; set; } = null!;
     public DateOnly StartDate { get; set; }
     public DateOnly EndDate { get; set; }

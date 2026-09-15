@@ -14,13 +14,22 @@ public class GeneralDataRepository(AppDBContext db)
             .Select(c => new LookupOption(c.Id, c.Name ?? "Sin nombre"))
             .ToListAsync();
 
-        public async Task<List<LookupOption>> GetPeriodsAsync() =>
+    public async Task<List<LookupOption>> GetAsignaturesAsync(Guid careerId) =>
+        await db.Asignatures
+            .AsNoTracking()
+            .Where(a => a.CareerId == careerId)
+            .OrderBy(a => a.AsignatureName)
+            .Select(a => new LookupOption(a.Id, a.AsignatureName))
+            .ToListAsync();
+
+        public async Task<List<PeriodLookupOption>> GetPeriodsAsync() =>
             await db.Periods
                 .AsNoTracking()
-                .OrderByDescending(p => p.StartDate)
-                .Select(p => new LookupOption(
+                .OrderBy(p => p.StartDate)
+                .Select(p => new PeriodLookupOption(
                     p.Id,
-                    p.IdCode))
+                    p.SEP_Period,
+                    p.SchoolCycle))
                 .ToListAsync();
 
     public async Task<List<LookupOption>> GetMaxDegreesAsync() =>
@@ -42,5 +51,20 @@ public class GeneralDataRepository(AppDBContext db)
             .AsNoTracking()
             .OrderBy(ia => ia.Name)
             .Select(ia => new LookupOption(ia.Id, ia.Name ?? "Sin nombre"))
+            .ToListAsync();
+
+    public async Task<List<LookupOption>> GetTeachersAsync() =>
+        await db.Employees
+            .AsNoTracking()
+            .Where(e => e.IsTeacher)
+            .OrderBy(e => e.FullName)
+            .Select(e => new LookupOption(e.Id, e.FullName))
+            .ToListAsync();
+
+    public async Task<List<LookupOption>> GetFacilitiesAsync() =>
+        await db.Set<SchoolFacility>()
+            .AsNoTracking()
+            .OrderBy(f => f.Name)
+            .Select(f => new LookupOption(f.Id, f.Name))
             .ToListAsync();
 }

@@ -31,6 +31,7 @@ public class EmployeesRepository(AppDBContext db)
             HasDisability = request.HasDisability,
             ExternalXPYears = request.ExternalXPYears,
             FirstHiredDate = request.FirstHiredDate,
+            IsTeacher = request.IsTeacher,
         };
 
         foreach (var languageId in matchedLanguageIds)

@@ -21,6 +21,8 @@ public sealed class CreateStudent
     public required string Address { get; set; }
     public required Guid CareerId { get; set; }
     public required Guid PeriodIdStart { get; set; } 
+    public InscriptionType InscriptionType { get; set; }
+    public StudentStatus Status { get; set; } = StudentStatus.Activo;
     public string? BirthCountry { get; set; }
     public string? BirthState { get; set; }
 }
@@ -44,6 +46,7 @@ public sealed class StudentListItem
     public string Name { get; set; } = string.Empty;
     public string? Career { get; set; }
     public string? Period { get; set; }
+    public StudentStatus Status { get; set; }
 }
 
 public sealed class StudentsListResponse

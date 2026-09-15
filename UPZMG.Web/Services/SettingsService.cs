@@ -14,7 +14,7 @@ public interface ISettingsService
     IReadOnlyList<PeriodItemModel> GetPeriods();
 
     /// <summary>Adds a period. Returns false if the code already exists.</summary>
-    bool AddPeriod(string code, string schoolCycle);
+    bool AddPeriod(string code, string period, string schoolCycle);
 
     /// <summary>Makes one period the active one, deactivating every other.</summary>
     void ActivatePeriod(string code);
@@ -61,16 +61,16 @@ public sealed class SettingsService : ISettingsService
 
     private readonly List<PeriodItemModel> _periods = new()
     {
-        new() { Code = "2025-2026-1", SchoolCycle = "2025-2026", StartDate = new DateTime(2025, 9, 1), EndDate = new DateTime(2025, 12, 20), IsActive = true },
-        new() { Code = "2024-2025-3", SchoolCycle = "2024-2025", StartDate = new DateTime(2025, 5, 5), EndDate = new DateTime(2025, 8, 15), IsActive = false },
-        new() { Code = "2024-2025-2", SchoolCycle = "2024-2025", StartDate = new DateTime(2025, 1, 13), EndDate = new DateTime(2025, 4, 25), IsActive = false },
+        new() { Code = "2026-EA", Period = "Ene-Abr", SchoolCycle = "2026", StartDate = new DateTime(2026, 1, 1), EndDate = new DateTime(2026, 4, 30), IsActive = true },
+        new() { Code = "2026-MA", Period = "May-Ago", SchoolCycle = "2026", StartDate = new DateTime(2026, 5, 1), EndDate = new DateTime(2026, 8, 31), IsActive = false },
+        new() { Code = "2026-SD", Period = "Sep-Dic", SchoolCycle = "2026", StartDate = new DateTime(2026, 9, 1), EndDate = new DateTime(2026, 12, 31), IsActive = false },
     };
 
     public IReadOnlyList<PeriodItemModel> GetPeriods() => _periods;
 
     public PeriodItemModel? ActivePeriod => _periods.FirstOrDefault(p => p.IsActive);
 
-    public bool AddPeriod(string code, string schoolCycle)
+    public bool AddPeriod(string code, string period, string schoolCycle)
     {
         // The period code identifies every capture and report downstream, so a
         // duplicate would silently split one cycle's data across two rows.
@@ -80,6 +80,7 @@ public sealed class SettingsService : ISettingsService
         _periods.Insert(0, new PeriodItemModel
         {
             Code = code,
+            Period = period,
             SchoolCycle = schoolCycle,
             StartDate = DateTime.Today,
             EndDate = DateTime.Today.AddMonths(4),

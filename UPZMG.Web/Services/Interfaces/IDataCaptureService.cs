@@ -21,6 +21,7 @@ public interface IDataCaptureService
 
     Task<Student?> CreateStudent(CreateStudent request);
     Task<Employee?> CreateTeacher(CreateEmployee request);
+    Task<ClassGroups?> CreateClassGroup(CreateClassGroup request);
 
     IReadOnlyList<TeacherListItemModel> GetTeachersList();
     IReadOnlyList<InfrastructureListItemModel> GetInfrastructureList();
