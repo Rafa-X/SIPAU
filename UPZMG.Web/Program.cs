@@ -60,6 +60,7 @@ try
     builder.Services.AddScoped<IDataCaptureService, DataCaptureService>();
     builder.Services.AddScoped<IStudentsService, StudentsService>();
     builder.Services.AddScoped<IGeneralDataService, GeneralDataService>();
+    builder.Services.AddScoped<IPeriodsService, PeriodsService>();
     builder.Services.AddScoped<IMinutesService, MinutesService>();
     builder.Services.AddScoped<IBoardReportService, BoardReportService>();
     builder.Services.AddSingleton<ISettingsService, SettingsService>();

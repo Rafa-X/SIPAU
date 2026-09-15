@@ -1,6 +1,9 @@
 @page "/settings/periods"
 @attribute [Authorize(Roles = "Admin")]
-@inject ISettingsService SettingsSvc
+@using System.Net
+@using UPZMG.Implementations.Settings
+@inject IPeriodsService PeriodsSvc
+@inject ISecurityService SecuritySvc
 @inject ISnackbar Snackbar
 
 <PageTitle>Periodos escolares — SIGIE</PageTitle>
@@ -14,14 +17,18 @@
         <SectionCard Title="Agregar periodo" Subtitle="El código identifica el ciclo en capturas y reportes"
                      Icon="@Icons.Material.Filled.EventRepeat" Accent="navy">
             <ChildContent>
-                <MudTextField @bind-Value="_newCode" Label="Código" Placeholder="2026-MA"
+                <MudTextField @bind-Value="_newCode" Label="Código" Placeholder="2026-MA" MaxLength="20"
                               Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-3" />
-                <MudTextField @bind-Value="_newPeriod" Label="Periodo" Placeholder="May-Ago"
+                <MudTextField @bind-Value="_newPeriod" Label="Periodo" Placeholder="May-Ago" MaxLength="8"
                               Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-3" />
-                <MudTextField @bind-Value="_newCycle" Label="Año del periodo" Placeholder="2026"
-                              Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-4" />
+                <MudTextField @bind-Value="_newCycle" Label="Año del periodo" Placeholder="2026" MaxLength="4"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-3" />
+                <MudDatePicker @bind-Date="_newStart" Label="Inicio"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-3" />
+                <MudDatePicker @bind-Date="_newEnd" Label="Fin" MinDate="_newStart"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-4" />
                 <MudButton Variant="Variant.Filled" Color="Color.Secondary" FullWidth="true"
-                           StartIcon="@Icons.Material.Filled.Add" OnClick="AddPeriod">
+                           StartIcon="@Icons.Material.Filled.Add" Disabled="_saving" OnClick="AddPeriodAsync">
                     Agregar periodo
                 </MudButton>
             </ChildContent>
@@ -32,74 +39,153 @@
         <SectionCard Title="Periodos registrados"
                      Subtitle="@ActiveSummary"
                      Icon="@Icons.Material.Filled.CalendarMonth" Accent="teal" Flush="true">
-            <MudDataGrid T="PeriodItemModel" Items="_periods" Hover="true" Dense="true" Elevation="0">
-                <Columns>
-                    <PropertyColumn Property="x => x.Code" Title="Código" />
-                    <PropertyColumn Property="x => x.Period" Title="Periodo" />
-                    <PropertyColumn Property="x => x.SchoolCycle" Title="Año" />
-                    <PropertyColumn Property="x => x.StartDate" Title="Inicio" Format="dd/MM/yyyy" />
-                    <PropertyColumn Property="x => x.EndDate" Title="Fin" Format="dd/MM/yyyy" />
-                    <TemplateColumn Title="Estado" CellClass="sigie-cell-end" HeaderClass="sigie-cell-end" Sortable="false">
-                        <CellTemplate>
-                            @if (context.Item.IsActive)
-                            {
-                                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text"
-                                         Icon="@Icons.Material.Filled.CheckCircle">Activo</MudChip>
-                            }
-                            else
-                            {
-                                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary"
-                                           StartIcon="@Icons.Material.Filled.PlayArrow"
-                                           OnClick="() => Activate(context.Item)">
-                                    Activar
-                                </MudButton>
-                            }
-                        </CellTemplate>
-                    </TemplateColumn>
-                </Columns>
-            </MudDataGrid>
+            @if (_loading)
+            {
+                <LoadingState Text="Cargando periodos…" />
+            }
+            else
+            {
+                <MudDataGrid T="PeriodItem" Items="_periods" Hover="true" Dense="true" Elevation="0">
+                    <Columns>
+                        <PropertyColumn Property="x => x.Code" Title="Código" />
+                        <PropertyColumn Property="x => x.Period" Title="Periodo" />
+                        <PropertyColumn Property="x => x.SchoolCycle" Title="Año" />
+                        <PropertyColumn Property="x => x.StartDate" Title="Inicio" Format="dd/MM/yyyy" />
+                        <PropertyColumn Property="x => x.EndDate" Title="Fin" Format="dd/MM/yyyy" />
+                        <TemplateColumn Title="Estado" CellClass="sigie-cell-end" HeaderClass="sigie-cell-end" Sortable="false">
+                            <CellTemplate>
+                                @if (context.Item.IsActive)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text"
+                                             Icon="@Icons.Material.Filled.CheckCircle">Activo</MudChip>
+                                }
+                                else
+                                {
+                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary"
+                                               StartIcon="@Icons.Material.Filled.PlayArrow" Disabled="_saving"
+                                               OnClick="() => ActivateAsync(context.Item)">
+                                        Activar
+                                    </MudButton>
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
+                    </Columns>
+                    <NoRecordsContent>
+                        <EmptyState Title="Sin periodos registrados"
+                                    Description="Agrega el primer periodo con el formulario y actívalo para empezar a capturar." />
+                    </NoRecordsContent>
+                </MudDataGrid>
+            }
         </SectionCard>
     </MudItem>
 </MudGrid>
 
 @code {
-    private IReadOnlyList<PeriodItemModel> _periods = Array.Empty<PeriodItemModel>();
+    private IReadOnlyList<PeriodItem> _periods = [];
+    private bool _loading = true;
+    private bool _saving;
+
     private string _newCode = string.Empty;
     private string _newPeriod = string.Empty;
     private string _newCycle = string.Empty;
+    private DateTime? _newStart;
+    private DateTime? _newEnd;
 
-    protected override void OnInitialized() => Reload();
+    protected override Task OnInitializedAsync() => ReloadAsync();
 
-    private void Reload() => _periods = SettingsSvc.GetPeriods().ToList();
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _periods = await PeriodsSvc.GetPeriodsAsync();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            _periods = [];
+            Snackbar.Add("No se pudieron cargar los periodos. Verifica que el API esté corriendo.", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
 
     private string ActiveSummary =>
-        SettingsSvc.ActivePeriod is { } p
+        _periods.FirstOrDefault(p => p.IsActive) is { } p
             ? $"Periodo activo: {p.Period} ({p.SchoolCycle})"
             : "No hay ningún periodo activo — actívalo antes de capturar.";
 
-    private void AddPeriod()
+    private async Task AddPeriodAsync()
     {
         if (string.IsNullOrWhiteSpace(_newCode) || string.IsNullOrWhiteSpace(_newPeriod) || string.IsNullOrWhiteSpace(_newCycle))
         {
-            Snackbar.Add("Captura el código y el año del periodo.", Severity.Warning);
+            Snackbar.Add("Captura el código, el periodo y el año.", Severity.Warning);
             return;
         }
 
-        if (!SettingsSvc.AddPeriod(_newCode.Trim(), _newPeriod.Trim(), _newCycle.Trim()))
+        // periods.SchoolCycle holds a four-digit year.
+        var cycle = _newCycle.Trim();
+        if (cycle.Length != 4 || !cycle.All(char.IsDigit))
         {
-            Snackbar.Add($"Ya existe un periodo con el código '{_newCode.Trim()}'.", Severity.Error);
+            Snackbar.Add("El año del periodo debe tener cuatro dígitos, por ejemplo 2026.", Severity.Warning);
             return;
         }
 
-        Reload();
-        Snackbar.Add($"Periodo '{_newCode.Trim()}' agregado. Actívalo cuando corresponda.", Severity.Success);
-        _newCode = _newPeriod = _newCycle = string.Empty;
+        if (_newStart is null || _newEnd is null || _newEnd <= _newStart)
+        {
+            Snackbar.Add("Indica las fechas de inicio y fin; el fin debe ser posterior al inicio.", Severity.Warning);
+            return;
+        }
+
+        _saving = true;
+        var code = _newCode.Trim();
+        var status = await PeriodsSvc.CreatePeriodAsync(new CreatePeriod
+        {
+            RequesterKey = await SecuritySvc.GetRequesterKeyAsync(),
+            Code = code,
+            Period = _newPeriod.Trim(),
+            SchoolCycle = cycle,
+            StartDate = DateOnly.FromDateTime(_newStart.Value),
+            EndDate = DateOnly.FromDateTime(_newEnd.Value),
+        });
+        _saving = false;
+
+        switch (status)
+        {
+            case HttpStatusCode.Created:
+            case HttpStatusCode.OK:
+                Snackbar.Add($"Periodo '{code}' agregado. Actívalo cuando corresponda.", Severity.Success);
+                _newCode = _newPeriod = _newCycle = string.Empty;
+                _newStart = _newEnd = null;
+                await ReloadAsync();
+                break;
+            case HttpStatusCode.Conflict:
+                Snackbar.Add($"Ya existe un periodo con el código '{code}'.", Severity.Error);
+                break;
+            default:
+                Snackbar.Add("No se pudo guardar el periodo. Revisa los datos e intenta de nuevo.", Severity.Error);
+                break;
+        }
     }
 
-    private void Activate(PeriodItemModel period)
+    private async Task ActivateAsync(PeriodItem period)
     {
-        SettingsSvc.ActivatePeriod(period.Code);
-        Reload();
+        _saving = true;
+        var activated = await PeriodsSvc.ActivatePeriodAsync(new ActivatePeriod
+        {
+            RequesterKey = await SecuritySvc.GetRequesterKeyAsync(),
+            PeriodId = period.Id,
+        });
+        _saving = false;
+
+        if (!activated)
+        {
+            Snackbar.Add($"No se pudo activar '{period.Code}'.", Severity.Error);
+            return;
+        }
+
         Snackbar.Add($"'{period.Code}' es ahora el periodo activo.", Severity.Success);
+        await ReloadAsync();
     }
 }
