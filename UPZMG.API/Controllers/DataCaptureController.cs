@@ -16,7 +16,7 @@ public class DataCaptureController(
 {
     private const string StudentRoles = "Admin,Control Escolar,Servicios Estudiantiles";
     private const string EmployeeRoles = "Admin,Recursos Humanos";
-    private const string ClassGroupRoles = "Admin,Direcci\u00f3n Acad\u00e9mica";
+    private const string ClassGroupRoles = "Admin,Direccion Academica";
 
     private async Task<bool> ValidatePermissions<T>(T request)
     {

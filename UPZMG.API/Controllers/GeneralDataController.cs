@@ -7,7 +7,7 @@ namespace UPZMG.Api.Controllers;
 
 [ApiController]
 [Route("general-data")]
-[Authorize(Roles = "Admin,Control Escolar,Servicios Estudiantiles,Recursos Humanos,Direcci\u00f3n Acad\u00e9mica,Recursos Materiales y Servicios Generales")]
+[Authorize(Roles = "Admin,Control Escolar,Servicios Estudiantiles,Recursos Humanos,Direccion Academica,Recursos Materiales y Servicios Generales")]
 public class GeneralDataController(
     GeneralDataRepository generalDataRepository) : ControllerBase
 {
