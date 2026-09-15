@@ -53,7 +53,7 @@ BEGIN
         (NEWID(), 'Control Escolar'),
         (NEWID(), 'Servicios Estudiantiles'),
         (NEWID(), 'Recursos Humanos'),
-        (NEWID(), 'Dirección Académica'),
+        (NEWID(), 'Direccion Academica'),
         (NEWID(), 'Recursos Materiales y Servicios Generales');
 END;
 
@@ -61,7 +61,7 @@ SELECT @AdminRoleId = Id                  FROM roles WHERE Name = 'Admin';
 SELECT @ControlEscolarRoleId = Id         FROM roles WHERE Name = 'Control Escolar';
 SELECT @ServiciosEstudiantilesRoleId = Id FROM roles WHERE Name = 'Servicios Estudiantiles';
 SELECT @RecursosHumanosRoleId = Id        FROM roles WHERE Name = 'Recursos Humanos';
-SELECT @DireccionAcademicaRoleId = Id     FROM roles WHERE Name = 'Dirección Académica';
+SELECT @DireccionAcademicaRoleId = Id     FROM roles WHERE Name = 'Direccion Academica';
 SELECT @RecursosMaterialesRoleId = Id     FROM roles WHERE Name = 'Recursos Materiales y Servicios Generales';
 
 -- 2) Employees
