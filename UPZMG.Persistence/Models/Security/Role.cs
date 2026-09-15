@@ -10,7 +10,7 @@ namespace UPZMG.Persistence.Models;
 public class Role
 {
     public Guid Id { get; set; }
-    [MaxLength(40)]
+    [MaxLength(60)]
     public string Name { get; set; } = null!;
 }
 

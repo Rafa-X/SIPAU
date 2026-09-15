@@ -7,13 +7,17 @@ namespace UPZMG.Api.Controllers;
 
 [ApiController]
 [Route("data-capture")]
-[Authorize(Roles = "Admin")]
+[Authorize]
 public class DataCaptureController(
     SecurityRepository securityRepository, 
     EmployeesRepository employeesRepository, 
     StudentsRepository studentsRepository,
     ClassGroupsRepository classGroupsRepository) : ControllerBase
 {
+    private const string StudentRoles = "Admin,Control Escolar,Servicios Estudiantiles";
+    private const string EmployeeRoles = "Admin,Recursos Humanos";
+    private const string ClassGroupRoles = "Admin,Direcci\u00f3n Acad\u00e9mica";
+
     private async Task<bool> ValidatePermissions<T>(T request)
     {
         var requester_key = typeof(T).GetProperty("RequesterKey")?.GetValue(request) as Guid? 
@@ -25,6 +29,7 @@ public class DataCaptureController(
 
 
     [HttpPost("students/create")]
+    [Authorize(Roles = StudentRoles)]
     // Create a new student
     public async Task<IActionResult> CreateStudent([FromBody] CreateStudent request)
     {
@@ -35,6 +40,7 @@ public class DataCaptureController(
     }
 
     [HttpGet("students/list")]
+    [Authorize(Roles = StudentRoles)]
     // Search + paginate captured students
     public async Task<IActionResult> GetStudentsList([FromQuery] StudentsListRequest request)
     {
@@ -43,6 +49,7 @@ public class DataCaptureController(
     }
 
     [HttpPost("employees/create")]
+    [Authorize(Roles = EmployeeRoles)]
     // Create a new employee
     public async Task<IActionResult> CreateEmployee([FromBody] CreateEmployee request)
     {
@@ -53,6 +60,7 @@ public class DataCaptureController(
     }
 
     [HttpPost("class-groups/create")]
+    [Authorize(Roles = ClassGroupRoles)]
     public async Task<IActionResult> CreateClassGroup([FromBody] CreateClassGroup request)
     {
         var group = await classGroupsRepository.CreateAsync(request);

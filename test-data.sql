@@ -6,6 +6,8 @@
 --Password: --Admin123!
 --Email: teacher@upzmg.local
 --Password: --Teacher123!
+--Email: control.escolar@upzmg.local / servicios.estudiantiles@upzmg.local / recursos.humanos@upzmg.local / recursos.materiales@upzmg.local
+--Password: --User123!
 
 -- NOTE:
 -- The passwords are hashed using the default ASP.NET Core Identity password hasher.
@@ -13,20 +15,33 @@
 
 DECLARE @AdminPasswordHash  NVARCHAR(200) = 'AQAAAAIAAYagAAAAELFEBuqkjC8mw6wGU/ZOPvIl/gtdxfihT8R93uN65idh4ZUs24vObHCaa/a+fNJ8jg==';
 DECLARE @TeacherPasswordHash NVARCHAR(200) = 'AQAAAAIAAYagAAAAEM46AAHF8ktFbnKXnMtgdZQe2yO+QlEi4ymS1gdR7EQ5Xxltt06oz5n84Wdv2wCD+w==';
+DECLARE @UserPasswordHash NVARCHAR(200) = 'AQAAAAIAAYagAAAAEN2rm3dyOJ5a9z7t8t8uA3xYli3upMY6sedID0sERHBMQK22V9Qj5XFcZDKKxTvDFw==';
 
-DECLARE @AdminRoleId   UNIQUEIDENTIFIER;  
-DECLARE @TeacherRoleId UNIQUEIDENTIFIER;
+DECLARE @AdminRoleId                UNIQUEIDENTIFIER;
+DECLARE @ControlEscolarRoleId       UNIQUEIDENTIFIER;
+DECLARE @ServiciosEstudiantilesRoleId UNIQUEIDENTIFIER;
+DECLARE @RecursosHumanosRoleId      UNIQUEIDENTIFIER;
+DECLARE @DireccionAcademicaRoleId   UNIQUEIDENTIFIER;
+DECLARE @RecursosMaterialesRoleId   UNIQUEIDENTIFIER;
 
 DECLARE @AdminEmployeeId   UNIQUEIDENTIFIER;
 DECLARE @TeacherEmployeeId UNIQUEIDENTIFIER;
+DECLARE @ControlEscolarEmployeeId       UNIQUEIDENTIFIER;
+DECLARE @ServiciosEstudiantilesEmployeeId UNIQUEIDENTIFIER;
+DECLARE @RecursosHumanosEmployeeId  UNIQUEIDENTIFIER;
+DECLARE @RecursosMaterialesEmployeeId UNIQUEIDENTIFIER;
 
 DECLARE @AdminUserId   UNIQUEIDENTIFIER;
 DECLARE @TeacherUserId UNIQUEIDENTIFIER;
+DECLARE @ControlEscolarUserId       UNIQUEIDENTIFIER;
+DECLARE @ServiciosEstudiantilesUserId UNIQUEIDENTIFIER;
+DECLARE @RecursosHumanosUserId      UNIQUEIDENTIFIER;
+DECLARE @RecursosMaterialesUserId   UNIQUEIDENTIFIER;
 
 DECLARE @FullAccessPermissionId    UNIQUEIDENTIFIER;
 DECLARE @ServiceAccessPermissionId UNIQUEIDENTIFIER;
 
--- 1) Roles
+-- 1) Roles (Admin kept as-is; the rest mirror the real organizational areas)
 BEGIN
     INSERT INTO roles (Id, Name)
     VALUES (NEWID(), 'Admin');
@@ -34,11 +49,20 @@ END;
 
 BEGIN
     INSERT INTO roles (Id, Name)
-    VALUES (NEWID(), 'Teacher');
+    VALUES
+        (NEWID(), 'Control Escolar'),
+        (NEWID(), 'Servicios Estudiantiles'),
+        (NEWID(), 'Recursos Humanos'),
+        (NEWID(), 'Dirección Académica'),
+        (NEWID(), 'Recursos Materiales y Servicios Generales');
 END;
 
-SELECT @AdminRoleId = Id   FROM roles WHERE Name = 'Admin';
-SELECT @TeacherRoleId = Id FROM roles WHERE Name = 'Teacher';
+SELECT @AdminRoleId = Id                  FROM roles WHERE Name = 'Admin';
+SELECT @ControlEscolarRoleId = Id         FROM roles WHERE Name = 'Control Escolar';
+SELECT @ServiciosEstudiantilesRoleId = Id FROM roles WHERE Name = 'Servicios Estudiantiles';
+SELECT @RecursosHumanosRoleId = Id        FROM roles WHERE Name = 'Recursos Humanos';
+SELECT @DireccionAcademicaRoleId = Id     FROM roles WHERE Name = 'Dirección Académica';
+SELECT @RecursosMaterialesRoleId = Id     FROM roles WHERE Name = 'Recursos Materiales y Servicios Generales';
 
 -- 2) Employees
 BEGIN
@@ -59,6 +83,42 @@ BEGIN
         (@TeacherEmployeeId, 1002, 'Docente de Prueba', 'teacher@upzmg.local', 'DOCJ850202BB2', 'DOCJ850202HDFRRS02', 'M', '1985-02-02', 3, 0, 0, 8, '2016-08-01', 1);
 END;
 
+BEGIN
+    SET @ControlEscolarEmployeeId = NEWID();
+
+    INSERT INTO employees
+        (Id, EmployeeNumber, FullName, Email, Rfc, Curp, Gender, BirthDate, HighestEducationLevel, TitleStatus, HasDisability, ExternalXPYears, FirstHiredDate, IsTeacher)
+    VALUES
+        (@ControlEscolarEmployeeId, 1003, 'Encargado de Control Escolar', 'control.escolar@upzmg.local', 'CEOJ870303CC3', 'CEOJ870303MDFRRN03', 'M', '1987-03-03', 3, 0, 0, 6, '2018-03-01', 0);
+END;
+
+BEGIN
+    SET @ServiciosEstudiantilesEmployeeId = NEWID();
+
+    INSERT INTO employees
+        (Id, EmployeeNumber, FullName, Email, Rfc, Curp, Gender, BirthDate, HighestEducationLevel, TitleStatus, HasDisability, ExternalXPYears, FirstHiredDate, IsTeacher)
+    VALUES
+        (@ServiciosEstudiantilesEmployeeId, 1004, 'Encargado de Servicios Estudiantiles', 'servicios.estudiantiles@upzmg.local', 'SEOJ880404DD4', 'SEOJ880404HDFRRN04', 'H', '1988-04-04', 3, 0, 0, 5, '2019-05-01', 0);
+END;
+
+BEGIN
+    SET @RecursosHumanosEmployeeId = NEWID();
+
+    INSERT INTO employees
+        (Id, EmployeeNumber, FullName, Email, Rfc, Curp, Gender, BirthDate, HighestEducationLevel, TitleStatus, HasDisability, ExternalXPYears, FirstHiredDate, IsTeacher)
+    VALUES
+        (@RecursosHumanosEmployeeId, 1005, 'Encargado de Recursos Humanos', 'recursos.humanos@upzmg.local', 'RHOJ890505EE5', 'RHOJ890505MDFRRN05', 'M', '1989-05-05', 3, 0, 0, 7, '2017-02-01', 0);
+END;
+
+BEGIN
+    SET @RecursosMaterialesEmployeeId = NEWID();
+
+    INSERT INTO employees
+        (Id, EmployeeNumber, FullName, Email, Rfc, Curp, Gender, BirthDate, HighestEducationLevel, TitleStatus, HasDisability, ExternalXPYears, FirstHiredDate, IsTeacher)
+    VALUES
+        (@RecursosMaterialesEmployeeId, 1006, 'Encargado de Recursos Materiales y Servicios Generales', 'recursos.materiales@upzmg.local', 'RMOJ900606FF6', 'RMOJ900606HDFRRN06', 'H', '1990-06-06', 3, 0, 0, 4, '2020-01-15', 0);
+END;
+
 -- 3) System users
 BEGIN
     SET @AdminUserId = NEWID();
@@ -74,15 +134,53 @@ BEGIN
     VALUES (@TeacherUserId, @TeacherEmployeeId, 'Teacher', 'teacher@upzmg.local', @TeacherPasswordHash, 1, GETUTCDATE());
 END
 
+BEGIN
+    SET @ControlEscolarUserId = NEWID();
+
+    INSERT INTO systemUser (Id, EmployeeId, UserName, Email, Password, IsActive, LastLogin)
+    VALUES (@ControlEscolarUserId, @ControlEscolarEmployeeId, 'ControlEscolar', 'control.escolar@upzmg.local', @UserPasswordHash, 1, GETUTCDATE());
+END
+
+BEGIN
+    SET @ServiciosEstudiantilesUserId = NEWID();
+
+    INSERT INTO systemUser (Id, EmployeeId, UserName, Email, Password, IsActive, LastLogin)
+    VALUES (@ServiciosEstudiantilesUserId, @ServiciosEstudiantilesEmployeeId, 'ServiciosEstudiantiles', 'servicios.estudiantiles@upzmg.local', @UserPasswordHash, 1, GETUTCDATE());
+END
+
+BEGIN
+    SET @RecursosHumanosUserId = NEWID();
+
+    INSERT INTO systemUser (Id, EmployeeId, UserName, Email, Password, IsActive, LastLogin)
+    VALUES (@RecursosHumanosUserId, @RecursosHumanosEmployeeId, 'RecursosHumanos', 'recursos.humanos@upzmg.local', @UserPasswordHash, 1, GETUTCDATE());
+END
+
+BEGIN
+    SET @RecursosMaterialesUserId = NEWID();
+
+    INSERT INTO systemUser (Id, EmployeeId, UserName, Email, Password, IsActive, LastLogin)
+    VALUES (@RecursosMaterialesUserId, @RecursosMaterialesEmployeeId, 'RecursosMateriales', 'recursos.materiales@upzmg.local', @UserPasswordHash, 1, GETUTCDATE());
+END
+
 -- 4) UserRole relations
 BEGIN
     INSERT INTO userRoles (Id, UserId, RoleId)
     VALUES (NEWID(), @AdminUserId, @AdminRoleId);
 END;
 
+-- "Docente de Prueba" reports under Dirección Académica (was the test-only Teacher role)
 BEGIN
     INSERT INTO userRoles (Id, UserId, RoleId)
-    VALUES (NEWID(), @TeacherUserId, @TeacherRoleId);
+    VALUES (NEWID(), @TeacherUserId, @DireccionAcademicaRoleId);
+END;
+
+BEGIN
+    INSERT INTO userRoles (Id, UserId, RoleId)
+    VALUES
+        (NEWID(), @ControlEscolarUserId, @ControlEscolarRoleId),
+        (NEWID(), @ServiciosEstudiantilesUserId, @ServiciosEstudiantilesRoleId),
+        (NEWID(), @RecursosHumanosUserId, @RecursosHumanosRoleId),
+        (NEWID(), @RecursosMaterialesUserId, @RecursosMaterialesRoleId);
 END;
 
 -- 5) Permissions
@@ -111,7 +209,12 @@ END;
 
 BEGIN
     INSERT INTO rolePermissions (Id, RoleId, PermissionId)
-    VALUES (NEWID(), @TeacherRoleId, @ServiceAccessPermissionId);
+    VALUES
+        (NEWID(), @ControlEscolarRoleId, @ServiceAccessPermissionId),
+        (NEWID(), @ServiciosEstudiantilesRoleId, @ServiceAccessPermissionId),
+        (NEWID(), @RecursosHumanosRoleId, @ServiceAccessPermissionId),
+        (NEWID(), @DireccionAcademicaRoleId, @ServiceAccessPermissionId),
+        (NEWID(), @RecursosMaterialesRoleId, @ServiceAccessPermissionId);
 END;
 
 -- 7) Indigenous Languages

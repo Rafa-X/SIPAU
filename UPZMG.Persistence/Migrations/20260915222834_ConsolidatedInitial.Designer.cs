@@ -12,7 +12,7 @@ using UPZMG.Persistence;
 namespace UPZMG.Persistence.Migrations
 {
     [DbContext(typeof(AppDBContext))]
-    [Migration("20260915014249_ConsolidatedInitial")]
+    [Migration("20260915222834_ConsolidatedInitial")]
     partial class ConsolidatedInitial
     {
         /// <inheritdoc />
@@ -593,8 +593,8 @@ namespace UPZMG.Persistence.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("nvarchar(40)");
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
 
                     b.HasKey("Id");
 
