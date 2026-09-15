@@ -28,7 +28,7 @@ public sealed class DashboardService : IDashboardService
         {
             ActivePeriod = period is null
                 ? "Sin periodo activo"
-                : $"Ciclo {period.SchoolCycle} · {period.Code}",
+                : $"Periodo {period.Period} ({period.SchoolCycle}) · {period.Code}",
             IsPeriodActive = period is not null,
 
             TotalStudents = 1245,

@@ -38,6 +38,8 @@ public class StudentsRepository(AppDBContext db)
             Address = request.Address,
             CareerId = request.CareerId,
             PeriodIdStart = request.PeriodIdStart,
+            InscriptionType = request.InscriptionType,
+            Status = request.Status,
         };
 
         foreach (var languageId in matchedLanguageIds)
@@ -95,6 +97,7 @@ public class StudentsRepository(AppDBContext db)
                 Name = $"{x.Student.Name} {x.Student.MiddleName} {x.Student.LastName}",
                 Career = x.Career.Name,
                 Period = x.Period.SEP_Period,
+                Status = x.Student.Status,
             }).ToListAsync();
 
         return new StudentsListResponse { Items = items, TotalCount = await query.CountAsync() };

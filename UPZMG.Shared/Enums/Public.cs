@@ -28,6 +28,5 @@ public enum Modality
 /// </summary>
 public enum PeriodType
 {
-    Semestral,
-    Cuatrimestral,
+    Cuatrimestral
 }

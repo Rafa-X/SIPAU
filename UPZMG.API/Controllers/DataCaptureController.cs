@@ -11,7 +11,8 @@ namespace UPZMG.Api.Controllers;
 public class DataCaptureController(
     SecurityRepository securityRepository, 
     EmployeesRepository employeesRepository, 
-    StudentsRepository studentsRepository) : ControllerBase
+    StudentsRepository studentsRepository,
+    ClassGroupsRepository classGroupsRepository) : ControllerBase
 {
     private async Task<bool> ValidatePermissions<T>(T request)
     {
@@ -49,5 +50,12 @@ public class DataCaptureController(
         var employee = await employeesRepository.CreateEmployeeAsync(request);
 
         return Created($"/api/employees/{employee.Id}", employee);
+    }
+
+    [HttpPost("class-groups/create")]
+    public async Task<IActionResult> CreateClassGroup([FromBody] CreateClassGroup request)
+    {
+        var group = await classGroupsRepository.CreateAsync(request);
+        return Created($"/api/class-groups/{group.Id}", group);
     }
 }

@@ -18,4 +18,5 @@ public sealed class CreateEmployee
     public bool HasDisability { get; set; }
     public int ExternalXPYears { get; set; }
     public DateOnly FirstHiredDate { get; set; }
+    public bool IsTeacher { get; set; }
 }

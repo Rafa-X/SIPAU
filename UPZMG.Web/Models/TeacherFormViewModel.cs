@@ -24,6 +24,7 @@ public class EmployeeFormViewModel
     public bool HasDisability { get; set; }
     public int ExternalXPYears { get; set; }
     public DateTime? FirstHiredDate { get; set; }
+    public bool IsTeacher { get; set; } = true;
     
     public string MaxDegree { get; set; } = string.Empty;
     public string ContractType { get; set; } = string.Empty;

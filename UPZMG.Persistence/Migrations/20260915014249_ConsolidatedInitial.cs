@@ -73,7 +73,8 @@ namespace UPZMG.Persistence.Migrations
                     IndigenousLanguages = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     HasDisability = table.Column<bool>(type: "bit", nullable: false),
                     ExternalXPYears = table.Column<int>(type: "int", nullable: false),
-                    FirstHiredDate = table.Column<DateOnly>(type: "date", nullable: false)
+                    FirstHiredDate = table.Column<DateOnly>(type: "date", nullable: false),
+                    IsTeacher = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -162,7 +163,8 @@ namespace UPZMG.Persistence.Migrations
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     IdCode = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    SEP_Period = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    SchoolCycle = table.Column<string>(type: "nvarchar(4)", maxLength: 4, nullable: false),
+                    SEP_Period = table.Column<string>(type: "nvarchar(8)", maxLength: 8, nullable: false),
                     StartDate = table.Column<DateOnly>(type: "date", nullable: false),
                     EndDate = table.Column<DateOnly>(type: "date", nullable: false),
                     IsActive = table.Column<bool>(type: "bit", nullable: false)
@@ -272,6 +274,8 @@ namespace UPZMG.Persistence.Migrations
                     Gender = table.Column<string>(type: "char(1)", nullable: false),
                     CareerId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     PeriodIdStart = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    InscriptionType = table.Column<int>(type: "int", nullable: false),
+                    Status = table.Column<int>(type: "int", nullable: false),
                     IndigenousLanguages = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     PostalCode = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
                     EnglishLevel = table.Column<int>(type: "int", nullable: false),
@@ -317,21 +321,22 @@ namespace UPZMG.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "asignaturesPrograms",
+                name: "asignatures",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     CareerId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     AsignatureCode = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    AsignatureName = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    AsignatureName = table.Column<string>(type: "nvarchar(120)", maxLength: 120, nullable: false),
                     Credits = table.Column<int>(type: "int", nullable: false),
-                    IsCoreSubject = table.Column<bool>(type: "bit", nullable: false)
+                    Cuatrimestre = table.Column<int>(type: "int", nullable: false),
+                    IsMandatory = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_asignaturesPrograms", x => x.Id);
+                    table.PrimaryKey("PK_asignatures", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_asignaturesPrograms_careers_CareerId",
+                        name: "FK_asignatures_careers_CareerId",
                         column: x => x.CareerId,
                         principalTable: "careers",
                         principalColumn: "Id");
@@ -405,44 +410,6 @@ namespace UPZMG.Persistence.Migrations
                         name: "FK_roleReportsPermissions_roles_RoleId",
                         column: x => x.RoleId,
                         principalTable: "roles",
-                        principalColumn: "Id");
-                });
-
-            migrationBuilder.CreateTable(
-                name: "classGroups",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    PeriodId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    CareerId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Semester = table.Column<int>(type: "int", nullable: false),
-                    GroupIdentifier = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
-                    TeacherId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    FacilityId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    MaxStudents = table.Column<int>(type: "int", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_classGroups", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_classGroups_SchoolFacility_FacilityId",
-                        column: x => x.FacilityId,
-                        principalTable: "SchoolFacility",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_classGroups_careers_CareerId",
-                        column: x => x.CareerId,
-                        principalTable: "careers",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_classGroups_employees_TeacherId",
-                        column: x => x.TeacherId,
-                        principalTable: "employees",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_classGroups_periods_PeriodId",
-                        column: x => x.PeriodId,
-                        principalTable: "periods",
                         principalColumn: "Id");
                 });
 
@@ -560,6 +527,52 @@ namespace UPZMG.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "classGroups",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    FacilityId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Schedule = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Capacity = table.Column<int>(type: "int", nullable: false),
+                    Enrolled = table.Column<int>(type: "int", nullable: false),
+                    Weekhours = table.Column<double>(type: "float", nullable: false),
+                    PeriodId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    CareerId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    TeacherId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    AsignatureId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    IsTheory = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_classGroups", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_classGroups_SchoolFacility_FacilityId",
+                        column: x => x.FacilityId,
+                        principalTable: "SchoolFacility",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_classGroups_asignatures_AsignatureId",
+                        column: x => x.AsignatureId,
+                        principalTable: "asignatures",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_classGroups_careers_CareerId",
+                        column: x => x.CareerId,
+                        principalTable: "careers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_classGroups_employees_TeacherId",
+                        column: x => x.TeacherId,
+                        principalTable: "employees",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_classGroups_periods_PeriodId",
+                        column: x => x.PeriodId,
+                        principalTable: "periods",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "kardex",
                 columns: table => new
                 {
@@ -575,9 +588,9 @@ namespace UPZMG.Persistence.Migrations
                 {
                     table.PrimaryKey("PK_kardex", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_kardex_asignaturesPrograms_AsignatureId",
+                        name: "FK_kardex_asignatures_AsignatureId",
                         column: x => x.AsignatureId,
-                        principalTable: "asignaturesPrograms",
+                        principalTable: "asignatures",
                         principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_kardex_periods_PeriodId",
@@ -588,42 +601,6 @@ namespace UPZMG.Persistence.Migrations
                         name: "FK_kardex_students_StudentId",
                         column: x => x.StudentId,
                         principalTable: "students",
-                        principalColumn: "Id");
-                });
-
-            migrationBuilder.CreateTable(
-                name: "academicLoads",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    GroupId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    CourseId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    TeacherId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    FacilityId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    WeekHours = table.Column<int>(type: "int", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_academicLoads", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_academicLoads_SchoolFacility_FacilityId",
-                        column: x => x.FacilityId,
-                        principalTable: "SchoolFacility",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_academicLoads_asignaturesPrograms_CourseId",
-                        column: x => x.CourseId,
-                        principalTable: "asignaturesPrograms",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_academicLoads_classGroups_GroupId",
-                        column: x => x.GroupId,
-                        principalTable: "classGroups",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_academicLoads_employees_TeacherId",
-                        column: x => x.TeacherId,
-                        principalTable: "employees",
                         principalColumn: "Id");
                 });
 
@@ -690,29 +667,14 @@ namespace UPZMG.Persistence.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_academicLoads_CourseId",
-                table: "academicLoads",
-                column: "CourseId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_academicLoads_FacilityId",
-                table: "academicLoads",
-                column: "FacilityId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_academicLoads_GroupId",
-                table: "academicLoads",
-                column: "GroupId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_academicLoads_TeacherId",
-                table: "academicLoads",
-                column: "TeacherId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_asignaturesPrograms_CareerId",
-                table: "asignaturesPrograms",
+                name: "IX_asignatures_CareerId",
+                table: "asignatures",
                 column: "CareerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_classGroups_AsignatureId",
+                table: "classGroups",
+                column: "AsignatureId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_classGroups_CareerId",
@@ -912,9 +874,6 @@ namespace UPZMG.Persistence.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "academicLoads");
-
-            migrationBuilder.DropTable(
                 name: "contractTypes");
 
             migrationBuilder.DropTable(
@@ -966,9 +925,6 @@ namespace UPZMG.Persistence.Migrations
                 name: "userRoles");
 
             migrationBuilder.DropTable(
-                name: "asignaturesPrograms");
-
-            migrationBuilder.DropTable(
                 name: "WithdrawReason");
 
             migrationBuilder.DropTable(
@@ -999,13 +955,16 @@ namespace UPZMG.Persistence.Migrations
                 name: "SchoolFacility");
 
             migrationBuilder.DropTable(
-                name: "careers");
+                name: "asignatures");
 
             migrationBuilder.DropTable(
                 name: "employees");
 
             migrationBuilder.DropTable(
                 name: "periods");
+
+            migrationBuilder.DropTable(
+                name: "careers");
         }
     }
 }

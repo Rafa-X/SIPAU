@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using UPZMG.Persistence.Models;
 
 namespace UPZMG.Persistence;
@@ -18,10 +19,9 @@ public class AppDBContext : DbContext
     public DbSet<UserRole> UserRoles => Set<UserRole>();
 
     // Academic
-    public DbSet<AcademicLoad> AcademicLoads => Set<AcademicLoad>();
     public DbSet<Careers> Careers => Set<Careers>();
     public DbSet<ClassGroups> ClassGroups => Set<ClassGroups>();
-    public DbSet<AsignaturesProgram> CoursesPrograms => Set<AsignaturesProgram>();
+    public DbSet<Asignatures> Asignatures => Set<Asignatures>();
     public DbSet<InstitutionalConfiguration> InstitutionalConfigurations => Set<InstitutionalConfiguration>();
     public DbSet<InstitutionalEvaluation> InstitutionalEvaluations => Set<InstitutionalEvaluation>();
     public DbSet<Kardex> Kardexes => Set<Kardex>();
@@ -141,22 +141,6 @@ public class AppDBContext : DbContext
         });
 
         // Academic
-        modelBuilder.Entity<AcademicLoad>(entity => {
-            entity.ToTable("academicLoads");
-            entity.HasKey(x => x.Id);
-            entity.HasOne<ClassGroups>()
-                .WithMany()
-                .HasForeignKey(x => x.GroupId);
-            entity.HasOne<AsignaturesProgram>()
-                .WithMany()
-                .HasForeignKey(x => x.CourseId);
-            entity.HasOne<Employee>()
-                .WithMany()
-                .HasForeignKey(x => x.TeacherId);
-            entity.HasOne<SchoolFacility>()
-                .WithMany()
-                .HasForeignKey(x => x.FacilityId);
-        });
         modelBuilder.Entity<Careers>(entity => {
             entity.ToTable("careers");
             entity.HasKey(x => x.Id);
@@ -170,15 +154,23 @@ public class AppDBContext : DbContext
             entity.HasOne<Careers>()
                 .WithMany()
                 .HasForeignKey(x => x.CareerId);
+            entity.HasOne<Asignatures>()
+                .WithMany()
+                .HasForeignKey(x => x.AsignatureId);
             entity.HasOne<Employee>()
                 .WithMany()
                 .HasForeignKey(x => x.TeacherId);
             entity.HasOne<SchoolFacility>()
                 .WithMany()
                 .HasForeignKey(x => x.FacilityId);
+            entity.Property(x => x.Schedule)
+                .HasColumnType("nvarchar(max)")
+                .HasConversion(
+                    schedule => JsonSerializer.Serialize(schedule, (JsonSerializerOptions?)null),
+                    schedule => JsonSerializer.Deserialize<List<Schedule>>(schedule) ?? new List<Schedule>());
         });
-        modelBuilder.Entity<AsignaturesProgram>(entity => {
-            entity.ToTable("asignaturesPrograms");
+        modelBuilder.Entity<Asignatures>(entity => {
+            entity.ToTable("asignatures");
             entity.HasKey(x => x.Id);
             entity.HasOne<Careers>()
                 .WithMany()
@@ -201,7 +193,7 @@ public class AppDBContext : DbContext
             entity.HasOne<Student>()
                 .WithMany()
                 .HasForeignKey(x => x.StudentId);
-            entity.HasOne<AsignaturesProgram>()
+            entity.HasOne<Asignatures>()
                 .WithMany()
                 .HasForeignKey(x => x.AsignatureId);
             entity.HasOne<Periods>()

@@ -51,31 +51,31 @@ BEGIN TRY
 
     MERGE employees AS t
     USING (VALUES
-        (@EmpAdmin, '33333333-3333-3333-3333-333333333301',
+        (@EmpAdmin, 1001,
          N'Francisco Subdirección', N'admin@upzmg.edu.mx',
-         N'FASU800101AB1', N'FASU800101HJCRBR01', 'H', '1980-01-01', 5, 1, 0, 0, 10, '2018-08-01'),
+         N'FASU800101AB1', N'FASU800101HJCRBR01', 'H', '1980-01-01', 5, 1, 0, 10, '2018-08-01', 0),
 
-        (@EmpTest,  '33333333-3333-3333-3333-333333333302',
+        (@EmpTest,  1002,
          N'Usuario de Pruebas', N'test@upzmg.local',
-         N'PRUE900202CD2', N'PRUE900202HJCRBS02', 'H', '1990-02-02', 4, 1, 0, 0, 5, '2020-01-15'),
+         N'PRUE900202CD2', N'PRUE900202HJCRBS02', 'H', '1990-02-02', 4, 1, 0, 5, '2020-01-15', 0),
 
-        (@EmpKarla, '33333333-3333-3333-3333-333333333303',
+        (@EmpKarla, 1003,
          N'Karla Asistente', N'karla.asistente@upzmg.edu.mx',
-         N'KAAS950303EF3', N'KAAS950303MJCRBT03', 'M', '1995-03-03', 4, 1, 0, 0, 3, '2021-03-01')
+         N'KAAS950303EF3', N'KAAS950303MJCRBT03', 'M', '1995-03-03', 4, 1, 0, 3, '2021-03-01', 0)
     ) AS s (Id, EmployeeNumber, FullName, Email, Rfc, Curp, Gender, BirthDate,
-            HighestEducationLevel, TitleStatus, SpeaksIndigenousLanguage,
-            HasDisability, ExternalXPYears, FirstHiredDate)
+            HighestEducationLevel, TitleStatus,
+            HasDisability, ExternalXPYears, FirstHiredDate, IsTeacher)
     ON t.Id = s.Id
     WHEN MATCHED THEN UPDATE SET
-        t.FullName = s.FullName, t.Email = s.Email
+        t.FullName = s.FullName, t.Email = s.Email, t.IsTeacher = s.IsTeacher
     WHEN NOT MATCHED THEN INSERT
         (Id, EmployeeNumber, FullName, Email, Rfc, Curp, Gender, BirthDate,
-         HighestEducationLevel, TitleStatus, SpeaksIndigenousLanguage,
-         HasDisability, ExternalXPYears, FirstHiredDate)
+         HighestEducationLevel, TitleStatus,
+         HasDisability, ExternalXPYears, FirstHiredDate, IsTeacher)
         VALUES
         (s.Id, s.EmployeeNumber, s.FullName, s.Email, s.Rfc, s.Curp, s.Gender, s.BirthDate,
-         s.HighestEducationLevel, s.TitleStatus, s.SpeaksIndigenousLanguage,
-         s.HasDisability, s.ExternalXPYears, s.FirstHiredDate);
+         s.HighestEducationLevel, s.TitleStatus,
+         s.HasDisability, s.ExternalXPYears, s.FirstHiredDate, s.IsTeacher);
 
     /* ------------------------------------------------ Usuarios del sistema */
     DECLARE @UsrAdmin UNIQUEIDENTIFIER = '44444444-4444-4444-4444-444444444401';

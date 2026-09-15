@@ -11,7 +11,7 @@ public sealed record SelectOption(string Value, string Text);
 
 public sealed class DataCaptureService(ISecurityService securityService): IDataCaptureService
 {
-    private const string ActivePeriodLabel = "Ciclo 2025-2026 (Cuatrimestre 1)";
+    private const string ActivePeriodLabel = "2026 Ene-Abr";
     private static readonly JsonSerializerOptions ResponseOptions = new(JsonSerializerDefaults.Web);
 
     public DataCaptureIndexViewModel GetIndex() => new()
@@ -24,6 +24,7 @@ public sealed class DataCaptureService(ISecurityService securityService): IDataC
             new() { Id = 3, AreaName = "Infraestructura", ResponsiblePerson = "Ing. Roberto Díaz", Percentage = 45, Status = "En progreso", LastUpdated = DateTime.Now.AddDays(-5), IsCaptureAvailable = true, ActionName = "Infrastructure" },
             new() { Id = 4, AreaName = "Extensión y Vinculación", ResponsiblePerson = "Mtro. Pedro Sánchez", Percentage = 30, Status = "Pendiente", LastUpdated = DateTime.Now.AddDays(-8), IsCaptureAvailable = true, ActionName = "Extension" },
             new() { Id = 5, AreaName = "Finanzas", ResponsiblePerson = "C.P. María García", Percentage = 100, Status = "Completo", LastUpdated = DateTime.Now.AddDays(-2), IsCaptureAvailable = true, ActionName = "Finance" },
+            new() { Id = 6, AreaName = "Grupos de Clase", ResponsiblePerson = "Dirección Académica", Percentage = 0, Status = "Pendiente", LastUpdated = DateTime.Now, IsCaptureAvailable = true, ActionName = "ClassGroups" },
         },
     };
 
@@ -36,8 +37,9 @@ public sealed class DataCaptureService(ISecurityService securityService): IDataC
 
     public IReadOnlyList<SelectOption> Periods { get; } = new List<SelectOption>
     {
-        new("22222222-2222-2222-2222-222222222201", "2025-A / Semestre 1"),
-        new("22222222-2222-2222-2222-222222222202", "2025-B / Semestre 2"),
+        new("22222222-2222-2222-2222-222222222201", "2026 Ene-Abr"),
+        new("22222222-2222-2222-2222-222222222202", "2026 May-Ago"),
+        new("22222222-2222-2222-2222-222222222203", "2026 Sep-Dic"),
     };
 
     public IReadOnlyList<SelectOption> InternalAreas { get; } = new List<SelectOption>
@@ -102,6 +104,19 @@ public sealed class DataCaptureService(ISecurityService securityService): IDataC
             && response.Result is not null)
         {
             return JsonSerializer.Deserialize<Employee>(response.Result, ResponseOptions);
+        }
+        return null;
+    }
+
+    public async Task<ClassGroups?> CreateClassGroup(CreateClassGroup request)
+    {
+        var response = await securityService.SendPostRequestAsync<CreateClassGroup, ClassGroups>(
+            "data-capture/class-groups/create", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        if ((response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.Created)
+            && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<ClassGroups>(response.Result, ResponseOptions);
         }
         return null;
     }

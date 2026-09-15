@@ -17,6 +17,8 @@ public class StudentFormViewModel
     public Gender Gender { get; set; }
     public Guid CareerId { get; set; }
     public Guid PeriodIdStart { get; set; }
+    public InscriptionType InscriptionType { get; set; } = InscriptionType.NuevoIngreso;
+    public StudentStatus Status { get; set; } = StudentStatus.Activo;
     public IReadOnlyCollection<string> IndigenousLanguages { get; set; } = [];
     public EnglishLevel EnglishLevel { get; set; }
     public MaritalStatus MaritalStatus { get; set; } = MaritalStatus.Soltero;

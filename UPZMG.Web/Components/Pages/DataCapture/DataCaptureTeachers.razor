@@ -129,6 +129,9 @@
 
         <MudGrid Class="mt-2">
             <MudItem md="4">
+                <MudSwitch T="bool" @bind-Value="_model.IsTeacher" Color="Color.Secondary" Label="Es personal docente" />
+            </MudItem>
+            <MudItem md="4">
                 <MudSwitch T="bool" @bind-Value="_model.HasDisability" Color="Color.Secondary" Label="Tiene alguna discapacidad" />
             </MudItem>
             <MudItem md="4">
@@ -183,6 +186,7 @@
             HasDisability = _model.HasDisability,
             ExternalXPYears = _model.ExternalXPYears,
             FirstHiredDate = _model.FirstHiredDate is { } firstHiredDate ? DateOnly.FromDateTime(firstHiredDate) : default,
+            IsTeacher = _model.IsTeacher,
         };
 
         await _captureService.CreateTeacher(request);

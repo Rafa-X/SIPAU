@@ -29,6 +29,7 @@ try
     builder.Services.AddScoped<StudentsRepository>();
     builder.Services.AddScoped<EmployeesRepository>();
     builder.Services.AddScoped<GeneralDataRepository>();
+    builder.Services.AddScoped<ClassGroupsRepository>();
 
     var jwt = builder.Configuration.GetSection("Jwt");
     var jwtSigningKey = GetRequiredSecret(builder.Configuration, "Jwt:Key", 32, startupLogger);

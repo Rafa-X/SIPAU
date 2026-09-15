@@ -21,15 +21,27 @@ public sealed class GeneralDataService(ISecurityService securityService): IGener
         }
         return [];
     }
-    public async Task<IReadOnlyList<LookupOption>> GetPeriodsAsync()
+
+    public async Task<IReadOnlyList<LookupOption>> GetAsignaturesAsync(Guid careerId)
     {
         var requesterKey = await securityService.GetRequesterKeyAsync();
         var response = await securityService.SendGetRequestAsync<IReadOnlyList<LookupOption>>(
+            $"general-data/lookups/asignatures/{careerId}", requesterKey);
+        if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<IReadOnlyList<LookupOption>>(response.Result, ResponseOptions) ?? [];
+        }
+        return [];
+    }
+    public async Task<IReadOnlyList<PeriodLookupOption>> GetPeriodsAsync()
+    {
+        var requesterKey = await securityService.GetRequesterKeyAsync();
+        var response = await securityService.SendGetRequestAsync<IReadOnlyList<PeriodLookupOption>>(
             "general-data/lookups/periods", requesterKey);
 
         if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
         {
-            return JsonSerializer.Deserialize<IReadOnlyList<LookupOption>>(response.Result, ResponseOptions) ?? [];
+            return JsonSerializer.Deserialize<IReadOnlyList<PeriodLookupOption>>(response.Result, ResponseOptions) ?? [];
         }
         return [];
     }
@@ -66,6 +78,23 @@ public sealed class GeneralDataService(ISecurityService securityService): IGener
         var response = await securityService.SendGetRequestAsync<IReadOnlyList<LookupOption>>(
             "general-data/lookups/internal-areas", requesterKey);
 
+        if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<IReadOnlyList<LookupOption>>(response.Result, ResponseOptions) ?? [];
+        }
+        return [];
+    }
+
+    public async Task<IReadOnlyList<LookupOption>> GetTeachersAsync() =>
+        await GetLookupAsync("general-data/lookups/teachers");
+
+    public async Task<IReadOnlyList<LookupOption>> GetFacilitiesAsync() =>
+        await GetLookupAsync("general-data/lookups/facilities");
+
+    private async Task<IReadOnlyList<LookupOption>> GetLookupAsync(string path)
+    {
+        var requesterKey = await securityService.GetRequesterKeyAsync();
+        var response = await securityService.SendGetRequestAsync<IReadOnlyList<LookupOption>>(path, requesterKey);
         if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
         {
             return JsonSerializer.Deserialize<IReadOnlyList<LookupOption>>(response.Result, ResponseOptions) ?? [];

@@ -10,12 +10,20 @@ namespace UPZMG.Persistence.Models;
 public class ClassGroups
 {
     public Guid Id { get; set; }
+    public Guid FacilityId { get; set; } //fk to SchoolFacility - Classroom details
+    public List<Schedule> Schedule { get; set; } = [];
+    public int Capacity { get; set; }
+    public int Enrolled { get; set; }
+    public double Weekhours { get; set; }
     public Guid PeriodId { get; set; } //fk
     public Guid CareerId { get; set; } //fk
-    public int Semester { get; set; }
-    [MaxLength(10)]
-    public string? GroupIdentifier { get; set; }
     public Guid TeacherId { get; set; } //fk
-    public Guid FacilityId { get; set; } //fk to SchoolFacility
-    public int MaxStudents { get; set; }
+    public Guid AsignatureId { get; set; } //fk
+    public bool IsTheory { get; set; } // theoretical (true) or laboratory (false)
+}
+
+public class Schedule
+{
+    public string Day { get; set; } = string.Empty;
+    public string Time { get; set; } = string.Empty;
 }
