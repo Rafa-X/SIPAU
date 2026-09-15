@@ -221,7 +221,7 @@ namespace UPZMG.Persistence.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Name = table.Column<string>(type: "nvarchar(40)", maxLength: 40, nullable: false)
+                    Name = table.Column<string>(type: "nvarchar(60)", maxLength: 60, nullable: false)
                 },
                 constraints: table =>
                 {

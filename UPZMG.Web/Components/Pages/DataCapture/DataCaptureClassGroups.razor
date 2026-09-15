@@ -67,10 +67,10 @@
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" md="4">
-                <MudSelect T="bool?" @bind-Value="_model.IsTheory" Label="Tipo de clase" Required="true"
+                <MudSelect T="bool" @bind-Value="_model.IsTheory" Label="Tipo de clase" Required="true"
                            RequiredError="Selecciona el tipo de clase.">
-                    <MudSelectItem T="bool?" Value="true">Teoría</MudSelectItem>
-                    <MudSelectItem T="bool?" Value="false">Laboratorio</MudSelectItem>
+                    <MudSelectItem T="bool" Value="true">Teoría</MudSelectItem>
+                    <MudSelectItem T="bool" Value="false">Laboratorio</MudSelectItem>
                 </MudSelect>
             </MudItem>
         </MudGrid>
@@ -181,7 +181,7 @@
         if (!_form.IsValid) return;
 
         if (_model.PeriodId is null || _model.CareerId is null || _model.AsignatureId is null ||
-            _model.TeacherId is null || _model.FacilityId is null || _model.IsTheory is null || _model.Capacity is null)
+            _model.TeacherId is null || _model.FacilityId is null || _model.Capacity is null)
         {
             Snackbar.Add("Por favor completa todos los campos requeridos.", Severity.Warning);
             return;
@@ -217,7 +217,7 @@
             AsignatureId = _model.AsignatureId.Value,
             TeacherId = _model.TeacherId.Value,
             FacilityId = _model.FacilityId.Value,
-            IsTheory = _model.IsTheory.Value,
+            IsTheory = _model.IsTheory,
             Capacity = _model.Capacity.Value,
             Weekhours = weekHours,
             Schedule = _model.Schedules.Select(s => new Schedule
