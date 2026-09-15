@@ -16,7 +16,7 @@ public sealed class ClassGroupFormViewModel
     public Guid? AsignatureId { get; set; }
     public Guid? TeacherId { get; set; }
     public Guid? FacilityId { get; set; }
-    public bool IsTheory { get; set; } = true;
+    public bool? IsTheory { get; set; } = true;
     public int? Capacity { get; set; }
     public int? Weekhours { get; set; }
     public int? Enrolled { get; set; }
