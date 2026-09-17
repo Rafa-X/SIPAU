@@ -7,7 +7,7 @@ namespace UPZMG.Api.Controllers;
 
 [ApiController]
 [Route("dashboard")]
-[Authorize(Roles = "Admin,Teacher")]
+[Authorize(Roles = "Admin,Control Escolar,Servicios Estudiantiles,Recursos Humanos,Direccion Academica,Recursos Materiales y Servicios Generales")]
 public class DashboardController(
     DashboardRepository dashboardRepository) : ControllerBase
 {
