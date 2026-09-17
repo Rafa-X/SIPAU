@@ -16,7 +16,8 @@ namespace UPZMG.Persistence.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    Alias = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     SEPCode = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     EducationalLevel = table.Column<int>(type: "int", nullable: false),
                     Modality = table.Column<int>(type: "int", nullable: false),
@@ -605,7 +606,7 @@ namespace UPZMG.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "registrations",
+                name: "assignatureRegistrations",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
@@ -618,24 +619,24 @@ namespace UPZMG.Persistence.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_registrations", x => x.Id);
+                    table.PrimaryKey("PK_assignatureRegistrations", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_registrations_WithdrawReason_WithdrawReasonId",
+                        name: "FK_assignatureRegistrations_WithdrawReason_WithdrawReasonId",
                         column: x => x.WithdrawReasonId,
                         principalTable: "WithdrawReason",
                         principalColumn: "Id");
                     table.ForeignKey(
-                        name: "FK_registrations_classGroups_GroupId",
+                        name: "FK_assignatureRegistrations_classGroups_GroupId",
                         column: x => x.GroupId,
                         principalTable: "classGroups",
                         principalColumn: "Id");
                     table.ForeignKey(
-                        name: "FK_registrations_periods_PeriodId",
+                        name: "FK_assignatureRegistrations_periods_PeriodId",
                         column: x => x.PeriodId,
                         principalTable: "periods",
                         principalColumn: "Id");
                     table.ForeignKey(
-                        name: "FK_registrations_students_StudentId",
+                        name: "FK_assignatureRegistrations_students_StudentId",
                         column: x => x.StudentId,
                         principalTable: "students",
                         principalColumn: "Id");
@@ -670,6 +671,26 @@ namespace UPZMG.Persistence.Migrations
                 name: "IX_asignatures_CareerId",
                 table: "asignatures",
                 column: "CareerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_assignatureRegistrations_GroupId",
+                table: "assignatureRegistrations",
+                column: "GroupId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_assignatureRegistrations_PeriodId",
+                table: "assignatureRegistrations",
+                column: "PeriodId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_assignatureRegistrations_StudentId",
+                table: "assignatureRegistrations",
+                column: "StudentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_assignatureRegistrations_WithdrawReasonId",
+                table: "assignatureRegistrations",
+                column: "WithdrawReasonId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_classGroups_AsignatureId",
@@ -756,26 +777,6 @@ namespace UPZMG.Persistence.Migrations
                 table: "permissions",
                 column: "Name",
                 unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_registrations_GroupId",
-                table: "registrations",
-                column: "GroupId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_registrations_PeriodId",
-                table: "registrations",
-                column: "PeriodId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_registrations_StudentId",
-                table: "registrations",
-                column: "StudentId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_registrations_WithdrawReasonId",
-                table: "registrations",
-                column: "WithdrawReasonId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_reports_ReportType_TemplateVersion",
@@ -874,6 +875,9 @@ namespace UPZMG.Persistence.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
+                name: "assignatureRegistrations");
+
+            migrationBuilder.DropTable(
                 name: "contractTypes");
 
             migrationBuilder.DropTable(
@@ -896,9 +900,6 @@ namespace UPZMG.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "maxDegrees");
-
-            migrationBuilder.DropTable(
-                name: "registrations");
 
             migrationBuilder.DropTable(
                 name: "reports");

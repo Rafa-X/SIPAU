@@ -4,10 +4,8 @@ using UPZMG.Persistence.Models;
 
 namespace UPZMG.Persistence;
 
-public class AppDBContext : DbContext
+public class AppDBContext(DbContextOptions<AppDBContext> options) : DbContext(options)
 {
-    public AppDBContext(DbContextOptions<AppDBContext> options) : base(options) { }
-
     // Security
     public DbSet<SystemUser> SystemUsers => Set<SystemUser>();
     public DbSet<Role> Roles => Set<Role>();
@@ -205,7 +203,7 @@ public class AppDBContext : DbContext
             entity.HasKey(x => x.Id);
         });
         modelBuilder.Entity<AsignatureRegistrations>(entity =>{
-            entity.ToTable("registrations");
+            entity.ToTable("assignatureRegistrations");
             entity.HasKey(x => x.Id);
             entity.HasOne<Student>()
                 .WithMany()

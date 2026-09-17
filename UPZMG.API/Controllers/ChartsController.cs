@@ -19,4 +19,12 @@ public class ChartsController(
         var result = await chartsRepository.GetCareersDistributionAsync();
         return Ok(result);
     }
+
+    [HttpGet("groups-distribution-career")]
+    [Authorize(Roles = EmployeeRoles)]
+    public async Task<IActionResult> GetGroupsDistributionByCareer()
+    {
+        var result = await chartsRepository.GetGroupsDistributionByCareerAsync();
+        return Ok(result);
+    }
 }
