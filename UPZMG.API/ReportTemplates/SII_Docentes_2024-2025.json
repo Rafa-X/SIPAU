@@ -1,0 +1,145 @@
+{
+  "reportType": "SII_Docentes",
+  "version": "2024-2025",
+  "displayName": "Formato SII · Perfil del profesor (CGUTyP)",
+  "sections": [
+    {
+      "key": "identificacion",
+      "title": "Periodo que se reporta",
+      "questions": [
+        {
+          "key": "periodo",
+          "text": "Periodo",
+          "type": "select",
+          "required": true,
+          "optionsFrom": "periodos",
+          "helpText": "Los periodos se administran en Configuración › Periodos escolares."
+        }
+      ]
+    },
+    {
+      "key": "grado_estudios",
+      "title": "Grado máximo de estudios",
+      "description": "Reactivo 1 del Formato SII. Los renglones son los 10 niveles tabulares de la CGUTyP; cada docente se cuenta en su grado máximo.",
+      "questions": [
+        {
+          "key": "grado_maximo",
+          "text": "Docentes por nivel tabular y grado máximo de estudios",
+          "type": "matrix",
+          "required": true,
+          "rows": [
+            "Tiempo Completo - Titular A", "Tiempo Completo - Titular B", "Tiempo Completo - Titular C",
+            "Tiempo Completo - Asociado A", "Tiempo Completo - Asociado B", "Tiempo Completo - Asociado C",
+            "3/4 de Tiempo", "Medio Tiempo", "Asignatura (horas)", "Técnico Académico"
+          ],
+          "columns": [
+            "Técnico",
+            "TSU titulado",
+            "TSU trunco",
+            "Ing. Técnica",
+            "Licenciatura titulado",
+            "Licenciatura trunco",
+            "Especialidad",
+            "Maestría con grado",
+            "Maestría sin grado",
+            "Doctorado con grado",
+            "Doctorado sin grado"
+          ],
+          "rowTotal": true,
+          "columnTotal": true
+        }
+      ]
+    },
+    {
+      "key": "edad",
+      "title": "Edad de los docentes",
+      "description": "Reactivo 2 del Formato SII.",
+      "questions": [
+        {
+          "key": "edad_docentes",
+          "text": "Docentes por nivel tabular y rango de edad",
+          "type": "matrix",
+          "rows": [
+            "Tiempo Completo - Titular A", "Tiempo Completo - Titular B", "Tiempo Completo - Titular C",
+            "Tiempo Completo - Asociado A", "Tiempo Completo - Asociado B", "Tiempo Completo - Asociado C",
+            "3/4 de Tiempo", "Medio Tiempo", "Asignatura (horas)", "Técnico Académico"
+          ],
+          "columns": ["18-22 años", "23-27 años", "28-32 años", "33-37 años", "37+ años"],
+          "rowTotal": true,
+          "columnTotal": true
+        }
+      ]
+    },
+    {
+      "key": "experiencia",
+      "title": "Experiencia docente y laboral",
+      "description": "Reactivo 3 del Formato SII.",
+      "questions": [
+        {
+          "key": "experiencia_institucion",
+          "text": "Antigüedad dentro de la UPZMG",
+          "type": "matrix",
+          "rows": [
+            "Tiempo Completo - Titular A", "Tiempo Completo - Titular B", "Tiempo Completo - Titular C",
+            "Tiempo Completo - Asociado A", "Tiempo Completo - Asociado B", "Tiempo Completo - Asociado C",
+            "3/4 de Tiempo", "Medio Tiempo", "Asignatura (horas)", "Técnico Académico"
+          ],
+          "columns": ["0 años", "1-4 años", "5-10 años", "10+ años"],
+          "rowTotal": true,
+          "columnTotal": true
+        },
+        {
+          "key": "experiencia_laboral",
+          "text": "Experiencia laboral externa",
+          "type": "matrix",
+          "rows": [
+            "Tiempo Completo - Titular A", "Tiempo Completo - Titular B", "Tiempo Completo - Titular C",
+            "Tiempo Completo - Asociado A", "Tiempo Completo - Asociado B", "Tiempo Completo - Asociado C",
+            "3/4 de Tiempo", "Medio Tiempo", "Asignatura (horas)", "Técnico Académico"
+          ],
+          "columns": ["0 años", "1-4 años", "5-10 años", "10+ años"],
+          "rowTotal": true,
+          "columnTotal": true
+        }
+      ]
+    },
+    {
+      "key": "calidad",
+      "title": "Perfil de calidad",
+      "description": "Reactivo 4 del Formato SII: cuerpos académicos, perfil PRODEP y Sistema Nacional de Investigadoras e Investigadores (SNII), por sexo.",
+      "questions": [
+        {
+          "key": "cuerpos_prodep",
+          "text": "Docentes en cuerpos académicos y con perfil PRODEP",
+          "type": "matrix",
+          "rows": [
+            "Tiempo Completo - Titular A", "Tiempo Completo - Titular B", "Tiempo Completo - Titular C",
+            "Tiempo Completo - Asociado A", "Tiempo Completo - Asociado B", "Tiempo Completo - Asociado C",
+            "3/4 de Tiempo", "Medio Tiempo", "Asignatura (horas)", "Técnico Académico"
+          ],
+          "columns": ["Cuerpos académicos", "Perfil PRODEP"],
+          "subColumns": ["Mujeres", "Hombres"],
+          "subTotal": true,
+          "columnTotal": true,
+          "helpText": "Un mismo docente puede estar en un cuerpo académico y tener perfil PRODEP, por eso las dos columnas no se suman entre sí."
+        },
+        {
+          "key": "snii",
+          "text": "Docentes miembros del SNII por nivel",
+          "type": "matrix",
+          "rows": [
+            "Tiempo Completo - Titular A", "Tiempo Completo - Titular B", "Tiempo Completo - Titular C",
+            "Tiempo Completo - Asociado A", "Tiempo Completo - Asociado B", "Tiempo Completo - Asociado C",
+            "3/4 de Tiempo", "Medio Tiempo", "Asignatura (horas)", "Técnico Académico"
+          ],
+          "columns": ["Candidato", "Nivel 1", "Nivel 2", "Nivel 3"],
+          "subColumns": ["Mujeres", "Hombres"],
+          "rowTotal": true,
+          "rowTotalLabel": "Total SNII",
+          "columnTotal": true,
+          "helpText": "Cada docente tiene un solo nivel en el SNII, así que el total del renglón no repite personas."
+        }
+      ]
+    }
+  ]
+}

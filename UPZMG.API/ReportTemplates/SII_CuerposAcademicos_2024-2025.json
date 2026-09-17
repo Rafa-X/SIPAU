@@ -1,0 +1,65 @@
+{
+  "reportType": "SII_CuerposAcademicos",
+  "version": "2024-2025",
+  "displayName": "Formato SII · Cuerpos académicos (CGUTyP)",
+  "sections": [
+    {
+      "key": "identificacion",
+      "title": "Periodo que se reporta",
+      "questions": [
+        {
+          "key": "periodo",
+          "text": "Periodo",
+          "type": "select",
+          "required": true,
+          "optionsFrom": "periodos",
+          "helpText": "Los periodos se administran en Configuración › Periodos escolares."
+        }
+      ]
+    },
+    {
+      "key": "consolidacion",
+      "title": "Cuerpos académicos de la universidad",
+      "description": "Reactivo 1 del Formato SII. Por nivel de consolidación, con sus LIIADT e integrantes.",
+      "questions": [
+        {
+          "key": "cuerpos_academicos",
+          "text": "Cuerpos académicos por nivel de consolidación",
+          "type": "matrix",
+          "required": true,
+          "rows": ["En formación", "En consolidación", "Consolidado"],
+          "columns": ["Cuántos", "Total de LIIADT", "Integrantes mujeres", "Integrantes hombres"],
+          "rowTotal": true,
+          "rowTotalColumns": ["Integrantes mujeres", "Integrantes hombres"],
+          "rowTotalLabel": "Subtotal integrantes",
+          "columnTotal": true
+        }
+      ]
+    },
+    {
+      "key": "lineas",
+      "title": "Líneas Innovadoras de Investigación Aplicada y Desarrollo Tecnológico",
+      "description": "Reactivo 2 del Formato SII. Registra cada LIIADT con el nivel del cuerpo académico al que pertenece.",
+      "questions": [
+        {
+          "key": "liiadt",
+          "text": "LIIADT registradas",
+          "type": "table",
+          "required": true,
+          "maxRows": 60,
+          "fields": [
+            { "key": "nombre", "text": "Nombre de la línea", "type": "text" },
+            {
+              "key": "nivel",
+              "text": "Nivel del cuerpo académico",
+              "type": "select",
+              "options": ["En formación", "En consolidación", "Consolidado"]
+            }
+          ],
+          "sumEquals": "cuerpos_academicos[Total de LIIADT]",
+          "helpText": "Debe haber tantas líneas como el total de LIIADT del reactivo anterior."
+        }
+      ]
+    }
+  ]
+}
