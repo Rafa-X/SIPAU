@@ -1,0 +1,183 @@
+{
+  "reportType": "Carrera911_9A",
+  "version": "2024-2025",
+  "displayName": "Formato 911.9A · Carrera (programa educativo)",
+  "sections": [
+    {
+      "key": "identificacion",
+      "title": "Datos de identificación de la carrera",
+      "questions": [
+        { "key": "clave_institucion", "text": "Clave de la Institución", "type": "text", "required": true },
+        { "key": "clave_escuela", "text": "Clave de la Escuela", "type": "text", "required": true },
+        { "key": "clave_carrera", "text": "Clave de la carrera (SEP)", "type": "text", "required": true },
+        { "key": "nombre_carrera", "text": "Nombre oficial de la carrera", "type": "text", "required": true },
+        {
+          "key": "modalidad",
+          "text": "Modalidad de la carrera",
+          "type": "select",
+          "required": true,
+          "options": ["Escolarizada", "Mixta", "Dual", "Abierta", "En línea o virtual", "A distancia"]
+        }
+      ]
+    },
+    {
+      "key": "caracteristicas",
+      "title": "Características de la carrera",
+      "description": "Apartado I del formato 911.9A.",
+      "questions": [
+        {
+          "key": "nivel_estudios",
+          "text": "1. Nivel de estudios al que corresponde el plan",
+          "type": "select",
+          "required": true,
+          "options": [
+            "Técnico Superior Universitario",
+            "Licenciatura Universitaria y Tecnológica",
+            "Licenciatura en Educación Normal"
+          ]
+        },
+        { "key": "fecha_creacion_plan", "text": "2. Fecha de creación del plan de estudios", "type": "date", "required": true },
+        { "key": "fecha_actualizacion_plan", "text": "2. Fecha de la última actualización del plan", "type": "date" },
+        { "key": "duracion", "text": "3. Duración del programa", "type": "number", "required": true, "min": 1 },
+        {
+          "key": "estructura_plan",
+          "text": "3. Estructura del plan de estudios",
+          "type": "select",
+          "required": true,
+          "options": ["Años", "Semestres", "Cuatrimestres", "Trimestres", "Asignaturas o créditos", "Módulos"]
+        },
+        { "key": "creditos_totales", "text": "4. Total de créditos por cubrir en el programa", "type": "number", "required": true }
+      ]
+    },
+    {
+      "key": "egresados_titulados",
+      "title": "Egresados y titulados del ciclo anterior",
+      "description": "Apartado III. Ciclo escolar 2023-2024.",
+      "questions": [
+        {
+          "key": "egresados_titulados",
+          "text": "1 y 2. Egresados y titulados, con enfoque de inclusión",
+          "type": "matrix",
+          "required": true,
+          "rows": ["Egresados", "Titulados"],
+          "columns": ["Hombres", "Mujeres", "Con discapacidad", "Hablantes de lengua indígena"],
+          "rowTotal": true,
+          "rowTotalColumns": ["Hombres", "Mujeres"],
+          "rowTotalLabel": "Total (H + M)",
+          "helpText": "Las columnas de inclusión son parte de los hombres y mujeres del renglón, por eso el total sólo los suma a ellos."
+        },
+        {
+          "key": "egresados_por_edad",
+          "text": "3. Egresados y titulados por edad y sexo",
+          "type": "matrix",
+          "rows": ["21 años o menos", "22 años", "23 años", "24 años", "25 años", "26 a 29 años", "30 años o más"],
+          "columns": ["Egresados", "Titulados"],
+          "subColumns": ["Hombres", "Mujeres"],
+          "subTotal": true,
+          "columnTotal": true,
+          "helpText": "Los totales de cada columna deben coincidir con los egresados y titulados del cuadro anterior."
+        }
+      ]
+    },
+    {
+      "key": "movilidad",
+      "title": "Movilidad de alumnos del ciclo anterior",
+      "description": "Apartado IV.",
+      "questions": [
+        {
+          "key": "movilidad_global",
+          "text": "1 y 4. Totales de movilidad saliente y entrante",
+          "type": "matrix",
+          "rows": ["Alumnos enviados (salientes)", "Alumnos recibidos (entrantes)"],
+          "columns": ["Hombres", "Mujeres", "A otra entidad federativa", "A otro país"],
+          "rowTotal": true,
+          "rowTotalColumns": ["Hombres", "Mujeres"],
+          "rowTotalLabel": "Total (H + M)",
+          "helpText": "El destino es otra forma de contar a las mismas personas, así que no se suma al total."
+        }
+      ]
+    },
+    {
+      "key": "primer_ingreso",
+      "title": "Alumnos de primer ingreso del ciclo actual",
+      "description": "Apartado V.",
+      "questions": [
+        { "key": "fecha_inicio_cursos", "text": "1. Fecha de inicio de cursos del ciclo 2024-2025", "type": "date", "required": true },
+        { "key": "lugares_ofertados", "text": "2. Lugares ofertados a primer grado", "type": "number", "required": true },
+        {
+          "key": "solicitudes_ingreso",
+          "text": "3 y 4. Solicitudes recibidas y alumnos inscritos a primer ingreso",
+          "type": "matrix",
+          "required": true,
+          "rows": ["Solicitudes recibidas", "Alumnos de primer ingreso inscritos"],
+          "columns": ["Hombres", "Mujeres", "Con discapacidad", "Hablantes de lengua indígena"],
+          "rowTotal": true,
+          "rowTotalColumns": ["Hombres", "Mujeres"],
+          "rowTotalLabel": "Total (H + M)"
+        },
+        {
+          "key": "nacimiento_primer_ingreso",
+          "text": "6. Alumnos de primer ingreso según su lugar de nacimiento",
+          "type": "matrix",
+          "rows": ["En la entidad", "En otra entidad federativa", "Estados Unidos", "Otro país"],
+          "columns": ["Alumnos"],
+          "columnTotal": true,
+          "sumEquals": "solicitudes_ingreso[Alumnos de primer ingreso inscritos]",
+          "helpText": "Debe sumar los alumnos de primer ingreso inscritos del reactivo 4."
+        }
+      ]
+    },
+    {
+      "key": "matricula",
+      "title": "Matrícula total de la carrera",
+      "description": "Apartado VI. Corte al 30 de septiembre. Incluya a los alumnos que la institución envió a otra entidad o país; no incluya a los que recibe.",
+      "questions": [
+        {
+          "key": "matricula_grado",
+          "text": "1. Matrícula inscrita por grado de avance",
+          "type": "matrix",
+          "required": true,
+          "rows": ["Primero", "Segundo", "Tercero", "Cuarto", "Quinto"],
+          "columns": ["Hombres", "Mujeres", "Con discapacidad", "Nacidos fuera de México", "Hablantes de lengua indígena"],
+          "rowTotal": true,
+          "rowTotalColumns": ["Hombres", "Mujeres"],
+          "rowTotalLabel": "Total (H + M)",
+          "columnTotal": true
+        },
+        {
+          "key": "matricula_total",
+          "text": "Matrícula total de la carrera",
+          "type": "number",
+          "helpText": "Se calcula con los hombres y las mujeres del cuadro anterior.",
+          "sum": ["matricula_grado[Hombres]", "matricula_grado[Mujeres]"]
+        },
+        {
+          "key": "matricula_edad",
+          "text": "3. Matrícula por edad y sexo",
+          "type": "matrix",
+          "rows": [
+            "Menos de 18 años", "18 años", "19 años", "20 años", "21 años", "22 años",
+            "23 años", "24 años", "25 años", "26 años", "27 años", "28 años", "29 años",
+            "30 a 34 años", "35 a 39 años", "40 años o más"
+          ],
+          "columns": ["Hombres", "Mujeres"],
+          "rowTotal": true,
+          "columnTotal": true,
+          "sumEquals": "matricula_total",
+          "helpText": "Toda la matrícula debe quedar clasificada por edad."
+        },
+        {
+          "key": "matricula_discapacidad",
+          "text": "4. Matrícula por tipo de discapacidad",
+          "type": "matrix",
+          "rowsFrom": "discapacidades",
+          "columns": ["Hombres", "Mujeres"],
+          "rowTotal": true,
+          "columnTotal": true,
+          "sumEquals": "matricula_grado[Con discapacidad]",
+          "helpText": "Los tipos vienen del catálogo oficial y deben sumar los alumnos con discapacidad del reactivo 1."
+        }
+      ]
+    }
+  ]
+}

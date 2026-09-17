@@ -75,10 +75,12 @@ try
     builder.Services.AddCascadingAuthenticationState();
     builder.Services.AddScoped<AuthenticationStateProvider, PersistentCookieAuthenticationStateProvider>();
 
-    // HttpClient to call API (server-to-server)
+    // HttpClient to call API (server-to-server). Configurable so a deployed Web
+    // can point somewhere other than the local development API.
+    var apiBaseAddress = builder.Configuration["Api:BaseAddress"] ?? "https://localhost:5003/";
     var apiClientBuilder = builder.Services.AddHttpClient("UpzmgApi", client =>
     {
-        client.BaseAddress = new Uri("https://localhost:5003/");
+        client.BaseAddress = new Uri(apiBaseAddress);
     });
 
     // Local development uses an untrusted dev cert by default.

@@ -1,0 +1,314 @@
+{
+  "reportType": "AnexoTI",
+  "version": "2024-2025",
+  "displayName": "Formato 911 · Anexo de Tecnologías de la Información",
+  "sections": [
+    {
+      "key": "identificacion",
+      "title": "Datos de identificación",
+      "description": "Escuela, facultad o unidad académica que reporta.",
+      "questions": [
+        {
+          "key": "clave_cct",
+          "text": "Clave de escuela o facultad (CCT)",
+          "type": "text",
+          "required": true,
+          "helpText": "10 caracteres, tal como aparece en el catálogo oficial."
+        },
+        { "key": "nombre_escuela", "text": "Nombre de la escuela o facultad", "type": "text", "required": true },
+        { "key": "responsable_llenado", "text": "Nombre del responsable del llenado", "type": "text", "required": true },
+        { "key": "fecha_llenado", "text": "Fecha de llenado", "type": "date", "required": true }
+      ]
+    },
+    {
+      "key": "inventario",
+      "title": "Recursos informáticos: inventario",
+      "description": "Reactivos 1 y 2. El total de computadoras es la suma de los incisos a, b y c.",
+      "questions": [
+        {
+          "key": "p1_tiene_computadoras",
+          "text": "1. ¿La escuela o facultad cuenta con computadoras?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "key": "p2_a_operacion",
+          "text": "2.a Computadoras en operación",
+          "type": "number",
+          "required": true,
+          "showIf": "p1_tiene_computadoras"
+        },
+        {
+          "key": "p2_b_reparacion",
+          "text": "2.b Computadoras en reparación",
+          "type": "number",
+          "required": true,
+          "showIf": "p1_tiene_computadoras"
+        },
+        {
+          "key": "p2_c_reserva",
+          "text": "2.c Computadoras guardadas o en reserva",
+          "type": "number",
+          "required": true,
+          "showIf": "p1_tiene_computadoras"
+        },
+        {
+          "key": "p2_motivos_reserva",
+          "text": "2. Motivo por el que están guardadas o en reserva",
+          "type": "checkbox_group",
+          "showIf": "p1_tiene_computadoras",
+          "specifyOption": "Otro",
+          "options": [
+            "Instalaciones eléctricas inadecuadas",
+            "Falta de espacio",
+            "Falta de mobiliario",
+            "Falta de accesorio externo (mouse, teclado, etc.)",
+            "Indicaciones superiores (uso de becarios, eventos particulares, etc.)",
+            "Dadas de baja (inservibles, dañados, obsoletos)",
+            "Por mantenimiento (falta de sistema operativo o software, actualizaciones)",
+            "Está guardado para eventos especiales",
+            "Otro"
+          ]
+        },
+        {
+          "key": "p2_total",
+          "text": "2. Total de computadoras",
+          "type": "number",
+          "helpText": "Se calcula con los incisos a, b y c.",
+          "showIf": "p1_tiene_computadoras",
+          "sum": ["p2_a_operacion", "p2_b_reparacion", "p2_c_reserva"]
+        }
+      ]
+    },
+    {
+      "key": "uso_y_conectividad",
+      "title": "Distribución por uso y acceso a Internet",
+      "description": "Reactivos 3 y 4. La distribución por uso debe cuadrar contra las computadoras en operación.",
+      "questions": [
+        {
+          "key": "p3_uso",
+          "text": "3. Computadoras en operación, según su uso",
+          "type": "matrix",
+          "required": true,
+          "showIf": "p1_tiene_computadoras",
+          "rows": ["Computadoras en operación"],
+          "columns": ["Educativo", "Docente", "Administrativo"],
+          "rowTotal": true,
+          "sumEquals": "p2_a_operacion",
+          "helpText": "La suma debe ser igual al total de computadoras en operación (2.a)."
+        },
+        {
+          "key": "p4_internet",
+          "text": "4. De las anteriores, cuáles cuentan con acceso a Internet",
+          "type": "matrix",
+          "required": true,
+          "showIf": "p1_tiene_computadoras",
+          "rows": ["Con acceso a Internet"],
+          "columns": ["Educativo", "Docente", "Administrativo"],
+          "rowTotal": true,
+          "sumAtMost": "p2_a_operacion",
+          "helpText": "No puede exceder el total de computadoras en operación."
+        }
+      ]
+    },
+    {
+      "key": "caracteristicas_educativas",
+      "title": "Características del equipo de uso educativo",
+      "description": "Reactivos 5 y 6. Cada desglose debe sumar exactamente los equipos de uso educativo del reactivo 3.",
+      "questions": [
+        {
+          "key": "p5_tipo",
+          "text": "5. Desglose por tipo de equipo",
+          "type": "matrix",
+          "showIf": "p1_tiene_computadoras",
+          "rows": ["Equipos"],
+          "columns": ["De escritorio con CPU propio", "Portátiles", "Terminales"],
+          "rowTotal": true,
+          "sumEquals": "p3_uso[Educativo]"
+        },
+        {
+          "key": "p6_ram",
+          "text": "6. Memoria RAM",
+          "type": "matrix",
+          "showIf": "p1_tiene_computadoras",
+          "rows": ["Equipos"],
+          "columns": ["De 1 GB a menos de 4 GB", "De 4 a 16 GB", "16 GB o más"],
+          "rowTotal": true,
+          "sumEquals": "p3_uso[Educativo]"
+        },
+        {
+          "key": "p6_so",
+          "text": "6. Sistema operativo",
+          "type": "matrix",
+          "showIf": "p1_tiene_computadoras",
+          "rows": ["Equipos"],
+          "columns": ["Windows", "Mac OS", "Linux u otros"],
+          "rowTotal": true,
+          "sumEquals": "p3_uso[Educativo]"
+        },
+        {
+          "key": "p6_disco",
+          "text": "6. Capacidad del disco duro",
+          "type": "matrix",
+          "showIf": "p1_tiene_computadoras",
+          "rows": ["Equipos"],
+          "columns": ["128 GB o menos", "De 129 a 500 GB", "De más de 500 GB"],
+          "rowTotal": true,
+          "sumEquals": "p3_uso[Educativo]"
+        },
+        {
+          "key": "p6_antiguedad",
+          "text": "6. Antigüedad del equipo",
+          "type": "matrix",
+          "showIf": "p1_tiene_computadoras",
+          "rows": ["Equipos"],
+          "columns": ["De 2 años o menos", "De 3 a 4 años", "De 5 años o más"],
+          "rowTotal": true,
+          "sumEquals": "p3_uso[Educativo]"
+        },
+        {
+          "key": "p6_adquisicion",
+          "text": "6. Tipo de adquisición",
+          "type": "matrix",
+          "showIf": "p1_tiene_computadoras",
+          "rows": ["Equipos"],
+          "columns": ["Rentada", "Comprada", "Comodato (préstamo)", "Donada"],
+          "rowTotal": true,
+          "sumEquals": "p3_uso[Educativo]"
+        }
+      ]
+    },
+    {
+      "key": "red_y_conexion",
+      "title": "Ubicación, red local y conexión",
+      "description": "Reactivos 7 a 10.",
+      "questions": [
+        {
+          "key": "p7_en_laboratorio",
+          "text": "7. Equipos de uso educativo que están en aula o laboratorio de cómputo",
+          "type": "number",
+          "showIf": "p1_tiene_computadoras",
+          "sumAtMost": "p3_uso[Educativo]"
+        },
+        {
+          "key": "p8_red_local",
+          "text": "8. Equipos de uso educativo conectados a una red local",
+          "type": "matrix",
+          "showIf": "p1_tiene_computadoras",
+          "rows": ["Conectados a red local"],
+          "columns": ["Con Internet", "Sin Internet"],
+          "rowTotal": true,
+          "sumAtMost": "p3_uso[Educativo]"
+        },
+        {
+          "key": "p9_medio_conexion",
+          "text": "9. Medio de conexión a Internet",
+          "type": "checkbox_group",
+          "specifyOption": "Otro medio",
+          "options": [
+            "Red dedicada",
+            "Internet por cable",
+            "Vía satélite",
+            "Señal abierta de WiFi",
+            "Línea telefónica (dial-up o DSL)",
+            "No sabe",
+            "Otro medio"
+          ]
+        },
+        {
+          "key": "p10_velocidad",
+          "text": "10. Velocidad de conexión",
+          "type": "select",
+          "options": ["Menos de 6 Mb", "De 6 a 10 Mb", "De 11 a 25 Mb", "De 26 a 100 Mb", "Más de 100 Mb"]
+        }
+      ]
+    },
+    {
+      "key": "servicios",
+      "title": "Impresión, Wi-Fi y servidores",
+      "description": "Reactivos 11 a 17.",
+      "questions": [
+        {
+          "key": "p11_impresora",
+          "text": "11. ¿El aula o laboratorio de cómputo tiene impresora para uso de estudiantes?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "key": "p12_impresiones_gratuitas",
+          "text": "12. ¿Las impresiones son gratuitas para los estudiantes?",
+          "type": "boolean",
+          "showIf": "p11_impresora"
+        },
+        {
+          "key": "p13_wifi",
+          "text": "13. ¿La escuela cuenta con Internet inalámbrico (Wi-Fi) en sus espacios públicos?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "key": "p14_acceso_wifi",
+          "text": "14. ¿Quiénes tienen acceso al Internet inalámbrico?",
+          "type": "checkbox_group",
+          "showIf": "p13_wifi",
+          "options": ["Alumnos", "Docentes", "Administrativos"]
+        },
+        {
+          "key": "p15_tiene_servidores",
+          "text": "15. ¿La escuela o facultad tiene servidores?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "key": "p16_total_servidores",
+          "text": "16. ¿Cuántos servidores tiene la escuela o facultad?",
+          "type": "number",
+          "showIf": "p15_tiene_servidores"
+        },
+        {
+          "key": "p17_pcs_como_servidor",
+          "text": "17. Del total de servidores, cuántas son computadoras habilitadas para tal fin",
+          "type": "number",
+          "showIf": "p15_tiene_servidores",
+          "sumAtMost": "p16_total_servidores"
+        }
+      ]
+    },
+    {
+      "key": "automatizacion",
+      "title": "Grado de automatización de procesos",
+      "description": "Reactivos 18 y 19. a) sin software · b) software diverso (Excel, Word) · c) sistemas no integrados · d) un sistema con todos los procesos alineados.",
+      "questions": [
+        {
+          "key": "p18_grado",
+          "text": "18. Grado de automatización por proceso",
+          "type": "matrix_select",
+          "required": true,
+          "rows": [
+            "Inscripción y control de alumnos",
+            "Gestión del personal docente",
+            "Registro de calificaciones"
+          ],
+          "options": [
+            "a) Se carece de software, aplicaciones o sistema informático",
+            "b) Se cuenta con software diverso (Excel, Word, etc.)",
+            "c) Uno o varios sistemas que no están totalmente integrados",
+            "d) Un sistema con todos los procesos alineados, sin pasos manuales"
+          ]
+        },
+        {
+          "key": "p19_origen",
+          "text": "19. Si el proceso quedó en c o d, indique el origen del sistema",
+          "type": "matrix_select",
+          "helpText": "Déjalo en blanco para los procesos que quedaron en a o b.",
+          "rows": [
+            "Inscripción y control de alumnos",
+            "Gestión del personal docente",
+            "Registro de calificaciones"
+          ],
+          "options": ["Propio", "Proporcionado por área federal o estatal"]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,284 @@
+{
+  "reportType": "Escuela911_9",
+  "version": "2024-2025",
+  "displayName": "Formato 911.9 · Escuela, facultad o unidad académica",
+  "sections": [
+    {
+      "key": "identificacion",
+      "title": "Datos de identificación",
+      "description": "Domicilio y responsable del centro de trabajo.",
+      "questions": [
+        { "key": "clave_institucion", "text": "Clave de la Institución", "type": "text", "required": true },
+        { "key": "clave_escuela", "text": "Clave de la escuela (CCT)", "type": "text", "required": true },
+        { "key": "nombre_escuela", "text": "Nombre de la escuela", "type": "text", "required": true },
+        { "key": "vialidad_principal", "text": "Vialidad principal", "type": "text" },
+        { "key": "numero_exterior", "text": "Número exterior", "type": "text" },
+        { "key": "asentamiento", "text": "Asentamiento humano", "type": "text" },
+        { "key": "codigo_postal", "text": "Código postal", "type": "text" },
+        { "key": "localidad", "text": "Localidad", "type": "text" },
+        { "key": "municipio", "text": "Municipio o alcaldía", "type": "text", "required": true },
+        { "key": "entidad", "text": "Entidad federativa", "type": "text", "required": true },
+        { "key": "telefono", "text": "Teléfono", "type": "text" },
+        {
+          "key": "sostenimiento",
+          "text": "Sostenimiento",
+          "type": "select",
+          "required": true,
+          "options": ["Público Federal", "Público Estatal", "Público Autónomo", "Particular"]
+        },
+        { "key": "pagina_web", "text": "Página web de la institución", "type": "text" },
+        { "key": "correo_responsable", "text": "Correo del responsable del llenado", "type": "text", "required": true }
+      ]
+    },
+    {
+      "key": "personal_funcion",
+      "title": "Personal por función",
+      "description": "Apartado I.1. Todo el personal adscrito a la escuela. Si alguien cumple dos funciones, regístrelo en la que dedica más tiempo.",
+      "questions": [
+        {
+          "key": "personal_funcion",
+          "text": "1. Personal según la función que desempeña",
+          "type": "matrix",
+          "required": true,
+          "rows": [
+            "Directivo",
+            "Docente",
+            "Docente-Investigador y Docente-Auxiliar de Investigador",
+            "Investigador",
+            "Auxiliar de investigador",
+            "Administrativo",
+            "Otros (choferes, limpieza, servicios generales)"
+          ],
+          "columns": ["Hombres", "Mujeres", "Con discapacidad", "Hablantes de lengua indígena"],
+          "rowTotal": true,
+          "rowTotalColumns": ["Hombres", "Mujeres"],
+          "rowTotalLabel": "Total (H + M)",
+          "columnTotal": true,
+          "helpText": "Las columnas de inclusión son parte de los hombres y mujeres del renglón, por eso el total sólo los suma a ellos."
+        },
+        {
+          "key": "personal_total",
+          "text": "Total de personal de la escuela",
+          "type": "number",
+          "helpText": "Se calcula con los hombres y las mujeres del cuadro anterior.",
+          "sum": ["personal_funcion[Hombres]", "personal_funcion[Mujeres]"]
+        }
+      ]
+    },
+    {
+      "key": "personal_estudios",
+      "title": "Personal docente por nivel de estudios",
+      "description": "Apartado I.2. Considere personal docente, docente-investigador y docente-auxiliar de investigador.",
+      "questions": [
+        {
+          "key": "docentes_nivel_estudios",
+          "text": "2. Nivel máximo de estudios del personal docente",
+          "type": "matrix",
+          "required": true,
+          "rows": [
+            "Subespecialidad médica",
+            "Doctorado",
+            "Especialidad médica",
+            "Maestría",
+            "Especialidad",
+            "Licenciatura",
+            "Técnico Superior",
+            "Educación media superior o menos"
+          ],
+          "columns": ["Hombres", "Mujeres", "Con discapacidad", "Hablantes de lengua indígena"],
+          "rowTotal": true,
+          "rowTotalColumns": ["Hombres", "Mujeres"],
+          "rowTotalLabel": "Total (H + M)",
+          "columnTotal": true
+        }
+      ]
+    },
+    {
+      "key": "personal_dedicacion",
+      "title": "Docentes por tiempo de dedicación",
+      "description": "Apartado I.3. Contabilice sólo una vez a cada docente.",
+      "questions": [
+        {
+          "key": "docentes_dedicacion",
+          "text": "3. Personal docente por tiempo de dedicación",
+          "type": "matrix",
+          "required": true,
+          "rows": [
+            "Personal de tiempo completo",
+            "Personal de tres cuartos de tiempo",
+            "Personal de medio tiempo",
+            "Personal por hora o asignatura"
+          ],
+          "columns": ["Hombres", "Mujeres", "Con discapacidad"],
+          "rowTotal": true,
+          "rowTotalColumns": ["Hombres", "Mujeres"],
+          "rowTotalLabel": "Total (H + M)",
+          "columnTotal": true
+        },
+        {
+          "key": "docentes_horas_semana",
+          "text": "3.1 Del personal por hora o asignatura, desglose por horas de dedicación semanal",
+          "type": "matrix",
+          "rows": ["1 a 4 horas", "5 a 8 horas", "9 a 12 horas", "13 a 16 horas", "17 a 20 horas", "Más de 20 horas"],
+          "columns": ["Hombres", "Mujeres"],
+          "rowTotal": true,
+          "columnTotal": true,
+          "sumEquals": "docentes_dedicacion[Personal por hora o asignatura]",
+          "helpText": "Debe sumar al personal por hora o asignatura del reactivo 3."
+        }
+      ]
+    },
+    {
+      "key": "personal_edad_antiguedad",
+      "title": "Edad y antigüedad del personal docente",
+      "description": "Apartados I.5 y I.6.",
+      "questions": [
+        {
+          "key": "docentes_edad",
+          "text": "5. Personal docente por grupo de edad",
+          "type": "matrix",
+          "rows": [
+            "Menos de 20 años", "De 20 a 24 años", "De 25 a 29 años", "De 30 a 34 años",
+            "De 35 a 39 años", "De 40 a 44 años", "De 45 a 49 años", "De 50 a 54 años",
+            "De 55 a 59 años", "De 60 a 64 años", "De 65 a 69 años", "De 70 años o más"
+          ],
+          "columns": ["Hombres", "Mujeres"],
+          "rowTotal": true,
+          "columnTotal": true
+        },
+        {
+          "key": "docentes_antiguedad",
+          "text": "6. Personal docente por rango de antigüedad",
+          "type": "matrix",
+          "rows": [
+            "De 0 a 4 años", "De 5 a 9 años", "De 10 a 14 años", "De 15 a 19 años",
+            "De 20 a 24 años", "De 25 a 29 años", "De 30 años o más"
+          ],
+          "columns": ["Hombres", "Mujeres"],
+          "rowTotal": true,
+          "columnTotal": true
+        }
+      ]
+    },
+    {
+      "key": "becas",
+      "title": "Becas del ciclo anterior",
+      "description": "Considere sólo becas monetarias. Si un alumno recibió más de una, contabilice la de mayor porcentaje.",
+      "questions": [
+        {
+          "key": "becas_por_origen",
+          "text": "2. Alumnos becados según el origen de la beca",
+          "type": "matrix",
+          "rows": [
+            "Propia institución", "Beca federal", "Beca estatal",
+            "Beca municipal", "Beca particular", "Beca internacional"
+          ],
+          "columns": ["Hombres", "Mujeres", "Con discapacidad", "Hablantes de lengua indígena"],
+          "rowTotal": true,
+          "rowTotalColumns": ["Hombres", "Mujeres"],
+          "rowTotalLabel": "Total (H + M)",
+          "columnTotal": true
+        }
+      ]
+    },
+    {
+      "key": "inmueble",
+      "title": "Características del inmueble y aulas",
+      "description": "Apartado VI.",
+      "questions": [
+        {
+          "key": "inmueble_tenencia",
+          "text": "1.a El inmueble es",
+          "type": "select",
+          "required": true,
+          "options": ["Propio", "Rentado", "Prestado"]
+        },
+        {
+          "key": "inmueble_construccion",
+          "text": "1.b El inmueble fue",
+          "type": "select",
+          "required": true,
+          "options": ["Adaptado", "Construido para uso educativo"]
+        },
+        {
+          "key": "espacios",
+          "text": "2. Número de aulas, talleres y laboratorios",
+          "type": "matrix",
+          "required": true,
+          "rows": ["Existentes", "En uso", "Adaptados"],
+          "columns": ["Aulas", "Talleres", "Laboratorios"],
+          "rowTotal": true,
+          "helpText": "«En uso» y «Adaptados» son parte de los existentes, por eso no se suman entre renglones."
+        },
+        {
+          "key": "tiene_lab_computo",
+          "text": "3. ¿La escuela cuenta con aula o laboratorio de cómputo para uso educativo?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "key": "cuantos_lab_computo",
+          "text": "3.1 ¿Cuántos?",
+          "type": "number",
+          "showIf": "tiene_lab_computo"
+        },
+        {
+          "key": "tiene_biblioteca",
+          "text": "4. ¿La escuela cuenta con servicio de biblioteca?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "key": "cct_biblioteca",
+          "text": "4.1 Clave de Centro de Trabajo de la biblioteca",
+          "type": "text",
+          "showIf": "tiene_biblioteca",
+          "helpText": "Si no la tiene, solicítela en el área de estadística de su estado."
+        }
+      ]
+    },
+    {
+      "key": "evaluacion",
+      "title": "Procesos de evaluación",
+      "description": "Apartado VII. Marco General del Sistema de Evaluación y Acreditación de la Educación Superior (SEAES).",
+      "questions": [
+        {
+          "key": "realizo_evaluacion",
+          "text": "1. ¿La escuela realizó procesos de evaluación de sus funciones sustantivas y programas académicos?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "key": "resultados_disponibles",
+          "text": "2. ¿Los resultados de la evaluación están disponibles para consulta?",
+          "type": "boolean",
+          "showIf": "realizo_evaluacion"
+        },
+        {
+          "key": "url_resultados",
+          "text": "2.1 Página de Internet donde se consultan los resultados",
+          "type": "text",
+          "showIf": "resultados_disponibles"
+        },
+        {
+          "key": "evaluacion_seaes",
+          "text": "3. ¿La evaluación se realizó en el Marco General del SEAES?",
+          "type": "boolean",
+          "showIf": "realizo_evaluacion"
+        },
+        {
+          "key": "reporte_entregado",
+          "text": "4. ¿Se entregó el reporte a la Coordinación Ejecutiva del SEAES?",
+          "type": "boolean",
+          "showIf": "evaluacion_seaes"
+        },
+        {
+          "key": "retroalimentacion",
+          "text": "5. ¿Cuenta con retroalimentación por parte de la Coordinación Ejecutiva del SEAES?",
+          "type": "boolean",
+          "showIf": "reporte_entregado"
+        }
+      ]
+    }
+  ]
+}

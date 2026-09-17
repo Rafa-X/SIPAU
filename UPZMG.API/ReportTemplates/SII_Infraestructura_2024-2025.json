@@ -1,0 +1,296 @@
+{
+  "reportType": "SII_Infraestructura",
+  "version": "2024-2025",
+  "displayName": "Formato SII · Infraestructura (CGUTyP)",
+  "sections": [
+    {
+      "key": "identificacion",
+      "title": "Periodo y niveles impartidos",
+      "questions": [
+        {
+          "key": "periodo",
+          "text": "Periodo",
+          "type": "select",
+          "required": true,
+          "optionsFrom": "periodos",
+          "helpText": "Los periodos se administran en Configuración › Periodos escolares."
+        },
+        {
+          "key": "niveles_impartidos",
+          "text": "1. Niveles educativos que se imparten en el inmueble",
+          "type": "checkbox_group",
+          "required": true,
+          "options": ["Técnico Superior Universitario", "Licenciatura", "Posgrado"]
+        },
+        {
+          "key": "instalaciones_propias",
+          "text": "2. ¿Son instalaciones propias de la Universidad?",
+          "type": "boolean",
+          "required": true
+        }
+      ]
+    },
+    {
+      "key": "espacios",
+      "title": "Espacios existentes",
+      "description": "Reactivos 5 y 6.",
+      "questions": [
+        {
+          "key": "espacios_existentes",
+          "text": "5. Espacios existentes en el inmueble y utilizados por la Universidad",
+          "type": "checkbox_group",
+          "required": true,
+          "specifyOption": "Otro",
+          "options": [
+            "Dirección", "Servicios escolares", "Servicio médico", "Biblioteca(s)",
+            "Canchas deportivas", "Áreas verdes o jardines", "Gimnasio y/o alberca",
+            "Oficina para atender casos de violencia de género", "Cafetería o comedor",
+            "Taller(es) o laboratorio(s) para apoyar la actividad académica",
+            "Albergue o internado para alumnos", "Otro"
+          ]
+        },
+        {
+          "key": "espacios_educativos",
+          "text": "6. Número de espacios educativos utilizados",
+          "type": "matrix",
+          "required": true,
+          "rows": [
+            "Cubículo o sala de maestros",
+            "Sala de usos múltiples (auditorio)",
+            "Aulas de actividades artísticas",
+            "Aulas de usos múltiples (audiovisual)",
+            "Cajones de estacionamiento",
+            "Cafetería",
+            "Bibliotecas",
+            "Otros (centros de idiomas, etc.)"
+          ],
+          "columns": ["Total"],
+          "columnTotal": true
+        }
+      ]
+    },
+    {
+      "key": "terreno",
+      "title": "Terreno y edificios",
+      "description": "Reactivos 7 a 10.",
+      "questions": [
+        {
+          "key": "superficie_terreno",
+          "text": "7. Superficie aproximada del terreno de toda la Universidad",
+          "type": "select",
+          "required": true,
+          "options": ["Menos de 10 hectáreas", "Entre 10 y 14 hectáreas", "Entre 15 y 19 hectáreas", "20 hectáreas", "Más de 20 hectáreas"]
+        },
+        { "key": "edificios_docencia", "text": "8. ¿Cuántos edificios de docencia hay?", "type": "number", "required": true },
+        { "key": "edificios_laboratorios", "text": "9. ¿Cuántos edificios de laboratorios hay?", "type": "number", "required": true },
+        {
+          "key": "capacidad_instalada",
+          "text": "10. Capacidad instalada para actividades académicas",
+          "type": "number",
+          "measure": "percent",
+          "helpText": "Porcentaje de la capacidad del inmueble que se está usando."
+        }
+      ]
+    },
+    {
+      "key": "materiales",
+      "title": "Materiales de construcción",
+      "description": "Reactivos 11 a 13.",
+      "questions": [
+        {
+          "key": "material_muros",
+          "text": "11. Material predominante de paredes o muros",
+          "type": "select",
+          "required": true,
+          "options": [
+            "Tabique, ladrillo, block, piedra, cantera, cemento o concreto",
+            "Módulos prefabricados", "Madera", "Lámina metálica, asbesto o cartón",
+            "Adobe", "Materiales precarios (embarro, bajareque, carrizo, bambú, palma, desecho)"
+          ]
+        },
+        {
+          "key": "material_techos",
+          "text": "12. Material predominante de techos",
+          "type": "select",
+          "required": true,
+          "options": [
+            "Losa de concreto o viguetas con bovedilla", "Multitecho", "Teja",
+            "Terrado con viguería", "Lámina metálica, asbesto o cartón",
+            "Materiales precarios (madera, tejamanil, palma, paja, lámina de cartón)"
+          ]
+        },
+        {
+          "key": "material_pisos",
+          "text": "13. Material predominante de pisos",
+          "type": "select",
+          "required": true,
+          "options": ["Loseta o algún recubrimiento", "Cemento o firme", "Madera", "Tierra o materiales removibles"]
+        }
+      ]
+    },
+    {
+      "key": "patologias",
+      "title": "Problemas estructurales de los edificios",
+      "description": "Reactivo 14.",
+      "questions": [
+        {
+          "key": "patologias",
+          "text": "Indique los problemas que presentan los edificios",
+          "type": "checkbox_group",
+          "specifyOption": "Otro",
+          "options": [
+            "Desprendimiento de material de acabados en techo o columna",
+            "Desperfectos en cancelería de puertas",
+            "Filtraciones en techo",
+            "Fisuras en columnas",
+            "Funciona mal o no funciona la instalación eléctrica",
+            "Funciona mal o no funciona la red de voz y datos",
+            "Movimiento en muros",
+            "Luminarias en mal estado",
+            "Problemas en el aire acondicionado",
+            "Vibración excesiva en circulaciones, escaleras o techos",
+            "Exposición de varillas en losas o columnas",
+            "Desperfectos en cancelería de ventanas",
+            "Flexiones en techo",
+            "Fisuras en techos o muros",
+            "Funciona mal o no funciona la instalación hidráulica-sanitaria",
+            "Humedad en muros",
+            "Hundimiento o inclinación de pisos",
+            "El edificio se inunda",
+            "Pisos fisurados",
+            "Otro"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "servicios",
+      "title": "Servicios e instalaciones",
+      "description": "Reactivos 15 a 21.",
+      "questions": [
+        {
+          "key": "suministro_agua",
+          "text": "15. Tipos de suministro de agua",
+          "type": "checkbox_group",
+          "required": true,
+          "specifyOption": "Otro",
+          "options": ["Red pública", "Pozo", "Cuerpos de agua", "Pipas", "Otro"]
+        },
+        {
+          "key": "almacenamiento_agua",
+          "text": "16. Medios de almacenamiento de agua",
+          "type": "checkbox_group",
+          "specifyOption": "Otro",
+          "options": ["Cisterna", "Tinacos", "Tanque", "Otro"]
+        },
+        {
+          "key": "agua_potable",
+          "text": "17. ¿Hay suministro regular de agua potable al menos tres veces por semana?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "key": "suministro_energia",
+          "text": "18. Tipos de suministro de energía eléctrica",
+          "type": "checkbox_group",
+          "required": true,
+          "options": ["Red pública con contrato", "Red pública sin contrato", "Planta generadora de luz", "Paneles solares", "No se cuenta con suministro de energía"]
+        },
+        {
+          "key": "suministro_gas",
+          "text": "19. Tipos de suministro de gas",
+          "type": "checkbox_group",
+          "options": ["Gas natural", "Gas estacionario", "Cilindros", "No cuenta con instalación de gas"]
+        },
+        {
+          "key": "descargas",
+          "text": "20. Tipos de descarga",
+          "type": "checkbox_group",
+          "specifyOption": "Otro",
+          "options": ["Drenaje o colector público", "Fosa séptica", "Planta de tratamiento", "Otro"]
+        },
+        { "key": "separacion_aguas", "text": "21. ¿Existe separación de aguas negras y pluviales?", "type": "boolean" }
+      ]
+    },
+    {
+      "key": "sanitarios_mantenimiento",
+      "title": "Sanitarios, bebederos y mantenimiento",
+      "description": "Reactivos 22 a 29.",
+      "questions": [
+        {
+          "key": "banos",
+          "text": "22. Cuartos de baño en uso",
+          "type": "matrix",
+          "required": true,
+          "rows": ["Estudiantes", "Administrativos en general"],
+          "columns": ["Mujeres", "Hombres", "Mixtos"],
+          "rowTotal": true,
+          "columnTotal": true
+        },
+        {
+          "key": "bebederos",
+          "text": "23. Tomas de bebederos de agua",
+          "type": "matrix",
+          "rows": ["Bebederos"],
+          "columns": ["En uso", "Fuera de servicio"],
+          "rowTotal": true
+        },
+        {
+          "key": "responsable_mantenimiento",
+          "text": "24. ¿La Universidad cuenta con responsable del área de mantenimiento?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "key": "obras_rehabilitacion",
+          "text": "25. ¿Se realizaron obras de rehabilitación o mantenimiento mayor en los últimos 5 años?",
+          "type": "boolean"
+        },
+        {
+          "key": "construcciones_nuevas",
+          "text": "27. ¿Se realizaron construcciones nuevas en los últimos 5 años?",
+          "type": "boolean"
+        },
+        {
+          "key": "programa_proteccion_civil",
+          "text": "29. ¿La Universidad cuenta con programa de protección civil?",
+          "type": "boolean",
+          "required": true
+        }
+      ]
+    },
+    {
+      "key": "seguridad",
+      "title": "Protección civil y estacionamiento",
+      "description": "Reactivos 30 a 32.",
+      "questions": [
+        {
+          "key": "pautas_seguridad",
+          "text": "30. Pautas de seguridad para la prevención de riesgos",
+          "type": "matrix",
+          "required": true,
+          "rows": ["Alarmas", "Botiquín de primeros auxilios", "Extintores", "Señalamientos para rutas de evacuación", "Salidas de emergencia", "Zonas de seguridad"],
+          "columns": ["Existentes", "En uso"],
+          "helpText": "«En uso» es parte de los existentes, por eso el renglón no se suma."
+        },
+        {
+          "key": "delimitacion_terreno",
+          "text": "31. Construcciones que delimitan el terreno",
+          "type": "checkbox_group",
+          "specifyOption": "Otro",
+          "options": ["Barda o cerca perimetral completa", "Caseta de vigilancia", "Portón de acceso", "Otro"]
+        },
+        {
+          "key": "cajones_estacionamiento",
+          "text": "32. Cajones de estacionamiento por destino",
+          "type": "matrix",
+          "rows": ["Estudiantes", "Docentes", "Administrativos", "Discapacitados", "Otros"],
+          "columns": ["Total"],
+          "columnTotal": true,
+          "sumEquals": "espacios_educativos[Cajones de estacionamiento]",
+          "helpText": "Debe coincidir con los cajones de estacionamiento del reactivo 6."
+        }
+      ]
+    }
+  ]
+}

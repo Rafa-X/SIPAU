@@ -1,0 +1,240 @@
+{
+  "reportType": "SII_Alumnos",
+  "version": "2024-2025",
+  "displayName": "Formato SII · Perfil del alumno (CGUTyP)",
+  "sections": [
+    {
+      "key": "identificacion",
+      "title": "Periodo y programa educativo",
+      "description": "El Formato SII se captura por programa educativo y cuatrimestre.",
+      "questions": [
+        {
+          "key": "periodo",
+          "text": "Periodo que se reporta",
+          "type": "select",
+          "required": true,
+          "optionsFrom": "periodos",
+          "helpText": "Los periodos se administran en Configuración › Periodos escolares."
+        },
+        {
+          "key": "programa_educativo",
+          "text": "Programa educativo",
+          "type": "select",
+          "required": true,
+          "options": [
+            "TSU en Automatización",
+            "TSU en Construcción",
+            "TSU en Procesos Industriales",
+            "TSU en Biotecnología",
+            "TSU en Emprendimiento",
+            "Lic. en Terapia Física",
+            "Ing. Mecatrónica",
+            "Ing. Civil",
+            "Ing. Diseño Industrial",
+            "Ing. en Biotecnología",
+            "Lic. en Administración",
+            "Lic. en Admón. y Gestión Empresarial"
+          ]
+        },
+        {
+          "key": "plan",
+          "text": "Plan de estudios",
+          "type": "select",
+          "required": true,
+          "options": ["Nuevo Modelo (NM2024)", "Plan anterior"]
+        }
+      ]
+    },
+    {
+      "key": "perfil",
+      "title": "Matrícula y perfil sociodemográfico",
+      "description": "Reactivo 1 del Formato SII. Periodo actual, desglosado por sexo.",
+      "questions": [
+        {
+          "key": "discapacidad",
+          "text": "Alumnos por tipo de discapacidad",
+          "type": "matrix",
+          "rowsFrom": "discapacidades",
+          "columns": ["Mujeres", "Hombres"],
+          "rowTotal": true,
+          "columnTotal": true
+        },
+        {
+          "key": "lengua_indigena",
+          "text": "Alumnos hablantes de lengua indígena",
+          "type": "matrix",
+          "rows": ["Hablantes de lengua indígena"],
+          "columns": ["Mujeres", "Hombres"],
+          "rowTotal": true
+        },
+        {
+          "key": "estado_civil",
+          "text": "Alumnos por estado civil",
+          "type": "matrix",
+          "rows": ["Soltero", "Casado", "Divorciado", "Viudo", "Unión libre"],
+          "columns": ["Mujeres", "Hombres"],
+          "rowTotal": true,
+          "columnTotal": true
+        },
+        {
+          "key": "con_hijos",
+          "text": "Alumnos con hijos",
+          "type": "matrix",
+          "rows": ["Con hijos"],
+          "columns": ["Mujeres", "Hombres"],
+          "rowTotal": true
+        },
+        {
+          "key": "turno",
+          "text": "Alumnos por turno",
+          "type": "matrix",
+          "rows": ["Matutino", "Vespertino"],
+          "columns": ["Mujeres", "Hombres"],
+          "rowTotal": true,
+          "columnTotal": true
+        }
+      ]
+    },
+    {
+      "key": "edades",
+      "title": "Edad de los alumnos",
+      "description": "Reactivos 2 y 3 del Formato SII.",
+      "questions": [
+        {
+          "key": "edad_nuevo_ingreso",
+          "text": "Edad de los alumnos de nuevo ingreso",
+          "type": "matrix",
+          "rows": [
+            "18 años", "19 años", "20 años", "21 años", "22 años", "23 años", "24 años",
+            "25 años", "26 años", "27 años", "28 años", "29 años",
+            "30 a 34 años", "35 a 39 años", "39 años o más"
+          ],
+          "columns": ["Mujeres", "Hombres"],
+          "rowTotal": true,
+          "columnTotal": true
+        },
+        {
+          "key": "edad_reingreso",
+          "text": "Edad de los alumnos de reingreso",
+          "type": "matrix",
+          "rows": [
+            "18 años", "19 años", "20 años", "21 años", "22 años", "23 años", "24 años",
+            "25 años", "26 años", "27 años", "28 años", "29 años",
+            "30 a 34 años", "35 a 39 años", "39 años o más"
+          ],
+          "columns": ["Mujeres", "Hombres"],
+          "rowTotal": true,
+          "columnTotal": true
+        }
+      ]
+    },
+    {
+      "key": "grupos",
+      "title": "Distribución de grupos",
+      "description": "Reactivo 4 del Formato SII.",
+      "questions": [
+        {
+          "key": "distribucion_grupos",
+          "text": "Alumnos y grupos abiertos por cuatrimestre",
+          "type": "matrix",
+          "rows": ["Primero", "Segundo", "Tercero", "Cuarto", "Quinto", "Sexto", "Séptimo", "Octavo", "Noveno", "Décimo", "Undécimo"],
+          "columns": ["Alumnos", "Grupos"],
+          "columnTotal": true,
+          "helpText": "Alumnos y grupos no se suman entre sí; el renglón final da el total de cada columna."
+        }
+      ]
+    },
+    {
+      "key": "titulados",
+      "title": "Base de titulados",
+      "description": "Reactivo 5 del Formato SII. Datos del periodo inmediato anterior.",
+      "questions": [
+        {
+          "key": "titulados",
+          "text": "Egresados, titulados y con cédula profesional",
+          "type": "matrix",
+          "rows": ["Egresados", "Titulados", "Con cédula profesional"],
+          "columns": ["Mujeres", "Hombres"],
+          "rowTotal": true,
+          "helpText": "Los titulados y quienes tienen cédula también son egresados, por eso no hay total por columna."
+        }
+      ]
+    },
+    {
+      "key": "bajas",
+      "title": "Base de causas de baja",
+      "description": "Reactivo 6 del Formato SII. Periodo inmediato anterior; las causas vienen del catálogo oficial.",
+      "questions": [
+        {
+          "key": "bajas_temporales",
+          "text": "Bajas temporales por causa",
+          "type": "matrix",
+          "rowsFrom": "causas_baja",
+          "columns": ["Mujeres", "Hombres"],
+          "rowTotal": true,
+          "columnTotal": true
+        },
+        {
+          "key": "bajas_definitivas",
+          "text": "Bajas definitivas por causa",
+          "type": "matrix",
+          "rowsFrom": "causas_baja",
+          "columns": ["Mujeres", "Hombres"],
+          "rowTotal": true,
+          "columnTotal": true
+        }
+      ]
+    },
+    {
+      "key": "becas",
+      "title": "Base de becas",
+      "description": "Reactivo 7 del Formato SII. Periodo inmediato anterior; las modalidades vienen del catálogo oficial.",
+      "questions": [
+        {
+          "key": "becas",
+          "text": "Alumnos becados por modalidad",
+          "type": "matrix",
+          "rowsFrom": "becas",
+          "columns": ["Mujeres", "Hombres"],
+          "rowTotal": true
+        }
+      ]
+    },
+    {
+      "key": "rendimiento",
+      "title": "Rendimiento académico",
+      "description": "Reactivos 8 a 10 del Formato SII. Periodo inmediato anterior. Son promedios y porcentajes: no se suman entre sexos.",
+      "questions": [
+        {
+          "key": "aprovechamiento",
+          "text": "Aprovechamiento: calificación promedio",
+          "type": "matrix",
+          "measure": "average",
+          "min": 0,
+          "max": 10,
+          "rows": ["Calificación promedio"],
+          "columns": ["Mujeres", "Hombres"],
+          "helpText": "Calificación promedio del cuatrimestre según el kardex, en escala de 0 a 10."
+        },
+        {
+          "key": "eficiencia_terminal",
+          "text": "Eficiencia terminal",
+          "type": "matrix",
+          "measure": "percent",
+          "rows": ["Eficiencia terminal (%)"],
+          "columns": ["Mujeres", "Hombres"],
+          "helpText": "Egresados de la generación entre los alumnos que ingresaron en esa generación, por 100."
+        },
+        {
+          "key": "desercion",
+          "text": "Deserción",
+          "type": "matrix",
+          "measure": "percent",
+          "rows": ["Deserción (%)"],
+          "columns": ["Mujeres", "Hombres"],
+          "helpText": "Alumnos que desertaron en el periodo entre la matrícula de ese periodo, por 100."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,274 @@
+{
+  "reportType": "Institucion911_10",
+  "version": "2024-2025",
+  "displayName": "Formato 911.10 · Institución (consolidado de rectoría)",
+  "sections": [
+    {
+      "key": "identificacion",
+      "title": "Datos de identificación de la institución",
+      "questions": [
+        { "key": "clave_institucion", "text": "Clave de la Institución", "type": "text", "required": true },
+        { "key": "nombre_institucion", "text": "Nombre de la institución", "type": "text", "required": true },
+        { "key": "municipio", "text": "Municipio o alcaldía", "type": "text", "required": true },
+        { "key": "entidad", "text": "Entidad federativa", "type": "text", "required": true },
+        {
+          "key": "sostenimiento",
+          "text": "Sostenimiento",
+          "type": "select",
+          "required": true,
+          "options": ["Público Federal", "Público Estatal", "Público Autónomo", "Particular"]
+        },
+        { "key": "nombre_rector", "text": "Nombre del rector o director de la institución", "type": "text", "required": true },
+        { "key": "correo_responsable", "text": "Correo del responsable del llenado", "type": "text", "required": true }
+      ]
+    },
+    {
+      "key": "unidades",
+      "title": "Facultades, escuelas, centros y alumnos",
+      "description": "Apartado I. No considere el número de carreras, sino de unidades académicas.",
+      "questions": [
+        {
+          "key": "unidades_escolar",
+          "text": "1. Modalidad escolar: unidades académicas y alumnos por nivel",
+          "type": "matrix",
+          "required": true,
+          "rows": ["Técnico Superior", "Licenciatura", "Posgrado"],
+          "columns": ["Facultades / Escuelas / Centros", "Alumnos"],
+          "columnTotal": true,
+          "helpText": "Unidades y alumnos son cosas distintas: sólo se totaliza cada columna."
+        },
+        {
+          "key": "unidades_no_escolar",
+          "text": "1.1 Modalidad no escolarizada (mixta, abierta, virtual o a distancia)",
+          "type": "matrix",
+          "rows": ["Técnico Superior", "Licenciatura", "Posgrado"],
+          "columns": ["Facultades / Escuelas / Centros", "Alumnos"],
+          "columnTotal": true
+        }
+      ]
+    },
+    {
+      "key": "personal",
+      "title": "Personal central y de unidades académicas",
+      "description": "Apartados II y III. El total institucional es la suma de las áreas centrales más el personal de facultades, escuelas y centros.",
+      "questions": [
+        {
+          "key": "personal_central",
+          "text": "II.1 Personal en áreas centrales (rectoría, oficinas administrativas)",
+          "type": "matrix",
+          "required": true,
+          "rows": ["Directivo", "Administrativo", "Otros (choferes, limpieza, servicios generales)"],
+          "columns": ["Hombres", "Mujeres", "Con discapacidad", "Hablantes de lengua indígena"],
+          "rowTotal": true,
+          "rowTotalColumns": ["Hombres", "Mujeres"],
+          "rowTotalLabel": "Total (H + M)",
+          "columnTotal": true
+        },
+        {
+          "key": "personal_unidades",
+          "text": "III.1 Personal de facultades, escuelas, centros o departamentos",
+          "type": "matrix",
+          "required": true,
+          "rows": [
+            "Directivo",
+            "Docente (no incluya personal de investigación)",
+            "Docente-Investigador y Docente-Auxiliar de Investigador",
+            "Investigador",
+            "Auxiliar de investigador",
+            "Administrativo",
+            "Otros (choferes, limpieza, servicios generales)"
+          ],
+          "columns": ["Hombres", "Mujeres", "Con discapacidad", "Hablantes de lengua indígena"],
+          "rowTotal": true,
+          "rowTotalColumns": ["Hombres", "Mujeres"],
+          "rowTotalLabel": "Total (H + M)",
+          "columnTotal": true
+        },
+        {
+          "key": "personal_institucional_total",
+          "text": "Total de personal de la institución",
+          "type": "number",
+          "helpText": "Se calcula con los hombres y las mujeres de los dos cuadros anteriores.",
+          "sum": [
+            "personal_central[Hombres]",
+            "personal_central[Mujeres]",
+            "personal_unidades[Hombres]",
+            "personal_unidades[Mujeres]"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "finanzas",
+      "title": "Finanzas institucionales",
+      "description": "Apartado IV. Ejercicio fiscal anterior, en miles de pesos.",
+      "questions": [
+        { "key": "ing_federal", "text": "1. Subsidio federal", "type": "number", "measure": "amount", "required": true },
+        { "key": "ing_estatal", "text": "1. Subsidio estatal", "type": "number", "measure": "amount", "required": true },
+        { "key": "ing_inscripciones", "text": "1. Inscripción, reinscripción y cuotas", "type": "number", "measure": "amount", "required": true },
+        { "key": "ing_servicios", "text": "1. Ingresos propios por cobro de servicios diversos", "type": "number", "measure": "amount", "required": true },
+        { "key": "ing_otros", "text": "1. Ingresos propios por otras fuentes", "type": "number", "measure": "amount", "required": true },
+        {
+          "key": "ing_total",
+          "text": "1. Total de ingresos",
+          "type": "number",
+          "measure": "amount",
+          "helpText": "Se calcula con las cinco fuentes anteriores.",
+          "sum": ["ing_federal", "ing_estatal", "ing_inscripciones", "ing_servicios", "ing_otros"]
+        },
+        {
+          "key": "gasto_funcion",
+          "text": "2. Gasto de la institución por función",
+          "type": "matrix",
+          "measure": "amount",
+          "required": true,
+          "rows": ["Gasto del ejercicio"],
+          "columns": ["Docencia", "Investigación", "Extensión", "Administración", "Otros"],
+          "rowTotal": true,
+          "sumAtMost": "ing_total",
+          "helpText": "El gasto total no puede exceder los ingresos reportados."
+        }
+      ]
+    },
+    {
+      "key": "investigacion",
+      "title": "Investigación e investigadores",
+      "description": "Apartados V a VII.",
+      "questions": [
+        {
+          "key": "unidades_investigacion",
+          "text": "V.1 ¿Cuántas escuelas, centros o dependencias realizan investigación?",
+          "type": "number"
+        },
+        {
+          "key": "proyectos_por_campo",
+          "text": "VI.1 Proyectos de investigación por campo de formación académica",
+          "type": "matrix",
+          "rows": [
+            "Educación",
+            "Artes y humanidades",
+            "Ciencias sociales y derecho",
+            "Administración y negocios",
+            "Ciencias naturales, matemáticas y estadística",
+            "Tecnologías de la información y la comunicación",
+            "Ingeniería, manufactura y construcción",
+            "Agronomía y veterinaria",
+            "Ciencias de la salud",
+            "Servicios"
+          ],
+          "columns": ["Terminados con colaboración nacional", "Continúan en proceso", "Terminados con colaboración extranjera"],
+          "rowTotal": true,
+          "columnTotal": true
+        },
+        {
+          "key": "padron_snii",
+          "text": "VII.2 Investigadores por adscripción al Sistema Nacional",
+          "type": "matrix",
+          "rows": [
+            "Investigadores Nacionales Eméritos",
+            "SNII nivel 3",
+            "SNII nivel 2",
+            "SNII nivel 1",
+            "Candidato a investigador nacional",
+            "Investigadores por institución",
+            "Otros"
+          ],
+          "columns": ["Hombres", "Mujeres"],
+          "rowTotal": true,
+          "columnTotal": true
+        }
+      ]
+    },
+    {
+      "key": "extension",
+      "title": "Extensión y difusión",
+      "description": "Apartados VIII a XI.",
+      "questions": [
+        {
+          "key": "eventos",
+          "text": "VIII.1 Eventos de promoción de la ciencia, tecnología y cultura",
+          "type": "matrix",
+          "rows": ["Conferencias (de divulgación)", "Exhibiciones y exposiciones", "Talleres", "Eventos culturales y artísticos", "Eventos deportivos"],
+          "columns": ["Eventos"],
+          "columnTotal": true
+        },
+        {
+          "key": "obra_editorial",
+          "text": "IX.1 Obra editorial publicada",
+          "type": "matrix",
+          "rows": ["Libros (de tecnología y ciencia)", "Revistas", "Boletines", "Electrónicas o digitales", "Otras"],
+          "columns": ["Títulos", "Co-ediciones internacionales"],
+          "columnTotal": true,
+          "helpText": "Las co-ediciones son parte de los títulos, por eso no se suman entre sí."
+        },
+        {
+          "key": "educacion_continua",
+          "text": "X.1 Cursos de educación continua y participantes",
+          "type": "matrix",
+          "rows": ["Cursos cortos", "Diplomados", "Seminarios", "Talleres", "Otros"],
+          "columns": ["Número de cursos", "Hombres", "Mujeres", "Con discapacidad"],
+          "rowTotal": true,
+          "rowTotalColumns": ["Hombres", "Mujeres"],
+          "rowTotalLabel": "Participantes (H + M)",
+          "columnTotal": true
+        },
+        {
+          "key": "servicios_comunidad",
+          "text": "XI.1 Servicios a la comunidad por área de atención",
+          "type": "matrix",
+          "rows": ["Jurídica", "Salud", "Educación", "Vivienda", "Ecología"],
+          "columns": ["Total de consultas y asesorías", "Total de beneficiarios"],
+          "columnTotal": true,
+          "helpText": "Consultas y beneficiarios se cuentan aparte: sólo se totaliza cada columna."
+        }
+      ]
+    },
+    {
+      "key": "vinculacion",
+      "title": "Servicio social y vinculación con empresas",
+      "description": "Apartados XII y XIII.",
+      "questions": [
+        {
+          "key": "servicio_social",
+          "text": "XII.1 Alumnos que terminaron servicio social, por sector",
+          "type": "matrix",
+          "rows": ["Educativo (propia institución)", "Público", "Privado", "Social"],
+          "columns": ["Hombres", "Mujeres", "Con discapacidad", "Hablantes de lengua indígena"],
+          "rowTotal": true,
+          "rowTotalColumns": ["Hombres", "Mujeres"],
+          "rowTotalLabel": "Total (H + M)",
+          "columnTotal": true
+        },
+        {
+          "key": "practicas_profesionales",
+          "text": "XII.2 Alumnos que terminaron prácticas profesionales, por sector",
+          "type": "matrix",
+          "rows": ["Educativo (propia institución)", "Público", "Privado", "Social"],
+          "columns": ["Hombres", "Mujeres", "Con discapacidad", "Hablantes de lengua indígena"],
+          "rowTotal": true,
+          "rowTotalColumns": ["Hombres", "Mujeres"],
+          "rowTotalLabel": "Total (H + M)",
+          "columnTotal": true
+        },
+        {
+          "key": "proyectos_vinculacion",
+          "text": "XIII.1 Proyectos de vinculación por tipo de empresa",
+          "type": "matrix",
+          "rows": ["Sector Público", "Microempresas", "Pequeñas empresas", "Medianas empresas", "Grandes empresas", "Sector Social"],
+          "columns": ["Investigación y desarrollo", "Asesoría técnica", "Prácticas profesionales", "Educación continua", "Servicio social", "Otro"],
+          "rowTotal": true,
+          "columnTotal": true
+        },
+        {
+          "key": "alumnos_vinculacion",
+          "text": "XIII.2 Alumnos que participaron en proyectos de vinculación",
+          "type": "matrix",
+          "rows": ["Sector Público", "Microempresas", "Pequeñas empresas", "Medianas empresas", "Grandes empresas", "Sector Social"],
+          "columns": ["Investigación y desarrollo", "Asesoría técnica", "Prácticas profesionales", "Educación continua", "Servicio social", "Otro"],
+          "rowTotal": true,
+          "columnTotal": true
+        }
+      ]
+    }
+  ]
+}

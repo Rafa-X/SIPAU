@@ -1,0 +1,452 @@
+@*
+    Renders one reactivo of an official format. Grids use plain inputs styled as a
+    paper form: a 10 x 11 official table would be too heavy as MudBlazor fields.
+*@
+@using System.Globalization
+@using UPZMG.Implementations.Reports
+
+@{
+    var violations = Form.ViolationsFor(Question.Key).ToList();
+}
+
+<div class="sipau-capture-q @(violations.Count > 0 ? "is-broken" : null)">
+    <div class="sipau-capture-q-text" id="@LabelId">
+        @Question.Text
+        @if (Question.Required)
+        {
+            <span class="sipau-capture-req" aria-hidden="true">*</span>
+            <span class="sipau-sr">(obligatoria)</span>
+        }
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Question.HelpText))
+    {
+        <p class="sipau-capture-q-help">@Question.HelpText</p>
+    }
+
+    @if (CatalogMissing)
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Text" Dense="true" Class="mb-3">
+            El catálogo oficial «@CatalogName» todavía no tiene registros, así que este reactivo no se puede capturar.
+            Tecnologías lo carga con seed-official-catalogs.sql.
+        </MudAlert>
+    }
+
+    @switch (QuestionType)
+    {
+        case ReportQuestionTypes.Boolean:
+            <MudRadioGroup T="string" Value="@Form.Get(Question.Key)" ValueChanged="@(v => SetAsync(Question.Key, v))"
+                           Disabled="@ReadOnly">
+                <MudRadio T="string" Value="@("true")" Color="Color.Primary" Dense="true">Sí</MudRadio>
+                <MudRadio T="string" Value="@("false")" Color="Color.Primary" Dense="true">No</MudRadio>
+            </MudRadioGroup>
+            break;
+
+        case ReportQuestionTypes.Number:
+            @if (Question.Sum.Count > 0)
+            {
+                <div class="sipau-computed">
+                    <span class="sipau-computed-value">@ReportFormState.Format(Form.ComputedTotal(Question))</span>
+                    <span class="sipau-computed-note">Se calcula: @string.Join(" + ", Question.Sum.Select(Form.Describe))</span>
+                </div>
+            }
+            else
+            {
+                <MudTextField T="string" Value="@Form.Get(Question.Key)" ValueChanged="@(v => SetAsync(Question.Key, v))"
+                              InputType="InputType.Number" Variant="Variant.Outlined" Margin="Margin.Dense"
+                              Disabled="@ReadOnly" Error="@IsInvalid(Question.Key)" Class="sipau-capture-input-short"
+                              Adornment="@(IsPercent ? Adornment.End : Adornment.None)" AdornmentText="%" />
+            }
+            break;
+
+        case ReportQuestionTypes.Date:
+            <MudTextField T="string" Value="@Form.Get(Question.Key)" ValueChanged="@(v => SetAsync(Question.Key, v))"
+                          InputType="InputType.Date" Variant="Variant.Outlined" Margin="Margin.Dense"
+                          Disabled="@ReadOnly" Class="sipau-capture-input-short" />
+            break;
+
+        case ReportQuestionTypes.Select:
+            <MudSelect T="string" Value="@Form.Get(Question.Key)" ValueChanged="@(v => SetAsync(Question.Key, v))"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Placeholder="Elige una opción"
+                       Clearable="@(!ReadOnly)" Disabled="@ReadOnly" Class="sipau-capture-input-long">
+                @foreach (var option in Question.Options)
+                {
+                    <MudSelectItem T="string" Value="@option">@option</MudSelectItem>
+                }
+            </MudSelect>
+            @if (SpecifyChosen(Form.Get(Question.Key).Equals(Question.SpecifyOption, StringComparison.OrdinalIgnoreCase)))
+            {
+                var selectSpecifyKey = ReportFormState.SpecifyKey(Question.Key);
+                <MudTextField T="string" Label="Especifique" Value="@Form.Get(selectSpecifyKey)"
+                              ValueChanged="@(v => SetAsync(selectSpecifyKey, v))" Variant="Variant.Outlined"
+                              Margin="Margin.Dense" Disabled="@ReadOnly" Class="sipau-capture-input-long mt-3" />
+            }
+            break;
+
+        case ReportQuestionTypes.CheckboxGroup:
+            <div class="sipau-check-grid">
+                @foreach (var option in Question.Options)
+                {
+                    <MudCheckBox T="bool" Value="@Form.IsChecked(Question.Key, option)" ValueChanged="@(on => ToggleAsync(option, on))"
+                                 Label="@option" Dense="true" Color="Color.Primary" Disabled="@ReadOnly" />
+                }
+            </div>
+            @if (SpecifyChosen(Form.IsChecked(Question.Key, Question.SpecifyOption ?? string.Empty)))
+            {
+                var checkSpecifyKey = ReportFormState.SpecifyKey(Question.Key);
+                <MudTextField T="string" Label="Especifique" Value="@Form.Get(checkSpecifyKey)"
+                              ValueChanged="@(v => SetAsync(checkSpecifyKey, v))" Variant="Variant.Outlined"
+                              Margin="Margin.Dense" Disabled="@ReadOnly" Class="sipau-capture-input-long mt-3" />
+            }
+            break;
+
+        case ReportQuestionTypes.MatrixSelect:
+            <div class="sipau-grid-wrap">
+                <table class="sipau-grid" aria-labelledby="@LabelId">
+                    <thead>
+                        <tr>
+                            <th scope="col" class="is-label">Concepto</th>
+                            <th scope="col" class="is-label">Respuesta</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Question.Rows)
+                        {
+                            var rowKey = ReportFormState.RowKey(Question.Key, row);
+                            <tr>
+                                <th scope="row">@row</th>
+                                <td>
+                                    <select class="sipau-cell-select" value="@Form.Get(rowKey)" disabled="@ReadOnly"
+                                            aria-label="@row" @onchange="@(e => SetAsync(rowKey, e.Value?.ToString()))">
+                                        <option value="">—</option>
+                                        @foreach (var option in Question.Options)
+                                        {
+                                            <option value="@option">@option</option>
+                                        }
+                                    </select>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            break;
+
+        case ReportQuestionTypes.Matrix:
+            @if (!ReadOnly && IsCount && Question.Rows.Count > 0)
+            {
+                var blanks = Form.BlankCells(Question);
+                @if (blanks > 0)
+                {
+                    <div class="sipau-grid-tools">
+                        <span>@ReportUi.Plural(blanks, "celda vacía", "celdas vacías")</span>
+                        <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.ExposureZero" OnClick="FillZerosAsync">
+                            Completar vacías con 0
+                        </MudButton>
+                    </div>
+                }
+            }
+            <div class="sipau-grid-wrap">
+                <table class="sipau-grid" aria-labelledby="@LabelId">
+                    <thead>
+                        <tr>
+                            <th scope="col" rowspan="@HeadRows" class="is-label">Concepto</th>
+                            @foreach (var column in Question.Columns)
+                            {
+                                @if (HasSubs)
+                                {
+                                    <th scope="colgroup" colspan="@GroupSpan">@column</th>
+                                }
+                                else
+                                {
+                                    <th scope="col">@column</th>
+                                }
+                            }
+                            @if (Question.RowTotal)
+                            {
+                                <th scope="col" rowspan="@HeadRows" class="is-total">@(Question.RowTotalLabel ?? "Total")</th>
+                            }
+                        </tr>
+                        @if (HasSubs)
+                        {
+                            <tr>
+                                @foreach (var column in Question.Columns)
+                                {
+                                    @foreach (var sub in Question.SubColumns)
+                                    {
+                                        <th scope="col" class="is-sub">@sub</th>
+                                    }
+                                    @if (Question.SubTotal)
+                                    {
+                                        <th scope="col" class="is-sub is-total">Total</th>
+                                    }
+                                }
+                            </tr>
+                        }
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Question.Rows)
+                        {
+                            <tr>
+                                <th scope="row">@row</th>
+                                @foreach (var column in Question.Columns)
+                                {
+                                    @if (HasSubs)
+                                    {
+                                        @foreach (var sub in Question.SubColumns)
+                                        {
+                                            <td>@CellInput(ReportFormState.CellKey(Question.Key, row, column, sub), $"{row} · {column} · {sub}")</td>
+                                        }
+                                        @if (Question.SubTotal)
+                                        {
+                                            <td class="is-computed">@ReportFormState.Format(Form.CellTotal(Question, row, column))</td>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <td>@CellInput(ReportFormState.CellKey(Question.Key, row, column), $"{row} · {column}")</td>
+                                    }
+                                }
+                                @if (Question.RowTotal)
+                                {
+                                    <td class="is-computed is-total">@ReportFormState.Format(Form.RowTotal(Question, row))</td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                    @if (Question.ColumnTotal && Question.Rows.Count > 1)
+                    {
+                        <tfoot>
+                            <tr>
+                                <th scope="row">Total</th>
+                                @foreach (var column in Question.Columns)
+                                {
+                                    @if (HasSubs)
+                                    {
+                                        @foreach (var sub in Question.SubColumns)
+                                        {
+                                            <td>@ReportFormState.Format(Form.ColumnTotal(Question, column, sub))</td>
+                                        }
+                                        @if (Question.SubTotal)
+                                        {
+                                            <td>@ReportFormState.Format(Form.ColumnTotal(Question, column))</td>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <td>@ReportFormState.Format(Form.ColumnTotal(Question, column))</td>
+                                    }
+                                }
+                                @if (Question.RowTotal)
+                                {
+                                    <td>@ReportFormState.Format(Form.RowTotalsSum(Question))</td>
+                                }
+                            </tr>
+                        </tfoot>
+                    }
+                </table>
+            </div>
+            break;
+
+        case ReportQuestionTypes.Table:
+            var tableRows = Form.TableRowCount(Question);
+            <div class="sipau-grid-wrap">
+                <table class="sipau-grid" aria-labelledby="@LabelId">
+                    <thead>
+                        <tr>
+                            <th scope="col" class="is-index">#</th>
+                            @foreach (var field in Question.Fields)
+                            {
+                                <th scope="col" class="is-label">@field.Text</th>
+                            }
+                            @if (!ReadOnly)
+                            {
+                                <th scope="col" class="is-index"><span class="sipau-sr">Quitar</span></th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (var r = 1; r <= tableRows; r++)
+                        {
+                            var rowNumber = r;
+                            <tr>
+                                <th scope="row" class="is-index">@rowNumber</th>
+                                @foreach (var field in Question.Fields)
+                                {
+                                    var fieldKey = ReportFormState.TableCellKey(Question.Key, rowNumber, field.Key);
+                                    var fieldLabel = $"{field.Text}, línea {rowNumber}";
+                                    <td>
+                                        @if (field.Type.Trim().Equals(ReportQuestionTypes.Select, StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            <select class="sipau-cell-select" value="@Form.Get(fieldKey)" disabled="@ReadOnly"
+                                                    aria-label="@fieldLabel" @onchange="@(e => SetAsync(fieldKey, e.Value?.ToString()))">
+                                                <option value="">—</option>
+                                                @foreach (var option in field.Options)
+                                                {
+                                                    <option value="@option">@option</option>
+                                                }
+                                            </select>
+                                        }
+                                        else
+                                        {
+                                            <input class="sipau-cell-input @(InputTypeOf(field) == "text" ? "is-text" : null)"
+                                                   type="@InputTypeOf(field)" value="@Form.Get(fieldKey)" disabled="@ReadOnly"
+                                                   aria-label="@fieldLabel" @onchange="@(e => SetAsync(fieldKey, e.Value?.ToString()))" />
+                                        }
+                                    </td>
+                                }
+                                @if (!ReadOnly)
+                                {
+                                    <td class="is-index">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                                                       aria-label="@($"Quitar la línea {rowNumber}")"
+                                                       OnClick="() => RemoveRowAsync(rowNumber)" />
+                                    </td>
+                                }
+                            </tr>
+                        }
+                        @if (tableRows == 0)
+                        {
+                            <tr>
+                                <td class="sipau-grid-empty" colspan="@(Question.Fields.Count + (ReadOnly ? 1 : 2))">
+                                    Aún no hay líneas registradas.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (!ReadOnly)
+            {
+                <div class="sipau-grid-tools is-after">
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Add" Disabled="@AtMaxRows" OnClick="AddRowAsync">
+                        Agregar línea
+                    </MudButton>
+                    @if (Question.MaxRows is { } maxRows)
+                    {
+                        <span>@tableRows de @maxRows líneas</span>
+                    }
+                </div>
+            }
+            break;
+
+        default:
+            <MudTextField T="string" Value="@Form.Get(Question.Key)" ValueChanged="@(v => SetAsync(Question.Key, v))"
+                          Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@ReadOnly"
+                          Class="sipau-capture-input-long" />
+            break;
+    }
+
+    @foreach (var violation in violations)
+    {
+        <p class="sipau-rule is-bad">
+            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Small" />
+            <span>@violation.Message</span>
+        </p>
+    }
+
+    @if (violations.Count == 0 && BalancedNote is { } note)
+    {
+        <p class="sipau-rule is-ok">
+            <MudIcon Icon="@Icons.Material.Filled.CheckCircleOutline" Size="Size.Small" />
+            <span>@note</span>
+        </p>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ReportFormState Form { get; set; } = null!;
+    [Parameter, EditorRequired] public ReportTemplateQuestion Question { get; set; } = null!;
+    [Parameter] public bool ReadOnly { get; set; }
+
+    /// <summary>Raised after an answer changes, so the page refreshes progress and marks unsaved work.</summary>
+    [Parameter] public EventCallback Changed { get; set; }
+
+    private string QuestionType => ReportQuestionTypes.Of(Question);
+    private bool IsCount => ReportMeasures.Of(Question) == ReportMeasures.Count;
+    private bool IsPercent => ReportMeasures.Of(Question) == ReportMeasures.Percent;
+    private bool HasSubs => Question.SubColumns.Count > 0;
+    private int HeadRows => HasSubs ? 2 : 1;
+    private int GroupSpan => Question.SubColumns.Count + (Question.SubTotal ? 1 : 0);
+    private string LabelId => $"q-{Question.Key}";
+    private string MinText => ReportFormState.Bounds(Question).Min.ToString(CultureInfo.InvariantCulture);
+    private string? MaxText => ReportFormState.Bounds(Question).Max?.ToString(CultureInfo.InvariantCulture);
+    private bool AtMaxRows => Question.MaxRows is { } max && Form.TableRowCount(Question) >= max;
+
+    private bool RowsMissing => !string.IsNullOrWhiteSpace(Question.RowsFrom) && Question.Rows.Count == 0;
+    private bool OptionsMissing => !string.IsNullOrWhiteSpace(Question.OptionsFrom) && Question.Options.Count == 0;
+    private bool CatalogMissing => RowsMissing || OptionsMissing;
+    private string CatalogName => (RowsMissing ? Question.RowsFrom : Question.OptionsFrom) ?? string.Empty;
+
+    /// <summary>Confirms a balanced rule while typing, so the área sees it add up and not only when it breaks.</summary>
+    private string? BalancedNote
+    {
+        get
+        {
+            var reference = !string.IsNullOrWhiteSpace(Question.SumEquals) ? Question.SumEquals : Question.SumAtMost;
+            if (string.IsNullOrWhiteSpace(reference)) return null;
+
+            var captured = Form.QuestionTotal(Question);
+            var expected = Form.Resolve(reference);
+            if (captured <= 0 && expected <= 0) return null;
+
+            var what = QuestionType == ReportQuestionTypes.Table
+                ? ReportUi.Plural((int)captured, "línea registrada", "líneas registradas")
+                : $"suma capturada {ReportFormState.Format(captured)}";
+
+            return !string.IsNullOrWhiteSpace(Question.SumEquals)
+                ? $"Cuadra: {what}, igual que «{Form.Describe(reference)}» ({ReportFormState.Format(expected)})."
+                : $"Dentro del límite: {what} de un máximo de {ReportFormState.Format(expected)} («{Form.Describe(reference)}»).";
+        }
+    }
+
+    private bool SpecifyChosen(bool chosen) => chosen && !string.IsNullOrWhiteSpace(Question.SpecifyOption);
+
+    private bool IsInvalid(string key) => ReportFormState.IsInvalidValue(Question, Form.Get(key));
+
+    private Task SetAsync(string key, string? value)
+    {
+        Form.Set(key, value);
+        return Changed.InvokeAsync();
+    }
+
+    private Task ToggleAsync(string option, bool on)
+    {
+        Form.ToggleOption(Question.Key, option, on);
+        return Changed.InvokeAsync();
+    }
+
+    private Task FillZerosAsync()
+    {
+        Form.FillBlanksWithZero(Question);
+        return Changed.InvokeAsync();
+    }
+
+    private Task AddRowAsync()
+    {
+        Form.AddTableRow(Question);
+        return Changed.InvokeAsync();
+    }
+
+    private Task RemoveRowAsync(int row)
+    {
+        Form.RemoveTableRow(Question, row);
+        return Changed.InvokeAsync();
+    }
+
+    private RenderFragment CellInput(string key, string label) =>
+        @<input class="sipau-cell-input @(IsInvalid(key) ? "is-invalid" : null)"
+                type="number" inputmode="@(IsCount ? "numeric" : "decimal")" step="@(IsCount ? "1" : "any")"
+                min="@MinText" max="@MaxText" value="@Form.Get(key)" disabled="@ReadOnly"
+                aria-label="@label" aria-invalid="@(IsInvalid(key) ? "true" : null)"
+                @onchange="@(e => SetAsync(key, e.Value?.ToString()))" />;
+
+    private static string InputTypeOf(ReportTemplateField field) => field.Type.Trim().ToLowerInvariant() switch
+    {
+        ReportQuestionTypes.Number => "number",
+        ReportQuestionTypes.Date => "date",
+        _ => "text",
+    };
+}
