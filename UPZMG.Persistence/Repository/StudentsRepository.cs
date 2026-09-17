@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using UPZMG.Implementations.Charts;
 using UPZMG.Implementations.DataCapture;
 using UPZMG.Persistence.Models;
 
@@ -101,5 +102,39 @@ public class StudentsRepository(AppDBContext db)
             }).ToListAsync();
 
         return new StudentsListResponse { Items = items, TotalCount = await query.CountAsync() };
+    }
+
+    public Task<List<StudentsAges>> GetStudentsAgesNew() => GetStudentsAgesAsync(newOnly: true);
+
+    public Task<List<StudentsAges>> GetStudentsAgesAll() => GetStudentsAgesAsync(newOnly: false);
+
+    private async Task<List<StudentsAges>> GetStudentsAgesAsync(bool newOnly)
+    {
+        var students = await db.Students
+            .AsNoTracking()
+            .Where(s => !newOnly || s.InscriptionType == UPZMG.Shared.Enums.InscriptionType.NuevoIngreso)
+            .Select(s => s.BirthDate)
+            .ToListAsync();
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        return students
+            .Select(birthDate => CalculateAge(birthDate, today))
+            .GroupBy(age => age)
+            .OrderBy(group => group.Key)
+            .Select(group => new StudentsAges
+            {
+                Name = group.Key.ToString(),
+                Values = group.Select(age => (double)age).ToList(),
+                Color = "var(--mud-palette-secondary)"
+            })
+            .ToList();
+    }
+
+    private static int CalculateAge(DateOnly birthDate, DateOnly today)
+    {
+        var age = today.Year - birthDate.Year;
+        if (birthDate > today.AddYears(-age)) age--;
+        return age;
     }
 }

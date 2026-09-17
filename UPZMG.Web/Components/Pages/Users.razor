@@ -8,7 +8,7 @@
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 
-<PageTitle>Usuarios y Roles — SIGIE</PageTitle>
+<PageTitle>Usuarios y Roles — SIPAU</PageTitle>
 
 <PageHeader Eyebrow="Administración" Title="Usuarios y Roles" Subtitle="Alta de usuarios y asignación de rol de acceso">
     <Actions>
@@ -33,7 +33,7 @@
                "inactive" option here could never match anything. Filtering by
                role is what actually helps on this screen. *@
             <MudSelect T="string" Value="_roleFilter" ValueChanged="@(v => _roleFilter = v)" Dense="true"
-                       Variant="Variant.Outlined" Margin="Margin.Dense" Class="sigie-toolbar-filter mt-0"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Class="sipau-toolbar-filter mt-0"
                        Placeholder="Rol" Clearable="true">
                 <MudSelectItem T="string" Value="@(null!)">Todos los roles</MudSelectItem>
                 @foreach (var role in _roles)
@@ -86,7 +86,7 @@
                     }
                 </CellTemplate>
             </TemplateColumn>
-            <TemplateColumn Title="Acción" CellClass="sigie-cell-end" HeaderClass="sigie-cell-end" Sortable="false">
+            <TemplateColumn Title="Acción" CellClass="sipau-cell-end" HeaderClass="sipau-cell-end" Sortable="false">
                 <CellTemplate>
                     <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
                                StartIcon="@Icons.Material.Filled.Edit" OnClick="() => OpenEdit(context.Item)">

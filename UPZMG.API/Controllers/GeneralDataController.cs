@@ -12,9 +12,9 @@ public class GeneralDataController(
     GeneralDataRepository generalDataRepository) : ControllerBase
 {
 
-    [HttpGet("lookups/careers")]
+    [HttpGet("lookups/careers-selectable")]
     public async Task<ActionResult<List<LookupOption>>> GetCareers() =>
-            Ok(await generalDataRepository.GetCareersAsync());
+            Ok(await generalDataRepository.GetCareersSelectableAsync());
 
     [HttpGet("lookups/asignatures/{careerId:guid}")]
     public async Task<ActionResult<List<LookupOption>>> GetAsignatures(Guid careerId) =>

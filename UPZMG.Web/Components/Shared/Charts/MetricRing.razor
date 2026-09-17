@@ -5,7 +5,7 @@
 @using System.Globalization
 @using UPZMG.Web.Components.Shared.Charts
 
-<div class="sigie-ring" style="@($"max-width:{Size}px")">
+<div class="sipau-ring" style="@($"max-width:{Size}px")">
     <svg viewBox="0 0 120 120" role="img" aria-label="@($"{Label}: {Value.ToString(ValueFormat, CultureInfo.CurrentCulture)}")">
         <defs>
             <linearGradient id="@($"{_id}-arc")" x1="0" y1="0" x2="1" y2="1">
@@ -15,21 +15,21 @@
         </defs>
 
         @* Track *@
-        <circle class="sigie-ring-track" cx="60" cy="60" r="@R" fill="none" stroke-width="@Stroke" />
+        <circle class="sipau-ring-track" cx="60" cy="60" r="@R" fill="none" stroke-width="@Stroke" />
 
         @* Value arc — rotated so it starts at 12 o'clock *@
-        <circle class="sigie-ring-arc" cx="60" cy="60" r="@R" fill="none"
+        <circle class="sipau-ring-arc" cx="60" cy="60" r="@R" fill="none"
                 stroke="@($"url(#{_id}-arc)")" stroke-width="@Stroke" stroke-linecap="round"
                 transform="rotate(-90 60 60)"
                 stroke-dasharray="@ChartScale.N(_circumference)"
-                style="@($"--sigie-ring-offset:{ChartScale.N(_offset)}")" />
+                style="@($"--sipau-ring-offset:{ChartScale.N(_offset)}")" />
     </svg>
 
-    <div class="sigie-ring-center">
-        <div class="sigie-ring-value">@Value.ToString(ValueFormat, CultureInfo.CurrentCulture)@Unit</div>
+    <div class="sipau-ring-center">
+        <div class="sipau-ring-value">@Value.ToString(ValueFormat, CultureInfo.CurrentCulture)@Unit</div>
         @if (!string.IsNullOrEmpty(Label))
         {
-            <div class="sigie-ring-label">@Label</div>
+            <div class="sipau-ring-label">@Label</div>
         }
     </div>
 </div>

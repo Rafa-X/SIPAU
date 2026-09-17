@@ -5,7 +5,7 @@ namespace UPZMG.Web.Models;
 
 /// <summary>
 /// ViewModel for the employee / staff (RRHH) registration form (mock, no real persistence).
-/// Mirrors key fields of the rrhh.empleados table from the SIGIE design.
+/// Mirrors key fields of the rrhh.empleados table from the SIPAU design.
 /// </summary>
 public class EmployeeFormViewModel
 {

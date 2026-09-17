@@ -1,130 +1,138 @@
 @page "/charts"
 @attribute [Authorize]
+@using UPZMG.Web.Models.Charts
 @inject IIntelligenceService Ai
+@inject IChartsService _chartsService
 
-<PageTitle>Gráficas — SIGIE</PageTitle>
+<PageTitle>Gráficas — SIPAU</PageTitle>
 
-<PageHeader Eyebrow="Analítica"
-            Title="Gráficas"
-            Subtitle="Visualización estadística institucional con proyección de tendencias">
-    <Actions>
-        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Tertiary"
-                 Icon="@Icons.Material.Filled.Functions">Mínimos cuadrados</MudChip>
-    </Actions>
+<PageHeader Eyebrow="Analítica" Title="Gráficas">
 </PageHeader>
 
 <MudGrid>
     <MudItem xs="12" lg="7">
         <SectionCard Title="Matrícula histórica y proyección"
-                     Subtitle="@($"Regresión lineal · los últimos {ForecastAhead} periodos son pronóstico del modelo")"
                      Icon="@Icons.Material.Filled.Timeline" Accent="violet">
             <Actions>
-                <MudChip T="string" Size="Size.Small" Color="Color.Tertiary" Variant="Variant.Text">
-                    R² @_fc.R2.ToString("0.00")
-                </MudChip>
+                <MudTooltip Text="Descargar gráfica PNG" Placement="Placement.Top">
+                    <MudIconButton Icon="@Icons.Material.Filled.FileDownload"
+                                   Color="Color.Secondary"
+                                   Size="Size.Small"
+                                   data-sipau-chart-download="enrollment-chart"
+                                   data-sipau-chart-title="Matrícula histórica y proyección"
+                                   data-sipau-chart-filename="Matricula-historica.png" />
+                </MudTooltip>
             </Actions>
             <ChildContent>
-                <TrendChart Labels="_fc.Labels" Series="_enrollment" Height="300"
-                            ForecastFromIndex="_fc.HistoricalCount"
+                <TrendChart Id="enrollment-chart" Labels="_model.Enrollment.Labels" Series="_model.Enrollment.Series" Height="160"
+                            ForecastFromIndex="_model.Enrollment.ForecastFromIndex"
                             AriaLabel="Matrícula histórica y su proyección" />
             </ChildContent>
             <Footer>
-                Pendiente estimada: <b>@_fc.Slope.ToString("0.0")</b> alumnos por periodo ·
-                ordenada al origen <b>@_fc.Intercept.ToString("0.0")</b>
+                    Pendiente estimada: <b>@_model.Enrollment.Slope.ToString("0.0")</b> alumnos por periodo ·
+                ordenada al origen <b>@_model.Enrollment.Intercept.ToString("0.0")</b>
             </Footer>
         </SectionCard>
     </MudItem>
 
     <MudItem xs="12" lg="5">
         <SectionCard Title="Distribución por carrera"
-                     Subtitle="Matrícula del periodo activo por programa educativo"
                      Icon="@Icons.Material.Filled.School" Accent="teal">
+            <Actions>
+                <MudTooltip Text="Descargar gráfica PNG" Placement="Placement.Top">
+                    <MudIconButton Icon="@Icons.Material.Filled.FileDownload"
+                                   Color="Color.Secondary"
+                                   Size="Size.Small"
+                                   data-sipau-chart-download="career-chart"
+                                   data-sipau-chart-title="Distribución por carrera"
+                                   data-sipau-chart-filename="Distribucion-por-carrera.png" />
+                </MudTooltip>
+            </Actions>
             <ChildContent>
-                <BarChart Labels="_careerLabels" Series="_careers" Height="300"
+                <BarChart Id="career-chart" Labels="_model.CareerDistribution.Labels" Series="_model.CareerDistribution.Series" Height="160"
                           AriaLabel="Alumnos por carrera" />
             </ChildContent>
             <Footer>
-                Programa con mayor matrícula: <b>@_topCareer</b> · total <b>@_totalStudents.ToString("N0")</b> alumnos
-            </Footer>
-        </SectionCard>
-    </MudItem>
-
-    <MudItem xs="12" lg="7">
-        <SectionCard Title="Aprobación vs. reprobación"
-                     Subtitle="Índices institucionales de aprovechamiento por periodo"
-                     Icon="@Icons.Material.Filled.FactCheck" Accent="navy">
-            <ChildContent>
-                <BarChart Labels="_achievementLabels" Series="_achievement" Height="290"
-                          ValueFormat="0.0" Unit="%" AriaLabel="Aprobación contra reprobación" />
-            </ChildContent>
-            <Footer>
-                La reprobación acumula cuatro periodos a la baja
-                (<b>@($"{_failureDrop:0.0}")</b> puntos porcentuales desde @_achievementLabels[0]).
-            </Footer>
-        </SectionCard>
-    </MudItem>
-
-    <MudItem xs="12" lg="5">
-        <SectionCard Title="Becas por fuente"
-                     Subtitle="Distribución de becas vigentes por financiamiento"
-                     Icon="@Icons.Material.Filled.Savings" Accent="gold">
-            <ChildContent>
-                <BarChart Labels="_scholarshipLabels" Series="_scholarships" Height="290"
-                          AriaLabel="Becas por tipo y fuente" />
-            </ChildContent>
-            <Footer>
-                Total de becas vigentes: <b>@_totalScholarships.ToString("N0")</b> ·
-                fuente principal: <b>@_topScholarship</b>
+                Programa con mayor matrícula: <b>@_model.CareerDistribution.TopLabel</b> · total <b>@_model.CareerDistribution.Total.ToString("N0")</b> alumnos
             </Footer>
         </SectionCard>
     </MudItem>
 </MudGrid>
 
+<MudText Typo="Typo.h5" Class="mt-8 mb-3">Módulos de analítica</MudText>
+<MudGrid>
+    <MudItem xs="12" sm="6">
+        <MudCard Elevation="1" Class="d-flex flex-column" Style="height:100%">
+            <MudCardContent Class="flex-grow-1">
+                <MudAvatar Color="Color.Secondary" Variant="Variant.Filled" Rounded="true" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.School" />
+                </MudAvatar>
+                <MudText Typo="Typo.h6">Alumnos</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Analiza la edad de los alumnos de nuevo ingreso y de toda la matrícula institucional.
+                </MudText>
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton Variant="Variant.Filled" Color="Color.Secondary" FullWidth="true"
+                           StartIcon="@Icons.Material.Filled.ArrowForward" Href="/charts/students">
+                    Ver gráficas de alumnos
+                </MudButton>
+            </MudCardActions>
+        </MudCard>
+    </MudItem>
+
+    <MudItem xs="12" sm="6">
+        <MudCard Elevation="1" Class="d-flex flex-column" Style="height:100%">
+            <MudCardContent Class="flex-grow-1">
+                <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Rounded="true" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Groups" />
+                </MudAvatar>
+                <MudText Typo="Typo.h6">Docentes</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Consulta la distribución del personal docente por nivel académico y experiencia.
+                </MudText>
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                           StartIcon="@Icons.Material.Filled.ArrowForward" Href="/charts/teachers">
+                    Ver gráficas de docentes
+                </MudButton>
+            </MudCardActions>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
 @code {
     private const int ForecastAhead = 2;
+    private ChartsPageViewModel _model = new();
 
-    private EnrollmentForecast _fc = null!;
-    private List<ChartSeriesData> _enrollment = new();
-
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        _fc = Ai.ForecastEnrollment(ForecastAhead);
+        var forecast = Ai.ForecastEnrollment(ForecastAhead);
+        var careers = await _chartsService.GetCareersDistributionAsync();
 
-        _enrollment = new()
-        {
-            new ChartSeriesData("Matrícula", _fc.Actual, ChartPalette.Teal, Filled: true),
-            new ChartSeriesData("Tendencia del modelo", _fc.Trend, ChartPalette.Indigo, Dashed: true),
-        };
+        _model.Enrollment.Labels = forecast.Labels;
+        _model.Enrollment.Series =
+        [
+            new ChartSeriesData("Matrícula", forecast.Actual, ChartPalette.Teal, Filled: true),
+            new ChartSeriesData("Tendencia del modelo", forecast.Trend, ChartPalette.Indigo, Dashed: true),
+        ];
+        _model.Enrollment.ForecastFromIndex = forecast.HistoricalCount;
+        _model.Enrollment.Slope = forecast.Slope;
+        _model.Enrollment.Intercept = forecast.Intercept;
+
+        _model.CareerDistribution.Labels = careers.Select(career => career.Label).ToList();
+        _model.CareerDistribution.Series =
+        [
+            new ChartSeriesData(
+                "Alumnos",
+                careers.Select(career => (double)career.Value).ToList(),
+                ChartPalette.Teal),
+        ];
+
+        _model.CareerDistribution.Total = careers.Select(career => (double)career.Value).Sum();
+        _model.CareerDistribution.TopLabel = careers.Count == 0
+            ? "Sin datos"
+            : careers.MaxBy(career => career.Value)?.Label ?? "Sin datos";
     }
-
-    // ── Carreras ────────────────────────────────────────────────────────────
-    private readonly string[] _careerLabels = { "Sistemas", "Industrial", "Biotec.", "Admón." };
-    private readonly double[] _careerData = { 420, 355, 210, 260 };
-    private List<ChartSeriesData> _careers => new() { new ChartSeriesData("Alumnos", _careerData, ChartPalette.Teal) };
-
-    private string _topCareer => _careerLabels[MaxIndex(_careerData)];
-    private double _totalStudents => _careerData.Sum();
-
-    // ── Aprovechamiento ─────────────────────────────────────────────────────
-    private readonly string[] _achievementLabels = { "2024-1", "2024-2", "2025-1", "2025-2" };
-    private readonly double[] _approval = { 84.2, 85.6, 86.9, 87.5 };
-    private readonly double[] _failure = { 15.8, 14.4, 13.1, 12.5 };
-
-    private List<ChartSeriesData> _achievement => new()
-    {
-        new ChartSeriesData("Aprobación", _approval, ChartPalette.Teal),
-        new ChartSeriesData("Reprobación", _failure, ChartPalette.Clay),
-    };
-    private double _failureDrop => _failure[0] - _failure[^1];
-
-    // ── Becas ───────────────────────────────────────────────────────────────
-    private readonly string[] _scholarshipLabels = { "Excelencia", "Manutención", "Deportiva", "Federal" };
-    private readonly double[] _scholarshipData = { 180, 260, 65, 340 };
-
-    private List<ChartSeriesData> _scholarships => new() { new ChartSeriesData("Becas", _scholarshipData, ChartPalette.Ochre) };
-    private double _totalScholarships => _scholarshipData.Sum();
-    private string _topScholarship => _scholarshipLabels[MaxIndex(_scholarshipData)];
-
-    private static int MaxIndex(IReadOnlyList<double> values) =>
-        values.Select((v, i) => (v, i)).OrderByDescending(t => t.v).First().i;
 }

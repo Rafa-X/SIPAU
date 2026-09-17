@@ -3,7 +3,7 @@
 @inject IBoardReportService BoardSvc
 @inject IJSRuntime JS
 
-<PageTitle>Informe de Junta — SIGIE</PageTitle>
+<PageTitle>Informe de Junta — SIPAU</PageTitle>
 
 <PageHeader Eyebrow="Junta directiva" Title="Informe de Junta Directiva" Subtitle="Reporte estandarizado presentado a la junta directiva">
     <Actions>
@@ -16,7 +16,7 @@
                  Count="Filtered.Count" Total="_reports.Count" OnExport="ExportAsync">
         <Filters>
             <MudSelect T="string" Value="_status" ValueChanged="@(v => _status = v)" Dense="true"
-                       Variant="Variant.Outlined" Margin="Margin.Dense" Class="sigie-toolbar-filter mt-0"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Class="sipau-toolbar-filter mt-0"
                        Placeholder="Estado" Clearable="true">
                 <MudSelectItem T="string" Value="@(null!)">Todos los estados</MudSelectItem>
                 @foreach (var s in _statuses)
@@ -38,7 +38,7 @@
                     <StatusChip Status="@context.Item.Status" />
                 </CellTemplate>
             </TemplateColumn>
-            <TemplateColumn Title="Acción" CellClass="sigie-cell-end" HeaderClass="sigie-cell-end" Sortable="false">
+            <TemplateColumn Title="Acción" CellClass="sipau-cell-end" HeaderClass="sipau-cell-end" Sortable="false">
                 <CellTemplate>
                     <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
                                StartIcon="@Icons.Material.Filled.Visibility" Href="@($"/boardreport/{context.Item.Id}")">

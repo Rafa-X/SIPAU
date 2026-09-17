@@ -12,7 +12,7 @@ using UPZMG.Persistence;
 namespace UPZMG.Persistence.Migrations
 {
     [DbContext(typeof(AppDBContext))]
-    [Migration("20260915222834_ConsolidatedInitial")]
+    [Migration("20260916001625_ConsolidatedInitial")]
     partial class ConsolidatedInitial
     {
         /// <inheritdoc />

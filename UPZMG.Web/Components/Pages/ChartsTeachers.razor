@@ -1,0 +1,58 @@
+@page "/charts/teachers"
+@attribute [Authorize]
+
+<PageTitle>Graficas de Docentes - SIPAU</PageTitle>
+
+<PageHeader Eyebrow="Analitica" Title="Graficas de Docentes"
+            Subtitle="Distribucion del personal docente" BackHref="/charts" />
+
+<MudGrid>
+    <MudItem xs="12" lg="6">
+        <SectionCard Title="Docentes por nivel academico"
+                     Subtitle="Personal docente agrupado por nivel de estudios"
+                     Icon="@Icons.Material.Filled.School" Accent="navy">
+            <ChildContent>
+                <BarChart Labels="_educationLabels" Series="_educationSeries" Height="290"
+                          AriaLabel="Docentes por nivel academico" />
+            </ChildContent>
+            <Footer>
+                Nivel predominante: <b>@_topEducation</b> · total <b>@_totalTeachers</b> docentes
+            </Footer>
+        </SectionCard>
+    </MudItem>
+
+    <MudItem xs="12" lg="6">
+        <SectionCard Title="Docentes por experiencia"
+                     Subtitle="Distribucion del personal segun anos de experiencia externa"
+                     Icon="@Icons.Material.Filled.WorkHistory" Accent="teal">
+            <ChildContent>
+                <BarChart Labels="_experienceLabels" Series="_experienceSeries" Height="290"
+                          AriaLabel="Docentes por experiencia" />
+            </ChildContent>
+            <Footer>
+                Grupo predominante: <b>@_topExperience</b> · promedio <b>@_averageExperience.ToString("0.0")</b> anos de experiencia
+            </Footer>
+        </SectionCard>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private readonly string[] _educationLabels = { "Licenciatura", "Especialidad", "Maestria", "Doctorado" };
+    private readonly double[] _educationData = { 1, 0, 2, 1 };
+    private readonly string[] _experienceLabels = { "0-4 anos", "5-9 anos", "10-14 anos", "15 o mas" };
+    private readonly double[] _experienceData = { 1, 2, 1, 0 };
+
+    private List<ChartSeriesData> _educationSeries =>
+        new() { new ChartSeriesData("Docentes", _educationData, ChartPalette.Navy) };
+
+    private List<ChartSeriesData> _experienceSeries =>
+        new() { new ChartSeriesData("Docentes", _experienceData, ChartPalette.Teal) };
+
+    private int _totalTeachers => (int)_educationData.Sum();
+    private string _topEducation => _educationLabels[MaxIndex(_educationData)];
+    private string _topExperience => _experienceLabels[MaxIndex(_experienceData)];
+    private double _averageExperience => (8 + 12 + 4 + 6) / 4d;
+
+    private static int MaxIndex(IReadOnlyList<double> values) =>
+        values.Select((value, index) => (value, index)).OrderByDescending(item => item.value).First().index;
+}

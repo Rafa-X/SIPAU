@@ -3,7 +3,7 @@ using MudBlazor;
 namespace UPZMG.Web.Theme;
 
 /// <summary>
-/// Institutional MudBlazor theme for SIGIE / UPZMG.
+/// Institutional MudBlazor theme for SIPAU / UPZMG.
 /// </summary>
 public static class AppTheme
 {

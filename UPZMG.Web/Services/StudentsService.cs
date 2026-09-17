@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using UPZMG.Implementations.DataCapture;
+using UPZMG.Implementations.Charts;
 using UPZMG.Persistence.Models;
 
 namespace UPZMG.Web.Services;
@@ -44,6 +45,19 @@ public sealed class StudentsService(
             return JsonSerializer.Deserialize<StudentsListResponse>(response.Result, ResponseOptions) ?? new StudentsListResponse();
         }
         return new StudentsListResponse();
+    }
+
+    public async Task<List<StudentsAges>> GetStudentsAgesAsync(bool newOnly = false)
+    {
+        var requesterKey = await securityService.GetRequesterKeyAsync();
+        var response = await securityService.SendGetRequestAsync<List<StudentsAges>>(
+            $"students/ages-{(newOnly ? "new" : "all")}", requesterKey);
+
+        if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<List<StudentsAges>>(response.Result, ResponseOptions) ?? [];
+        }
+        return [];
     }
 
     // No backing API endpoints exist yet for these; nothing in the app calls them today.

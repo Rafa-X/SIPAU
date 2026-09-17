@@ -6,7 +6,8 @@ namespace UPZMG.Web.Services;
 
 public interface IGeneralDataService
 {
-    Task<IReadOnlyList<LookupOption>> GetCareersAsync();
+    Task<IReadOnlyList<Careers>> GetCareersAsync();
+    Task<IReadOnlyList<LookupOption>> GetCareersSelectableAsync();
     Task<IReadOnlyList<LookupOption>> GetAsignaturesAsync(Guid careerId);
     Task<IReadOnlyList<PeriodLookupOption>> GetPeriodsAsync();
     Task<IReadOnlyList<LookupOption>> GetMaxDegreesAsync();

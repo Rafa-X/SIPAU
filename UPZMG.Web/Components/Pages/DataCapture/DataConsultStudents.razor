@@ -5,7 +5,7 @@
 @inject IStudentsService StudentsSvc
 @inject ISecurityService SecuritySvc
 
-<PageTitle>Consultar Alumnos — SIGIE</PageTitle>
+<PageTitle>Consultar Alumnos — SIPAU</PageTitle>
 
 <PageHeader Eyebrow="Captura de datos" Title="Consultar Alumnos" Subtitle="Alumnos ya capturados en el periodo activo" BackHref="/datacapture" />
 
@@ -16,9 +16,9 @@
         <Filters>
             <MudTextField T="string" Value="@_enrollmentNumber" ValueChanged="OnEnrollmentNumberChanged"
                           Placeholder="Matrícula" Immediate="true" Clearable="true"
-                          Variant="Variant.Outlined" Margin="Margin.Dense" Class="sigie-toolbar-filter mt-0" />
+                          Variant="Variant.Outlined" Margin="Margin.Dense" Class="sipau-toolbar-filter mt-0" />
             <MudSelect T="string" Value="@_careerId" ValueChanged="OnCareerChanged" Dense="true"
-                       Variant="Variant.Outlined" Margin="Margin.Dense" Class="sigie-toolbar-filter-wide mt-0"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Class="sipau-toolbar-filter-wide mt-0"
                        Placeholder="Carrera" Clearable="true">
                 <MudSelectItem T="string" Value="@(null!)">Todas las carreras</MudSelectItem>
                 @foreach (var c in CaptureSvc.Careers)
@@ -27,7 +27,7 @@
                 }
             </MudSelect>
             <MudSelect T="string" Value="@_periodId" ValueChanged="OnPeriodChanged" Dense="true"
-                       Variant="Variant.Outlined" Margin="Margin.Dense" Class="sigie-toolbar-filter-wide mt-0"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Class="sipau-toolbar-filter-wide mt-0"
                        Placeholder="Periodo" Clearable="true">
                 <MudSelectItem T="string" Value="@(null!)">Todos los periodos</MudSelectItem>
                 @foreach (var p in CaptureSvc.Periods)

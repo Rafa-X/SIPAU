@@ -4,7 +4,7 @@ namespace UPZMG.Web.Models;
 
 /// <summary>
 /// ViewModel for the extension / linkage project form (mock, no real persistence).
-/// Mirrors key fields of extension.convenios + alumnos_proyectos_vinculacion from the SIGIE design.
+/// Mirrors key fields of extension.convenios + alumnos_proyectos_vinculacion from the SIPAU design.
 /// </summary>
 public class ExtensionFormViewModel
 {

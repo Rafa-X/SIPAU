@@ -5,7 +5,7 @@ namespace UPZMG.Web.Services;
 
 /// <summary>
 /// Builds RFC-4180 CSV text from any collection. Planeación works in Excel, so
-/// every listing in SIGIE can hand its rows straight to a spreadsheet without
+/// every listing in SIPAU can hand its rows straight to a spreadsheet without
 /// a server round-trip: the file is generated in the circuit and streamed to
 /// the browser by <c>sigieDownload</c> (app.js).
 /// </summary>

@@ -2,7 +2,7 @@ namespace UPZMG.Web.Models;
 
 /// <summary>
 /// ViewModel for the physical space / TIC registration form (mock, no real persistence).
-/// Mirrors key fields of recursos.espacios_fisicos + inventario_tic_anual from the SIGIE design.
+/// Mirrors key fields of recursos.espacios_fisicos + inventario_tic_anual from the SIPAU design.
 /// </summary>
 public class InfrastructureFormViewModel
 {

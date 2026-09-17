@@ -26,7 +26,7 @@ public interface IIntelligenceService
 }
 
 /// <summary>
-/// Intelligent-analytics layer for the SIGIE dashboards. The enrollment
+/// Intelligent-analytics layer for the SIPAU dashboards. The enrollment
 /// forecast is a genuine ordinary-least-squares linear regression computed in
 /// C#; dropout risk and anomaly flags are demo data shaped like a real model's
 /// output. Anchors the CUCEI "Sistemas Inteligentes" module.
