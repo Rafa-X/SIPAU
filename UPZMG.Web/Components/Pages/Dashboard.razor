@@ -1,7 +1,9 @@
 @page "/dashboard"
 @attribute [Authorize]
 @using UPZMG.Implementations.Dashboard
+@using UPZMG.Implementations.Intelligence
 @inject IDashboardService DashboardSvc
+@inject IIntelligenceService Ai
 
 <PageTitle>Tablero de Control — SIPAU</PageTitle>
 
@@ -100,6 +102,132 @@ else
         </MudItem>
     </MudGrid>
 
+    @* Intelligent layer: projection and alerts for every area, dropout risk only for the areas that follow up on students. *@
+    <MudGrid Class="mt-1">
+        <MudItem xs="12" md="6" lg="@(_canSeeRisk ? 4 : 6)">
+            <SectionCard Title="Proyección de matrícula"
+                         Subtitle="Regresión lineal sobre los alumnos inscritos en cada periodo"
+                         Icon="@Icons.Material.Filled.Timeline">
+                <ChildContent>
+                    @if (_aiLoading)
+                    {
+                        <LoadingState Text="Ajustando la regresión…" />
+                    }
+                    else if (!_forecast.HasModel)
+                    {
+                        <EmptyState Title="Sin historial suficiente"
+                                    Description="La proyección necesita inscripciones en al menos tres periodos." />
+                    }
+                    else
+                    {
+                        <div class="sipau-projection">
+                            <span class="sipau-projection-figure">@(_forecast.NextValue?.ToString("N0"))</span>
+                            <span class="sipau-projection-note">
+                                alumnos en @_forecast.NextLabel · ± @(_forecast.NextMargin?.ToString("N0"))
+                            </span>
+                        </div>
+                        <TrendChart Labels="_forecast.Labels" Series="_forecastSeries" Height="150" ShowLegend="false"
+                                    ForecastFromIndex="_forecast.HistoricalCount"
+                                    AriaLabel="Matrícula observada y proyectada" />
+                    }
+                </ChildContent>
+                <Footer>
+                    @if (_forecast.HasModel)
+                    {
+                        <span>
+                            Pendiente <b>@_forecast.Slope.ToString("+0.0;-0.0")</b> alumnos por periodo ·
+                            R² <b>@_forecast.R2.ToString("0.00")</b> ·
+                            <MudLink Href="/charts" Typo="Typo.caption">Ver en Gráficas</MudLink>
+                        </span>
+                    }
+                </Footer>
+            </SectionCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6" lg="@(_canSeeRisk ? 4 : 6)">
+            <SectionCard Title="Alertas del modelo"
+                         Subtitle="Desviaciones en la matrícula, la aprobación y las bajas"
+                         Icon="@Icons.Material.Filled.NotificationImportant">
+                @if (_aiLoading)
+                {
+                    <LoadingState Text="Buscando desviaciones…" />
+                }
+                else if (_anomalies.Count == 0)
+                {
+                    <EmptyState Icon="@Icons.Material.Filled.Verified"
+                                Title="Sin desviaciones"
+                                Description="Ningún periodo se aparta de su comportamiento habitual." />
+                }
+                else
+                {
+                    <ul class="sipau-alert-list">
+                        @foreach (var alert in _anomalies.Take(4))
+                        {
+                            <li class="sipau-alert">
+                                <MudIcon Icon="@AlertIcon(alert.Severity)" Size="Size.Small" Color="@AlertColor(alert.Severity)" />
+                                <div>
+                                    <div class="sipau-alert-title">@alert.Title</div>
+                                    <div class="sipau-alert-detail">@alert.Detail</div>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                }
+            </SectionCard>
+        </MudItem>
+
+        @if (_canSeeRisk)
+        {
+            <MudItem xs="12" lg="4">
+                <SectionCard Title="Riesgo de deserción"
+                             Subtitle="Alumnos activos que el árbol de decisión sugiere atender"
+                             Icon="@Icons.Material.Filled.PsychologyAlt">
+                    <ChildContent>
+                        @if (_aiLoading)
+                        {
+                            <LoadingState Text="Evaluando trayectorias…" />
+                        }
+                        else if (_dropout is not { HasModel: true })
+                        {
+                            <EmptyState Title="Todavía no hay modelo"
+                                        Description="@(_dropout?.Status ?? "No se pudo consultar el modelo de deserción.")" />
+                        }
+                        else
+                        {
+                            <div class="sipau-projection">
+                                <span class="sipau-projection-figure">@_dropout.AtRiskStudents.ToString("N0")</span>
+                                <span class="sipau-projection-note">
+                                    por atender de @_dropout.ScoredStudents.ToString("N0") evaluados · @_dropout.HighRiskStudents.ToString("N0") en riesgo alto
+                                </span>
+                            </div>
+                            <ul class="sipau-risk-list">
+                                @foreach (var career in _dropout.ByCareer)
+                                {
+                                    <li>
+                                        <div class="sipau-risk-row">
+                                            <span class="sipau-risk-label">@career.Career</span>
+                                            <span class="sipau-risk-num">@career.AtRisk de @career.Students · @career.AtRiskPct.ToString("0") %</span>
+                                        </div>
+                                        <Meter Value="@career.AtRiskPct" />
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </ChildContent>
+                    <Footer>
+                        @if (_dropout is { HasModel: true })
+                        {
+                            <span>
+                                Detecta el <b>@((_dropout.Quality.Recall * 100).ToString("0")) %</b> de las bajas en validación ·
+                                <MudLink Href="/charts/dropout" Typo="Typo.caption">Ver alumnos</MudLink>
+                            </span>
+                        }
+                    </Footer>
+                </SectionCard>
+            </MudItem>
+        }
+    </MudGrid>
+
     <MudGrid Class="mt-1">
         <MudItem xs="12">
             <SectionCard Title="Indicadores académicos"
@@ -113,8 +241,20 @@ else
 }
 
 @code {
+    // Areas the API lets see per-student dropout risk.
+    private const string RiskRoles = "Admin,Control Escolar,Servicios Estudiantiles,Direccion Academica";
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
     private DashboardSummary? _summary;
     private bool _loading = true;
+
+    private bool _aiLoading = true;
+    private bool _canSeeRisk;
+    private EnrollmentForecast _forecast = EnrollmentForecast.None;
+    private IReadOnlyList<ChartSeriesData> _forecastSeries = [];
+    private IReadOnlyList<AnomalyAlert> _anomalies = [];
+    private DropoutModelReport? _dropout;
 
     private IReadOnlyList<string> _careerLabels = [];
     private IReadOnlyList<ChartSeriesData> _careerSeries = [];
@@ -123,7 +263,16 @@ else
     private double[]? _intakeSpark;
     private double? _intakeDelta;
 
-    protected override Task OnInitializedAsync() => LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is not null)
+        {
+            var user = (await AuthState).User;
+            _canSeeRisk = RiskRoles.Split(',').Any(user.IsInRole);
+        }
+
+        await LoadAsync();
+    }
 
     private async Task LoadAsync()
     {
@@ -144,7 +293,45 @@ else
 
         if (_summary is not null)
             BuildCharts(_summary);
+
+        await LoadIntelligenceAsync();
     }
+
+    // After the counts, so the main figures never wait for a model to train.
+    private async Task LoadIntelligenceAsync()
+    {
+        _aiLoading = true;
+        StateHasChanged();
+
+        var forecast = Ai.GetForecastAsync(2);
+        var anomalies = Ai.GetAnomaliesAsync();
+        var dropout = _canSeeRisk ? Ai.GetDropoutReportAsync() : Task.FromResult<DropoutModelReport?>(null);
+
+        _forecast = await forecast;
+        _anomalies = await anomalies;
+        _dropout = await dropout;
+
+        _forecastSeries =
+        [
+            new ChartSeriesData("Matrícula", _forecast.Actual, ChartPalette.Teal, Filled: true),
+            new ChartSeriesData("Tendencia", _forecast.Trend, ChartPalette.Indigo, Dashed: true),
+        ];
+        _aiLoading = false;
+    }
+
+    private static string AlertIcon(string severity) => severity switch
+    {
+        "error" => Icons.Material.Filled.ErrorOutline,
+        "warning" => Icons.Material.Filled.WarningAmber,
+        _ => Icons.Material.Filled.Info,
+    };
+
+    private static Color AlertColor(string severity) => severity switch
+    {
+        "error" => Color.Error,
+        "warning" => Color.Warning,
+        _ => Color.Info,
+    };
 
     private void BuildCharts(DashboardSummary summary)
     {

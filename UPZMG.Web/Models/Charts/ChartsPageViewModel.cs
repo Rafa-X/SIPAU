@@ -19,6 +19,12 @@ public sealed class EnrollmentChartModel
     public int ForecastFromIndex { get; set; }
     public double Slope { get; set; }
     public double Intercept { get; set; }
+    // False when there is too little history to fit the regression.
+    public bool HasModel { get; set; }
+    public double R2 { get; set; }
+    public string? NextLabel { get; set; }
+    public double? NextValue { get; set; }
+    public double? NextMargin { get; set; }
 }
 
 public sealed class CategoryChartModel

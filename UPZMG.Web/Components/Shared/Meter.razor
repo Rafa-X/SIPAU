@@ -1,0 +1,33 @@
+@*
+    Flat 0–100 bar for a share or a probability. The risk level colours the fill
+    (rosa for "Alto", cempasúchil for "Medio"); an optional tick marks a threshold.
+*@
+@using System.Globalization
+
+<div class="@Css" role="meter" aria-valuemin="0" aria-valuemax="100"
+     aria-valuenow="@Clamped.ToString("0.#", CultureInfo.InvariantCulture)">
+    <span style="@($"width:{Clamped.ToString("0.##", CultureInfo.InvariantCulture)}%")"></span>
+    @if (Threshold is { } threshold)
+    {
+        <i style="@($"left:{Math.Clamp(threshold, 0, 100).ToString("0.##", CultureInfo.InvariantCulture)}%")"
+           title="@($"Umbral de riesgo: {threshold.ToString("0", CultureInfo.InvariantCulture)} %")"></i>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public double Value { get; set; }
+
+    // "Alto", "Medio" or "Bajo"; null for a neutral bar.
+    [Parameter] public string? Level { get; set; }
+
+    [Parameter] public double? Threshold { get; set; }
+
+    private double Clamped => Math.Clamp(Value, 0, 100);
+
+    private string Css => Level switch
+    {
+        "Alto" => "sipau-meter is-high",
+        "Medio" => "sipau-meter is-mid",
+        _ => "sipau-meter",
+    };
+}
