@@ -1,0 +1,20 @@
+@*
+    Layout for printable documents: theme providers only, no app chrome.
+    What you see on screen is what lands on paper.
+*@
+@inherits LayoutComponentBase
+
+<MudThemeProvider Theme="AppTheme.Institutional" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<div class="sipau-light">
+    @Body
+</div>
+
+<div id="blazor-error-ui">
+    Ocurrió un error inesperado.
+    <a href="" class="reload">Recargar</a>
+    <span class="dismiss">🗙</span>
+</div>

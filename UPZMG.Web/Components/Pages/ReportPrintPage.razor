@@ -1,0 +1,416 @@
+@page "/reports/{ReportId:guid}/impresion"
+@attribute [Authorize]
+@layout DocumentLayout
+@using System.Text.Json
+@using UPZMG.Implementations.Reports
+@inject IReportsService ReportsSvc
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+
+@*
+    A saved capture laid out as the official form. The browser's print dialog
+    makes the PDF ("Guardar como PDF"), so there is no server-side renderer and
+    nothing to license: what is on screen is what lands on paper.
+*@
+
+<PageTitle>@(_template?.DisplayName ?? "Formato") — SIPAU</PageTitle>
+
+@if (_error is not null)
+{
+    <div class="sipau-doc-loading">
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">@_error</MudAlert>
+        <MudButton Class="mt-4" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/reports">Volver a reportes</MudButton>
+    </div>
+}
+else if (_template is null || _form is null)
+{
+    <div class="sipau-doc-loading">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        <MudText Typo="Typo.body2" Class="mt-3">Preparando el formato…</MudText>
+    </div>
+}
+else
+{
+    <div class="sipau-doc-bar">
+        <MudButton StartIcon="@Icons.Material.Filled.ArrowBack" Variant="Variant.Text" Href="/reports">Volver</MudButton>
+        <span class="sipau-doc-bar-meta">
+            @ReportUi.Plural(_template.Sections.Count, "sección", "secciones") ·
+            @_form.AnsweredRequired de @_form.TotalRequired obligatorios
+        </span>
+        <MudButton StartIcon="@Icons.Material.Filled.GridOn" Variant="Variant.Outlined" Class="mr-2"
+                   OnClick="ExportAsync">Excel</MudButton>
+        <MudButton StartIcon="@Icons.Material.Filled.Print" Variant="Variant.Filled" Color="Color.Secondary"
+                   OnClick="PrintAsync">Imprimir o guardar PDF</MudButton>
+    </div>
+
+    @if (JustSubmitted)
+    {
+        @* The receipt of what just happened: it stays on screen instead of a
+           toast that fades, and it is never printed as part of the format. *@
+        <div class="sipau-doc-receipt sipau-doc-noprint">
+            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" />
+            <div>
+                <div class="sipau-doc-receipt-title">Formato enviado a Planeación</div>
+                <div class="sipau-doc-receipt-meta">
+                    Folio <span class="sipau-mono">@Folio</span> · @ReportUi.Local(_lastSaved)
+                </div>
+                <div class="sipau-doc-receipt-hint">
+                    Esta hoja es tu acuse: imprímela o guárdala como PDF para el expediente del periodo.
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="sipau-doc">
+        <section class="sipau-doc-page">
+            <header class="sipau-form-head">
+                <span class="sipau-form-head-seal">
+                    <img src="logo_UPZMG.png" width="62" height="63"
+                         alt="Universidad Politécnica de la Zona Metropolitana de Guadalajara" />
+                </span>
+                <div>
+                    <div class="sipau-form-head-institution">Universidad Politécnica de la Zona Metropolitana de Guadalajara</div>
+                    <h1 class="sipau-form-head-title">@_template.DisplayName</h1>
+                    <div class="sipau-form-head-meta">@_template.ReportType · versión @_template.Version</div>
+                </div>
+                <div class="sipau-form-head-status">
+                    <div class="sipau-doc-label">Estado</div>
+                    <div class="sipau-doc-value">@ReportUi.StatusLabel(_status)</div>
+                    <div class="sipau-doc-note">@ReportUi.Local(_lastSaved)</div>
+                </div>
+            </header>
+
+            @if (_form.Violations.Count > 0)
+            {
+                <div class="sipau-form-warn">
+                    <b>Este formato todavía no cuadra.</b> Se imprime para revisarlo; no debe presentarse como definitivo.
+                    @foreach (var violation in _form.Violations)
+                    {
+                        <div class="sipau-form-warn-line">@violation.SectionTitle · @violation.QuestionText — @violation.Message</div>
+                    }
+                </div>
+            }
+
+            @for (var s = 0; s < _template.Sections.Count; s++)
+            {
+                @* Not named "section": Razor reads @section as its own directive. *@
+                var apartado = _template.Sections[s];
+                <div class="sipau-form-section">
+                    <h2 class="sipau-form-section-title">
+                        <span class="sipau-form-section-num">@(s + 1)</span>@apartado.Title
+                    </h2>
+                    @if (!string.IsNullOrWhiteSpace(apartado.Description))
+                    {
+                        <p class="sipau-doc-summary">@apartado.Description</p>
+                    }
+
+                    @foreach (var q in apartado.Questions.Where(_form.IsVisible))
+                    {
+                        <div class="sipau-form-item">
+                            @switch (ReportQuestionTypes.Of(q))
+                            {
+                                case ReportQuestionTypes.Matrix:
+                                    <div class="sipau-form-q">@q.Text</div>
+                                    <table class="sipau-doc-table">
+                                        <thead>
+                                            <tr>
+                                                <th rowspan="@HeadRows(q)" class="is-label">Concepto</th>
+                                                @foreach (var column in q.Columns)
+                                                {
+                                                    @if (q.SubColumns.Count > 0)
+                                                    {
+                                                        <th colspan="@GroupSpan(q)">@column</th>
+                                                    }
+                                                    else
+                                                    {
+                                                        <th>@column</th>
+                                                    }
+                                                }
+                                                @if (q.RowTotal)
+                                                {
+                                                    <th rowspan="@HeadRows(q)">@(q.RowTotalLabel ?? "Total")</th>
+                                                }
+                                            </tr>
+                                            @if (q.SubColumns.Count > 0)
+                                            {
+                                                <tr>
+                                                    @foreach (var column in q.Columns)
+                                                    {
+                                                        @foreach (var sub in q.SubColumns)
+                                                        {
+                                                            <th>@sub</th>
+                                                        }
+                                                        @if (q.SubTotal)
+                                                        {
+                                                            <th>Total</th>
+                                                        }
+                                                    }
+                                                </tr>
+                                            }
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var row in q.Rows)
+                                            {
+                                                <tr>
+                                                    <td>@row</td>
+                                                    @foreach (var column in q.Columns)
+                                                    {
+                                                        @if (q.SubColumns.Count > 0)
+                                                        {
+                                                            @foreach (var sub in q.SubColumns)
+                                                            {
+                                                                <td class="num">@Display(_form.Get(ReportFormState.CellKey(q.Key, row, column, sub)))</td>
+                                                            }
+                                                            @if (q.SubTotal)
+                                                            {
+                                                                <td class="num"><b>@ReportFormState.Format(_form.CellTotal(q, row, column))</b></td>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            <td class="num">@Display(_form.Get(ReportFormState.CellKey(q.Key, row, column)))</td>
+                                                        }
+                                                    }
+                                                    @if (q.RowTotal)
+                                                    {
+                                                        <td class="num"><b>@ReportFormState.Format(_form.RowTotal(q, row))</b></td>
+                                                    }
+                                                </tr>
+                                            }
+                                        </tbody>
+                                        @if (q.ColumnTotal && q.Rows.Count > 1)
+                                        {
+                                            <tfoot>
+                                                <tr>
+                                                    <th>Total</th>
+                                                    @foreach (var column in q.Columns)
+                                                    {
+                                                        @if (q.SubColumns.Count > 0)
+                                                        {
+                                                            @foreach (var sub in q.SubColumns)
+                                                            {
+                                                                <td>@ReportFormState.Format(_form.ColumnTotal(q, column, sub))</td>
+                                                            }
+                                                            @if (q.SubTotal)
+                                                            {
+                                                                <td>@ReportFormState.Format(_form.ColumnTotal(q, column))</td>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            <td>@ReportFormState.Format(_form.ColumnTotal(q, column))</td>
+                                                        }
+                                                    }
+                                                    @if (q.RowTotal)
+                                                    {
+                                                        <td>@ReportFormState.Format(_form.RowTotalsSum(q))</td>
+                                                    }
+                                                </tr>
+                                            </tfoot>
+                                        }
+                                    </table>
+                                    break;
+
+                                case ReportQuestionTypes.MatrixSelect:
+                                    <div class="sipau-form-q">@q.Text</div>
+                                    <table class="sipau-doc-table">
+                                        <thead>
+                                            <tr><th class="is-label">Concepto</th><th class="is-label">Respuesta</th></tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var row in q.Rows)
+                                            {
+                                                <tr>
+                                                    <td>@row</td>
+                                                    <td>@Display(_form.Get(ReportFormState.RowKey(q.Key, row)))</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                    break;
+
+                                case ReportQuestionTypes.Table:
+                                    <div class="sipau-form-q">@q.Text</div>
+                                    @if (_form.TableRowCount(q) == 0)
+                                    {
+                                        <div class="sipau-form-note">Sin líneas registradas.</div>
+                                    }
+                                    else
+                                    {
+                                        <table class="sipau-doc-table">
+                                            <thead>
+                                                <tr>
+                                                    <th class="is-label">#</th>
+                                                    @foreach (var field in q.Fields)
+                                                    {
+                                                        <th class="is-label">@field.Text</th>
+                                                    }
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @for (var r = 1; r <= _form.TableRowCount(q); r++)
+                                                {
+                                                    var rowNumber = r;
+                                                    <tr>
+                                                        <td>@rowNumber</td>
+                                                        @foreach (var field in q.Fields)
+                                                        {
+                                                            <td>@Display(_form.Get(ReportFormState.TableCellKey(q.Key, rowNumber, field.Key)))</td>
+                                                        }
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    }
+                                    break;
+
+                                case ReportQuestionTypes.CheckboxGroup:
+                                    <div class="sipau-form-q">@q.Text</div>
+                                    <div class="sipau-form-a">@Display(_form.CheckedSummary(q.Key))</div>
+                                    @if (Specified(q) is { } checkedDetail)
+                                    {
+                                        <div class="sipau-form-note">Especifique: @checkedDetail</div>
+                                    }
+                                    break;
+
+                                case ReportQuestionTypes.Boolean:
+                                    <div class="sipau-form-line">
+                                        <span class="sipau-form-q">@q.Text</span>
+                                        <span class="sipau-form-a">@BooleanLabel(_form.Get(q.Key))</span>
+                                    </div>
+                                    break;
+
+                                default:
+                                    <div class="sipau-form-line">
+                                        <span class="sipau-form-q">@q.Text</span>
+                                        <span class="sipau-form-a">
+                                            @(q.Sum.Count > 0
+                                                ? ReportFormState.Format(_form.ComputedTotal(q))
+                                                : Display(_form.Get(q.Key)))
+                                        </span>
+                                    </div>
+                                    @if (Specified(q) is { } detail)
+                                    {
+                                        <div class="sipau-form-note">Especifique: @detail</div>
+                                    }
+                                    break;
+                            }
+                        </div>
+                    }
+                </div>
+            }
+
+            <div class="sipau-doc-sign">
+                <div>
+                    <div class="sipau-doc-sign-line">
+                        <div class="sipau-doc-sign-name">@_capturista</div>
+                        Capturó el formato
+                    </div>
+                </div>
+                <div>
+                    <div class="sipau-doc-sign-line">
+                        <div class="sipau-doc-sign-name">&nbsp;</div>
+                        Dirección de Planeación, Evaluación y Calidad
+                    </div>
+                </div>
+            </div>
+
+            <div class="sipau-doc-foot">
+                <span>Folio <span class="sipau-mono">@Folio</span></span>
+                <span>SIPAU · Impreso el @DateTime.Now.ToString("dd/MM/yyyy HH:mm")</span>
+            </div>
+        </section>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid ReportId { get; set; }
+
+    /// <summary>Arrives as ?enviado=1 right after submitting. It only adds the
+    /// on-screen receipt; the printed format is identical either way.</summary>
+    [SupplyParameterFromQuery(Name = "enviado")]
+    public string? SubmittedFlag { get; set; }
+
+    private bool JustSubmitted => SubmittedFlag == "1";
+
+    private ReportTemplateDefinition? _template;
+    private ReportFormState? _form;
+    private ReportStatus _status = ReportStatus.draft;
+    private DateTime _lastSaved;
+    private string _capturista = string.Empty;
+    private string? _error;
+
+    private string Folio => ReportId.ToString("D").ToUpperInvariant();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _error = null;
+
+        try
+        {
+            var state = await AuthState.GetAuthenticationStateAsync();
+            _capturista = state.User.FindFirst(ClaimTypes.Email)?.Value ?? state.User.Identity?.Name ?? "—";
+
+            var report = await ReportsSvc.GetReportAsync(ReportId);
+            if (report is null)
+            {
+                _error = "No encontramos esta captura, o pertenece a otra cuenta.";
+                return;
+            }
+
+            var template = await ReportsSvc.GetTemplateAsync(report.ReportType, report.Version);
+            if (template is null)
+            {
+                _error = $"La plantilla {report.ReportType} versión {report.Version} ya no está disponible.";
+                return;
+            }
+
+            _template = template;
+            _status = report.Status;
+            _lastSaved = report.LastModified;
+            _form = new ReportFormState(template, report.Answers);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            _error = "El API no respondió. Verifica que esté corriendo y vuelve a intentarlo.";
+        }
+    }
+
+    private async Task PrintAsync() => await JS.InvokeVoidAsync("sigiePrint");
+
+    private async Task ExportAsync()
+    {
+        if (_form is null || _template is null) return;
+
+        await JS.InvokeVoidAsync("sigieDownloadBytes",
+            XlsxExport.FileName(_template.ReportType),
+            Convert.ToBase64String(ReportExport.ToWorkbook(_form)),
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+
+        Snackbar.Add("Se generó el archivo de Excel.", Severity.Success);
+    }
+
+    /// <summary>The free-text answer behind an "Otro" option, when it was used.</summary>
+    private string? Specified(ReportTemplateQuestion q)
+    {
+        if (string.IsNullOrWhiteSpace(q.SpecifyOption)) return null;
+        var value = _form!.Get(ReportFormState.SpecifyKey(q.Key));
+        return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+
+    private static int HeadRows(ReportTemplateQuestion q) => q.SubColumns.Count > 0 ? 2 : 1;
+
+    private static int GroupSpan(ReportTemplateQuestion q) => q.SubColumns.Count + (q.SubTotal ? 1 : 0);
+
+    /// <summary>An empty answer prints as a rule: a paper form with an invisible gap cannot be reviewed.</summary>
+    private static string Display(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
+
+    private static string BooleanLabel(string raw) => raw switch
+    {
+        "true" => "Sí",
+        "false" => "No",
+        _ => "—",
+    };
+}

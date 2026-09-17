@@ -1,0 +1,72 @@
+@*
+    Confirms the submission of an official format. Sending a 911 or SII is a
+    declaration of the university, so the dialog shows exactly what is sent,
+    for which period and by whom before it becomes final.
+*@
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-4">
+            Vas a enviar este formato como declaración oficial. Después de enviarlo queda en modo
+            consulta y ya no admite cambios.
+        </MudText>
+
+        <MudSimpleTable Dense="true" Elevation="0" Class="sipau-submit-summary">
+            <tbody>
+                <tr>
+                    <th scope="row">Formato</th>
+                    <td>@DisplayName</td>
+                </tr>
+                <tr>
+                    <th scope="row">Clave y versión</th>
+                    <td>@ReportType · versión @Version</td>
+                </tr>
+                @if (!string.IsNullOrWhiteSpace(Period))
+                {
+                    <tr>
+                        <th scope="row">Periodo reportado</th>
+                        <td>@Period</td>
+                    </tr>
+                }
+                <tr>
+                    <th scope="row">Obligatorios</th>
+                    <td>@Answered de @TotalRequired capturados</td>
+                </tr>
+                <tr>
+                    <th scope="row">Cuadratura</th>
+                    <td>
+                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success"
+                                 Size="Size.Small" Style="vertical-align:-4px" />
+                        Las sumas cuadran
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Envía</th>
+                    <td>@SubmittedBy</td>
+                </tr>
+            </tbody>
+        </MudSimpleTable>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel">Seguir revisando</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Send" OnClick="Confirm">
+            Enviar formato
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = null!;
+
+    [Parameter] public string DisplayName { get; set; } = string.Empty;
+    [Parameter] public string ReportType { get; set; } = string.Empty;
+    [Parameter] public string Version { get; set; } = string.Empty;
+    [Parameter] public string? Period { get; set; }
+    [Parameter] public int Answered { get; set; }
+    [Parameter] public int TotalRequired { get; set; }
+    [Parameter] public string SubmittedBy { get; set; } = string.Empty;
+
+    private void Confirm() => Dialog.Close(DialogResult.Ok(true));
+    private void Cancel() => Dialog.Cancel();
+}

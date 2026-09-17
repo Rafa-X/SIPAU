@@ -1,0 +1,445 @@
+@page "/reports/new/{ReportType}/{Version}"
+@page "/reports/{ReportId:guid}"
+@attribute [Authorize]
+@using System.Net
+@using System.Text.Json
+@using UPZMG.Implementations.Reports
+@inject IReportsService ReportsSvc
+@inject ISecurityService SecuritySvc
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+
+<PageTitle>@(_template?.DisplayName ?? "Captura de formato") — SIPAU</PageTitle>
+
+@* Unsaved answers are official data: leaving has to be a decision, not an accident. *@
+<NavigationLock ConfirmExternalNavigation="@HasUnsavedWork" OnBeforeInternalNavigation="ConfirmLeaveAsync" />
+
+@if (_loading)
+{
+    <PageHeader Title="Captura de formato" BackHref="/reports" />
+    <LoadingState Text="Abriendo el formato…" />
+}
+else if (_template is null || _form is null)
+{
+    <PageHeader Title="Captura de formato" BackHref="/reports" />
+    <SectionCard FullHeight="false">
+        <EmptyState Title="No se pudo abrir el formato" Description="@_loadError">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/reports">Volver a los formatos</MudButton>
+        </EmptyState>
+    </SectionCard>
+}
+else
+{
+    var currentSection = _template.Sections[_section];
+    var isLast = _section == _template.Sections.Count - 1;
+
+    <PageHeader Title="@_template.DisplayName" Subtitle="@Subtitle" BackHref="/reports">
+        <Actions>
+            <MudTooltip Text="Descargar lo capturado en Excel" Placement="Placement.Bottom">
+                <MudIconButton Icon="@Icons.Material.Filled.GridOn" aria-label="Descargar en Excel" OnClick="ExportAsync" />
+            </MudTooltip>
+            @if (_reportId is { } savedId)
+            {
+                <MudTooltip Text="Ver, imprimir o guardar en PDF" Placement="Placement.Bottom">
+                    <MudIconButton Icon="@Icons.Material.Filled.Print" aria-label="Ver e imprimir"
+                                   Href="@($"/reports/{savedId}/impresion")" />
+                </MudTooltip>
+            }
+            <span class="sipau-report-status @StatusClass" role="status">@StatusText</span>
+        </Actions>
+    </PageHeader>
+
+    @if (_readOnly)
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-5">
+            Este formato se envió el @ReportUi.Local(_lastSaved) y queda en modo consulta.
+            Para corregir un dato inicia una nueva captura desde Reportes.
+        </MudAlert>
+    }
+
+    <div class="sipau-capture">
+        <aside class="sipau-capture-index" aria-label="Secciones del formato">
+            <div class="sipau-capture-progress">
+                <div class="sipau-capture-progress-line">
+                    <span>Obligatorios capturados</span>
+                    <b>@_form.AnsweredRequired de @_form.TotalRequired</b>
+                </div>
+                <MudProgressLinear Color="@(_form.IsComplete ? Color.Success : Color.Primary)" Value="@_form.CompletionPercent" />
+                @if (_form.Violations.Count > 0)
+                {
+                    <p class="sipau-capture-progress-note is-broken">@ReportUi.Plural(_form.Violations.Count, "regla sin cuadrar", "reglas sin cuadrar")</p>
+                }
+                else if (_form.IsComplete)
+                {
+                    <p class="sipau-capture-progress-note is-ready">Todo cuadra: listo para enviar</p>
+                }
+                else
+                {
+                    <p class="sipau-capture-progress-note">@ReportUi.Plural(_form.Missing.Count, "respuesta pendiente", "respuestas pendientes")</p>
+                }
+            </div>
+
+            <ol class="sipau-capture-steps">
+                @for (var i = 0; i < _template.Sections.Count; i++)
+                {
+                    var index = i;
+                    <li>
+                        <button type="button" class="sipau-capture-step @StepClass(index)"
+                                aria-current="@(index == _section ? "step" : null)"
+                                @onclick="() => GoToAsync(index)">
+                            <span class="sipau-capture-step-num">@(index + 1)</span>
+                            <span class="sipau-capture-step-body">
+                                <span class="sipau-capture-step-title">@_template.Sections[index].Title</span>
+                                <span class="sipau-capture-step-meta">@StepMeta(index)</span>
+                            </span>
+                        </button>
+                    </li>
+                }
+            </ol>
+        </aside>
+
+        <div class="sipau-capture-main">
+            <MudPaper Elevation="0" Class="sipau-capture-sheet">
+                <h2 class="sipau-capture-section">
+                    <span class="sipau-capture-section-num">@(_section + 1)</span>
+                    <span>@currentSection.Title</span>
+                </h2>
+                @if (!string.IsNullOrWhiteSpace(currentSection.Description))
+                {
+                    <p class="sipau-capture-section-desc">@currentSection.Description</p>
+                }
+
+                @foreach (var question in currentSection.Questions.Where(_form.IsVisible))
+                {
+                    <ReportQuestionField @key="question.Key" Form="_form" Question="question"
+                                         ReadOnly="_readOnly" Changed="OnAnswerChanged" />
+                }
+            </MudPaper>
+
+            <div class="sipau-capture-nav">
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowBack"
+                           Disabled="@(_section == 0)" OnClick="() => GoToAsync(_section - 1)">Sección anterior</MudButton>
+                <div class="sipau-capture-nav-end">
+                    @if (!_readOnly)
+                    {
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save"
+                                   Disabled="_saving" OnClick="SaveDraftAsync">Guardar borrador</MudButton>
+                    }
+                    @if (!isLast)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" EndIcon="@Icons.Material.Filled.ArrowForward"
+                                   OnClick="() => GoToAsync(_section + 1)">Siguiente sección</MudButton>
+                    }
+                </div>
+            </div>
+
+            @* Submitting is its own block, not the next "Siguiente": an official
+               format must never be declared out of click momentum. *@
+            @if (isLast && !_readOnly)
+            {
+                <div class="sipau-submit-gate">
+                    <div>
+                        <div class="sipau-submit-gate-title">Enviar el formato</div>
+                        <p class="sipau-submit-gate-text">@SubmitHint</p>
+                    </div>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large"
+                               StartIcon="@Icons.Material.Filled.Send" Disabled="_saving" OnClick="SubmitAsync">
+                        Revisar y enviar
+                    </MudButton>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string? ReportType { get; set; }
+    [Parameter] public string? Version { get; set; }
+    [Parameter] public Guid? ReportId { get; set; }
+
+    /// <summary>Section to open (from 1), set when a first save gives the capture its own address.</summary>
+    [SupplyParameterFromQuery(Name = "seccion")]
+    public int? Seccion { get; set; }
+
+    private ReportTemplateDefinition? _template;
+    private ReportFormState? _form;
+    private Guid? _reportId;
+    private ReportStatus? _status;
+    private DateTime _lastSaved;
+    private int _section;
+    private bool _loading = true;
+    private bool _saving;
+    private bool _dirty;
+    private bool _readOnly;
+    private string _loadError = string.Empty;
+    private string? _loadedFor;
+
+    private bool HasUnsavedWork => _dirty && !_readOnly;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Both routes share this component; reload only when the address really changed.
+        var target = ReportId?.ToString() ?? $"{ReportType}/{Version}";
+        if (target == _loadedFor) return;
+
+        _loadedFor = target;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _template = null;
+        _form = null;
+        _reportId = null;
+        _status = null;
+        _dirty = false;
+        _readOnly = false;
+        _loadError = string.Empty;
+
+        try
+        {
+            if (ReportId is { } id)
+            {
+                var report = await ReportsSvc.GetReportAsync(id);
+                if (report is null)
+                {
+                    _loadError = "No encontramos esta captura, o pertenece a otra cuenta.";
+                    return;
+                }
+
+                var template = await ReportsSvc.GetTemplateAsync(report.ReportType, report.Version);
+                if (template is null)
+                {
+                    _loadError = $"La plantilla {report.ReportType} versión {report.Version} ya no está disponible o tiene errores.";
+                    return;
+                }
+
+                _template = template;
+                _form = new ReportFormState(template, report.Answers);
+                _reportId = report.Id;
+                _status = report.Status;
+                _lastSaved = report.LastModified;
+                _readOnly = report.Status != ReportStatus.draft;
+            }
+            else
+            {
+                var template = await ReportsSvc.GetTemplateAsync(ReportType ?? string.Empty, Version ?? string.Empty);
+                if (template is null)
+                {
+                    _loadError = "Esta plantilla no existe o tiene errores. Revísala en la lista de formatos.";
+                    return;
+                }
+
+                _template = template;
+                _form = new ReportFormState(template);
+            }
+
+            _section = Math.Clamp((Seccion ?? 1) - 1, 0, _template.Sections.Count - 1);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            _template = null;
+            _form = null;
+            _loadError = "El API no respondió. Verifica que esté corriendo y vuelve a intentarlo.";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private string Subtitle =>
+        $"{_template!.ReportType} · versión {_template.Version} · {ReportUi.Plural(_template.Sections.Count, "sección", "secciones")}";
+
+    private string StatusText =>
+        _readOnly ? $"Enviado · {ReportUi.Local(_lastSaved)}"
+        : _dirty ? "Cambios sin guardar"
+        : _status is null ? "Captura nueva"
+        : $"Borrador guardado · {ReportUi.Local(_lastSaved)}";
+
+    private string StatusClass =>
+        _readOnly ? "is-sent" : _dirty ? "is-dirty" : _status is null ? "is-new" : "is-draft";
+
+    private string SubmitHint
+    {
+        get
+        {
+            if (_form!.Violations.Count > 0)
+                return $"Antes de enviar corrige {ReportUi.Plural(_form.Violations.Count, "regla que no cuadra", "reglas que no cuadran")}; las secciones en rojo te llevan a ellas.";
+
+            if (_form.Missing.Count > 0)
+                return $"Faltan {ReportUi.Plural(_form.Missing.Count, "respuesta obligatoria", "respuestas obligatorias")}. Puedes guardar el borrador y terminar después.";
+
+            return "Todo está capturado y las sumas cuadran. Al enviarlo queda registrado a tu nombre y ya no admite cambios.";
+        }
+    }
+
+    private string StepClass(int index)
+    {
+        var progress = _form!.Progress(index);
+        var state = progress.Violations > 0 ? "is-broken" : IsSectionDone(progress) ? "is-done" : string.Empty;
+        return index == _section ? $"is-current {state}" : state;
+    }
+
+    // A section without required answers counts as done once something was captured in it.
+    private static bool IsSectionDone(SectionProgress progress) =>
+        progress.Violations == 0 && (progress.Required > 0 ? progress.Missing == 0 : progress.Touched);
+
+    private string StepMeta(int index)
+    {
+        var progress = _form!.Progress(index);
+        if (progress.Violations > 0) return ReportUi.Plural(progress.Violations, "regla sin cuadrar", "reglas sin cuadrar");
+        if (progress.Required > 0) return progress.Missing == 0 ? "Completa" : ReportUi.Plural(progress.Missing, "pendiente", "pendientes");
+        return progress.Touched ? "Capturada" : "Sin obligatorios";
+    }
+
+    private async Task GoToAsync(int index)
+    {
+        if (_template is null || index < 0 || index >= _template.Sections.Count || index == _section) return;
+
+        _section = index;
+        // Start the next section at its heading, not where the previous one was scrolled.
+        await JS.InvokeVoidAsync("scrollTo", 0, 0);
+    }
+
+    private void OnAnswerChanged() => _dirty = true;
+
+    /// <summary>Exports what is on screen, saved or not: the workbook is for reviewing.</summary>
+    private async Task ExportAsync()
+    {
+        if (_form is null || _template is null) return;
+
+        await JS.InvokeVoidAsync("sigieDownloadBytes",
+            XlsxExport.FileName(_template.ReportType),
+            Convert.ToBase64String(ReportExport.ToWorkbook(_form)),
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+
+        Snackbar.Add("Se generó el archivo de Excel con lo capturado en pantalla.", Severity.Success);
+    }
+
+    private async Task ConfirmLeaveAsync(LocationChangingContext context)
+    {
+        if (!HasUnsavedWork) return;
+
+        var leave = await DialogService.ShowMessageBoxAsync(
+            "Cambios sin guardar",
+            "Hay respuestas capturadas que aún no se guardan. Si sales ahora se perderán.",
+            yesText: "Salir sin guardar",
+            cancelText: "Seguir capturando");
+
+        if (leave != true) context.PreventNavigation();
+    }
+
+    private Task SaveDraftAsync() => SaveAsync(ReportStatus.draft);
+
+    private async Task SubmitAsync()
+    {
+        if (_form is null || _template is null) return;
+
+        if (_form.Violations.Count > 0)
+        {
+            var first = _form.Violations[0];
+            await GoToAsync(first.SectionIndex);
+            Snackbar.Add($"Antes de enviar corrige «{first.QuestionText}» ({first.SectionTitle}): {first.Message}", Severity.Error);
+            return;
+        }
+
+        if (_form.Missing.Count > 0)
+        {
+            var first = _form.Missing[0];
+            await GoToAsync(first.SectionIndex);
+            Snackbar.Add(
+                $"Faltan {ReportUi.Plural(_form.Missing.Count, "respuesta obligatoria", "respuestas obligatorias")}. Empieza por «{first.QuestionText}» ({first.SectionTitle}).",
+                Severity.Warning);
+            return;
+        }
+
+        if (await ConfirmSubmitAsync()) await SaveAsync(ReportStatus.submitted);
+    }
+
+    private async Task<bool> ConfirmSubmitAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var submittedBy = state.User.FindFirst(ClaimTypes.Email)?.Value
+            ?? state.User.Identity?.Name
+            ?? "Usuario del sistema";
+
+        var parameters = new DialogParameters<SubmitReportDialog>
+        {
+            { x => x.DisplayName, _template!.DisplayName },
+            { x => x.ReportType, _template.ReportType },
+            { x => x.Version, _template.Version },
+            { x => x.Period, _form!.Get("periodo") },
+            { x => x.Answered, _form.AnsweredRequired },
+            { x => x.TotalRequired, _form.TotalRequired },
+            { x => x.SubmittedBy, submittedBy },
+        };
+
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+        var dialog = await DialogService.ShowAsync<SubmitReportDialog>("Enviar formato oficial", parameters, options);
+        var result = await dialog.Result;
+
+        return result is { Canceled: false };
+    }
+
+    private async Task SaveAsync(ReportStatus status)
+    {
+        if (_template is null || _form is null || _saving) return;
+
+        _saving = true;
+        try
+        {
+            var firstSave = _reportId is null;
+            var response = await ReportsSvc.SaveAsync(new SaveReport
+            {
+                RequesterKey = await SecuritySvc.GetRequesterKeyAsync(),
+                ReportId = _reportId,
+                ReportType = _template.ReportType,
+                Version = _template.Version,
+                Status = status,
+                Answers = _form.Answers,
+            });
+
+            if (response.Report is { } saved && (response.Status is HttpStatusCode.OK or HttpStatusCode.Created))
+            {
+                _reportId = saved.Id;
+                _status = saved.Status;
+                _lastSaved = saved.LastModified;
+                _dirty = false;
+
+                if (status == ReportStatus.submitted)
+                {
+                    _readOnly = true;
+                    // The submission ends in its printable acuse, with folio and date,
+                    // instead of a toast that fades and leaves no constancia.
+                    Nav.NavigateTo($"/reports/{saved.Id}/impresion?enviado=1");
+                    return;
+                }
+
+                Snackbar.Add("Borrador guardado.", Severity.Success);
+                // A first save gives the capture its own address, so a reload resumes it instead of starting blank.
+                if (firstSave) Nav.NavigateTo($"/reports/{saved.Id}?seccion={_section + 1}", replace: true);
+                return;
+            }
+
+            if (response.Status == HttpStatusCode.Conflict) _readOnly = true;
+
+            Snackbar.Add(response.Status switch
+            {
+                HttpStatusCode.Conflict => "Este formato ya se había enviado y no admite cambios.",
+                HttpStatusCode.UnprocessableEntity => "El servidor rechazó el envío: el formato está incompleto o sus sumas no cuadran. Revisa las secciones marcadas.",
+                HttpStatusCode.NotFound => "No se encontró la plantilla o la captura. Recarga la página.",
+                HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => "Tu sesión ya no tiene permiso para guardar. Vuelve a iniciar sesión.",
+                _ => "No se pudo guardar. Tu captura sigue en pantalla; intenta de nuevo en un momento.",
+            }, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

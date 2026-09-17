@@ -1,0 +1,389 @@
+@page "/reports/plantillas"
+@attribute [Authorize(Roles = "Admin")]
+@using System.Text.Json
+@using System.Text.Encodings.Web
+@using UPZMG.Implementations.Reports
+@inject IReportsService ReportsSvc
+@inject ISecurityService SecuritySvc
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+@*
+    Authoring of the official formats. A template is a JSON file, and the engine
+    is declarative, so this screen edits the file itself and validates it with the
+    very same rules the capture screen and the API run — no second implementation
+    of what a valid format is.
+*@
+
+<PageTitle>Plantillas de formatos — SIPAU</PageTitle>
+
+<PageHeader Title="Plantillas de formatos"
+            Subtitle="Cada formato oficial es un archivo JSON. Aquí se crean, se editan y se validan antes de que un área los capture."
+            BackHref="/reports">
+    <Actions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.NoteAdd"
+                   OnClick="StartNew">Nueva plantilla</MudButton>
+    </Actions>
+</PageHeader>
+
+@if (_loading)
+{
+    <LoadingState Text="Cargando plantillas…" />
+}
+else
+{
+    <MudGrid>
+        <MudItem xs="12" md="4">
+            <SectionCard Title="Formatos publicados" Subtitle="@ReportUi.Plural(_templates.Count, "plantilla", "plantillas")"
+                         Icon="@Icons.Material.Filled.FolderCopy" Flush="true">
+                <ul class="sipau-template-list">
+                    @foreach (var template in _templates)
+                    {
+                        var key = FileKey(template.ReportType, template.Version);
+                        <li>
+                            <button type="button" class="sipau-template-item @(key == _fileKey ? "is-current" : null)"
+                                    @onclick="() => OpenAsync(template)">
+                                <span class="sipau-template-name">@template.DisplayName</span>
+                                <span class="sipau-template-meta">@template.ReportType · versión @template.Version</span>
+                                <span class="sipau-template-meta @(template.IsValid ? null : "is-broken")">
+                                    @(template.IsValid
+                                        ? $"{ReportUi.Plural(template.Sections, "sección", "secciones")} · {ReportUi.Plural(template.Questions, "reactivo", "reactivos")}"
+                                        : ReportUi.Plural(template.Problems.Count, "error", "errores"))
+                                </span>
+                            </button>
+                        </li>
+                    }
+                </ul>
+            </SectionCard>
+        </MudItem>
+
+        <MudItem xs="12" md="8">
+            <SectionCard Title="@(_fileKey is null ? "Plantilla nueva" : $"{_fileKey}.json")"
+                         Subtitle="@EditorHint" Icon="@Icons.Material.Filled.DataObject">
+                @if (_problems.Count > 0)
+                {
+                    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true" Class="mb-4">
+                        <MudText Typo="Typo.body2" Style="font-weight:650">
+                            @ReportUi.Plural(_problems.Count, "problema por resolver", "problemas por resolver")
+                        </MudText>
+                        @foreach (var problem in _problems)
+                        {
+                            <MudText Typo="Typo.caption" Class="d-block">@problem</MudText>
+                        }
+                    </MudAlert>
+                }
+                else if (_checked)
+                {
+                    <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Dense="true" Class="mb-4">
+                        La plantilla es válida y se puede capturar.
+                    </MudAlert>
+                }
+
+                <MudTextField T="string" @bind-Value="_json" Lines="26" Variant="Variant.Outlined"
+                              Class="sipau-json-editor" Label="Definición del formato (JSON)"
+                              spellcheck="false" />
+
+                <div class="sipau-editor-actions">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.FactCheck"
+                               OnClick="Validate">Validar</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save"
+                               Disabled="_busy" OnClick="SaveAsync">Guardar</MudButton>
+                    @if (_selected is not null)
+                    {
+                        <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ContentCopy"
+                                   OnClick="DuplicateForNextCycle">Duplicar para el siguiente ciclo</MudButton>
+                        @if (_selected.IsValid)
+                        {
+                            <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Visibility"
+                                       Href="@($"/reports/new/{_selected.ReportType}/{_selected.Version}")">Previsualizar</MudButton>
+                        }
+                        <MudSpacer />
+                        <MudButton Variant="Variant.Text" Color="Color.Error" StartIcon="@Icons.Material.Filled.DeleteOutline"
+                                   Disabled="_busy" OnClick="DeleteAsync">Eliminar</MudButton>
+                    }
+                </div>
+
+                <MudExpansionPanels Elevation="0" Class="mt-5">
+                    <MudExpansionPanel Text="Vocabulario de una plantilla">
+                        <dl class="sipau-cheatsheet">
+                            <dt>Tipos de reactivo</dt>
+                            <dd>
+                                <code>text</code>, <code>number</code>, <code>boolean</code>, <code>date</code>,
+                                <code>select</code>, <code>checkbox_group</code>, <code>matrix</code>,
+                                <code>matrix_select</code> y <code>table</code> (renglones que agrega quien captura).
+                            </dd>
+
+                            <dt>Qué se está midiendo</dt>
+                            <dd>
+                                <code>measure</code>: <code>count</code> (conteos enteros, es lo predeterminado),
+                                <code>amount</code> (importes con decimales), <code>average</code> y <code>percent</code>.
+                                Los promedios y porcentajes nunca se suman.
+                            </dd>
+
+                            <dt>Totales de una matriz</dt>
+                            <dd>
+                                <code>rowTotal</code> con <code>rowTotalColumns</code> y <code>rowTotalLabel</code> para
+                                totalizar sólo algunas columnas, <code>columnTotal</code> para el renglón de totales, y
+                                <code>subColumns</code> con <code>subTotal</code> para partir cada columna (por ejemplo
+                                mujeres y hombres).
+                            </dd>
+
+                            <dt>Cuadraturas</dt>
+                            <dd>
+                                <code>sum</code> arma un total calculado; <code>sumEquals</code> y <code>sumAtMost</code>
+                                exigen que lo capturado coincida con otro dato. La referencia puede ser la clave de un
+                                reactivo, una columna (<code>matricula_grado[Hombres]</code>) o un renglón
+                                (<code>docentes_dedicacion[Personal por hora o asignatura]</code>).
+                            </dd>
+
+                            <dt>Preguntas condicionales</dt>
+                            <dd><code>showIf</code> apunta a un reactivo de sí o no: mientras esté en «no», el reactivo ni se muestra ni se exige.</dd>
+
+                            <dt>Catálogos oficiales</dt>
+                            <dd>
+                                <code>rowsFrom</code> y <code>optionsFrom</code> traen las listas de la base:
+                                <code>discapacidades</code>, <code>causas_baja</code>, <code>becas</code>,
+                                <code>lenguas_indigenas</code> y <code>periodos</code>.
+                            </dd>
+
+                            <dt>Nombre del archivo</dt>
+                            <dd>Se arma solo con <code>reportType</code> y <code>version</code>; si cambias cualquiera de los dos, el archivo anterior se renombra.</dd>
+                        </dl>
+                    </MudExpansionPanel>
+                </MudExpansionPanels>
+            </SectionCard>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private static readonly JsonSerializerOptions ReadOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true,
+    };
+
+    // Written back the way a person reads it: indented and with real accents.
+    private static readonly JsonSerializerOptions WriteOptions = new()
+    {
+        WriteIndented = true,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
+
+    private const string Skeleton = """
+        {
+          "reportType": "NuevoFormato",
+          "version": "2024-2025",
+          "displayName": "Nombre visible del formato",
+          "sections": [
+            {
+              "key": "seccion1",
+              "title": "Primera sección",
+              "description": "Para qué sirve esta sección del formato oficial.",
+              "questions": [
+                { "key": "pregunta1", "text": "Texto del reactivo", "type": "number", "required": true }
+              ]
+            }
+          ]
+        }
+        """;
+
+    private IReadOnlyList<ReportTemplateItem> _templates = [];
+    private ReportTemplateItem? _selected;
+    private string? _fileKey;
+    private string _json = Skeleton;
+    private IReadOnlyList<string> _problems = [];
+    private bool _checked;
+    private bool _loading = true;
+    private bool _busy;
+
+    private string EditorHint => _fileKey is null
+        ? "Al guardar se creará el archivo con la clave y la versión que declares."
+        : "Se guarda sobre el mismo archivo; si cambias la clave o la versión, se renombra.";
+
+    protected override Task OnInitializedAsync() => LoadTemplatesAsync();
+
+    private async Task LoadTemplatesAsync()
+    {
+        _loading = true;
+        try
+        {
+            _templates = await ReportsSvc.GetTemplatesAsync();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            Snackbar.Add("No se pudieron cargar las plantillas: el API no respondió.", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OpenAsync(ReportTemplateItem template)
+    {
+        var source = await ReportsSvc.GetTemplateSourceAsync(template.ReportType, template.Version);
+        if (source is null)
+        {
+            Snackbar.Add("No se pudo leer el archivo de la plantilla.", Severity.Error);
+            return;
+        }
+
+        _selected = template;
+        _fileKey = FileKey(template.ReportType, template.Version);
+        _json = source.TrimEnd();
+        // A template already flagged in the list opens showing why.
+        _problems = template.Problems;
+        _checked = template.IsValid;
+    }
+
+    private void StartNew()
+    {
+        _selected = null;
+        _fileKey = null;
+        _json = Skeleton;
+        _problems = [];
+        _checked = false;
+    }
+
+    private void Validate()
+    {
+        _problems = LocalProblems(_json);
+        _checked = true;
+    }
+
+    /// <summary>
+    /// The same validator the API runs, so the author sees the problems while
+    /// typing instead of after a round trip.
+    /// </summary>
+    private static IReadOnlyList<string> LocalProblems(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return ["Plantilla: el contenido está vacío."];
+
+        try
+        {
+            var template = JsonSerializer.Deserialize<ReportTemplateDefinition>(json, ReadOptions);
+            return template is null
+                ? ["Plantilla: el contenido está vacío."]
+                : [.. TemplateValidator.Validate(template).Problems.Select(p => p.ToString())];
+        }
+        catch (JsonException ex)
+        {
+            return [$"Plantilla: JSON inválido cerca de la línea {(ex.LineNumber ?? 0) + 1}."];
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _busy = true;
+        try
+        {
+            var result = await ReportsSvc.SaveTemplateAsync(new SaveReportTemplate
+            {
+                RequesterKey = await SecuritySvc.GetRequesterKeyAsync(),
+                ReplacingFile = _fileKey,
+                Json = _json,
+            });
+
+            _problems = result.Problems ?? [];
+            _checked = true;
+
+            if (!result.Saved)
+            {
+                Snackbar.Add("No se guardó: revisa los problemas de arriba.", Severity.Error);
+                return;
+            }
+
+            Snackbar.Add($"Plantilla «{result.FileKey}» guardada.", Severity.Success);
+            _fileKey = result.FileKey;
+            await LoadTemplatesAsync();
+            _selected = _templates.FirstOrDefault(t => FileKey(t.ReportType, t.Version) == _fileKey);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (_selected is null) return;
+
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Eliminar la plantilla",
+            $"Se quitará «{_selected.DisplayName}» ({_selected.ReportType} versión {_selected.Version}). " +
+            "Sólo es posible si nadie ha capturado con ella.",
+            yesText: "Eliminar", cancelText: "Conservar");
+
+        if (confirmed != true) return;
+
+        _busy = true;
+        try
+        {
+            var result = await ReportsSvc.DeleteTemplateAsync(new DeleteReportTemplate
+            {
+                RequesterKey = await SecuritySvc.GetRequesterKeyAsync(),
+                ReportType = _selected.ReportType,
+                Version = _selected.Version,
+            });
+
+            if (!result.Saved)
+            {
+                _problems = result.Problems ?? [];
+                _checked = true;
+                Snackbar.Add("No se eliminó.", Severity.Error);
+                return;
+            }
+
+            Snackbar.Add("Plantilla eliminada.", Severity.Success);
+            StartNew();
+            await LoadTemplatesAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>
+    /// A new cycle is the usual reason to touch a template: this clones the one on
+    /// screen into the next school cycle, leaving the published one untouched.
+    /// </summary>
+    private void DuplicateForNextCycle()
+    {
+        ReportTemplateDefinition? template;
+        try
+        {
+            template = JsonSerializer.Deserialize<ReportTemplateDefinition>(_json, ReadOptions);
+        }
+        catch (JsonException)
+        {
+            Snackbar.Add("Primero corrige el JSON: no se pudo leer para duplicarlo.", Severity.Warning);
+            return;
+        }
+
+        if (template is null) return;
+
+        template.Version = NextCycle(template.Version);
+        _json = JsonSerializer.Serialize(template, WriteOptions);
+        _selected = null;
+        _fileKey = null;
+        _problems = [];
+        _checked = false;
+
+        Snackbar.Add($"Copia lista como versión {template.Version}. Revísala y guárdala.", Severity.Info);
+    }
+
+    /// <summary>"2024-2025" → "2025-2026"; anything else just gets a suffix.</summary>
+    private static string NextCycle(string version)
+    {
+        var parts = version.Split('-');
+        if (parts.Length == 2 && int.TryParse(parts[0], out var from) && int.TryParse(parts[1], out var to))
+            return $"{from + 1}-{to + 1}";
+
+        return $"{version}-2";
+    }
+
+    private static string FileKey(string reportType, string version) => $"{reportType}_{version}";
+}
