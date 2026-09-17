@@ -26,7 +26,7 @@ namespace UPZMG.Web.Services;
 /// </summary>
 public sealed class PersistentCookieAuthenticationStateProvider : AuthenticationStateProvider, IDisposable
 {
-    private const string PersistenceKey = "sigie.auth.user";
+    private const string PersistenceKey = "sipau.auth.user";
     private static readonly TimeSpan RevalidationInterval = TimeSpan.FromMinutes(1);
 
     private readonly PersistentComponentState _state;

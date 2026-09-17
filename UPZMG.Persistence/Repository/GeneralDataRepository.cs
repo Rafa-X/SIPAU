@@ -7,7 +7,7 @@ namespace UPZMG.Persistence.Repository;
 public class GeneralDataRepository(AppDBContext db)
 {
 
-    public async Task<List<LookupOption>> GetCareersAsync() =>
+    public async Task<List<LookupOption>> GetCareersSelectableAsync() =>
         await db.Careers
             .AsNoTracking()
             .OrderBy(c => c.Name)

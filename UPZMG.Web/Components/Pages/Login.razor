@@ -3,44 +3,44 @@
 @inject AuthenticationStateProvider AuthState
 @inject NavigationManager Nav
 
-<PageTitle>Iniciar sesión — SIGIE</PageTitle>
-<div class="sigie-login">
+<PageTitle>Iniciar sesión — SIPAU</PageTitle>
+<div class="sipau-login">
 
-    <section class="sigie-login-wall">
-        <p class="sigie-login-lineage">Secretaría de Educación Pública · Universidades Politécnicas</p>
+    <section class="sipau-login-wall">
+        <p class="sipau-login-lineage">Secretaría de Educación Pública · Universidades Politécnicas</p>
 
-        <div class="sigie-login-block">
-            <h1 class="sigie-login-institution">
+        <div class="sipau-login-block">
+            <h1 class="sipau-login-institution">
                 Universidad Politécnica de la<br />Zona Metropolitana de Guadalajara
             </h1>
 
-            <hr class="sigie-login-rule" />
+            <hr class="sipau-login-rule" />
 
-            <p class="sigie-login-system">
-                <b>SIGIE</b> · Sistema Inteligente de Gestión de Información Estadística
+            <p class="sipau-login-system">
+                <b>SIPAU</b> · Sistema Inteligente de Gestión de Información Estadística
             </p>
-            <p class="sigie-login-dept">Dirección de Planeación, Evaluación y Calidad</p>
+            <p class="sipau-login-dept">Dirección de Planeación, Evaluación y Calidad</p>
         </div>
 
-        <p class="sigie-login-lineage">Formatos 911 · SII</p>
+        <p class="sipau-login-lineage">Formatos 911 · SII</p>
     </section>
 
-    <section class="sigie-login-card">
-        <div class="sigie-login-inner">
+    <section class="sipau-login-card">
+        <div class="sipau-login-inner">
 
-            <div class="sigie-login-brand">
-                <div class="sigie-login-title">
+            <div class="sipau-login-brand">
+                <div class="sipau-login-title">
                     Universidad Politécnica de la Zona Metropolitana de Guadalajara
                 </div>
-                <div class="sigie-login-sub">SIGIE · Planeación</div>
+                <div class="sipau-login-sub">SIPAU · Planeación</div>
             </div>
 
-            <h2 class="sigie-login-h1">Iniciar sesión</h2>
-            <p class="sigie-login-lead">Usa tus credenciales institucionales.</p>
+            <h2 class="sipau-login-h1">Iniciar sesión</h2>
+            <p class="sipau-login-lead">Usa tus credenciales institucionales.</p>
 
             @if (_hasError)
             {
-                <div class="sigie-login-error" role="alert">
+                <div class="sipau-login-error" role="alert">
                     No pudimos validar esas credenciales. Revisa tu correo y tu contraseña;
                     si el problema sigue, avisa a Tecnologías.
                 </div>
@@ -49,25 +49,25 @@
             <form method="post" action="/Account/Login">
                 <AntiforgeryToken />
 
-                <label class="sigie-login-label" for="email">Correo electrónico</label>
-                <div class="sigie-login-field">
-                    <input id="email" name="Email" type="email" class="sigie-login-input"
+                <label class="sipau-login-label" for="email">Correo electrónico</label>
+                <div class="sipau-login-field">
+                    <input id="email" name="Email" type="email" class="sipau-login-input"
                            placeholder="usuario@upzmg.edu.mx" autocomplete="username" required autofocus />
                 </div>
 
-                <label class="sigie-login-label" for="password">Contraseña</label>
-                <div class="sigie-login-field">
-                    <input id="password" name="Password" type="password" class="sigie-login-input"
+                <label class="sipau-login-label" for="password">Contraseña</label>
+                <div class="sipau-login-field">
+                    <input id="password" name="Password" type="password" class="sipau-login-input"
                            autocomplete="current-password" required />
 
-                    <button type="button" class="sigie-login-eye" data-sigie-reveal="password"
+                    <button type="button" class="sipau-login-eye" data-sipau-reveal="password"
                             aria-pressed="false" aria-label="Mostrar contraseña" tabindex="0">
-                        <svg class="sigie-eye-on" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+                        <svg class="sipau-eye-on" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
                             <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"
                                   stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
                             <circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.6" />
                         </svg>
-                        <svg class="sigie-eye-off" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+                        <svg class="sipau-eye-off" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
                             <path d="M9.9 5.8A9.6 9.6 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-3.3 4.1M6.2 7.9A17 17 0 0 0 2.5 12S6 18.5 12 18.5c1 0 1.9-.2 2.7-.5"
                                   stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
                             <path d="M10 10a2.8 2.8 0 0 0 4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
@@ -76,10 +76,10 @@
                     </button>
                 </div>
 
-                <button type="submit" class="sigie-login-btn">Entrar</button>
+                <button type="submit" class="sipau-login-btn">Entrar</button>
             </form>
 
-            <div class="sigie-login-foot">
+            <div class="sipau-login-foot">
                 Uso exclusivo del personal autorizado · © @DateTime.Now.Year UPZMG
             </div>
         </div>

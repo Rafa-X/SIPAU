@@ -1,23 +1,23 @@
 <MudNavMenu Class="pt-2">
 
-    <span class="sigie-nav-section"><span class="sigie-nav-section-label">Operación</span></span>
+    <span class="sipau-nav-section"><span class="sipau-nav-section-label">Operación</span></span>
     <MudNavLink Href="/dashboard" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.SpaceDashboard">Tablero de Control</MudNavLink>
     <MudNavLink Href="/datacapture" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.EditNote">Captura de Datos</MudNavLink>
     <MudNavLink Href="/charts" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.QueryStats">Gráficas</MudNavLink>
 
-    <span class="sigie-nav-section"><span class="sigie-nav-section-label">Reportes</span></span>
+    <span class="sipau-nav-section"><span class="sipau-nav-section-label">Reportes</span></span>
     <MudNavLink Href="/reports" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Description">Reportes 911 / SII</MudNavLink>
     <MudNavLink Href="/boardreport" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Article">Informe de Junta</MudNavLink>
     @* <MudNavLink Href="/minutes" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Gavel">Actas de Junta</MudNavLink> *@
 
     <AuthorizeView Roles="Admin">
-        <span class="sigie-nav-section"><span class="sigie-nav-section-label">Administración</span></span>
+        <span class="sipau-nav-section"><span class="sipau-nav-section-label">Administración</span></span>
         <MudNavLink Href="/settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Tune">Configuración</MudNavLink>
         <MudNavLink Href="/users" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.People">Usuarios</MudNavLink>
     </AuthorizeView>
 
-    <div class="sigie-rail-foot">
-        <div style="font-weight:700;letter-spacing:.04em">SIGIE v0.6</div>
+    <div class="sipau-rail-foot">
+        <div style="font-weight:700;letter-spacing:.04em">SIPAU v0.6</div>
         <div style="opacity:.8">Universidad Politécnica de la ZMG</div>
     </div>
 

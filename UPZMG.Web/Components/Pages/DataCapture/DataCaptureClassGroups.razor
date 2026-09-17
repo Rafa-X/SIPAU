@@ -11,7 +11,7 @@
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
 
-<PageTitle>Captura de Grupos de Clase — SIGIE</PageTitle>
+<PageTitle>Captura de Grupos de Clase — SIPAU</PageTitle>
 
 <PageHeader Eyebrow="Captura de datos" Title="Grupos de Clase"
             Subtitle="Registra los grupos, responsables, espacios y horarios del periodo activo"
@@ -151,7 +151,7 @@
     {
         AddSchedule();
         var periodsTask = GeneralDataSvc.GetPeriodsAsync();
-        var careersTask = GeneralDataSvc.GetCareersAsync();
+        var careersTask = GeneralDataSvc.GetCareersSelectableAsync();
         var teachersTask = GeneralDataSvc.GetTeachersAsync();
         var facilitiesTask = GeneralDataSvc.GetFacilitiesAsync();
         await Task.WhenAll(periodsTask, careersTask, teachersTask, facilitiesTask);

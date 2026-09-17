@@ -1,0 +1,155 @@
+@page "/charts/students"
+@attribute [Authorize]
+@using UPZMG.Implementations.Charts
+@using UPZMG.Shared.Enums
+@using UPZMG.Web.Models.Charts
+
+@inject IStudentsService _studentsService
+
+<PageTitle>Gráficas de Alumnos - SIPAU</PageTitle>
+
+<PageHeader Eyebrow="Analitica" Title="Graficas de Alumnos" BackHref="/charts" />
+
+<MudGrid>
+    <MudItem xs="12" lg="6">
+        <SectionCard Title="Nuevo ingreso por edad"
+                     Icon="@Icons.Material.Filled.PersonAdd" Accent="teal">
+            <ChildContent>
+                <BarChart Id="new-students-chart" Labels="_model.NewStudents.Labels" Series="_model.NewStudentsAges" Height="150"
+                          AriaLabel="Estudiantes de nuevo ingreso por edad" />
+            </ChildContent>
+            <Footer>
+                Total de estudiantes: @_model.NewStudents.Values.Sum()
+            </Footer>
+            <Actions>
+                <MudTooltip Text="Descargar gráfica PNG" Placement="Placement.Top">
+                    <MudIconButton Icon="@Icons.Material.Filled.FileDownload"
+                                   Color="Color.Secondary"
+                                   Size="Size.Small"
+                                   data-sipau-chart-download="new-students-chart"
+                                   data-sipau-chart-title="Nuevo ingreso por edad"
+                                   data-sipau-chart-filename="Edad-estudiantes-nuevo-ingreso.png" />
+                </MudTooltip>
+            </Actions>
+        </SectionCard>
+    </MudItem>
+
+    <MudItem xs="12" lg="6">
+        <SectionCard Title="Todos los estudiantes por edad"
+                     Icon="@Icons.Material.Filled.Groups" Accent="navy">
+            <ChildContent>
+                <BarChart Id="all-students-chart" Labels="_model.AllStudents.Labels" Series="_model.AllStudentsAges" Height="150"
+                          AriaLabel="Todos los estudiantes por edad" />
+            </ChildContent>
+            <Footer>
+                Total de estudiantes: @_model.AllStudents.Values.Sum()
+            </Footer>
+            <Actions>
+                <MudTooltip Text="Descargar gráfica PNG" Placement="Placement.Top">
+                    <MudIconButton Icon="@Icons.Material.Filled.FileDownload"
+                                   Color="Color.Secondary"
+                                   Size="Size.Small"
+                                   data-sipau-chart-download="all-students-chart"
+                                   data-sipau-chart-title="Todos los estudiantes por edad"
+                                   data-sipau-chart-filename="Edad-todos-los-estudiantes.png" />
+                </MudTooltip>
+            </Actions>
+        </SectionCard>
+    </MudItem>
+
+    <MudItem xs="12" lg="7">
+        <SectionCard Title="Aprobación vs. reprobación"
+                     Subtitle="Índices institucionales de aprovechamiento por periodo"
+                     Icon="@Icons.Material.Filled.FactCheck" Accent="navy">
+            <ChildContent>
+                <BarChart Id="aprobacion-reprobacion-chart" Labels="_achievementLabels" Series="_achievement" Height="160"
+                          ValueFormat="0.0" Unit="%" AriaLabel="Aprobación contra reprobación" />
+            </ChildContent>
+            <Footer>
+                La reprobación acumula cuatro periodos a la baja
+                (<b>@($"{_failureDrop:0.0}")</b> puntos porcentuales desde @_achievementLabels[0]).
+            </Footer>
+            <Actions>
+                <MudTooltip Text="Descargar gráfica PNG" Placement="Placement.Top">
+                    <MudIconButton Icon="@Icons.Material.Filled.FileDownload"
+                                   Color="Color.Secondary"
+                                   Size="Size.Small"
+                                   data-sipau-chart-download="aprobacion-reprobacion-chart"
+                                   data-sipau-chart-title="Aprobación vs. reprobación"
+                                   data-sipau-chart-filename="Aprobacion-vs-reprobacion.png" />
+                </MudTooltip>
+            </Actions>
+        </SectionCard>
+    </MudItem>
+
+    <MudItem xs="12" lg="5">
+        <SectionCard Title="Becas por fuente"
+                     Subtitle="Distribución de becas vigentes por financiamiento"
+                     Icon="@Icons.Material.Filled.Savings" Accent="gold">
+            <ChildContent>
+                <BarChart Id="scholarships-chart" Labels="_scholarshipLabels" Series="_scholarships" Height="290"
+                          AriaLabel="Becas por tipo y fuente" />
+            </ChildContent>
+            <Footer>
+                Total de becas vigentes: <b>@_totalScholarships.ToString("N0")</b> ·
+                fuente principal: <b>@_topScholarship</b>
+            </Footer>
+            <Actions>
+                <MudTooltip Text="Descargar gráfica PNG" Placement="Placement.Top">
+                    <MudIconButton Icon="@Icons.Material.Filled.FileDownload"
+                                   Color="Color.Secondary"
+                                   Size="Size.Small"
+                                   data-sipau-chart-download="scholarships-chart"
+                                   data-sipau-chart-title="Becas por fuente"
+                                   data-sipau-chart-filename="Becas-por-fuente.png" />
+                </MudTooltip>
+            </Actions>
+        </SectionCard>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private ChartsStudentsModel _model = new ChartsStudentsModel();
+    
+    // ── Aprovechamiento ─────────────────────────────────────────────────────
+    
+    private readonly double[] _approval = { 84.2, 85.6, 86.9, 87.5 };
+    private readonly double[] _failure = { 15.8, 14.4, 13.1, 12.5 };
+
+    private List<ChartSeriesData> _achievement => new()
+    {
+        new ChartSeriesData("Aprobación", _approval, ChartPalette.Teal),
+        new ChartSeriesData("Reprobación", _failure, ChartPalette.Clay),
+    };
+    private double _failureDrop => _failure[0] - _failure[^1];
+    private readonly string[] _achievementLabels = { "2024-1", "2024-2", "2025-1", "2025-2" };
+
+    // ── Becas ───────────────────────────────────────────────────────────────
+    private readonly string[] _scholarshipLabels = { "Excelencia", "Manutención", "Deportiva", "Federal" };
+    private readonly double[] _scholarshipData = { 180, 260, 65, 340 };
+
+    private List<ChartSeriesData> _scholarships => new() { new ChartSeriesData("Becas", _scholarshipData, ChartPalette.Ochre) };
+    private double _totalScholarships => _scholarshipData.Sum();
+    private string _topScholarship => _scholarshipLabels[MaxIndex(_scholarshipData)];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var newStudentsTask = _studentsService.GetStudentsAgesAsync(newOnly: true);
+        var allStudentsTask = _studentsService.GetStudentsAgesAsync();
+        var results = await Task.WhenAll(newStudentsTask, allStudentsTask);
+
+        _model.NewStudents = MapAges(results[0]);
+        _model.AllStudents = MapAges(results[1]);
+        _model.NewStudentsAges = [new ChartSeriesData("Nuevo ingreso", _model.NewStudents.Values, ChartPalette.Teal)];
+        _model.AllStudentsAges = [new ChartSeriesData("Todos los estudiantes", _model.AllStudents.Values, ChartPalette.Navy)];
+    }
+
+    private static int MaxIndex(IReadOnlyList<double> values) =>
+        values.Select((value, index) => (value, index)).OrderByDescending(item => item.value).First().index;
+
+    private static ChartStudentsAges MapAges(IReadOnlyList<StudentsAges> ages) => new()
+    {
+        Labels = ages.Select(age => age.Name).ToList(),
+        Values = ages.Select(age => (double)age.Values.Count).ToList(),
+    };
+}

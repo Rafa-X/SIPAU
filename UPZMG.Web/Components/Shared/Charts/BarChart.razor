@@ -7,19 +7,19 @@
 @using System.Globalization
 @using UPZMG.Web.Components.Shared.Charts
 
-<div class="sigie-chart" style="@($"--sigie-chart-h:{Height}px")">
+<div id="@Id" class="sipau-chart" style="@($"--sipau-chart-h:{Height}px")">
 
     @if (ShowLegend && Series.Count > 1)
     {
-        <div class="sigie-chart-legend">
+        <div class="sipau-chart-legend">
             @foreach (var s in Series)
             {
-                <span class="sigie-chart-key"><i style="@($"background:{s.Color}")"></i>@s.Name</span>
+                <span class="sipau-chart-key"><i style="@($"background:{s.Color}")"></i>@s.Name</span>
             }
         </div>
     }
 
-    <div class="sigie-chart-yaxis">
+    <div class="sipau-chart-yaxis">
         @foreach (var tick in _ticks)
         {
             <span style="@Pct("top", _scale.Y(tick) / Height * 100)">
@@ -28,8 +28,8 @@
         }
     </div>
 
-    <div class="sigie-chart-plot" @onmouseleave="() => _hover = null">
-        <svg class="sigie-chart-svg" viewBox="@($"0 0 {VbW} {Height}")" preserveAspectRatio="none"
+    <div class="sipau-chart-plot" @onmouseleave="() => _hover = null">
+        <svg class="sipau-chart-svg" viewBox="@($"0 0 {VbW} {Height}")" preserveAspectRatio="none"
              role="img" aria-label="@AriaLabel">
 
             <defs>
@@ -45,7 +45,7 @@
             @foreach (var tick in _ticks)
             {
                 var y = ChartScale.N(_scale.Y(tick));
-                <line class="sigie-chart-grid" x1="0" x2="@VbW" y1="@y" y2="@y" vector-effect="non-scaling-stroke" />
+                <line class="sipau-chart-grid" x1="0" x2="@VbW" y1="@y" y2="@y" vector-effect="non-scaling-stroke" />
             }
 
             @for (int c = 0; c < Labels.Count; c++)
@@ -58,7 +58,7 @@
                     var geom = BarGeometry(category, s);
                     var dimmed = _hover is { } h && h != category;
 
-                    <rect class="@($"sigie-chart-bar{(dimmed ? " dim" : null)}")"
+                    <rect class="@($"sipau-chart-bar{(dimmed ? " dim" : null)}")"
                           x="@ChartScale.N(geom.X)" y="@ChartScale.N(geom.Y)"
                           width="@ChartScale.N(geom.W)" height="@ChartScale.N(geom.H)" rx="3"
                           fill="@($"url(#{_id}-bar-{s})")"
@@ -70,7 +70,7 @@
             {
                 var category = c;
                 var bw = _scale.BandWidth(Labels.Count);
-                <rect class="sigie-chart-band" x="@ChartScale.N(_scale.Left + category * bw)" y="0"
+                <rect class="sipau-chart-band" x="@ChartScale.N(_scale.Left + category * bw)" y="0"
                       width="@ChartScale.N(bw)" height="@Height"
                       @onmouseenter="() => _hover = category" />
             }
@@ -78,11 +78,11 @@
 
         @if (_hover is { } hi && hi < Labels.Count)
         {
-            <div class="sigie-chart-tip" style="@Pct("left", Math.Clamp(_scale.BandCenter(hi, Labels.Count) / VbW * 100, 6, 94))">
-                <div class="sigie-chart-tip-head">@Labels[hi]</div>
+            <div class="sipau-chart-tip" style="@Pct("left", Math.Clamp(_scale.BandCenter(hi, Labels.Count) / VbW * 100, 6, 94))">
+                <div class="sipau-chart-tip-head">@Labels[hi]</div>
                 @foreach (var s in Series.Where(s => hi < s.Values.Count))
                 {
-                    <div class="sigie-chart-tip-row">
+                    <div class="sipau-chart-tip-row">
                         <i style="@($"background:{s.Color}")"></i>
                         <span>@s.Name</span>
                         <b>@s.Values[hi].ToString(ValueFormat, CultureInfo.CurrentCulture)@Unit</b>
@@ -92,7 +92,7 @@
         }
     </div>
 
-    <div class="sigie-chart-xaxis">
+    <div class="sipau-chart-xaxis">
         @for (int c = 0; c < Labels.Count; c++)
         {
             <span class="@(_hover == c ? "on" : null)" style="@Pct("left", _scale.BandCenter(c, Labels.Count) / VbW * 100)">
@@ -111,6 +111,7 @@
     [Parameter] public string? Unit { get; set; }
     [Parameter] public bool ShowLegend { get; set; } = true;
     [Parameter] public string AriaLabel { get; set; } = "Gráfica de barras";
+    [Parameter] public string? Id { get; set; }
 
     private const int VbW = 1000;
 

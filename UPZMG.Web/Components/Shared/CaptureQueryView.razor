@@ -13,7 +13,7 @@
                  Count="Filtered.Count" Total="Items.Count">
         <Filters>
             <MudSelect T="string" Value="_period" ValueChanged="@(v => _period = v)" Dense="true"
-                       Variant="Variant.Outlined" Margin="Margin.Dense" Class="sigie-toolbar-filter mt-0"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Class="sipau-toolbar-filter mt-0"
                        Placeholder="Periodo" Clearable="true">
                 <MudSelectItem T="string" Value="@(null!)">Todos los periodos</MudSelectItem>
                 @foreach (var p in Periods)

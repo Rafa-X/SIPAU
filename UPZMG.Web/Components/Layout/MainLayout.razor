@@ -7,20 +7,20 @@
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-<MudLayout Class="@(_isDarkMode ? "sigie-dark" : "sigie-light")">
+<MudLayout Class="@(_isDarkMode ? "sipau-dark" : "sipau-light")">
 
     @* ─────────────────────────── Header ─────────────────────────── *@
     <MudAppBar Elevation="0">
         <MudTooltip Text="@(_drawerOpen ? "Contraer menú" : "Expandir menú")" Placement="Placement.Bottom">
             <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
-                           Class="sigie-appbar-btn" OnClick="ToggleDrawer" aria-label="Alternar menú" />
+                           Class="sipau-appbar-btn" OnClick="ToggleDrawer" aria-label="Alternar menú" />
         </MudTooltip>
 
-        <a class="sigie-brand ml-2" href="/dashboard" title="Ir al tablero de control">
-            <span class="sigie-brand-mark">S</span>
+        <a class="sipau-brand ml-2" href="/dashboard" title="Ir al tablero de control">
+            <span class="sipau-brand-mark">S</span>
             <div>
-                <div class="sigie-brand-name">SIGIE</div>
-                <div class="sigie-appbar-sub d-none d-md-block" style="font-size:10.5px;opacity:.6;letter-spacing:.04em">
+                <div class="sipau-brand-name">SIPAU</div>
+                <div class="sipau-appbar-sub d-none d-md-block" style="font-size:10.5px;opacity:.6;letter-spacing:.04em">
                     UPZMG · Planeación
                 </div>
             </div>
@@ -38,7 +38,7 @@
                          Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
                          ResetValueOnEmptyText="true" CoerceText="true" MaxItems="8"
-                         Class="sigie-quicknav d-none d-md-flex mr-2">
+                         Class="sipau-quicknav d-none d-md-flex mr-2">
             <ItemTemplate Context="target">
                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
                     <MudIcon Icon="@target.Icon" Size="Size.Small" Color="Color.Secondary" />
@@ -52,7 +52,7 @@
             <ActivatorContent>
                 @* A plain div, not a MudIconButton: a real <button> swallows the
                    click and the menu never opens. *@
-                <div class="sigie-appbar-trigger" role="button" tabindex="0" title="Alertas del modelo"
+                <div class="sipau-appbar-trigger" role="button" tabindex="0" title="Alertas del modelo"
                      aria-label="Alertas del modelo"
                      @onclick="@(() => _alertsOpen = !_alertsOpen)" @onclick:stopPropagation="true">
                     <MudBadge Content="@_anomalies.Count" Color="Color.Warning" Overlap="true" Bordered="true"
@@ -90,7 +90,7 @@
 
         <MudTooltip Text="@(_isDarkMode ? "Modo claro" : "Modo oscuro")" Placement="Placement.Bottom">
             <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
-                           Color="Color.Inherit" Class="sigie-appbar-btn sigie-theme-btn"
+                           Color="Color.Inherit" Class="sipau-appbar-btn sipau-theme-btn"
                            OnClick="@(() => _isDarkMode = !_isDarkMode)" aria-label="Cambiar tema" />
         </MudTooltip>
 
@@ -98,8 +98,8 @@
             <Authorized>
                 <MudMenu @bind-Open="_userMenuOpen" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="true">
                     <ActivatorContent>
-                        <div class="sigie-user-trigger ml-2" @onclick="@(() => _userMenuOpen = !_userMenuOpen)" @onclick:stopPropagation="true">
-                            <MudAvatar Size="Size.Small" Style="background:var(--sigie-plano);color:#fff;font-weight:700">
+                        <div class="sipau-user-trigger ml-2" @onclick="@(() => _userMenuOpen = !_userMenuOpen)" @onclick:stopPropagation="true">
+                            <MudAvatar Size="Size.Small" Style="background:var(--sipau-plano);color:#fff;font-weight:700">
                                 @Initials(auth.User)
                             </MudAvatar>
                             <span class="d-none d-sm-flex">@DisplayName(auth.User)</span>
@@ -109,7 +109,7 @@
                     <ChildContent>
                         <div class="px-4 py-3" style="min-width:250px">
                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
-                                <MudAvatar Style="background:var(--sigie-plano);color:#fff;font-weight:700">
+                                <MudAvatar Style="background:var(--sipau-plano);color:#fff;font-weight:700">
                                     @Initials(auth.User)
                                 </MudAvatar>
                                 <div>
@@ -125,7 +125,7 @@
                         <MudDivider />
                         <form method="post" action="/Account/Logout" style="margin:0">
                             <AntiforgeryToken />
-                            <button type="submit" class="sigie-logout-btn">
+                            <button type="submit" class="sipau-logout-btn">
                                 <MudIcon Icon="@Icons.Material.Filled.Logout" Size="Size.Small" Class="mr-2" />
                                 Cerrar sesión
                             </button>
@@ -146,7 +146,7 @@
     <MudMainContent>
         <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-6">
             @* Keyed on the route so the entrance animation replays on every navigation. *@
-            <div class="sigie-page" @key="Nav.Uri">
+            <div class="sipau-page" @key="Nav.Uri">
                 @Body
             </div>
         </MudContainer>

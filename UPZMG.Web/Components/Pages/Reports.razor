@@ -4,7 +4,7 @@
 @inject AuthenticationStateProvider AuthState
 @inject ISnackbar Snackbar
 
-<PageTitle>Reportes 911 — SIGIE</PageTitle>
+<PageTitle>Reportes 911 — SIPAU</PageTitle>
 
 <PageHeader Eyebrow="Reportes oficiales" Title="Reportes 911 / SII" Subtitle="Captura de los formatos estadísticos oficiales, versionados por JSON" />
 
@@ -32,9 +32,9 @@
             @foreach (var t in _templates)
             {
                 <MudItem xs="12" sm="6" md="4">
-                    <MudPaper Elevation="0" Class="pa-5 d-flex flex-column sigie-lift" Style="height:100%">
+                    <MudPaper Elevation="0" Class="pa-5 d-flex flex-column sipau-lift" Style="height:100%">
                         <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
-                            <span class="sigie-icon-badge teal">
+                            <span class="sipau-icon-badge teal">
                                 <MudIcon Icon="@Icons.Material.Filled.Description" />
                             </span>
                             <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">

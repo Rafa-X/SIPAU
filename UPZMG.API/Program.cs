@@ -32,6 +32,7 @@ try
     builder.Services.AddScoped<ClassGroupsRepository>();
     builder.Services.AddScoped<DashboardRepository>();
     builder.Services.AddScoped<PeriodsRepository>();
+    builder.Services.AddScoped<ChartsRepository>();
 
     var jwt = builder.Configuration.GetSection("Jwt");
     var jwtSigningKey = GetRequiredSecret(builder.Configuration, "Jwt:Key", 32, startupLogger);

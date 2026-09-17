@@ -4,7 +4,7 @@
 
 --Email: admin@upzmg.local
 --Password: --Admin123!
---Email: teacher@upzmg.local
+--Email: docente_01@upzmg.local
 --Password: --Teacher123!
 --Email: control.escolar@upzmg.local / servicios.estudiantiles@upzmg.local / recursos.humanos@upzmg.local / recursos.materiales@upzmg.local
 --Password: --User123!
@@ -26,6 +26,9 @@ DECLARE @RecursosMaterialesRoleId   UNIQUEIDENTIFIER;
 
 DECLARE @AdminEmployeeId   UNIQUEIDENTIFIER;
 DECLARE @TeacherEmployeeId UNIQUEIDENTIFIER;
+DECLARE @TeacherTwoEmployeeId UNIQUEIDENTIFIER;
+DECLARE @TeacherThreeEmployeeId UNIQUEIDENTIFIER;
+DECLARE @TeacherFourEmployeeId UNIQUEIDENTIFIER;
 DECLARE @ControlEscolarEmployeeId       UNIQUEIDENTIFIER;
 DECLARE @ServiciosEstudiantilesEmployeeId UNIQUEIDENTIFIER;
 DECLARE @RecursosHumanosEmployeeId  UNIQUEIDENTIFIER;
@@ -80,7 +83,34 @@ BEGIN
     INSERT INTO employees
         (Id, EmployeeNumber, FullName, Email, Rfc, Curp, Gender, BirthDate, HighestEducationLevel, TitleStatus, HasDisability, ExternalXPYears, FirstHiredDate, IsTeacher)
     VALUES
-        (@TeacherEmployeeId, 1002, 'Docente de Prueba', 'teacher@upzmg.local', 'DOCJ850202BB2', 'DOCJ850202HDFRRS02', 'M', '1985-02-02', 3, 0, 0, 8, '2016-08-01', 1);
+        (@TeacherEmployeeId, 2001, 'Mtra. Laura Mendoza Ruiz', 'docente_01@upzmg.local', 'MERL800312AB1', 'MERL800312MJCNZR01', 'M', '1980-03-12', 7, 0, 0, 8, '2015-08-17', 1);
+END;
+
+BEGIN
+    SET @TeacherTwoEmployeeId = NEWID();
+
+    INSERT INTO employees
+        (Id, EmployeeNumber, FullName, Email, Rfc, Curp, Gender, BirthDate, HighestEducationLevel, TitleStatus, HasDisability, ExternalXPYears, FirstHiredDate, IsTeacher)
+    VALUES
+        (@TeacherTwoEmployeeId, 2002, 'Dr. Ricardo Salinas Ortega', 'docente_02@upzmg.local', 'SAOR750921CD2', 'SAOR750921HJCLRC02', 'H', '1975-09-21', 9, 0, 0, 12, '2012-01-09', 1);
+END;
+
+BEGIN
+    SET @TeacherThreeEmployeeId = NEWID();
+
+    INSERT INTO employees
+        (Id, EmployeeNumber, FullName, Email, Rfc, Curp, Gender, BirthDate, HighestEducationLevel, TitleStatus, HasDisability, ExternalXPYears, FirstHiredDate, IsTeacher)
+    VALUES
+        (@TeacherThreeEmployeeId, 2003, 'Ing. Pablo Navarro Cruz', 'docente_03@upzmg.local', 'NACP880105EF3', 'NACP880105HJCVRB03', 'H', '1988-01-05', 4, 0, 0, 4, '2019-08-19', 1);
+END;
+
+BEGIN
+    SET @TeacherFourEmployeeId = NEWID();
+
+    INSERT INTO employees
+        (Id, EmployeeNumber, FullName, Email, Rfc, Curp, Gender, BirthDate, HighestEducationLevel, TitleStatus, HasDisability, ExternalXPYears, FirstHiredDate, IsTeacher)
+    VALUES
+        (@TeacherFourEmployeeId, 2004, 'Mtra. Elena Castillo Vega', 'docente_04@upzmg.local', 'CAVE850614GH4', 'CAVE850614MJCSGL04', 'M', '1985-06-14', 7, 0, 0, 6, '2017-01-16', 1);
 END;
 
 BEGIN
@@ -131,7 +161,7 @@ BEGIN
     SET @TeacherUserId = NEWID();
 
     INSERT INTO systemUser (Id, EmployeeId, UserName, Email, Password, IsActive, LastLogin)
-    VALUES (@TeacherUserId, @TeacherEmployeeId, 'Teacher', 'teacher@upzmg.local', @TeacherPasswordHash, 1, GETUTCDATE());
+    VALUES (@TeacherUserId, @TeacherEmployeeId, 'LauraMendoza', 'docente_01@upzmg.local', @TeacherPasswordHash, 1, GETUTCDATE());
 END
 
 BEGIN
@@ -168,7 +198,7 @@ BEGIN
     VALUES (NEWID(), @AdminUserId, @AdminRoleId);
 END;
 
--- "Docente de Prueba" reports under Dirección Académica (was the test-only Teacher role)
+-- "Mtra. Laura Mendoza Ruiz" reports under Dirección Académica.
 BEGIN
     INSERT INTO userRoles (Id, UserId, RoleId)
     VALUES (NEWID(), @TeacherUserId, @DireccionAcademicaRoleId);
@@ -329,6 +359,9 @@ END;
 
 DECLARE @ClassGroupProgramming UNIQUEIDENTIFIER = '99999999-9999-9999-9999-999999999701';
 DECLARE @ClassGroupMathematics UNIQUEIDENTIFIER = '99999999-9999-9999-9999-999999999702';
+DECLARE @ClassGroupBiology UNIQUEIDENTIFIER = '99999999-9999-9999-9999-999999999703';
+DECLARE @ClassGroupPhysics UNIQUEIDENTIFIER = '99999999-9999-9999-9999-999999999704';
+DECLARE @ClassGroupDatabases UNIQUEIDENTIFIER = '99999999-9999-9999-9999-999999999705';
 
 BEGIN
     INSERT INTO classGroups
@@ -340,12 +373,29 @@ BEGIN
          30, 1, 4, @Period2025A, @CareerComputing, @TeacherEmployeeId, @AsignatureProgramming, 0),
         (@ClassGroupMathematics, @FacilityClassroom,
          '[{"Day":"Martes y jueves","Time":"09:00-11:00 hrs"}]',
-         35, 1, 4, @Period2025A, @CareerIndustrial, @TeacherEmployeeId, @AsignatureMathematics, 1);
+         35, 1, 4, @Period2025A, @CareerIndustrial, @TeacherTwoEmployeeId, @AsignatureMathematics, 1),
+        (@ClassGroupBiology, @FacilityLaboratory,
+         '[{"Day":"Lunes y miércoles","Time":"13:00-15:00 hrs"}]',
+         30, 1, 4, @Period2025A, @CareerBiomedic, @TeacherThreeEmployeeId, @AsignatureBiology, 0),
+        (@ClassGroupPhysics, @FacilityClassroom,
+         '[{"Day":"Martes y jueves","Time":"11:00-13:00 hrs"}]',
+         35, 1, 4, @Period2025A, @CareerBiomedic, @TeacherThreeEmployeeId, @AsignaturePhysics, 1),
+        (@ClassGroupDatabases, @FacilityLaboratory,
+         '[{"Day":"Viernes","Time":"09:00-13:00 hrs"}]',
+         30, 1, 4, @Period2025A, @CareerComputing, @TeacherFourEmployeeId, @AsignatureDatabases, 0);
 END;
 
 -- 14) Students for testing
 DECLARE @StudentOneId UNIQUEIDENTIFIER; SET @StudentOneId = NEWID();
 DECLARE @StudentTwoId UNIQUEIDENTIFIER; SET @StudentTwoId = NEWID();
+DECLARE @StudentThreeId UNIQUEIDENTIFIER; SET @StudentThreeId = NEWID();
+DECLARE @StudentFourId UNIQUEIDENTIFIER; SET @StudentFourId = NEWID();
+DECLARE @StudentFiveId UNIQUEIDENTIFIER; SET @StudentFiveId = NEWID();
+DECLARE @StudentSixId UNIQUEIDENTIFIER; SET @StudentSixId = NEWID();
+DECLARE @StudentSevenId UNIQUEIDENTIFIER; SET @StudentSevenId = NEWID();
+DECLARE @StudentEightId UNIQUEIDENTIFIER; SET @StudentEightId = NEWID();
+DECLARE @StudentNineId UNIQUEIDENTIFIER; SET @StudentNineId = NEWID();
+DECLARE @StudentTenId UNIQUEIDENTIFIER; SET @StudentTenId = NEWID();
 
 BEGIN
     INSERT INTO students
@@ -356,7 +406,15 @@ BEGIN
          Address)
     VALUES
         (@StudentOneId, '20250001', 'ALOC950101HDFLRA09', 'Andrea', 'Lucia', 'Lopez', '1995-01-01', 'M', @CareerComputing, @Period2025A, 0, 0, @Language1, '97000', 0, 0, 0, 0, 'México', 'Chiapas', 'Calle 60 #123, Mérida, Yucatán'),
-        (@StudentTwoId, '20250002', 'ROGC960202HDFNTA10', 'Roberto', 'Carlos', 'García', '1996-02-02', 'H', @CareerIndustrial, @Period2025B, 0, 0, @Language2, '97010', 0, 0, 0, 1, 'México', 'Yucatán', 'Calle 20 #45, Valladolid, Yucatán');
+        (@StudentTwoId, '20250002', 'ROGC960202HDFNTA10', 'Roberto', 'Carlos', 'García', '1996-02-02', 'H', @CareerIndustrial, @Period2025B, 0, 0, @Language2, '97010', 0, 0, 0, 1, 'México', 'Yucatán', 'Calle 20 #45, Valladolid, Yucatán'),
+        (@StudentThreeId, '20250003', 'ANRM970303MDFLRA11', 'Ana', 'Rosa', 'Martinez', '1997-03-03', 'M', @CareerBiomedic, @Period2025A, 0, 0, @Language3, '97020', 1, 0, 0, 0, 'Mexico', 'Jalisco', 'Calle 10 #12, Guadalajara'),
+        (@StudentFourId, '20250004', 'JPLM980404HDFNTA12', 'Juan', 'Pablo', 'Lopez', '1998-04-04', 'H', @CareerComputing, @Period2025A, 0, 0, @Language4, '97030', 2, 0, 0, 1, 'Mexico', 'Jalisco', 'Calle 11 #13, Zapopan'),
+        (@StudentFiveId, '20250005', 'MCRS990505MDFLRA13', 'Maria', 'Cristina', 'Ramos', '1999-05-05', 'M', @CareerIndustrial, @Period2025A, 0, 0, @Language1, '97040', 0, 0, 0, 0, 'Mexico', 'Puebla', 'Calle 12 #14, Puebla'),
+        (@StudentSixId, '20250006', 'DAGS000606HDFNTA14', 'Diego', 'Alberto', 'Gomez', '2000-06-06', 'H', @CareerBiomedic, @Period2025A, 0, 0, @Language2, '97050', 1, 0, 0, 1, 'Mexico', 'Puebla', 'Calle 13 #15, Puebla'),
+        (@StudentSevenId, '20250007', 'LFHS010707MDFLRA15', 'Laura', 'Fernanda', 'Hernandez', '2001-07-07', 'M', @CareerComputing, @Period2025A, 0, 0, @Language3, '97060', 2, 0, 0, 0, 'Mexico', 'Oaxaca', 'Calle 14 #16, Oaxaca'),
+        (@StudentEightId, '20250008', 'MTRJ020808HDFNTA16', 'Mateo', 'Rafael', 'Torres', '2002-08-08', 'H', @CareerIndustrial, @Period2025A, 0, 0, @Language4, '97070', 0, 0, 0, 0, 'Mexico', 'Oaxaca', 'Calle 15 #17, Oaxaca'),
+        (@StudentNineId, '20250009', 'SVPM030909MDFLRA17', 'Sofia', 'Valeria', 'Perez', '2003-09-09', 'M', @CareerBiomedic, @Period2025A, 0, 0, @Language1, '97080', 1, 0, 0, 1, 'Mexico', 'Sonora', 'Calle 16 #18, Hermosillo'),
+        (@StudentTenId, '20250010', 'EMCL040410HDFNTA18', 'Emilio', 'Manuel', 'Castillo', '2004-10-10', 'H', @CareerComputing, @Period2025A, 0, 0, @Language2, '97090', 2, 0, 0, 0, 'Mexico', 'Sonora', 'Calle 17 #19, Hermosillo');
 END;
 
 BEGIN

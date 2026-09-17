@@ -4,7 +4,7 @@ namespace UPZMG.Web.Models.Settings;
 
 /// <summary>
 /// ViewModel for the institutional configuration form (mock, no real persistence).
-/// Mirrors key fields of academic.configuracion_institucional from the SIGIE design.
+/// Mirrors key fields of academic.configuracion_institucional from the SIPAU design.
 /// These master data feed the headers of every generated report.
 /// </summary>
 public class InstitutionSettingsViewModel

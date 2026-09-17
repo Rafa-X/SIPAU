@@ -2,12 +2,12 @@
 
     @if (HasHeader)
     {
-        <div class="sigie-card-head">
+        <div class="sipau-card-head">
             @if (!string.IsNullOrEmpty(Icon))
             {
-                <span class="sigie-icon-badge"><MudIcon Icon="@Icon" /></span>
+                <span class="sipau-icon-badge"><MudIcon Icon="@Icon" /></span>
             }
-            <div class="sigie-card-titles">
+            <div class="sipau-card-titles">
                 <MudText Typo="Typo.h6">@Title</MudText>
                 @if (!string.IsNullOrEmpty(Subtitle))
                 {
@@ -16,16 +16,16 @@
             </div>
             @if (Actions is not null)
             {
-                <div class="sigie-card-actions">@Actions</div>
+                <div class="sipau-card-actions">@Actions</div>
             }
         </div>
     }
 
-    <div class="sigie-card-body">@ChildContent</div>
+    <div class="sipau-card-body">@ChildContent</div>
 
     @if (Footer is not null)
     {
-        <div class="sigie-card-foot">@Footer</div>
+        <div class="sipau-card-foot">@Footer</div>
     }
 
 </MudPaper>
@@ -58,10 +58,10 @@
 
     private string RootClass => string.Join(' ', new[]
     {
-        "sigie-card",
-        FullHeight ? "sigie-card-fill" : null,
-        Flush ? "sigie-card-flush" : null,
-        Interactive ? "sigie-lift" : null,
+        "sipau-card",
+        FullHeight ? "sipau-card-fill" : null,
+        Flush ? "sipau-card-flush" : null,
+        Interactive ? "sipau-lift" : null,
         Class,
     }.Where(c => !string.IsNullOrEmpty(c)));
 }

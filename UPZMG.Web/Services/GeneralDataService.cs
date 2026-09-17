@@ -9,11 +9,24 @@ public sealed class GeneralDataService(ISecurityService securityService): IGener
 {
     private static readonly JsonSerializerOptions ResponseOptions = new(JsonSerializerDefaults.Web);
 
-    public async Task<IReadOnlyList<LookupOption>> GetCareersAsync()
+    public async Task<IReadOnlyList<Careers>> GetCareersAsync()
+    {
+        var requesterKey = await securityService.GetRequesterKeyAsync();
+        var response = await securityService.SendGetRequestAsync<IReadOnlyList<Careers>>(
+            "general-data/lookups/careers-selectable", requesterKey);
+
+        if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<IReadOnlyList<Careers>>(response.Result, ResponseOptions) ?? [];
+        }
+        return [];
+    }
+
+    public async Task<IReadOnlyList<LookupOption>> GetCareersSelectableAsync()
     {
         var requesterKey = await securityService.GetRequesterKeyAsync();
         var response = await securityService.SendGetRequestAsync<IReadOnlyList<LookupOption>>(
-            "general-data/lookups/careers", requesterKey);
+            "general-data/lookups/careers-selectable", requesterKey);
 
         if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
         {

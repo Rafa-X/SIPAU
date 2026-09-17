@@ -12,21 +12,21 @@
 @using System.Globalization
 @using UPZMG.Web.Components.Shared.Charts
 
-<div class="sigie-chart" style="@($"--sigie-chart-h:{Height}px")">
+<div id="@Id" class="sipau-chart" style="@($"--sipau-chart-h:{Height}px")">
 
     @if (ShowLegend && Series.Count > 0)
     {
-        <div class="sigie-chart-legend">
+        <div class="sipau-chart-legend">
             @foreach (var s in Series)
             {
-                <span class="sigie-chart-key">
+                <span class="sipau-chart-key">
                     <i class="@(s.Dashed ? "dash" : null)" style="@($"background:{s.Color}")"></i>@s.Name
                 </span>
             }
         </div>
     }
 
-    <div class="sigie-chart-yaxis">
+    <div class="sipau-chart-yaxis">
         @foreach (var tick in _ticks)
         {
             <span style="@Pct("top", _scale.Y(tick) / Height * 100)">
@@ -35,8 +35,8 @@
         }
     </div>
 
-    <div class="sigie-chart-plot" @onmouseleave="() => _hover = null">
-        <svg class="sigie-chart-svg" viewBox="@($"0 0 {VbW} {Height}")" preserveAspectRatio="none"
+    <div class="sipau-chart-plot" @onmouseleave="() => _hover = null">
+        <svg class="sipau-chart-svg" viewBox="@($"0 0 {VbW} {Height}")" preserveAspectRatio="none"
              role="img" aria-label="@AriaLabel">
 
             <defs>
@@ -53,27 +53,27 @@
             @foreach (var tick in _ticks)
             {
                 var y = ChartScale.N(_scale.Y(tick));
-                <line class="sigie-chart-grid" x1="0" x2="@VbW" y1="@y" y2="@y" vector-effect="non-scaling-stroke" />
+                <line class="sipau-chart-grid" x1="0" x2="@VbW" y1="@y" y2="@y" vector-effect="non-scaling-stroke" />
             }
 
             @* ---- modelled region ---- *@
             @if (ForecastX is { } fx)
             {
-                <rect class="sigie-chart-forecast" x="@ChartScale.N(fx)" y="0"
+                <rect class="sipau-chart-forecast" x="@ChartScale.N(fx)" y="0"
                       width="@ChartScale.N(VbW - fx)" height="@Height" />
-                <line class="sigie-chart-divider" x1="@ChartScale.N(fx)" x2="@ChartScale.N(fx)"
+                <line class="sipau-chart-divider" x1="@ChartScale.N(fx)" x2="@ChartScale.N(fx)"
                       y1="0" y2="@Height" vector-effect="non-scaling-stroke" />
             }
 
             @* ---- areas first, then strokes ---- *@
             @foreach (var (s, i) in Series.Select((s, i) => (s, i)).Where(t => t.s.Filled))
             {
-                <path class="sigie-chart-area" d="@AreaPath(s)" fill="@($"url(#{_id}-fill-{i})")" />
+                <path class="sipau-chart-area" d="@AreaPath(s)" fill="@($"url(#{_id}-fill-{i})")" />
             }
 
             @foreach (var s in Series)
             {
-                <path class="@($"sigie-chart-line{(s.Dashed ? " dashed" : null)}")" d="@LinePath(s)"
+                <path class="@($"sipau-chart-line{(s.Dashed ? " dashed" : null)}")" d="@LinePath(s)"
                       stroke="@s.Color" fill="none" vector-effect="non-scaling-stroke" />
             }
 
@@ -81,7 +81,7 @@
             @if (_hover is { } h)
             {
                 var hx = ChartScale.N(_scale.X(h, Labels.Count));
-                <line class="sigie-chart-guide" x1="@hx" x2="@hx" y1="0" y2="@Height" vector-effect="non-scaling-stroke" />
+                <line class="sipau-chart-guide" x1="@hx" x2="@hx" y1="0" y2="@Height" vector-effect="non-scaling-stroke" />
             }
 
             @* ---- transparent hover bands, on top so they catch the pointer ---- *@
@@ -89,7 +89,7 @@
             {
                 var index = i;
                 var bw = _scale.Width / Math.Max(1, Labels.Count - 1);
-                <rect class="sigie-chart-band" x="@ChartScale.N(_scale.X(i, Labels.Count) - bw / 2)" y="0"
+                <rect class="sipau-chart-band" x="@ChartScale.N(_scale.X(i, Labels.Count) - bw / 2)" y="0"
                       width="@ChartScale.N(bw)" height="@Height"
                       @onmouseenter="() => _hover = index" />
             }
@@ -100,15 +100,15 @@
         {
             @foreach (var s in Series.Where(s => hd < s.Values.Count))
             {
-                <span class="sigie-chart-dot"
+                <span class="sipau-chart-dot"
                       style="@($"{Pct("left", _scale.X(hd, Labels.Count) / VbW * 100)};{Pct("top", _scale.Y(s.Values[hd]) / Height * 100)};background:{s.Color}")"></span>
             }
 
-            <div class="sigie-chart-tip" style="@Pct("left", Math.Clamp(_scale.X(hd, Labels.Count) / VbW * 100, 6, 94))">
-                <div class="sigie-chart-tip-head">@Labels[hd]</div>
+            <div class="sipau-chart-tip" style="@Pct("left", Math.Clamp(_scale.X(hd, Labels.Count) / VbW * 100, 6, 94))">
+                <div class="sipau-chart-tip-head">@Labels[hd]</div>
                 @foreach (var s in Series.Where(s => hd < s.Values.Count))
                 {
-                    <div class="sigie-chart-tip-row">
+                    <div class="sipau-chart-tip-row">
                         <i style="@($"background:{s.Color}")"></i>
                         <span>@s.Name</span>
                         <b>@s.Values[hd].ToString(ValueFormat, CultureInfo.CurrentCulture)@Unit</b>
@@ -119,11 +119,11 @@
 
         @if (ForecastX is { } tagX)
         {
-            <span class="sigie-chart-tag" style="@Pct("left", tagX / VbW * 100)">Pronóstico</span>
+            <span class="sipau-chart-tag" style="@Pct("left", tagX / VbW * 100)">Pronóstico</span>
         }
     </div>
 
-    <div class="sigie-chart-xaxis">
+    <div class="sipau-chart-xaxis">
         @for (int i = 0; i < Labels.Count; i++)
         {
             if (Labels.Count > 10 && i % 2 == 1) { continue; }
@@ -151,6 +151,7 @@
     [Parameter] public string? Unit { get; set; }
     [Parameter] public bool ShowLegend { get; set; } = true;
     [Parameter] public string AriaLabel { get; set; } = "Gráfica de tendencia";
+    [Parameter] public string? Id { get; set; }
 
     private const int VbW = 1000;
 

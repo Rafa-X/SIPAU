@@ -1,21 +1,21 @@
-<MudPaper Elevation="0" Class="sigie-vano" Style="height:100%">
-    <div class="sigie-vano-label">@Title</div>
+<MudPaper Elevation="0" Class="sipau-vano" Style="height:100%">
+    <div class="sipau-vano-label">@Title</div>
 
-    <div class="sigie-vano-figure">@Value</div>
+    <div class="sipau-vano-figure">@Value</div>
 
     @if (Spark is { Length: > 1 })
     {
-        <svg class="sigie-spark mt-3" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+        <svg class="sipau-spark mt-3" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true" focusable="false">
             <polyline points="@SparkPoints" vector-effect="non-scaling-stroke" />
         </svg>
     }
 
-    <div class="sigie-vano-foot">
-        <span class="sigie-vano-rule"></span>
+    <div class="sipau-vano-foot">
+        <span class="sipau-vano-rule"></span>
 
         @if (Delta is { } d)
         {
-            <span class="sigie-delta @(d > 0 ? "up" : d < 0 ? "down" : "flat")">
+            <span class="sipau-delta @(d > 0 ? "up" : d < 0 ? "down" : "flat")">
                 @($"{(d > 0 ? "+" : "")}{d:0.#}%")
             </span>
         }

@@ -6,7 +6,7 @@
 @inject ISecurityService SecuritySvc
 @inject ISnackbar Snackbar
 
-<PageTitle>Periodos escolares — SIGIE</PageTitle>
+<PageTitle>Periodos escolares — SIPAU</PageTitle>
 
 <PageHeader Eyebrow="Administración" Title="Periodos escolares"
             Subtitle="Ciclos y cuatrimestres del sistema. El periodo activo determina a qué ciclo se asocian las capturas y los reportes."
@@ -52,7 +52,7 @@
                         <PropertyColumn Property="x => x.SchoolCycle" Title="Año" />
                         <PropertyColumn Property="x => x.StartDate" Title="Inicio" Format="dd/MM/yyyy" />
                         <PropertyColumn Property="x => x.EndDate" Title="Fin" Format="dd/MM/yyyy" />
-                        <TemplateColumn Title="Estado" CellClass="sigie-cell-end" HeaderClass="sigie-cell-end" Sortable="false">
+                        <TemplateColumn Title="Estado" CellClass="sipau-cell-end" HeaderClass="sipau-cell-end" Sortable="false">
                             <CellTemplate>
                                 @if (context.Item.IsActive)
                                 {

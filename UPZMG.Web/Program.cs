@@ -66,6 +66,7 @@ try
     builder.Services.AddSingleton<ISettingsService, SettingsService>();
     builder.Services.AddScoped<IReportsService, ReportsService>();
     builder.Services.AddSingleton<IIntelligenceService, IntelligenceService>();
+    builder.Services.AddScoped<IChartsService, ChartsService>();
 
     builder.Services.AddAuthorization();
 

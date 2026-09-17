@@ -1,7 +1,5 @@
-using UPZMG.Implementations;
 using UPZMG.Implementations.DataCapture;
-using UPZMG.Implementations.Permissions;
-using UPZMG.Implementations.Roles;
+using UPZMG.Implementations.Charts;
 using UPZMG.Persistence.Models;
 
 namespace UPZMG.Web.Services;
@@ -14,4 +12,5 @@ public interface IStudentsService
     //Task<Student?> UpdateStudent(UpdateStudent request);
     Task<bool> DeleteStudent(Guid studentId);
     Task<StudentsListResponse> GetStudentsListAsync(StudentsListRequest request);
+    Task<List<StudentsAges>> GetStudentsAgesAsync(bool newOnly = false);
 }

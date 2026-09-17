@@ -2,7 +2,7 @@ namespace UPZMG.Web.Models;
 
 /// <summary>
 /// ViewModel for the annual financial summary form (mock, no real persistence).
-/// Mirrors key fields of finanzas.finanzas_anuales from the SIGIE design.
+/// Mirrors key fields of finanzas.finanzas_anuales from the SIPAU design.
 /// </summary>
 public class FinanceFormViewModel
 {

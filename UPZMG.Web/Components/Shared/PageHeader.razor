@@ -1,23 +1,23 @@
-<div class="sigie-pagehead">
-    <div class="sigie-pagehead-main">
+<div class="sipau-pagehead">
+    <div class="sipau-pagehead-main">
         @if (!string.IsNullOrEmpty(BackHref))
         {
-            <MudButton Class="sigie-pagehead-back mb-3" Size="Size.Small"
+            <MudButton Class="sipau-pagehead-back mb-3" Size="Size.Small"
                        StartIcon="@Icons.Material.Filled.ArrowBackIosNew"
                        OnClick="@(() => Nav.NavigateTo(BackHref))">Volver</MudButton>
         }
 
-        <MudText Typo="Typo.h4" Class="sigie-title">@Title</MudText>
+        <MudText Typo="Typo.h4" Class="sipau-title">@Title</MudText>
 
         @if (!string.IsNullOrEmpty(Subtitle))
         {
-            <p class="sigie-pagehead-sub">@Subtitle</p>
+            <p class="sipau-pagehead-sub">@Subtitle</p>
         }
     </div>
 
     @if (Actions is not null)
     {
-        <div class="sigie-pagehead-actions">@Actions</div>
+        <div class="sipau-pagehead-actions">@Actions</div>
     }
 </div>
 

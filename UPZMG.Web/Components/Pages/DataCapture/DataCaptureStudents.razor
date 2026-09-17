@@ -9,7 +9,7 @@
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
 
-<PageTitle>Captura de Alumnos — SIGIE</PageTitle>
+<PageTitle>Captura de Alumnos — SIPAU</PageTitle>
 
 <PageHeader Eyebrow="Captura de datos" Title="Captura de Alumnos" Subtitle="Registro individual de alumnos del periodo activo" BackHref="/datacapture" />
 
@@ -168,7 +168,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var careersTask = _generalService.GetCareersAsync();
+        var careersTask = _generalService.GetCareersSelectableAsync();
         var periodsTask = _generalService.GetPeriodsAsync();
         await Task.WhenAll(careersTask, periodsTask);
 
