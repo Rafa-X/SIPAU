@@ -56,7 +56,7 @@ namespace UPZMG.Persistence.Migrations
 
                     b.HasIndex("WithdrawReasonId");
 
-                    b.ToTable("registrations", (string)null);
+                    b.ToTable("assignatureRegistrations", (string)null);
                 });
 
             modelBuilder.Entity("UPZMG.Persistence.Models.Asignatures", b =>
@@ -98,6 +98,10 @@ namespace UPZMG.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("Alias")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<int>("DurationInPeriods")
                         .HasColumnType("int");
 
@@ -114,8 +118,7 @@ namespace UPZMG.Persistence.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("Name")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("PeriodType")
                         .HasColumnType("int");

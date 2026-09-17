@@ -20,4 +20,17 @@ public sealed class ChartsService(ISecurityService securityService): IChartsServ
         }
         return [];
     }
+
+    public async Task<List<GroupDistributionCareer>> GetGroupsDistributionByCareerAsync()
+    {
+        var requesterKey = await securityService.GetRequesterKeyAsync();
+        var response = await securityService.SendGetRequestAsync<IReadOnlyList<GroupDistributionCareer>>(
+            "charts/groups-distribution-career", requesterKey);
+
+        if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<List<GroupDistributionCareer>>(response.Result, ResponseOptions) ?? [];
+        }
+        return [];
+    }
 }

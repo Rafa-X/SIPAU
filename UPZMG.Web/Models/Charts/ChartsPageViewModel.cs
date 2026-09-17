@@ -9,6 +9,7 @@ public sealed class ChartsPageViewModel
 {
     public EnrollmentChartModel Enrollment { get; private init; } = new();
     public CategoryChartModel CareerDistribution { get; set; } = new();
+    public GroupDistributionChartModel GroupDistributionByCareer { get; set; } = new();
 }
 
 public sealed class EnrollmentChartModel
@@ -26,6 +27,13 @@ public sealed class CategoryChartModel
     public List<ChartSeriesData> Series { get; set; } = [];
     public string TopLabel { get; set; } = "Sin datos";
     public double Total { get; set; }
+}
+
+public sealed class GroupDistributionChartModel
+{
+    public List<string> Labels { get; set; } = [];
+    public List<ChartSeriesData> Series { get; set; } = [];
+    public string TopLabel { get; set; } = "Sin datos";
 }
 
 public sealed class ChartsStudentsModel

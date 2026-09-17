@@ -265,14 +265,16 @@ END;
 DECLARE @CareerComputing UNIQUEIDENTIFIER; SET @CareerComputing = '11111111-1111-1111-1111-111111111111';
 DECLARE @CareerBiomedic UNIQUEIDENTIFIER; SET @CareerBiomedic = '11111111-1111-1111-1111-111111111112';
 DECLARE @CareerIndustrial UNIQUEIDENTIFIER; SET @CareerIndustrial = '11111111-1111-1111-1111-111111111113';
+DECLARE @CareerRenewableEnergy UNIQUEIDENTIFIER; SET @CareerRenewableEnergy = '11111111-1111-1111-1111-111111111114';
 
 BEGIN
     INSERT INTO careers
-        (Id, Name, SEPCode, EducationalLevel, Modality, PeriodType, DurationInPeriods, DurationInYears, TotalCredits, PlanCreadtedDate, LastUpdatedDate)
+        (Id, Alias, Name, SEPCode, EducationalLevel, Modality, PeriodType, DurationInPeriods, DurationInYears, TotalCredits, PlanCreadtedDate, LastUpdatedDate)
     VALUES
-        (@CareerComputing, 'Ingeniería en Sistemas Computacionales', 'COMP-001', 4, 0, 0, 15, 5, 240, '2024-01-01', '2024-01-01'),
-        (@CareerBiomedic, 'Ingeniería en Biotecnología', 'BIOM-001', 4, 0, 0, 15, 5, 240, '2024-01-01', '2024-01-01'),
-        (@CareerIndustrial, 'Ingeniería Industrial', 'IND-001', 4, 0, 0, 15, 5, 240, '2024-01-01', '2024-01-01');
+        (@CareerComputing, 'INCO', 'Ingeniería en Sistemas Computacionales', 'COMP-001', 4, 0, 0, 15, 5, 240, '2024-01-01', '2024-01-01'),
+        (@CareerBiomedic, 'IBT', 'Ingeniería en Biotecnología', 'BIOM-001', 4, 0, 0, 15, 5, 240, '2024-01-01', '2024-01-01'),
+        (@CareerIndustrial, 'IIND', 'Ingeniería Industrial', 'IND-001', 4, 0, 0, 15, 5, 240, '2024-01-01', '2024-01-01'),
+        (@CareerRenewableEnergy, 'IER', 'Ingeniería en Energías Renovables', 'ENER-001', 4, 0, 0, 15, 5, 240, '2024-01-01', '2024-01-01');
 END;
 
 -- 9) Internal Areas
@@ -362,6 +364,7 @@ DECLARE @ClassGroupMathematics UNIQUEIDENTIFIER = '99999999-9999-9999-9999-99999
 DECLARE @ClassGroupBiology UNIQUEIDENTIFIER = '99999999-9999-9999-9999-999999999703';
 DECLARE @ClassGroupPhysics UNIQUEIDENTIFIER = '99999999-9999-9999-9999-999999999704';
 DECLARE @ClassGroupDatabases UNIQUEIDENTIFIER = '99999999-9999-9999-9999-999999999705';
+DECLARE @ClassGroupIndustrialSafety UNIQUEIDENTIFIER = '99999999-9999-9999-9999-999999999706';
 
 BEGIN
     INSERT INTO classGroups
@@ -370,19 +373,22 @@ BEGIN
     VALUES
         (@ClassGroupProgramming, @FacilityLaboratory,
          '[{"Day":"Lunes y miércoles","Time":"11:00-13:00 hrs"}]',
-         30, 1, 4, @Period2025A, @CareerComputing, @TeacherEmployeeId, @AsignatureProgramming, 0),
+         30, 2, 4, @Period2025A, @CareerComputing, @TeacherEmployeeId, @AsignatureProgramming, 0),
         (@ClassGroupMathematics, @FacilityClassroom,
          '[{"Day":"Martes y jueves","Time":"09:00-11:00 hrs"}]',
-         35, 1, 4, @Period2025A, @CareerIndustrial, @TeacherTwoEmployeeId, @AsignatureMathematics, 1),
+         35, 2, 4, @Period2025A, @CareerIndustrial, @TeacherTwoEmployeeId, @AsignatureMathematics, 1),
         (@ClassGroupBiology, @FacilityLaboratory,
          '[{"Day":"Lunes y miércoles","Time":"13:00-15:00 hrs"}]',
-         30, 1, 4, @Period2025A, @CareerBiomedic, @TeacherThreeEmployeeId, @AsignatureBiology, 0),
+         30, 2, 4, @Period2025A, @CareerBiomedic, @TeacherThreeEmployeeId, @AsignatureBiology, 0),
         (@ClassGroupPhysics, @FacilityClassroom,
          '[{"Day":"Martes y jueves","Time":"11:00-13:00 hrs"}]',
-         35, 1, 4, @Period2025A, @CareerBiomedic, @TeacherThreeEmployeeId, @AsignaturePhysics, 1),
+         35, 2, 4, @Period2025A, @CareerBiomedic, @TeacherThreeEmployeeId, @AsignaturePhysics, 1),
         (@ClassGroupDatabases, @FacilityLaboratory,
          '[{"Day":"Viernes","Time":"09:00-13:00 hrs"}]',
-         30, 1, 4, @Period2025A, @CareerComputing, @TeacherFourEmployeeId, @AsignatureDatabases, 0);
+         30, 2, 4, @Period2025A, @CareerComputing, @TeacherFourEmployeeId, @AsignatureDatabases, 0),
+        (@ClassGroupIndustrialSafety, @FacilityClassroom,
+         '[{"Day":"Viernes","Time":"11:00-13:00 hrs"}]',
+         35, 2, 2, @Period2025A, @CareerIndustrial, @TeacherTwoEmployeeId, @AsignatureIndustrialSafety, 1);
 END;
 
 -- 14) Students for testing
@@ -422,4 +428,30 @@ BEGIN
     VALUES
         (NEWID(), @StudentOneId, @Language1),
         (NEWID(), @StudentTwoId, @Language2);
+END;
+
+-- 15) Asignature registrations for testing
+DECLARE @NoWithdrawReason UNIQUEIDENTIFIER = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+
+BEGIN
+    INSERT INTO WithdrawReason (Id, Description)
+    VALUES (@NoWithdrawReason, 'Sin baja');
+END;
+
+BEGIN
+    INSERT INTO assignatureRegistrations
+        (Id, StudentId, GroupId, PeriodId, InscriptionType, FinalStatus, WithdrawReasonId)
+    VALUES
+        (NEWID(), @StudentOneId, @ClassGroupProgramming, @Period2025A, 0, 0, @NoWithdrawReason),
+        (NEWID(), @StudentOneId, @ClassGroupDatabases, @Period2025A, 0, 0, @NoWithdrawReason),
+        (NEWID(), @StudentTwoId, @ClassGroupMathematics, @Period2025A, 1, 0, @NoWithdrawReason),
+        (NEWID(), @StudentTwoId, @ClassGroupIndustrialSafety, @Period2025A, 1, 0, @NoWithdrawReason),
+        (NEWID(), @StudentThreeId, @ClassGroupBiology, @Period2025A, 1, 0, @NoWithdrawReason),
+        (NEWID(), @StudentThreeId, @ClassGroupPhysics, @Period2025A, 1, 0, @NoWithdrawReason),
+        (NEWID(), @StudentFourId, @ClassGroupProgramming, @Period2025A, 1, 0, @NoWithdrawReason),
+        (NEWID(), @StudentFourId, @ClassGroupDatabases, @Period2025A, 1, 0, @NoWithdrawReason),
+        (NEWID(), @StudentFiveId, @ClassGroupMathematics, @Period2025A, 1, 0, @NoWithdrawReason),
+        (NEWID(), @StudentFiveId, @ClassGroupIndustrialSafety, @Period2025A, 1, 0, @NoWithdrawReason),
+        (NEWID(), @StudentSixId, @ClassGroupBiology, @Period2025A, 1, 0, @NoWithdrawReason),
+        (NEWID(), @StudentSixId, @ClassGroupPhysics, @Period2025A, 1, 0, @NoWithdrawReason);
 END;

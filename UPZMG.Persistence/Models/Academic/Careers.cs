@@ -12,6 +12,7 @@ public class Careers
 {
     public Guid Id { get; set; }
     [MaxLength(200)]
+    public string? Alias { get; set; }
     public string? Name { get; set; }
     [MaxLength(50)]
     public string? SEPCode { get; set; }

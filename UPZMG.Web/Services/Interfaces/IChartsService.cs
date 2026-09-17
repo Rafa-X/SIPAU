@@ -6,4 +6,5 @@ namespace UPZMG.Web.Services;
 public interface IChartsService
 {
     Task<List<ChartCategory>> GetCareersDistributionAsync();
+    Task<List<GroupDistributionCareer>> GetGroupsDistributionByCareerAsync();
 }
