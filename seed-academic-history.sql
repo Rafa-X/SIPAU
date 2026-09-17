@@ -6,7 +6,7 @@
 -- synthetic but coherent history on top of test-data.sql:
 --   * cohorts entering every period from 2018 Ene-Abr to 2026 Ene-Abr, so every term
 --     of a 15-term programme is already populated when the record starts,
---   * registrations and kardex from 2023 Ene-Abr to 2026 Ene-Abr (the recorded window),
+--   * registrations (assignatureRegistrations) and kardex from 2023 Ene-Abr to 2026 Ene-Abr,
 --   * graduates, temporary and definitive withdrawals, and extraordinary exams.
 --
 -- A hidden performance score (0..99) drives both grades and withdrawals, as in real life;
@@ -63,7 +63,7 @@ INSERT INTO @OldSubjects SELECT Id FROM asignatures WHERE CAST(AsignatureCode AS
 DELETE FROM kardex                     WHERE StudentId IN (SELECT Id FROM @OldStudents) OR AsignatureId IN (SELECT Id FROM @OldSubjects);
 DELETE FROM tutoringSessions           WHERE StudentId IN (SELECT Id FROM @OldStudents)
                                           OR GroupId IN (SELECT Id FROM classGroups WHERE AsignatureId IN (SELECT Id FROM @OldSubjects));
-DELETE FROM registrations              WHERE StudentId IN (SELECT Id FROM @OldStudents)
+DELETE FROM assignatureRegistrations   WHERE StudentId IN (SELECT Id FROM @OldStudents)
                                           OR GroupId IN (SELECT Id FROM classGroups WHERE AsignatureId IN (SELECT Id FROM @OldSubjects));
 DELETE FROM studentDisabilities        WHERE StudentId IN (SELECT Id FROM @OldStudents);
 DELETE FROM scolarshipAssigneds        WHERE StudentId IN (SELECT Id FROM @OldStudents);
@@ -378,7 +378,7 @@ JOIN #Teachers t ON t.Idx = (g.G + g.Term + g.Slot) % @TeacherCount;
 
 -- 8) Registrations: one row per subject taken
 -- InscriptionType: 0 NuevoIngreso, 2 Reinscripcion
-INSERT INTO registrations (Id, StudentId, GroupId, PeriodId, InscriptionType, FinalStatus, WithdrawReasonId)
+INSERT INTO assignatureRegistrations (Id, StudentId, GroupId, PeriodId, InscriptionType, FinalStatus, WithdrawReasonId)
 SELECT NEWID(), s.Id, g.Id, p.Id,
        CASE WHEN e.G = s.G0 THEN 0 ELSE 2 END,
        e.FinalStatus,
@@ -446,7 +446,7 @@ SELECT p.SchoolCycle + ' ' + p.SEP_Period AS period,
        COUNT(DISTINCT CASE WHEN r.FinalStatus IN (1, 2) THEN r.StudentId END) AS withdrawn,
        COUNT(DISTINCT CASE WHEN r.FinalStatus = 3 THEN r.StudentId END) AS graduated
 FROM periods p
-JOIN registrations r ON r.PeriodId = p.Id
+JOIN assignatureRegistrations r ON r.PeriodId = p.Id
 JOIN students s ON s.Id = r.StudentId AND s.EnrollmentNumber LIKE 'UPH%'
 GROUP BY p.SchoolCycle, p.SEP_Period, p.StartDate
 ORDER BY p.StartDate;

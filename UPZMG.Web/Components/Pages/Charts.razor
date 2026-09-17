@@ -188,7 +188,7 @@
     {
         var forecast = await Ai.GetForecastAsync(ForecastAhead);
         var careers = await GetCareersAsync();
-        var groupsByCareer = await _chartsService.GetGroupsDistributionByCareerAsync();
+        var groupsByCareer = await GetGroupsByCareerAsync();
 
         EnrollmentChart(_model, forecast);
         CareerDistributionChart(_model, careers);
@@ -238,12 +238,24 @@
             : careers.MaxBy(career => career.Value)?.Label ?? "Sin datos";
     }
 
-    // The careers endpoint is limited to Admin and Recursos Humanos; other areas see the page without it.
+    // Both charts endpoints are limited to Admin and Recursos Humanos; other areas see the page without them.
     private async Task<List<UPZMG.Implementations.Charts.ChartCategory>> GetCareersAsync()
     {
         try
         {
             return await _chartsService.GetCareersDistributionAsync();
+        }
+        catch (HttpRequestException)
+        {
+            return [];
+        }
+    }
+
+    private async Task<List<GroupDistributionCareer>> GetGroupsByCareerAsync()
+    {
+        try
+        {
+            return await _chartsService.GetGroupsDistributionByCareerAsync();
         }
         catch (HttpRequestException)
         {
