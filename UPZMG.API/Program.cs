@@ -33,6 +33,10 @@ try
     builder.Services.AddScoped<DashboardRepository>();
     builder.Services.AddScoped<PeriodsRepository>();
     builder.Services.AddScoped<ChartsRepository>();
+    builder.Services.AddScoped<ReportTemplatesRepository>();
+    // Official format templates ship as JSON files beside the API
+    builder.Services.AddSingleton(new ReportTemplateStore(
+        Path.Combine(builder.Environment.ContentRootPath, "ReportTemplates")));
 
     var jwt = builder.Configuration.GetSection("Jwt");
     var jwtSigningKey = GetRequiredSecret(builder.Configuration, "Jwt:Key", 32, startupLogger);
