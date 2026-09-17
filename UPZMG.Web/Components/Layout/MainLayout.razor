@@ -1,5 +1,6 @@
 @inherits LayoutComponentBase
 @inject NavigationManager Nav
+@using UPZMG.Implementations.Intelligence
 @inject IIntelligenceService Ai
 
 <MudThemeProvider @ref="_themeProvider" @bind-IsDarkMode="_isDarkMode" Theme="AppTheme.Institutional" />
@@ -69,6 +70,14 @@
                     <MudText Typo="Typo.caption" Color="Color.Secondary">Desviaciones encontradas por el modelo estadístico</MudText>
                 </div>
                 <MudDivider />
+                @if (_anomalies.Count == 0)
+                {
+                    <div class="px-4 py-3" style="max-width:390px">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            Sin desviaciones en la matrícula, la aprobación ni las bajas registradas.
+                        </MudText>
+                    </div>
+                }
                 @foreach (var a in _anomalies)
                 {
                     <div class="px-4 py-3" style="max-width:390px">
@@ -83,9 +92,9 @@
                 }
                 <MudDivider />
                 <MudButton FullWidth="true" Variant="Variant.Text" Color="Color.Secondary"
-                           StartIcon="@Icons.Material.Filled.SpaceDashboard"
-                           OnClick="@(() => { _alertsOpen = false; Nav.NavigateTo("/dashboard"); })">
-                    Ver en el tablero
+                           StartIcon="@Icons.Material.Filled.QueryStats"
+                           OnClick="@(() => { _alertsOpen = false; Nav.NavigateTo("/charts"); })">
+                    Ver la proyección de matrícula
                 </MudButton>
             </ChildContent>
         </MudMenu>
@@ -172,7 +181,8 @@
 
     private IReadOnlyList<AnomalyAlert> _anomalies = Array.Empty<AnomalyAlert>();
 
-    protected override void OnInitialized() => _anomalies = Ai.Anomalies();
+    // The service never throws: an unreachable API just leaves the bell empty.
+    protected override async Task OnInitializedAsync() => _anomalies = await Ai.GetAnomaliesAsync();
 
     private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
 
@@ -194,6 +204,7 @@
         new("Captura · Extensión", "/datacapture/extension", Icons.Material.Filled.Diversity3),
         new("Captura · Importación masiva", "/datacapture/bulk", Icons.Material.Filled.UploadFile),
         new("Gráficas", "/charts", Icons.Material.Filled.BarChart),
+        new("Gráficas · Riesgo de deserción", "/charts/dropout", Icons.Material.Filled.PsychologyAlt),
         new("Reportes 911 / SII", "/reports", Icons.Material.Filled.Description),
         new("Informe de Junta", "/boardreport", Icons.Material.Filled.Article),
         new("Configuración", "/settings", Icons.Material.Filled.Settings),

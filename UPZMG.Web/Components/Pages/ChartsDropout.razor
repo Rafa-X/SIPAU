@@ -1,0 +1,384 @@
+@page "/charts/dropout"
+@attribute [Authorize(Roles = "Admin,Control Escolar,Servicios Estudiantiles,Direccion Academica")]
+@using System.Globalization
+@using UPZMG.Implementations.Intelligence
+@inject IIntelligenceService Ai
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+
+<PageTitle>Riesgo de deserción — SIPAU</PageTitle>
+
+<PageHeader Title="Riesgo de deserción" BackHref="/charts"
+            Subtitle="Un árbol de decisión aprende de las trayectorias que ya terminaron y señala a los alumnos activos que conviene atender, con la regla que lo explica.">
+    <Actions>
+        @if (_report is { HasModel: true })
+        {
+            <span class="sipau-report-status is-compact is-sent" title="Fecha del último entrenamiento">
+                Entrenado @_report.TrainedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm", Mx)
+            </span>
+        }
+        <AuthorizeView Roles="Admin">
+            <MudTooltip Text="Vuelve a entrenar con los datos actuales" Placement="Placement.Bottom">
+                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary"
+                           StartIcon="@Icons.Material.Filled.ModelTraining"
+                           Disabled="@(_loading || _retraining)" OnClick="RetrainAsync">
+                    @(_retraining ? "Entrenando…" : "Reentrenar")
+                </MudButton>
+            </MudTooltip>
+        </AuthorizeView>
+    </Actions>
+</PageHeader>
+
+@if (_loading)
+{
+    <LoadingState Text="Entrenando y evaluando el modelo…" />
+}
+else if (_report is null)
+{
+    <SectionCard FullHeight="false">
+        <EmptyState Title="No se pudo consultar el modelo"
+                    Description="El API no respondió o tu área no tiene acceso al riesgo por alumno. Verifica que UPZMG.API esté corriendo e intenta de nuevo.">
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="LoadAsync">Reintentar</MudButton>
+        </EmptyState>
+    </SectionCard>
+}
+else if (!_report.HasModel)
+{
+    <SectionCard FullHeight="false">
+        <EmptyState Icon="@Icons.Material.Filled.PsychologyAlt"
+                    Title="Todavía no hay modelo"
+                    Description="@($"{_report.Status} El árbol aprende de alumnos que ya egresaron o se dieron de baja; en cuanto haya suficientes con calificaciones capturadas, se entrena solo.")" />
+    </SectionCard>
+}
+else
+{
+    var quality = _report.Quality;
+
+    <MudGrid>
+        <MudItem xs="12" sm="6" lg="3">
+            <StatCard Title="Alumnos evaluados" Value="@_report.ScoredStudents.ToString("N0", Mx)"
+                      Subtitle="@UnscoredNote" />
+        </MudItem>
+        <MudItem xs="12" sm="6" lg="3">
+            <StatCard Title="Conviene atender" Value="@_report.AtRiskStudents.ToString("N0", Mx)"
+                      Subtitle="@($"{Share(_report.AtRiskStudents, _report.ScoredStudents)} con probabilidad ≥ {Pct(_report.Threshold)}")" />
+        </MudItem>
+        <MudItem xs="12" sm="6" lg="3">
+            <StatCard Title="Riesgo alto" Value="@_report.HighRiskStudents.ToString("N0", Mx)"
+                      Subtitle="probabilidad de baja ≥ 50 %" />
+        </MudItem>
+        <MudItem xs="12" sm="6" lg="3">
+            <StatCard Title="Bajas que detecta" Value="@Pct(quality.Recall)"
+                      Subtitle="@($"{quality.TruePositives} de {quality.TruePositives + quality.FalseNegatives} en la validación")" />
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid Class="mt-1">
+        <MudItem xs="12" md="6" lg="4">
+            <SectionCard Title="Riesgo por carrera"
+                         Subtitle="Parte de sus alumnos activos que conviene atender"
+                         Icon="@Icons.Material.Filled.School">
+                <ul class="sipau-risk-list">
+                    @foreach (var career in _report.ByCareer)
+                    {
+                        <li>
+                            <div class="sipau-risk-row">
+                                <span class="sipau-risk-label">@career.Career</span>
+                                <span class="sipau-risk-num">@Number(career.AtRiskPct, "0.0") %</span>
+                            </div>
+                            <Meter Value="@career.AtRiskPct" />
+                            <div class="sipau-risk-sub">
+                                @career.AtRisk de @career.Students alumnos · @career.HighRisk en riesgo alto ·
+                                probabilidad media @Number(career.AverageRiskPct, "0.0") %
+                            </div>
+                        </li>
+                    }
+                </ul>
+            </SectionCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6" lg="4">
+            <SectionCard Title="Variables que más pesan"
+                         Subtitle="Parte de la mejora de pureza (Gini) que aporta cada variable"
+                         Icon="@Icons.Material.Filled.Tune">
+                <ul class="sipau-risk-list">
+                    @foreach (var weight in _report.Importance)
+                    {
+                        <li>
+                            <div class="sipau-risk-row">
+                                <span class="sipau-risk-label">@weight.Feature</span>
+                                <span class="sipau-risk-num">@Pct(weight.Importance)</span>
+                            </div>
+                            <Meter Value="@(weight.Importance * 100)" />
+                        </li>
+                    }
+                </ul>
+            </SectionCard>
+        </MudItem>
+
+        <MudItem xs="12" lg="4">
+            <SectionCard Title="Qué tan bien acierta"
+                         Subtitle="@($"Validación cruzada de {quality.Folds} pliegues: a cada trayectoria la calificó un árbol que no la vio")"
+                         Icon="@Icons.Material.Filled.FactCheck">
+                <ChildContent>
+                    <table class="sipau-confusion">
+                        <caption class="sipau-sr">Matriz de confusión</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col"></th>
+                                <th scope="col">Marcado</th>
+                                <th scope="col">No marcado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <th scope="row">Se dio de baja</th>
+                                <td class="is-right"><b>@quality.TruePositives</b><span>detectadas</span></td>
+                                <td class="is-missed"><b>@quality.FalseNegatives</b><span>no detectadas</span></td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Egresó</th>
+                                <td class="is-extra"><b>@quality.FalsePositives</b><span>alertas de más</span></td>
+                                <td class="is-right"><b>@quality.TrueNegatives</b><span>bien descartados</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <dl class="sipau-metrics">
+                        <div><dt>Sensibilidad</dt><dd>@Pct(quality.Recall)</dd></div>
+                        <div><dt>Precisión</dt><dd>@Pct(quality.Precision)</dd></div>
+                        <div><dt>F1</dt><dd>@Pct(quality.F1)</dd></div>
+                        <div><dt>Exactitud</dt><dd>@Pct(quality.Accuracy)</dd></div>
+                    </dl>
+                </ChildContent>
+                <Footer>
+                    De cada 100 alumnos que marca, @Number(quality.Precision * 100, "0") sí se dieron de baja; al azar
+                    serían @Number(quality.Prevalence * 100, "0"): @Number(quality.Lift, "0.0") veces mejor.
+                    Decir que nadie se va acertaría el @Pct(quality.BaselineAccuracy) sin detectar ninguna baja, por eso
+                    la exactitud sola no basta.
+                </Footer>
+            </SectionCard>
+        </MudItem>
+    </MudGrid>
+
+    <SectionCard Title="Alumnos que conviene atender" Flush="true" FullHeight="false" Class="mt-4"
+                 Subtitle="Alumnos activos ordenados por probabilidad de baja; «Por qué» es la ruta que siguió el árbol"
+                 Icon="@Icons.Material.Filled.PersonSearch">
+        <DataToolbar @bind-Search="_search" Placeholder="Buscar nombre o matrícula…"
+                     Count="Filtered.Count" Total="_students.Count" OnExport="ExportAsync">
+            <Filters>
+                <MudSelect T="string" @bind-Value="_level" Dense="true"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Class="sipau-toolbar-filter mt-0">
+                    <MudSelectItem T="string" Value="@AtRiskFilter">Riesgo medio y alto</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Alto")">Sólo riesgo alto</MudSelectItem>
+                    <MudSelectItem T="string" Value="@AllFilter">Todos los evaluados</MudSelectItem>
+                </MudSelect>
+                <MudSelect T="string" @bind-Value="_career" Dense="true" Clearable="true" Placeholder="Carrera"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Class="sipau-toolbar-filter-wide mt-0">
+                    @foreach (var career in _careers)
+                    {
+                        <MudSelectItem T="string" Value="@career">@career</MudSelectItem>
+                    }
+                </MudSelect>
+            </Filters>
+        </DataToolbar>
+
+        <MudDataGrid T="StudentRisk" Items="Filtered" Hover="true" Dense="true" Elevation="0"
+                     RowsPerPage="12" SortMode="SortMode.Single">
+            <Columns>
+                <TemplateColumn Title="Alumno" SortBy="x => x.FullName">
+                    <CellTemplate>
+                        <div class="sipau-risk-name">@context.Item.FullName</div>
+                        <div class="sipau-risk-sub">@context.Item.EnrollmentNumber</div>
+                    </CellTemplate>
+                </TemplateColumn>
+                <PropertyColumn Property="x => x.Career" Title="Carrera" />
+                <TemplateColumn Title="Riesgo" SortBy="x => x.RiskPct" InitialDirection="SortDirection.Descending">
+                    <CellTemplate>
+                        <span class="@LevelClass(context.Item.Level)">
+                            @context.Item.Level · @Number(context.Item.RiskPct, "0") %
+                        </span>
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Promedio" SortBy="x => x.AverageGrade"
+                                HeaderClass="sipau-cell-end" CellClass="sipau-cell-end sipau-risk-num">
+                    <CellTemplate>@Number(context.Item.AverageGrade, "0.00")</CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Reprobación" SortBy="x => x.FailureRate"
+                                HeaderClass="sipau-cell-end" CellClass="sipau-cell-end sipau-risk-num">
+                    <CellTemplate>@Number(context.Item.FailureRate, "0.0") %</CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Extraord." SortBy="x => x.RetakesPerPeriod"
+                                HeaderClass="sipau-cell-end" CellClass="sipau-cell-end sipau-risk-num">
+                    <CellTemplate>@Number(context.Item.RetakesPerPeriod, "0.##")</CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Por qué" Sortable="false">
+                    <CellTemplate>
+                        <span class="sipau-risk-why">@string.Join(" · ", context.Item.Reasons)</span>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+            <NoRecordsContent>
+                <EmptyState Icon="@Icons.Material.Filled.SearchOff" Title="Sin coincidencias"
+                            Description="Ningún alumno evaluado coincide con la búsqueda o los filtros." />
+            </NoRecordsContent>
+            <PagerContent>
+                <MudDataGridPager T="StudentRisk" PageSizeOptions="@(new[] { 12, 25, 50 })"
+                                  RowsPerPageString="Filas por página"
+                                  InfoFormat="{first_item}–{last_item} de {all_items}" />
+            </PagerContent>
+        </MudDataGrid>
+    </SectionCard>
+
+    <SectionCard Title="Reglas que aprendió el árbol" Flush="true" FullHeight="false" Class="mt-4"
+                 Subtitle="Cada hoja del árbol como regla; el porcentaje es la proporción de bajas entre las trayectorias que llegaron ahí"
+                 Icon="@Icons.Material.Filled.AccountTree">
+        <ol class="sipau-tree-rules">
+            @foreach (var rule in _report.Rules)
+            {
+                var level = IntelligenceEngine.LevelFor(rule.Probability * 100);
+                <li class="sipau-tree-rule">
+                    <div class="sipau-tree-rule-text">@rule.Condition</div>
+                    <div class="sipau-tree-rule-meta">
+                        <span class="@LevelClass(level)">@Number(rule.Probability * 100, "0") % de bajas</span>
+                        <span class="sipau-risk-sub">@rule.SampleCount trayectorias</span>
+                    </div>
+                </li>
+            }
+        </ol>
+    </SectionCard>
+
+    <MudExpansionPanels Class="mt-4 sipau-method" Elevation="0" Outlined="true">
+        <MudExpansionPanel Text="Cómo decide el modelo">
+            <div class="sipau-method-body">
+                <p>
+                    Cada alumno se describe con cinco variables tomadas de su último periodo con calificaciones: el anterior
+                    a su egreso o baja, o el más reciente si sigue estudiando. En cada nodo, el árbol (CART) prueba todos los
+                    cortes posibles y se queda con el que más reduce la impureza de Gini:
+                </p>
+                <p class="sipau-formula">
+                    Gini(S) = 1 − Σ pᵢ² &nbsp;·&nbsp; Ganancia = Gini(S) − |I|/|S|·Gini(I) − |D|/|S|·Gini(D)
+                </p>
+                <p>
+                    Deja de dividir a los @IntelligenceEngine.MaxDepth niveles, cuando un nodo es puro o cuando un lado quedaría
+                    con menos de @IntelligenceEngine.MinSamplesLeaf trayectorias. Cada hoja guarda la proporción de bajas que le
+                    tocó; un alumno activo se marca cuando esa proporción es de @Pct(_report.Threshold) o más.
+                </p>
+
+                <table class="sipau-method-table">
+                    <thead><tr><th scope="col">Variable</th><th scope="col">Cómo se calcula</th></tr></thead>
+                    <tbody>
+                        @foreach (var feature in DropoutFeatures.All)
+                        {
+                            <tr><td>@feature.Name</td><td>@feature.Definition</td></tr>
+                        }
+                    </tbody>
+                </table>
+
+                <p>
+                    <b>Protecciones contra fugas de información.</b> Sólo se entrena con trayectorias que ya terminaron
+                    (@_report.Withdrawals bajas y @_report.Graduates egresos); los alumnos activos se evalúan pero nunca se usan
+                    para aprender. Se descartan las calificaciones del periodo en que terminó cada trayectoria, porque las materias
+                    abandonadas al darse de baja se registran como reprobadas. A todos se les mide con el mismo tramo, un
+                    periodo, para que nadie destaque sólo por lo corta o larga que fue su trayectoria. La edad se toma al
+                    ingresar, no la de hoy. Y no se usan totales (materias o periodos cursados), porque en una trayectoria
+                    terminada dicen cuánto duró el alumno.
+                </p>
+            </div>
+        </MudExpansionPanel>
+    </MudExpansionPanels>
+}
+
+@code {
+    private const string AtRiskFilter = "risk";
+    private const string AllFilter = "all";
+    private static readonly CultureInfo Mx = CultureInfo.GetCultureInfo("es-MX");
+
+    private DropoutModelReport? _report;
+    private IReadOnlyList<StudentRisk> _students = [];
+    private IReadOnlyList<string> _careers = [];
+    private bool _loading = true;
+    private bool _retraining;
+
+    private string _search = string.Empty;
+    private string _level = AtRiskFilter;
+    private string? _career;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _report = await Ai.GetDropoutReportAsync();
+        _students = _report is { HasModel: true } ? await Ai.GetStudentRisksAsync() : [];
+        _careers = _students.Select(s => s.Career).Distinct().Order(StringComparer.CurrentCulture).ToList();
+        _loading = false;
+    }
+
+    private async Task RetrainAsync()
+    {
+        _retraining = true;
+        var report = await Ai.RetrainAsync();
+        _retraining = false;
+
+        if (report is null)
+        {
+            Snackbar.Add("No se pudo reentrenar el modelo. Intenta de nuevo.", Severity.Error);
+            return;
+        }
+
+        await LoadAsync();
+        Snackbar.Add(report.HasModel ? "Modelo reentrenado con los datos actuales." : report.Status,
+            report.HasModel ? Severity.Success : Severity.Warning);
+    }
+
+    private List<StudentRisk> Filtered => _students.Where(Matches).ToList();
+
+    private bool Matches(StudentRisk s)
+    {
+        if (_level == AtRiskFilter && s.Level == "Bajo") return false;
+        if (_level == "Alto" && s.Level != "Alto") return false;
+        if (!string.IsNullOrEmpty(_career) && s.Career != _career) return false;
+
+        if (string.IsNullOrWhiteSpace(_search)) return true;
+        var q = _search.Trim();
+        return s.FullName.Contains(q, StringComparison.CurrentCultureIgnoreCase)
+            || s.EnrollmentNumber.Contains(q, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task ExportAsync()
+    {
+        var csv = CsvExport.Build(Filtered,
+            ("Matrícula", s => s.EnrollmentNumber),
+            ("Alumno", s => s.FullName),
+            ("Carrera", s => s.Career),
+            ("Riesgo %", s => s.RiskPct),
+            ("Nivel", s => s.Level),
+            ("Promedio", s => s.AverageGrade),
+            ("Reprobación %", s => s.FailureRate),
+            ("Extraordinarios por periodo", s => s.RetakesPerPeriod),
+            ("Edad al ingreso", s => s.EntryAge),
+            ("Trabaja", s => s.Works),
+            ("Periodos evaluados", s => s.PeriodsObserved),
+            ("Por qué", s => string.Join(" → ", s.Reasons)));
+
+        await JS.InvokeVoidAsync("sigieDownload", CsvExport.FileName("riesgo-desercion"), csv);
+    }
+
+    private string UnscoredNote => _report is { UnscoredActiveStudents: > 0 } r
+        ? $"{r.UnscoredActiveStudents:N0} activos aún sin calificaciones"
+        : "todos los activos con calificaciones";
+
+    private static string LevelClass(string level) => level switch
+    {
+        "Alto" => "sipau-report-status is-compact is-risk-high",
+        "Medio" => "sipau-report-status is-compact is-risk-mid",
+        _ => "sipau-report-status is-compact is-risk-low",
+    };
+
+    private static string Number(double value, string format) => value.ToString(format, Mx);
+
+    private static string Pct(double ratio) => $"{(ratio * 100).ToString("0", Mx)} %";
+
+    private static string Share(int part, int total) => total == 0 ? "0 %" : Pct((double)part / total);
+}

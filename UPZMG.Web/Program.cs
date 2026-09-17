@@ -65,7 +65,8 @@ try
     builder.Services.AddScoped<IBoardReportService, BoardReportService>();
     builder.Services.AddSingleton<ISettingsService, SettingsService>();
     builder.Services.AddScoped<IReportsService, ReportsService>();
-    builder.Services.AddSingleton<IIntelligenceService, IntelligenceService>();
+    // Scoped: the model runs in the API and each call carries the user's token.
+    builder.Services.AddScoped<IIntelligenceService, IntelligenceService>();
     builder.Services.AddScoped<IChartsService, ChartsService>();
 
     builder.Services.AddAuthorization();

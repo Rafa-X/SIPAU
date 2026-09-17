@@ -37,6 +37,9 @@ try
     // Official format templates ship as JSON files beside the API
     builder.Services.AddSingleton(new ReportTemplateStore(
         Path.Combine(builder.Environment.ContentRootPath, "ReportTemplates")));
+    builder.Services.AddScoped<IntelligenceRepository>();
+    // The trained model outlives a request; it is rebuilt when the academic data changes
+    builder.Services.AddSingleton<IntelligenceModelCache>();
 
     var jwt = builder.Configuration.GetSection("Jwt");
     var jwtSigningKey = GetRequiredSecret(builder.Configuration, "Jwt:Key", 32, startupLogger);

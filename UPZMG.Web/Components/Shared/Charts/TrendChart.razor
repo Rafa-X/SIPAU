@@ -119,15 +119,15 @@
 
         @if (ForecastX is { } tagX)
         {
-            <span class="sipau-chart-tag" style="@Pct("left", tagX / VbW * 100)">Pronóstico</span>
+            <span class="@(tagX / VbW > 0.7 ? "sipau-chart-tag is-end" : "sipau-chart-tag")"
+                  style="@Pct("left", tagX / VbW * 100)">Pronóstico</span>
         }
     </div>
 
     <div class="sipau-chart-xaxis">
         @for (int i = 0; i < Labels.Count; i++)
         {
-            if (Labels.Count > 10 && i % 2 == 1) { continue; }
-            <span class="@(_hover == i ? "on" : null)" style="@Pct("left", _scale.X(i, Labels.Count) / VbW * 100)">
+            <span class="@LabelClass(i)" style="@Pct("left", _scale.X(i, Labels.Count) / VbW * 100)">
                 @Labels[i]
             </span>
         }
@@ -169,6 +169,18 @@
 
         _ticks = _scale.Ticks();
         _hover = null;
+    }
+
+    // Labels come in nested tiers: about four always, eight from a medium width, the rest
+    // (up to fourteen) on wide charts. CSS container queries decide which tiers fit.
+    private string? LabelClass(int i)
+    {
+        var fine = Math.Max(1, (int)Math.Ceiling(Labels.Count / 14.0));
+        var tier = i % (fine * 4) == 0 ? null
+                 : i % (fine * 2) == 0 ? "is-mid"
+                 : i % fine == 0 ? "is-fine"
+                 : "is-hidden";
+        return _hover == i ? $"{tier} on".Trim() : tier;
     }
 
     private double? ForecastX =>

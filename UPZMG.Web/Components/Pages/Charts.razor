@@ -1,6 +1,7 @@
 @page "/charts"
 @attribute [Authorize]
 @using UPZMG.Web.Models.Charts
+@using UPZMG.Implementations.Intelligence
 @using UPZMG.Implementations.Charts
 @inject IIntelligenceService Ai
 @inject IChartsService _chartsService
@@ -25,13 +26,36 @@
                 </MudTooltip>
             </Actions>
             <ChildContent>
-                <TrendChart Id="enrollment-chart" Labels="_model.Enrollment.Labels" Series="_model.Enrollment.Series" Height="160"
-                            ForecastFromIndex="_model.Enrollment.ForecastFromIndex"
-                            AriaLabel="Matrícula histórica y su proyección" />
+                @if (_model.Enrollment.HasModel)
+                {
+                    <TrendChart Id="enrollment-chart" Labels="_model.Enrollment.Labels" Series="_model.Enrollment.Series" Height="160"
+                                ForecastFromIndex="_model.Enrollment.ForecastFromIndex"
+                                AriaLabel="Matrícula histórica y su proyección" />
+                }
+                else
+                {
+                    <EmptyState Icon="@Icons.Material.Filled.Timeline"
+                                Title="Aún no hay historial suficiente"
+                                Description="La regresión necesita inscripciones en al menos tres periodos." />
+                }
             </ChildContent>
             <Footer>
-                    Pendiente estimada: <b>@_model.Enrollment.Slope.ToString("0.0")</b> alumnos por periodo ·
-                ordenada al origen <b>@_model.Enrollment.Intercept.ToString("0.0")</b>
+                @if (_model.Enrollment.HasModel)
+                {
+                    <span>
+                        Regresión lineal por mínimos cuadrados ·
+                        pendiente <b>@_model.Enrollment.Slope.ToString("+0.0;-0.0")</b> alumnos por periodo ·
+                        R² <b>@_model.Enrollment.R2.ToString("0.00")</b>
+                        @if (_model.Enrollment.NextValue is { } next)
+                        {
+                            <text> · @_model.Enrollment.NextLabel: <b>@next.ToString("N0")</b> ± @(_model.Enrollment.NextMargin?.ToString("N0"))</text>
+                        }
+                    </span>
+                }
+                else
+                {
+                    <span>Captura inscripciones por periodo para activar la proyección.</span>
+                }
             </Footer>
         </SectionCard>
     </MudItem>
@@ -90,7 +114,7 @@
 
 <MudText Typo="Typo.h5" Class="mt-8 mb-3">Módulos de analítica</MudText>
 <MudGrid>
-    <MudItem xs="12" sm="6">
+    <MudItem xs="12" sm="6" md="4">
         <MudCard Elevation="1" Class="d-flex flex-column" Style="height:100%">
             <MudCardContent Class="flex-grow-1">
                 <MudAvatar Color="Color.Secondary" Variant="Variant.Filled" Rounded="true" Class="mb-3">
@@ -110,7 +134,7 @@
         </MudCard>
     </MudItem>
 
-    <MudItem xs="12" sm="6">
+    <MudItem xs="12" sm="6" md="4">
         <MudCard Elevation="1" Class="d-flex flex-column" Style="height:100%">
             <MudCardContent Class="flex-grow-1">
                 <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Rounded="true" Class="mb-3">
@@ -129,18 +153,42 @@
             </MudCardActions>
         </MudCard>
     </MudItem>
+
+    @* Per-student risk is personal data; the API grants it to these areas only. *@
+    <AuthorizeView Roles="@DropoutRoles">
+        <MudItem xs="12" sm="6" md="4">
+            <MudCard Elevation="1" Class="d-flex flex-column" Style="height:100%">
+                <MudCardContent Class="flex-grow-1">
+                    <MudAvatar Color="Color.Tertiary" Variant="Variant.Filled" Rounded="true" Class="mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.PsychologyAlt" />
+                    </MudAvatar>
+                    <MudText Typo="Typo.h6">Riesgo de deserción</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Árbol de decisión que aprende de las trayectorias terminadas y señala a los alumnos activos que conviene atender.
+                    </MudText>
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton Variant="Variant.Filled" Color="Color.Tertiary" FullWidth="true"
+                               StartIcon="@Icons.Material.Filled.ArrowForward" Href="/charts/dropout">
+                        Ver riesgo de deserción
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+    </AuthorizeView>
 </MudGrid>
 
 @code {
     private const int ForecastAhead = 2;
+    private const string DropoutRoles = "Admin,Control Escolar,Servicios Estudiantiles,Direccion Academica";
     private ChartsPageViewModel _model = new();
     private readonly double[] _failure = { 15.8, 14.4, 13.1, 12.5 };
 
     protected override async Task OnInitializedAsync()
     {
-        var forecast = Ai.ForecastEnrollment(ForecastAhead);
-        var careers = await _chartsService.GetCareersDistributionAsync();
-        var groupsByCareer = await _chartsService.GetGroupsDistributionByCareerAsync();
+        var forecast = await Ai.GetForecastAsync(ForecastAhead);
+        var careers = await GetCareersAsync();
+        var groupsByCareer = await GetGroupsByCareerAsync();
 
         EnrollmentChart(_model, forecast);
         CareerDistributionChart(_model, careers);
@@ -157,6 +205,11 @@
     #region Chart Creation Methods
     private void EnrollmentChart(ChartsPageViewModel model, EnrollmentForecast forecast)
     {
+        _model.Enrollment.HasModel = forecast.HasModel;
+        _model.Enrollment.R2 = forecast.R2;
+        _model.Enrollment.NextLabel = forecast.NextLabel;
+        _model.Enrollment.NextValue = forecast.NextValue;
+        _model.Enrollment.NextMargin = forecast.NextMargin;
         _model.Enrollment.Labels = forecast.Labels;
         _model.Enrollment.Series =
         [
@@ -183,6 +236,31 @@
         _model.CareerDistribution.TopLabel = careers.Count == 0
             ? "Sin datos"
             : careers.MaxBy(career => career.Value)?.Label ?? "Sin datos";
+    }
+
+    // Both charts endpoints are limited to Admin and Recursos Humanos; other areas see the page without them.
+    private async Task<List<UPZMG.Implementations.Charts.ChartCategory>> GetCareersAsync()
+    {
+        try
+        {
+            return await _chartsService.GetCareersDistributionAsync();
+        }
+        catch (HttpRequestException)
+        {
+            return [];
+        }
+    }
+
+    private async Task<List<GroupDistributionCareer>> GetGroupsByCareerAsync()
+    {
+        try
+        {
+            return await _chartsService.GetGroupsDistributionByCareerAsync();
+        }
+        catch (HttpRequestException)
+        {
+            return [];
+        }
     }
     #endregion
 }
