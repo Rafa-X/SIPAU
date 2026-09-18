@@ -1,0 +1,118 @@
+@*
+    One block of the board report. The same markup serves the screen and the printed sheet,
+    so what the user reviews is what the Junta receives.
+*@
+@using UPZMG.Implementations.BoardReport
+
+<div class="sipau-board-block">
+    @if (!string.IsNullOrWhiteSpace(Block.Title))
+    {
+        <h3 class="sipau-board-block-title">@Block.Title</h3>
+    }
+
+    @switch (Block.Kind)
+    {
+        case BoardReportBlockKinds.Narrative:
+            <p class="@(Block.IsSuggested ? "sipau-board-text is-suggested" : "sipau-board-text")">@Block.Text</p>
+            break;
+
+        case BoardReportBlockKinds.Figures when Block.Figures is { Count: > 0 }:
+            <div class="sipau-board-figures">
+                @foreach (var figure in Block.Figures)
+                {
+                    <div class="sipau-board-figure">
+                        <div class="sipau-doc-label">@figure.Label</div>
+                        <div class="sipau-board-figure-value">@figure.Value</div>
+                        @if (!string.IsNullOrWhiteSpace(figure.Detail))
+                        {
+                            <div class="sipau-doc-note">@figure.Detail</div>
+                        }
+                    </div>
+                }
+            </div>
+            break;
+
+        case BoardReportBlockKinds.Table when Block.Table is { } table:
+            <div class="sipau-board-tablewrap">
+                <table class="sipau-doc-table">
+                    <thead>
+                        <tr>
+                            @foreach (var column in table.Columns)
+                            {
+                                <th class="@(column == table.Columns[0] ? "is-label" : null)">@column</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in table.Rows)
+                        {
+                            <tr>
+                                <th class="is-label">@row.Label</th>
+                                @foreach (var value in row.Values)
+                                {
+                                    <td>@value</td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                    @if (table.Total is { Count: > 0 } total)
+                    {
+                        <tfoot>
+                            <tr>
+                                @foreach (var value in total)
+                                {
+                                    <td class="@(value == total[0] ? "is-label" : null)">@value</td>
+                                }
+                            </tr>
+                        </tfoot>
+                    }
+                </table>
+            </div>
+            break;
+
+        case BoardReportBlockKinds.Chart when Block.Chart is { } chart:
+            <div class="sipau-board-chart">
+                @if (chart.Kind == "bar")
+                {
+                    <BarChart Labels="chart.Labels" Series="@Series(chart)" Height="200" ValueFormat="0.#"
+                              AriaLabel="@(Block.Title ?? "Gráfica del informe")" />
+                }
+                else
+                {
+                    <TrendChart Labels="chart.Labels" Series="@Series(chart)" Height="200"
+                                ForecastFromIndex="chart.ForecastFromIndex"
+                                AriaLabel="@(Block.Title ?? "Gráfica del informe")" />
+                }
+            </div>
+            break;
+
+        case BoardReportBlockKinds.Pending:
+            <p class="sipau-board-pending">@Block.Text</p>
+            break;
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Block.Note))
+    {
+        <p class="sipau-doc-note">@Block.Note</p>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Block.Source))
+    {
+        <p class="sipau-board-source">Fuente: @Block.Source</p>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public BoardReportBlock Block { get; set; } = default!;
+
+    private static List<ChartSeriesData> Series(BoardReportChart chart) =>
+        [.. chart.Series.Select(s => new ChartSeriesData(s.Name, s.Values, Colour(s.Colour), Dashed: s.Dashed, Filled: !s.Dashed && chart.Kind != "bar"))];
+
+    private static string Colour(string name) => name switch
+    {
+        "navy" => ChartPalette.Navy,
+        "indigo" => ChartPalette.Indigo,
+        "ochre" => ChartPalette.Ochre,
+        _ => ChartPalette.Teal,
+    };
+}

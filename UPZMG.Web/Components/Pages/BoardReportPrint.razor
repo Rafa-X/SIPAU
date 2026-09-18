@@ -1,0 +1,142 @@
+@page "/boardreport/{Cycle}/documento"
+@attribute [Authorize]
+@layout DocumentLayout
+@using UPZMG.Implementations.BoardReport
+@inject IBoardReportService BoardSvc
+@inject IJSRuntime JS
+
+@*
+    The board report as it is handed to the Junta. The browser's print dialog makes the PDF,
+    so there is no server-side renderer: what is on screen is what lands on paper.
+*@
+
+<PageTitle>Informe de Junta @Cycle — SIPAU</PageTitle>
+
+@if (_document is null && !_loading)
+{
+    <div class="sipau-doc-loading">
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+            No hay formatos oficiales de este ciclo, o el API no respondió.
+        </MudAlert>
+        <MudButton Class="mt-4" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/boardreport">Volver</MudButton>
+    </div>
+}
+else if (_document is null)
+{
+    <div class="sipau-doc-loading">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        <MudText Typo="Typo.body2" Class="mt-3">Reuniendo el informe…</MudText>
+    </div>
+}
+else
+{
+    <div class="sipau-doc-bar">
+        <MudButton StartIcon="@Icons.Material.Filled.ArrowBack" Variant="Variant.Text"
+                   Href="@($"/boardreport/{Cycle}")">Volver</MudButton>
+        <span class="sipau-doc-bar-meta">
+            @_document.Chapters.Count capítulos ·
+            @_document.Sources.Count(s => s.IsSubmitted) de @_document.Sources.Count formatos ·
+            @(_document.IsSubmitted ? "enviado" : "borrador")
+        </span>
+        <MudButton StartIcon="@Icons.Material.Filled.Print" Variant="Variant.Filled" Color="Color.Secondary"
+                   OnClick="PrintAsync">Imprimir o guardar PDF</MudButton>
+    </div>
+
+    <div class="sipau-doc">
+        <section class="sipau-doc-page">
+            <header class="sipau-form-head">
+                <span class="sipau-form-head-seal">
+                    <img src="logo_UPZMG.png" width="62" height="63" alt="@_document.InstitutionName" />
+                </span>
+                <div>
+                    <div class="sipau-form-head-institution">@_document.InstitutionName</div>
+                    <h1 class="sipau-form-head-title">Informe a la Junta Directiva</h1>
+                    <div class="sipau-form-head-meta">
+                        Ciclo @_document.Cycle
+                        @if (!string.IsNullOrWhiteSpace(_document.Location))
+                        {
+                            <text> · @_document.Location</text>
+                        }
+                    </div>
+                </div>
+                <div class="sipau-form-head-status">
+                    <div class="sipau-doc-label">Estado</div>
+                    <div class="sipau-doc-value">@(_document.IsSubmitted ? "Enviado" : "Borrador")</div>
+                    <div class="sipau-doc-note">@ReportUi.Local(_document.SubmittedAtUtc ?? _document.GeneratedAtUtc)</div>
+                </div>
+            </header>
+
+            @if (_document.Missing.Count > 0)
+            {
+                <div class="sipau-form-warn">
+                    <b>Informe preliminar.</b> Faltan formatos del ciclo, así que hay capítulos sin cifras:
+                    @foreach (var missing in _document.Missing)
+                    {
+                        <div class="sipau-form-warn-line">@missing.DisplayName — @(missing.Status == "draft" ? "en borrador" : "sin captura")</div>
+                    }
+                </div>
+            }
+
+            <div class="sipau-board-toc">
+                <div class="sipau-doc-label">Contenido</div>
+                <ol>
+                    @foreach (var chapter in _document.Chapters)
+                    {
+                        <li><span class="sipau-board-toc-num">@chapter.Number</span> @chapter.Title</li>
+                    }
+                </ol>
+            </div>
+
+            @foreach (var chapter in _document.Chapters)
+            {
+                <div class="sipau-form-section">
+                    <h2 class="sipau-form-section-title">
+                        <span class="sipau-form-section-num">@chapter.Number</span>@chapter.Title
+                    </h2>
+                    <p class="sipau-doc-summary">@chapter.Summary</p>
+
+                    @foreach (var block in chapter.Blocks)
+                    {
+                        <BoardBlock Block="block" />
+                    }
+                </div>
+            }
+
+            <div class="sipau-doc-sign">
+                <div>
+                    <div class="sipau-doc-sign-line"></div>
+                    <div class="sipau-doc-sign-name">@(_document.RectorName ?? "Rectoría")</div>
+                    <div class="sipau-doc-note">Rector</div>
+                </div>
+                <div>
+                    <div class="sipau-doc-sign-line"></div>
+                    <div class="sipau-doc-sign-name">Subdirección de Planeación, Evaluación y Calidad</div>
+                    <div class="sipau-doc-note">Elaboró</div>
+                </div>
+            </div>
+
+            <footer class="sipau-doc-foot">
+                <span>@_document.InstitutionName · Informe a la Junta Directiva · ciclo @_document.Cycle</span>
+                <span class="sipau-mono">@Folio</span>
+            </footer>
+        </section>
+    </div>
+}
+
+@code {
+    [Parameter] public string Cycle { get; set; } = string.Empty;
+
+    private BoardReportDocument? _document;
+    private bool _loading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true;
+        _document = await BoardSvc.GetDocumentAsync(Cycle);
+        _loading = false;
+    }
+
+    private string Folio => $"JD-{Cycle}-{(_document?.SubmittedAtUtc ?? _document?.GeneratedAtUtc ?? DateTime.UtcNow):yyyyMMdd}";
+
+    private async Task PrintAsync() => await JS.InvokeVoidAsync("sigiePrint");
+}

@@ -204,3 +204,17 @@
     .sipau-doc-table thead th { background: #EDEDED !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .sipau-form-section-num { background: #073B68 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* Board report on paper: blocks and tables stay whole across page breaks. */
+.sipau-doc .sipau-board-block { break-inside: avoid; margin-top: 18px; }
+.sipau-doc .sipau-board-block-title { font-size: 13px; }
+.sipau-doc .sipau-board-text { font-size: 12.5px; line-height: 1.6; max-width: none; }
+.sipau-doc .sipau-board-source { font-size: 10px; }
+.sipau-doc .sipau-board-figure-value { font-size: 20px; }
+.sipau-doc .sipau-board-toc ol { columns: 2; }
+.sipau-doc .sipau-board-chart { max-width: 640px; }
+
+@media print {
+    .sipau-doc .sipau-form-section { break-before: auto; }
+    .sipau-doc .sipau-board-chart { break-inside: avoid; }
+}

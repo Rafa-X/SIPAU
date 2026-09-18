@@ -21,6 +21,9 @@ public sealed class IntelligenceService(
     public async Task<IReadOnlyList<AnomalyAlert>> GetAnomaliesAsync() =>
         await GetOrDefaultAsync<List<AnomalyAlert>>("intelligence/anomalies") ?? [];
 
+    public async Task<IReadOnlyList<PeriodStats>> GetHistoryAsync() =>
+        await GetOrDefaultAsync<List<PeriodStats>>("intelligence/history") ?? [];
+
     public Task<DropoutModelReport?> GetDropoutReportAsync() =>
         GetOrDefaultAsync<DropoutModelReport>("intelligence/dropout");
 

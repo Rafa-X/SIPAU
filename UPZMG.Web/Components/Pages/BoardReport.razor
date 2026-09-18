@@ -1,94 +1,127 @@
 @page "/boardreport"
 @attribute [Authorize]
+@using UPZMG.Implementations.BoardReport
 @inject IBoardReportService BoardSvc
-@inject IJSRuntime JS
+
+@*
+    One board report per cycle. The report captures nothing of its own: it consolidates the
+    official formats each area sent, so this listing is really the state of those formats.
+*@
 
 <PageTitle>Informe de Junta — SIPAU</PageTitle>
 
-<PageHeader Eyebrow="Junta directiva" Title="Informe de Junta Directiva" Subtitle="Reporte estandarizado presentado a la junta directiva">
+<PageHeader Title="Informe de Junta Directiva"
+            Subtitle="Un informe por ciclo. Reúne las cifras de los formatos oficiales que enviaron las áreas y los textos que redacta la universidad.">
     <Actions>
-        <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Add">Generar informe</MudButton>
+        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary"
+                   StartIcon="@Icons.Material.Filled.Description" Href="/reports">
+            Ver formatos
+        </MudButton>
     </Actions>
 </PageHeader>
 
-<SectionCard Flush="true" FullHeight="false">
-    <DataToolbar @bind-Search="_search" Placeholder="Buscar periodo…"
-                 Count="Filtered.Count" Total="_reports.Count" OnExport="ExportAsync">
-        <Filters>
-            <MudSelect T="string" Value="_status" ValueChanged="@(v => _status = v)" Dense="true"
-                       Variant="Variant.Outlined" Margin="Margin.Dense" Class="sipau-toolbar-filter mt-0"
-                       Placeholder="Estado" Clearable="true">
-                <MudSelectItem T="string" Value="@(null!)">Todos los estados</MudSelectItem>
-                @foreach (var s in _statuses)
-                {
-                    <MudSelectItem T="string" Value="@s">@s</MudSelectItem>
-                }
-            </MudSelect>
-        </Filters>
-    </DataToolbar>
+@if (_loading)
+{
+    <LoadingState Text="Revisando los formatos de cada ciclo…" />
+}
+else if (_cycles.Count == 0)
+{
+    <SectionCard FullHeight="false">
+        <EmptyState Icon="@Icons.Material.Filled.Article"
+                    Title="Todavía no hay ciclos que informar"
+                    Description="El informe se arma sobre los formatos oficiales publicados. En cuanto exista un formato de un ciclo, aparecerá aquí.">
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/reports">Ir a los formatos</MudButton>
+        </EmptyState>
+    </SectionCard>
+}
+else
+{
+    <MudGrid>
+        @foreach (var cycle in _cycles)
+        {
+            <MudItem xs="12" md="6" lg="4">
+                <SectionCard Title="@($"Ciclo {cycle.Cycle}")"
+                             Subtitle="@Subtitle(cycle)"
+                             Icon="@Icons.Material.Filled.Article">
+                    <ChildContent>
+                        <div class="sipau-risk-row">
+                            <span class="sipau-risk-label">Formatos enviados</span>
+                            <span class="sipau-risk-num">@cycle.SubmittedFormats de @cycle.TotalFormats</span>
+                        </div>
+                        <Meter Value="@(cycle.TotalFormats == 0 ? 0 : 100.0 * cycle.SubmittedFormats / cycle.TotalFormats)" />
+                        <div class="sipau-risk-sub mt-2">
+                            @if (cycle.SubmittedFormats < cycle.TotalFormats)
+                            {
+                                <text>Faltan @(cycle.TotalFormats - cycle.SubmittedFormats) por enviar; esos capítulos saldrán marcados como pendientes.</text>
+                            }
+                            else
+                            {
+                                <text>Todas las áreas enviaron su formato.</text>
+                            }
+                        </div>
 
-    <MudDataGrid T="BoardReportListItemModel" Items="Filtered" Hover="true" Dense="true" Elevation="0"
-                 SortMode="SortMode.Multiple">
-        <Columns>
-            <PropertyColumn Property="x => x.Period" Title="Periodo" />
-            <PropertyColumn Property="x => x.GeneratedDate" Title="Generado" Format="dd/MM/yyyy" />
-            <PropertyColumn Property="x => x.PageCount" Title="Páginas" />
-            <TemplateColumn Title="Estado" SortBy="x => x.Status">
-                <CellTemplate>
-                    <StatusChip Status="@context.Item.Status" />
-                </CellTemplate>
-            </TemplateColumn>
-            <TemplateColumn Title="Acción" CellClass="sipau-cell-end" HeaderClass="sipau-cell-end" Sortable="false">
-                <CellTemplate>
-                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.Visibility" Href="@($"/boardreport/{context.Item.Id}")">
-                        Ver detalle
-                    </MudButton>
-                </CellTemplate>
-            </TemplateColumn>
-        </Columns>
-        <NoRecordsContent>
-            <EmptyState Icon="@Icons.Material.Filled.SearchOff"
-                        Title="Sin coincidencias"
-                        Description="Ningún informe coincide con la búsqueda o el filtro de estado." />
-        </NoRecordsContent>
-    </MudDataGrid>
-</SectionCard>
+                        <div class="sipau-risk-row mt-4">
+                            <span class="sipau-risk-label">Textos de la universidad</span>
+                            <span class="sipau-risk-num">@(10 - cycle.PendingNarratives) de 10</span>
+                        </div>
+                        <Meter Value="@(100.0 * (10 - cycle.PendingNarratives) / 10)" />
+                        <div class="sipau-risk-sub mt-2">
+                            @if (cycle.PendingNarratives > 0)
+                            {
+                                <text>@cycle.PendingNarratives siguen con la redacción sugerida.</text>
+                            }
+                            else
+                            {
+                                <text>Todos los apartados están redactados.</text>
+                            }
+                        </div>
+                    </ChildContent>
+                    <Footer>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Style="flex-wrap:wrap">
+                            <span class="@StatusClass(cycle.Status)">@StatusLabel(cycle.Status)</span>
+                            @if (cycle.LastModified is { } modified)
+                            {
+                                <span class="sipau-risk-sub">@ReportUi.Local(modified)</span>
+                            }
+                            <MudSpacer />
+                            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary"
+                                       StartIcon="@Icons.Material.Filled.Print"
+                                       Href="@($"/boardreport/{cycle.Cycle}/documento")">
+                                Documento
+                            </MudButton>
+                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.ArrowForward"
+                                       Href="@($"/boardreport/{cycle.Cycle}")">
+                                Abrir
+                            </MudButton>
+                        </MudStack>
+                    </Footer>
+                </SectionCard>
+            </MudItem>
+        }
+    </MudGrid>
+}
 
 @code {
-    private IReadOnlyList<BoardReportListItemModel> _reports = Array.Empty<BoardReportListItemModel>();
-    private string _search = string.Empty;
-    private string? _status;
+    private IReadOnlyList<BoardReportListItem> _cycles = [];
+    private bool _loading = true;
 
-    private string[] _statuses = Array.Empty<string>();
-
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        _reports = BoardSvc.GetAll();
-        _statuses = _reports.Select(r => r.Status).Distinct().OrderBy(s => s).ToArray();
+        _cycles = await BoardSvc.GetCyclesAsync();
+        _loading = false;
     }
 
-    private List<BoardReportListItemModel> Filtered => _reports.Where(Matches).ToList();
+    private static string Subtitle(BoardReportListItem cycle) =>
+        cycle.Status == BoardReportStatus.Submitted
+            ? "Enviado a la Junta Directiva"
+            : "En preparación";
 
-    private bool Matches(BoardReportListItemModel r)
-    {
-        if (!string.IsNullOrWhiteSpace(_status) && !string.Equals(r.Status, _status, StringComparison.OrdinalIgnoreCase))
-            return false;
+    private static string StatusLabel(string status) =>
+        status == BoardReportStatus.Submitted ? "Enviado" : "Borrador";
 
-        if (string.IsNullOrWhiteSpace(_search)) return true;
-        var q = _search.Trim();
-        return r.Period.Contains(q, StringComparison.OrdinalIgnoreCase)
-            || r.Status.Contains(q, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private async Task ExportAsync()
-    {
-        var csv = CsvExport.Build(Filtered,
-            ("Periodo", r => r.Period),
-            ("Generado", r => r.GeneratedDate),
-            ("Páginas", r => r.PageCount),
-            ("Estado", r => r.Status));
-
-        await JS.InvokeVoidAsync("sigieDownload", CsvExport.FileName("informes-junta"), csv);
-    }
+    private static string StatusClass(string status) =>
+        status == BoardReportStatus.Submitted
+            ? "sipau-report-status is-compact is-sent"
+            : "sipau-report-status is-compact is-draft";
 }

@@ -7,6 +7,22 @@ namespace UPZMG.Persistence.Repository;
 public class EmployeesRepository(AppDBContext db)
 {
     
+    // Teaching staff as captured, newest hires first
+    public async Task<List<TeacherListItem>> GetTeachersListAsync() =>
+        await db.Employees
+            .AsNoTracking()
+            .Where(employee => employee.IsTeacher)
+            .OrderByDescending(employee => employee.FirstHiredDate)
+            .Select(employee => new TeacherListItem(
+                employee.Id,
+                employee.EmployeeNumber,
+                employee.FullName,
+                employee.Email,
+                employee.HighestEducationLevel.ToString(),
+                employee.FirstHiredDate,
+                employee.HasDisability))
+            .ToListAsync();
+
     public async Task<Employee> CreateEmployeeAsync(CreateEmployee request)
     {
         var exist = await db.Employees.AnyAsync(s => s.EmployeeNumber == request.EmployeeNumber);

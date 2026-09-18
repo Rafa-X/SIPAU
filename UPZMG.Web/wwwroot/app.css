@@ -1605,3 +1605,62 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
 @media (prefers-reduced-motion: reduce) {
     .sipau-meter > span { transition: none; }
 }
+
+/* ── Board report (Informe de Junta) ─────────────────────────────────────── */
+
+.sipau-board-chapter { margin-bottom: 18px; scroll-margin-top: 84px; }
+.sipau-board-block { margin-top: 22px; }
+.sipau-board-block:first-child { margin-top: 0; }
+.sipau-board-block-title {
+    margin: 0 0 8px;
+    font-size: 0.9375rem; font-weight: 700; line-height: 1.35;
+}
+.sipau-board-text { margin: 0; max-width: 74ch; font-size: 0.9375rem; line-height: 1.65; }
+.sipau-board-text.is-suggested { color: var(--mud-palette-text-secondary); }
+.sipau-board-meta {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    margin-top: 6px;
+}
+.sipau-board-pending {
+    margin: 0; padding: 12px 14px;
+    background: var(--sipau-wash);
+    border-left: 1px solid var(--sipau-hairline-strong);
+    font-size: 0.875rem; line-height: 1.55;
+    color: var(--mud-palette-text-secondary);
+}
+.sipau-board-source {
+    margin: 8px 0 0;
+    font-family: var(--sipau-font-narrow);
+    font-size: 0.75rem; font-weight: 650; letter-spacing: 0.04em;
+    color: var(--mud-palette-text-secondary);
+}
+
+.sipau-board-figures {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0;
+    border-top: 1px solid var(--sipau-hairline);
+}
+.sipau-board-figure {
+    padding: 12px 16px 12px 0;
+    border-bottom: 1px solid var(--sipau-hairline);
+}
+.sipau-board-figure-value {
+    margin-top: 2px;
+    font-size: 1.5rem; font-weight: 800; line-height: 1.15; letter-spacing: -0.015em;
+    font-variant-numeric: tabular-nums;
+}
+
+.sipau-board-tablewrap { overflow-x: auto; }
+.sipau-board-chart { margin-top: 6px; }
+
+.sipau-board-toc { margin: 0 0 26px; }
+.sipau-board-toc ol { list-style: none; margin: 8px 0 0; padding: 0; columns: 2; column-gap: 32px; }
+.sipau-board-toc li {
+    break-inside: avoid; padding: 5px 0;
+    font-size: 0.875rem; line-height: 1.4;
+    border-bottom: 1px solid var(--sipau-hairline);
+}
+.sipau-board-toc-num {
+    display: inline-block; min-width: 30px;
+    font-family: var(--sipau-font-narrow); font-weight: 700;
+    color: var(--sipau-plano);
+}

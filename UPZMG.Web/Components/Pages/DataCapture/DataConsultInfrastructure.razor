@@ -1,30 +1,15 @@
 @page "/datacapture/infrastructure/consult"
 @attribute [Authorize]
-@inject IDataCaptureService CaptureSvc
 
-<PageTitle>Consultar Infraestructura — SIPAU</PageTitle>
+<PageTitle>Consultar infraestructura — SIPAU</PageTitle>
 
-<CaptureQueryView TItem="InfrastructureListItemModel"
-                  Title="Consultar Infraestructura" Subtitle="Espacios ya capturados en el periodo activo"
-                  BackHref="/datacapture" SearchPlaceholder="Buscar por nombre del espacio…"
-                  Items="_spaces" Periods="_periods"
-                  NameSelector="@(s => s.Name)"
-                  PeriodSelector="@(s => s.Period)">
-    <Columns>
-        <PropertyColumn T="InfrastructureListItemModel" TProperty="string" Property="x => x.Name" Title="Espacio" />
-        <PropertyColumn T="InfrastructureListItemModel" TProperty="string" Property="x => x.UseType" Title="Tipo de uso" />
-        <PropertyColumn T="InfrastructureListItemModel" TProperty="int" Property="x => x.Capacity" Title="Capacidad" />
-        <PropertyColumn T="InfrastructureListItemModel" TProperty="string" Property="x => x.Period" Title="Periodo" />
-    </Columns>
-</CaptureQueryView>
+<PageHeader Title="Consultar infraestructura" BackHref="/datacapture"
+            Subtitle="Esta área todavía no guarda registros propios" />
 
-@code {
-    private IReadOnlyList<InfrastructureListItemModel> _spaces = Array.Empty<InfrastructureListItemModel>();
-    private IReadOnlyList<string> _periods = Array.Empty<string>();
-
-    protected override void OnInitialized()
-    {
-        _spaces = CaptureSvc.GetInfrastructureList();
-        _periods = CaptureSvc.Periods.Select(p => p.Text).ToList();
-    }
-}
+<SectionCard FullHeight="false">
+    <EmptyState Icon="@Icons.Material.Filled.Domain"
+                Title="Todavía no hay registros de esta área"
+                Description="Los espacios educativos aún no tienen tabla propia en el sistema. Mientras tanto se reportan en el formato SII · Infraestructura y el Anexo de Tecnologías de la Información, y de ahí los toma el Informe de Junta.">
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/reports">Ir a los formatos</MudButton>
+    </EmptyState>
+</SectionCard>

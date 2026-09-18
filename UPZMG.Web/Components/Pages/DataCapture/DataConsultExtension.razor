@@ -1,30 +1,15 @@
 @page "/datacapture/extension/consult"
 @attribute [Authorize]
-@inject IDataCaptureService CaptureSvc
 
-<PageTitle>Consultar Extensión — SIPAU</PageTitle>
+<PageTitle>Consultar vinculación — SIPAU</PageTitle>
 
-<CaptureQueryView TItem="ExtensionListItemModel"
-                  Title="Consultar Extensión y Vinculación" Subtitle="Proyectos ya capturados en el periodo activo"
-                  BackHref="/datacapture" SearchPlaceholder="Buscar por nombre del proyecto…"
-                  Items="_projects" Periods="_periods"
-                  NameSelector="@(p => p.Name)"
-                  PeriodSelector="@(p => p.Period)">
-    <Columns>
-        <PropertyColumn T="ExtensionListItemModel" TProperty="string" Property="x => x.Name" Title="Proyecto" />
-        <PropertyColumn T="ExtensionListItemModel" TProperty="string" Property="x => x.OrganizationName" Title="Organización" />
-        <PropertyColumn T="ExtensionListItemModel" TProperty="string" Property="x => x.ActivityType" Title="Tipo de actividad" />
-        <PropertyColumn T="ExtensionListItemModel" TProperty="string" Property="x => x.Period" Title="Periodo" />
-    </Columns>
-</CaptureQueryView>
+<PageHeader Title="Consultar vinculación" BackHref="/datacapture"
+            Subtitle="Esta área todavía no guarda registros propios" />
 
-@code {
-    private IReadOnlyList<ExtensionListItemModel> _projects = Array.Empty<ExtensionListItemModel>();
-    private IReadOnlyList<string> _periods = Array.Empty<string>();
-
-    protected override void OnInitialized()
-    {
-        _projects = CaptureSvc.GetExtensionList();
-        _periods = CaptureSvc.Periods.Select(p => p.Text).ToList();
-    }
-}
+<SectionCard FullHeight="false">
+    <EmptyState Icon="@Icons.Material.Filled.Diversity3"
+                Title="Todavía no hay registros de esta área"
+                Description="Los proyectos de vinculación y extensión aún no tienen tabla propia en el sistema. Mientras tanto se reportan en el formato 911.10 · Institución, y de ahí los toma el Informe de Junta.">
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/reports">Ir a los formatos</MudButton>
+    </EmptyState>
+</SectionCard>

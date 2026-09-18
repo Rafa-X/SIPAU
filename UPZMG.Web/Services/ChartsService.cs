@@ -21,6 +21,19 @@ public sealed class ChartsService(ISecurityService securityService): IChartsServ
         return [];
     }
 
+    public async Task<TeachersDistribution?> GetTeachersDistributionAsync()
+    {
+        var requesterKey = await securityService.GetRequesterKeyAsync();
+        var response = await securityService.SendGetRequestAsync<TeachersDistribution>(
+            "charts/teachers-distribution", requesterKey);
+
+        if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<TeachersDistribution>(response.Result, ResponseOptions);
+        }
+        return null;
+    }
+
     public async Task<List<GroupDistributionCareer>> GetGroupsDistributionByCareerAsync()
     {
         var requesterKey = await securityService.GetRequesterKeyAsync();

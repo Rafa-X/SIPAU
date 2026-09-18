@@ -3,8 +3,10 @@
 @using UPZMG.Implementations.Charts
 @using UPZMG.Shared.Enums
 @using UPZMG.Web.Models.Charts
+@using UPZMG.Implementations.Intelligence
 
 @inject IStudentsService _studentsService
+@inject IIntelligenceService Ai
 
 <PageTitle>Gráficas de Alumnos - SIPAU</PageTitle>
 
@@ -62,12 +64,30 @@
                      Subtitle="Índices institucionales de aprovechamiento por periodo"
                      Icon="@Icons.Material.Filled.FactCheck" Accent="navy">
             <ChildContent>
-                <BarChart Id="aprobacion-reprobacion-chart" Labels="_achievementLabels" Series="_achievement" Height="160"
-                          ValueFormat="0.0" Unit="%" AriaLabel="Aprobación contra reprobación" />
+                @if (_periods.Count == 0)
+                {
+                    <EmptyState Icon="@Icons.Material.Filled.FactCheck"
+                                Title="Sin kardex registrado"
+                                Description="El índice se calcula de las calificaciones capturadas; en cuanto haya kardex del periodo aparecerá aquí." />
+                }
+                else
+                {
+                    <BarChart Id="aprobacion-reprobacion-chart" Labels="_achievementLabels" Series="_achievement" Height="160"
+                              ValueFormat="0.0" Unit="%" AriaLabel="Aprobación contra reprobación" />
+                }
             </ChildContent>
             <Footer>
-                La reprobación acumula cuatro periodos a la baja
-                (<b>@($"{_failureDrop:0.0}")</b> puntos porcentuales desde @_achievementLabels[0]).
+                @if (_periods.Count > 0)
+                {
+                    <span>
+                        @_periods[^1].Label: aprobación <b>@($"{_periods[^1].PassRate:0.0}")</b> % sobre
+                        @($"{_periods[^1].Passed + _periods[^1].Failed:N0}") materias calificadas
+                        @if (_passRateChange is { } change)
+                        {
+                            <text> · @(change >= 0 ? "sube" : "baja") @($"{Math.Abs(change):0.0}") puntos frente a @_periods[0].Label</text>
+                        }
+                    </span>
+                }
             </Footer>
             <Actions>
                 <MudTooltip Text="Descargar gráfica PNG" Placement="Placement.Top">
@@ -87,23 +107,14 @@
                      Subtitle="Distribución de becas vigentes por financiamiento"
                      Icon="@Icons.Material.Filled.Savings" Accent="gold">
             <ChildContent>
-                <BarChart Id="scholarships-chart" Labels="_scholarshipLabels" Series="_scholarships" Height="290"
-                          AriaLabel="Becas por tipo y fuente" />
+                <EmptyState Icon="@Icons.Material.Filled.Savings"
+                            Title="Sin becas registradas"
+                            Description="Hoy las becas se reportan dentro del formato SII · Perfil del alumno. Esta gráfica se conectará cuando exista la captura de becas por alumno." />
             </ChildContent>
             <Footer>
-                Total de becas vigentes: <b>@_totalScholarships.ToString("N0")</b> ·
-                fuente principal: <b>@_topScholarship</b>
+                Fuente prevista: padrón de becas por alumno y periodo.
             </Footer>
-            <Actions>
-                <MudTooltip Text="Descargar gráfica PNG" Placement="Placement.Top">
-                    <MudIconButton Icon="@Icons.Material.Filled.FileDownload"
-                                   Color="Color.Secondary"
-                                   Size="Size.Small"
-                                   data-sipau-chart-download="scholarships-chart"
-                                   data-sipau-chart-title="Becas por fuente"
-                                   data-sipau-chart-filename="Becas-por-fuente.png" />
-                </MudTooltip>
-            </Actions>
+
         </SectionCard>
     </MudItem>
 </MudGrid>
@@ -111,26 +122,20 @@
 @code {
     private ChartsStudentsModel _model = new ChartsStudentsModel();
     
-    // ── Aprovechamiento ─────────────────────────────────────────────────────
-    
-    private readonly double[] _approval = { 84.2, 85.6, 86.9, 87.5 };
-    private readonly double[] _failure = { 15.8, 14.4, 13.1, 12.5 };
+    // ── Aprovechamiento, calculado del kardex registrado ────────────────────
 
-    private List<ChartSeriesData> _achievement => new()
-    {
-        new ChartSeriesData("Aprobación", _approval, ChartPalette.Teal),
-        new ChartSeriesData("Reprobación", _failure, ChartPalette.Clay),
-    };
-    private double _failureDrop => _failure[0] - _failure[^1];
-    private readonly string[] _achievementLabels = { "2024-1", "2024-2", "2025-1", "2025-2" };
+    private IReadOnlyList<PeriodStats> _periods = [];
 
-    // ── Becas ───────────────────────────────────────────────────────────────
-    private readonly string[] _scholarshipLabels = { "Excelencia", "Manutención", "Deportiva", "Federal" };
-    private readonly double[] _scholarshipData = { 180, 260, 65, 340 };
+    private List<ChartSeriesData> _achievement =>
+    [
+        new ChartSeriesData("Aprobación", [.. _periods.Select(period => Math.Round(period.PassRate, 1))], ChartPalette.Teal),
+        new ChartSeriesData("Reprobación", [.. _periods.Select(period => Math.Round(100 - period.PassRate, 1))], ChartPalette.Clay),
+    ];
 
-    private List<ChartSeriesData> _scholarships => new() { new ChartSeriesData("Becas", _scholarshipData, ChartPalette.Ochre) };
-    private double _totalScholarships => _scholarshipData.Sum();
-    private string _topScholarship => _scholarshipLabels[MaxIndex(_scholarshipData)];
+    private List<string> _achievementLabels => [.. _periods.Select(period => period.Label)];
+
+    // Points the pass rate moved between the first and the last period on record.
+    private double? _passRateChange => _periods.Count < 2 ? null : _periods[^1].PassRate - _periods[0].PassRate;
 
     protected override async Task OnInitializedAsync()
     {
@@ -142,10 +147,9 @@
         _model.AllStudents = MapAges(results[1]);
         _model.NewStudentsAges = [new ChartSeriesData("Nuevo ingreso", _model.NewStudents.Values, ChartPalette.Teal)];
         _model.AllStudentsAges = [new ChartSeriesData("Todos los estudiantes", _model.AllStudents.Values, ChartPalette.Navy)];
-    }
 
-    private static int MaxIndex(IReadOnlyList<double> values) =>
-        values.Select((value, index) => (value, index)).OrderByDescending(item => item.value).First().index;
+        _periods = await Ai.GetHistoryAsync();
+    }
 
     private static ChartStudentsAges MapAges(IReadOnlyList<StudentsAges> ages) => new()
     {

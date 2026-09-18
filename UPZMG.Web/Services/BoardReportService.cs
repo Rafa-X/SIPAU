@@ -1,47 +1,80 @@
-using UPZMG.Web.Models;
+using System.Net;
+using System.Text.Json;
+using UPZMG.Implementations.BoardReport;
 
 namespace UPZMG.Web.Services;
 
-/// <summary>Board report (Informe de Junta) — mock list + detail (table of contents).</summary>
-public interface IBoardReportService
+/// <summary>
+/// The board report is assembled in the API from the captures that were sent; the web only
+/// asks for the finished document and sends back the wording the university writes.
+/// </summary>
+public sealed class BoardReportService(
+    ISecurityService securityService,
+    ILogger<BoardReportService> logger) : IBoardReportService
 {
-    IReadOnlyList<BoardReportListItemModel> GetAll();
-    BoardReportDetailViewModel? GetDetail(int id);
-}
+    private static readonly JsonSerializerOptions ResponseOptions = new(JsonSerializerDefaults.Web);
 
-public sealed class BoardReportService : IBoardReportService
-{
-    private static readonly List<BoardReportListItemModel> Reports = new()
+    public async Task<IReadOnlyList<BoardReportListItem>> GetCyclesAsync() =>
+        await GetOrDefaultAsync<List<BoardReportListItem>>("boardreport/cycles") ?? [];
+
+    public Task<BoardReportDocument?> GetDocumentAsync(string cycle) =>
+        GetOrDefaultAsync<BoardReportDocument>($"boardreport/{Uri.EscapeDataString(cycle)}");
+
+    public async Task<BoardReportSaveResult> SaveNarrativeAsync(string cycle, string blockKey, string? text)
     {
-        new() { Id = 1, Period = "2026 Enero - Abril", GeneratedDate = new DateTime(2026, 6, 30), Status = "Enviado", PageCount = 42 },
-        new() { Id = 2, Period = "2025 Septiembre - Diciembre", GeneratedDate = new DateTime(2026, 2, 28), Status = "Generado", PageCount = 38 },
-        new() { Id = 3, Period = "2025 Mayo - Agosto", GeneratedDate = new DateTime(2025, 10, 15), Status = "Generado", PageCount = 40 },
-        new() { Id = 4, Period = "2026 Mayo - Agosto", GeneratedDate = new DateTime(2026, 7, 10), Status = "Borrador", PageCount = 12 },
-    };
-
-    public IReadOnlyList<BoardReportListItemModel> GetAll() => Reports;
-
-    public BoardReportDetailViewModel? GetDetail(int id)
-    {
-        var report = Reports.FirstOrDefault(r => r.Id == id);
-        if (report is null) return null;
-
-        return new BoardReportDetailViewModel
+        var requesterKey = await securityService.GetRequesterKeyAsync();
+        var request = new SaveBoardNarrative
         {
-            Id = report.Id,
-            Period = report.Period,
-            GeneratedDate = report.GeneratedDate,
-            Status = report.Status,
-            TotalAtypicalEventPhotos = 14,
-            Sections = new List<BoardReportSectionModel>
-            {
-                new() { Name = "Matrícula", Description = "Comportamiento histórico y distribución por carrera" },
-                new() { Name = "Aprovechamiento", Description = "Índices de aprobación y reprobación por periodo" },
-                new() { Name = "Titulación", Description = "Egresados titulados por generación y modalidad" },
-                new() { Name = "Becas", Description = "Becas asignadas por tipo y fuente de financiamiento" },
-                new() { Name = "Infraestructura", Description = "Estado de instalaciones, equipamiento y espacios" },
-                new() { Name = "Eventos Protocolarios", Description = "Ceremonias, firmas de convenio y visitas institucionales" },
-            },
+            RequesterKey = requesterKey,
+            Cycle = cycle,
+            BlockKey = blockKey,
+            Text = text,
         };
+
+        return await PostAsync("boardreport/narrative", JsonSerializer.Serialize(request), requesterKey);
+    }
+
+    public async Task<BoardReportSaveResult> SubmitAsync(string cycle)
+    {
+        var requesterKey = await securityService.GetRequesterKeyAsync();
+        var request = new SubmitBoardReport { RequesterKey = requesterKey, Cycle = cycle };
+
+        return await PostAsync("boardreport/submit", JsonSerializer.Serialize(request), requesterKey);
+    }
+
+    private async Task<BoardReportSaveResult> PostAsync(string path, string json, Guid requesterKey)
+    {
+        var response = await securityService.SendPostRequestAsync<object, BoardReportSaveResult>(path, json, requesterKey);
+
+        if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<BoardReportSaveResult>(response.Result, ResponseOptions)
+                ?? BoardReportSaveResult.Refused("El API respondió algo que no se pudo leer.");
+        }
+
+        return BoardReportSaveResult.Refused(response.StatusCode switch
+        {
+            HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized => "Sólo Planeación puede editar el informe.",
+            _ => "No se pudo guardar: el API no respondió.",
+        });
+    }
+
+    // SendGetRequestAsync throws on any error status or when the API is down.
+    private async Task<T?> GetOrDefaultAsync<T>(string path) where T : class
+    {
+        try
+        {
+            var requesterKey = await securityService.GetRequesterKeyAsync();
+            var response = await securityService.SendGetRequestAsync<T>(path, requesterKey);
+
+            return response.StatusCode == HttpStatusCode.OK && response.Result is not null
+                ? JsonSerializer.Deserialize<T>(response.Result, ResponseOptions)
+                : null;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            logger.LogWarning("Board report request {Path} failed: {Message}", path, ex.Message);
+            return null;
+        }
     }
 }

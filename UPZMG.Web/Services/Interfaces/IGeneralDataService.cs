@@ -16,9 +16,4 @@ public interface IGeneralDataService
     Task<IReadOnlyList<LookupOption>> GetTeachersAsync();
     Task<IReadOnlyList<LookupOption>> GetFacilitiesAsync();
 
-    // IReadOnlyList<StudentListItemModel> GetStudentsList();
-    // IReadOnlyList<TeacherListItemModel> GetTeachersList();
-    // IReadOnlyList<InfrastructureListItemModel> GetInfrastructureList();
-    // IReadOnlyList<ExtensionListItemModel> GetExtensionList();
-    // IReadOnlyList<FinanceListItemModel> GetFinanceList();
 }

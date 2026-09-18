@@ -1,31 +1,85 @@
 @page "/datacapture/teachers/consult"
 @attribute [Authorize]
+@using UPZMG.Implementations.DataCapture
 @inject IDataCaptureService CaptureSvc
+@inject IJSRuntime JS
 
-<PageTitle>Consultar Docentes — SIPAU</PageTitle>
+<PageTitle>Consultar docentes — SIPAU</PageTitle>
 
-<CaptureQueryView TItem="TeacherListItemModel"
-                  Title="Consultar Docentes / RRHH" Subtitle="Personal ya capturado en el periodo activo"
-                  BackHref="/datacapture" SearchPlaceholder="Buscar por nombre o número de empleado…"
-                  Items="_teachers" Periods="_periods"
-                  NameSelector="@(t => $"{t.Name} {t.EmployeeNumber}")"
-                  PeriodSelector="@(t => t.Period)">
-    <Columns>
-        <PropertyColumn T="TeacherListItemModel" TProperty="string" Property="x => x.EmployeeNumber" Title="Número de empleado" />
-        <PropertyColumn T="TeacherListItemModel" TProperty="string" Property="x => x.Name" Title="Nombre" />
-        <PropertyColumn T="TeacherListItemModel" TProperty="string" Property="x => x.Area" Title="Área" />
-        <PropertyColumn T="TeacherListItemModel" TProperty="string" Property="x => x.ContractType" Title="Tipo de contrato" />
-        <PropertyColumn T="TeacherListItemModel" TProperty="string" Property="x => x.Period" Title="Periodo" />
-    </Columns>
-</CaptureQueryView>
+<PageHeader Title="Consultar docentes" BackHref="/datacapture"
+            Subtitle="Personal docente registrado en el sistema" />
+
+@if (_loading)
+{
+    <LoadingState Text="Leyendo la plantilla docente…" />
+}
+else if (_teachers.Count == 0)
+{
+    <SectionCard FullHeight="false">
+        <EmptyState Icon="@Icons.Material.Filled.Groups"
+                    Title="Sin docentes registrados"
+                    Description="Captura personal docente y aparecerá aquí. Si tu área no es Recursos Humanos, el listado no se muestra.">
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/datacapture/teachers">
+                Capturar docente
+            </MudButton>
+        </EmptyState>
+    </SectionCard>
+}
+else
+{
+    <SectionCard Flush="true" FullHeight="false">
+        <DataToolbar @bind-Search="_search" Placeholder="Buscar por nombre o número de empleado…"
+                     Count="Filtered.Count" Total="_teachers.Count" OnExport="ExportAsync" />
+
+        <MudDataGrid T="TeacherListItem" Items="Filtered" Hover="true" Dense="true" Elevation="0" SortMode="SortMode.Single">
+            <Columns>
+                <PropertyColumn Property="x => x.EmployeeNumber" Title="Número" />
+                <PropertyColumn Property="x => x.FullName" Title="Nombre" />
+                <PropertyColumn Property="x => x.Email" Title="Correo" />
+                <PropertyColumn Property="x => x.EducationLevel" Title="Nivel de estudios" />
+                <TemplateColumn Title="Primera contratación" SortBy="x => x.FirstHiredDate">
+                    <CellTemplate>@context.Item.FirstHiredDate.ToString("dd/MM/yyyy")</CellTemplate>
+                </TemplateColumn>
+            </Columns>
+            <NoRecordsContent>
+                <EmptyState Icon="@Icons.Material.Filled.SearchOff" Title="Sin coincidencias"
+                            Description="Ningún docente coincide con la búsqueda." />
+            </NoRecordsContent>
+        </MudDataGrid>
+    </SectionCard>
+}
 
 @code {
-    private IReadOnlyList<TeacherListItemModel> _teachers = Array.Empty<TeacherListItemModel>();
-    private IReadOnlyList<string> _periods = Array.Empty<string>();
+    private IReadOnlyList<TeacherListItem> _teachers = [];
+    private bool _loading = true;
+    private string _search = string.Empty;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        _teachers = CaptureSvc.GetTeachersList();
-        _periods = CaptureSvc.Periods.Select(p => p.Text).ToList();
+        _teachers = await CaptureSvc.GetTeachersListAsync();
+        _loading = false;
+    }
+
+    private List<TeacherListItem> Filtered => _teachers.Where(Matches).ToList();
+
+    private bool Matches(TeacherListItem teacher)
+    {
+        if (string.IsNullOrWhiteSpace(_search)) return true;
+        var query = _search.Trim();
+        return teacher.FullName.Contains(query, StringComparison.CurrentCultureIgnoreCase)
+            || teacher.EmployeeNumber.ToString().Contains(query, StringComparison.OrdinalIgnoreCase)
+            || teacher.Email.Contains(query, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task ExportAsync()
+    {
+        var csv = CsvExport.Build(Filtered,
+            ("Número", t => t.EmployeeNumber),
+            ("Nombre", t => t.FullName),
+            ("Correo", t => t.Email),
+            ("Nivel de estudios", t => t.EducationLevel),
+            ("Primera contratación", t => t.FirstHiredDate.ToString("dd/MM/yyyy")));
+
+        await JS.InvokeVoidAsync("sigieDownload", CsvExport.FileName("docentes"), csv);
     }
 }

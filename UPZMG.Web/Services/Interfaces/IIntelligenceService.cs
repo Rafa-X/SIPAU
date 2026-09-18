@@ -10,6 +10,9 @@ public interface IIntelligenceService
     // Empty when nothing stands out or the API could not answer; never throws.
     Task<IReadOnlyList<AnomalyAlert>> GetAnomaliesAsync();
 
+    // Enrolment, pass rate and outcomes per period; empty when there is no history.
+    Task<IReadOnlyList<PeriodStats>> GetHistoryAsync();
+
     // Null when the API refused (role) or failed.
     Task<DropoutModelReport?> GetDropoutReportAsync();
 

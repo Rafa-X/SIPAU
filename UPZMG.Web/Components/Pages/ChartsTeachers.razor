@@ -1,58 +1,78 @@
 @page "/charts/teachers"
 @attribute [Authorize]
+@using UPZMG.Implementations.Charts
+@inject IChartsService ChartsSvc
 
-<PageTitle>Graficas de Docentes - SIPAU</PageTitle>
+<PageTitle>Gráficas de docentes — SIPAU</PageTitle>
 
-<PageHeader Eyebrow="Analitica" Title="Graficas de Docentes"
-            Subtitle="Distribucion del personal docente" BackHref="/charts" />
+<PageHeader Title="Gráficas de docentes"
+            Subtitle="Plantilla docente registrada en el sistema, por nivel de estudios y antigüedad" BackHref="/charts" />
 
-<MudGrid>
-    <MudItem xs="12" lg="6">
-        <SectionCard Title="Docentes por nivel academico"
-                     Subtitle="Personal docente agrupado por nivel de estudios"
-                     Icon="@Icons.Material.Filled.School" Accent="navy">
-            <ChildContent>
-                <BarChart Labels="_educationLabels" Series="_educationSeries" Height="290"
-                          AriaLabel="Docentes por nivel academico" />
-            </ChildContent>
-            <Footer>
-                Nivel predominante: <b>@_topEducation</b> · total <b>@_totalTeachers</b> docentes
-            </Footer>
-        </SectionCard>
-    </MudItem>
+@if (_loading)
+{
+    <LoadingState Text="Contando la plantilla docente…" />
+}
+else if (_model is null || _model.Teachers == 0)
+{
+    <SectionCard FullHeight="false">
+        <EmptyState Icon="@Icons.Material.Filled.Groups"
+                    Title="Todavía no hay docentes registrados"
+                    Description="Captura el personal docente en Captura de datos › Docentes y estas gráficas se llenarán solas.">
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/datacapture/teachers">
+                Ir a capturar docentes
+            </MudButton>
+        </EmptyState>
+    </SectionCard>
+}
+else
+{
+    <MudGrid>
+        <MudItem xs="12" lg="6">
+            <SectionCard Title="Docentes por nivel de estudios"
+                         Subtitle="Nivel máximo registrado en su expediente"
+                         Icon="@Icons.Material.Filled.School" Accent="navy">
+                <ChildContent>
+                    <BarChart Labels="@Labels(_model.ByDegree)" Series="@Series(_model.ByDegree, ChartPalette.Navy)"
+                              Height="290" AriaLabel="Docentes por nivel de estudios" />
+                </ChildContent>
+                <Footer>
+                    Nivel predominante: <b>@Top(_model.ByDegree)</b> · total <b>@_model.Teachers</b> docentes
+                </Footer>
+            </SectionCard>
+        </MudItem>
 
-    <MudItem xs="12" lg="6">
-        <SectionCard Title="Docentes por experiencia"
-                     Subtitle="Distribucion del personal segun anos de experiencia externa"
-                     Icon="@Icons.Material.Filled.WorkHistory" Accent="teal">
-            <ChildContent>
-                <BarChart Labels="_experienceLabels" Series="_experienceSeries" Height="290"
-                          AriaLabel="Docentes por experiencia" />
-            </ChildContent>
-            <Footer>
-                Grupo predominante: <b>@_topExperience</b> · promedio <b>@_averageExperience.ToString("0.0")</b> anos de experiencia
-            </Footer>
-        </SectionCard>
-    </MudItem>
-</MudGrid>
+        <MudItem xs="12" lg="6">
+            <SectionCard Title="Docentes por antigüedad"
+                         Subtitle="Años desde su primera contratación en la universidad"
+                         Icon="@Icons.Material.Filled.WorkHistory" Accent="teal">
+                <ChildContent>
+                    <BarChart Labels="@Labels(_model.BySeniority)" Series="@Series(_model.BySeniority, ChartPalette.Teal)"
+                              Height="290" AriaLabel="Docentes por antigüedad" />
+                </ChildContent>
+                <Footer>
+                    Grupo predominante: <b>@Top(_model.BySeniority)</b>
+                </Footer>
+            </SectionCard>
+        </MudItem>
+    </MudGrid>
+}
 
 @code {
-    private readonly string[] _educationLabels = { "Licenciatura", "Especialidad", "Maestria", "Doctorado" };
-    private readonly double[] _educationData = { 1, 0, 2, 1 };
-    private readonly string[] _experienceLabels = { "0-4 anos", "5-9 anos", "10-14 anos", "15 o mas" };
-    private readonly double[] _experienceData = { 1, 2, 1, 0 };
+    private TeachersDistribution? _model;
+    private bool _loading = true;
 
-    private List<ChartSeriesData> _educationSeries =>
-        new() { new ChartSeriesData("Docentes", _educationData, ChartPalette.Navy) };
+    protected override async Task OnInitializedAsync()
+    {
+        _model = await ChartsSvc.GetTeachersDistributionAsync();
+        _loading = false;
+    }
 
-    private List<ChartSeriesData> _experienceSeries =>
-        new() { new ChartSeriesData("Docentes", _experienceData, ChartPalette.Teal) };
+    private static List<string> Labels(IReadOnlyList<ChartCategory> categories) =>
+        [.. categories.Select(category => category.Label)];
 
-    private int _totalTeachers => (int)_educationData.Sum();
-    private string _topEducation => _educationLabels[MaxIndex(_educationData)];
-    private string _topExperience => _experienceLabels[MaxIndex(_experienceData)];
-    private double _averageExperience => (8 + 12 + 4 + 6) / 4d;
+    private static List<ChartSeriesData> Series(IReadOnlyList<ChartCategory> categories, string colour) =>
+        [new ChartSeriesData("Docentes", [.. categories.Select(category => (double)category.Value)], colour)];
 
-    private static int MaxIndex(IReadOnlyList<double> values) =>
-        values.Select((value, index) => (value, index)).OrderByDescending(item => item.value).First().index;
+    private static string Top(IReadOnlyList<ChartCategory> categories) =>
+        categories.Count == 0 ? "Sin datos" : categories.MaxBy(category => category.Value)!.Label;
 }

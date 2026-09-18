@@ -1,72 +1,245 @@
-@page "/boardreport/{Id:int}"
+@page "/boardreport/{Cycle}"
 @attribute [Authorize]
+@using UPZMG.Implementations.BoardReport
 @inject IBoardReportService BoardSvc
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
 
-<PageTitle>Detalle de Informe — SIPAU</PageTitle>
+@*
+    The report as the university reviews it before sending it to the Junta: every figure comes
+    from a format that was already sent, and the only editable parts are the narrative blocks.
+*@
 
-@if (_model is null)
+<PageTitle>Informe @Cycle — SIPAU</PageTitle>
+
+@if (_loading)
 {
-    <PageHeader Eyebrow="Junta directiva" Title="Informe no encontrado" BackHref="/boardreport" />
-    <MudAlert Severity="Severity.Warning">No se encontró el informe solicitado.</MudAlert>
+    <PageHeader Title="@($"Informe del ciclo {Cycle}")" BackHref="/boardreport" />
+    <LoadingState Text="Reuniendo las cifras de los formatos enviados…" />
+}
+else if (_document is null)
+{
+    <PageHeader Title="Informe no disponible" BackHref="/boardreport" />
+    <SectionCard FullHeight="false">
+        <EmptyState Title="No se pudo armar el informe"
+                    Description="No hay formatos oficiales de este ciclo, o el API no respondió.">
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="LoadAsync">Reintentar</MudButton>
+        </EmptyState>
+    </SectionCard>
 }
 else
 {
-    <PageHeader Eyebrow="Junta directiva" Title="@($"Informe {_model.Period}")" Subtitle="@($"Generado el {_model.GeneratedDate:dd/MM/yyyy} · {_model.Status}")" BackHref="/boardreport">
+    <PageHeader Title="@_document.Title" BackHref="/boardreport"
+                Subtitle="@($"{_document.Chapters.Count} capítulos · {_document.Sources.Count(s => s.IsSubmitted)} de {_document.Sources.Count} formatos enviados")">
         <Actions>
-            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PictureAsPdf">Exportar PDF</MudButton>
+            <span class="@(_document.IsSubmitted ? "sipau-report-status is-compact is-sent" : "sipau-report-status is-compact is-draft")">
+                @(_document.IsSubmitted ? "Enviado" : "Borrador")
+            </span>
+            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary"
+                       StartIcon="@Icons.Material.Filled.Print" Href="@($"/boardreport/{Cycle}/documento")">
+                Documento
+            </MudButton>
+            <AuthorizeView Roles="Admin">
+                @if (!_document.IsSubmitted)
+                {
+                    <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Send" Disabled="_working" OnClick="SubmitAsync">
+                        Enviar a la Junta
+                    </MudButton>
+                }
+            </AuthorizeView>
         </Actions>
     </PageHeader>
 
-    <MudGrid>
-        <MudItem xs="12" md="8">
-            <MudPaper Elevation="1" Class="pa-4">
-                <MudText Typo="Typo.h6" Class="mb-3">Contenido del informe</MudText>
-                <MudList T="string">
-                    @foreach (var sec in _model.Sections)
-                    {
-                        <MudListItem T="string" Icon="@IconFor(sec.Name)">
-                            <MudText Typo="Typo.body1" Style="font-weight:600">@sec.Name</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">@sec.Description</MudText>
-                        </MudListItem>
-                        <MudDivider />
-                    }
-                </MudList>
-            </MudPaper>
-        </MudItem>
+    @if (_document.Missing.Count > 0)
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-4">
+            <b>Faltan formatos de este ciclo.</b>
+            Los capítulos que dependen de ellos aparecen marcados como pendientes:
+            @string.Join(", ", _document.Missing.Select(m => m.DisplayName)).
+            <MudLink Href="/reports" Typo="Typo.body2" Class="ml-1">Ir a capturarlos</MudLink>
+        </MudAlert>
+    }
+    else if (!_document.IsSubmitted)
+    {
+        <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Class="mb-4">
+            Todas las áreas enviaron su formato. El informe puede enviarse a la Junta Directiva.
+        </MudAlert>
+    }
 
-        <MudItem xs="12" md="4">
-            <MudPaper Elevation="1" Class="pa-4">
-                <MudText Typo="Typo.h6" Class="mb-2">Eventos atípicos</MudText>
-                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3">
-                    Galería de fotografías de eventos protocolarios (máx. 20).
-                </MudText>
-                <div class="d-flex align-center" style="gap:12px">
-                    <MudIcon Icon="@Icons.Material.Filled.PhotoLibrary" Color="Color.Tertiary" Size="Size.Large" />
-                    <div>
-                        <MudText Typo="Typo.h4" Style="font-weight:700">@_model.TotalAtypicalEventPhotos</MudText>
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">fotografías cargadas</MudText>
-                    </div>
-                </div>
-            </MudPaper>
-        </MudItem>
-    </MudGrid>
+    <div class="sipau-capture">
+        <aside class="sipau-capture-index">
+            <SectionCard Title="Capítulos" FullHeight="false">
+                <ol class="sipau-capture-steps">
+                    @foreach (var chapter in _document.Chapters)
+                    {
+                        <li>
+                            <a class="sipau-capture-step" href="@($"#cap-{chapter.Number}")">
+                                <span class="sipau-capture-step-num">@chapter.Number</span>
+                                <span class="sipau-capture-step-body">
+                                    <span class="sipau-capture-step-title">@chapter.Title</span>
+                                    <span class="sipau-capture-step-meta">@Pending(chapter)</span>
+                                </span>
+                            </a>
+                        </li>
+                    }
+                </ol>
+            </SectionCard>
+
+            <SectionCard Title="Formatos que alimentan el informe" FullHeight="false">
+                <ul class="sipau-risk-list">
+                    @foreach (var source in _document.Sources)
+                    {
+                        <li>
+                            <div class="sipau-risk-row">
+                                <span class="sipau-risk-label">@source.DisplayName</span>
+                                <span class="@(source.IsSubmitted ? "sipau-report-status is-compact is-sent" : "sipau-report-status is-compact is-dirty")">
+                                    @(source.IsSubmitted ? "Enviado" : source.Status == "draft" ? "Borrador" : "Sin captura")
+                                </span>
+                            </div>
+                            @if (source.LastModified is { } modified && source.Status != "pending")
+                            {
+                                <div class="sipau-risk-sub">@ReportUi.Local(modified) @(source.CapturedBy is null ? "" : "· " + source.CapturedBy)</div>
+                            }
+                        </li>
+                    }
+                </ul>
+            </SectionCard>
+        </aside>
+
+        <div class="sipau-capture-main">
+            @foreach (var chapter in _document.Chapters)
+            {
+                <section id="@($"cap-{chapter.Number}")" class="sipau-board-chapter">
+                    <SectionCard Title="@($"{chapter.Number}. {chapter.Title}")" Subtitle="@chapter.Summary" FullHeight="false">
+                        @foreach (var block in chapter.Blocks)
+                        {
+                            @if (block.Kind == BoardReportBlockKinds.Narrative && block.BlockKey is { } key)
+                            {
+                                <div class="sipau-board-block">
+                                    <h3 class="sipau-board-block-title">@block.Title</h3>
+
+                                    @if (_editing == key)
+                                    {
+                                        <MudTextField @bind-Value="_draft" Lines="6" Variant="Variant.Outlined"
+                                                      Immediate="true" AutoFocus="true"
+                                                      Label="Texto del apartado" Class="mt-1" />
+                                        <div class="sipau-editor-actions">
+                                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary"
+                                                       Disabled="_working" OnClick="@(() => SaveAsync(key, _draft))">
+                                                Guardar
+                                            </MudButton>
+                                            <MudButton Size="Size.Small" Variant="Variant.Text"
+                                                       OnClick="@(() => _editing = null)">Cancelar</MudButton>
+                                            <MudSpacer />
+                                            @if (!block.IsSuggested)
+                                            {
+                                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary"
+                                                           StartIcon="@Icons.Material.Filled.Undo"
+                                                           Disabled="_working" OnClick="@(() => SaveAsync(key, null))">
+                                                    Restaurar la sugerencia
+                                                </MudButton>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <p class="@(block.IsSuggested ? "sipau-board-text is-suggested" : "sipau-board-text")">@block.Text</p>
+                                        <div class="sipau-board-meta">
+                                            <span class="sipau-doc-note">
+                                                @(block.IsSuggested ? "Redacción sugerida por el sistema" : "Redactado por la universidad")
+                                            </span>
+                                            <AuthorizeView Roles="Admin">
+                                                @if (!_document.IsSubmitted)
+                                                {
+                                                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary"
+                                                               StartIcon="@Icons.Material.Filled.Edit"
+                                                               OnClick="@(() => Edit(key, block.Text))">
+                                                        Redactar
+                                                    </MudButton>
+                                                }
+                                            </AuthorizeView>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <BoardBlock Block="block" />
+                            }
+                        }
+                    </SectionCard>
+                </section>
+            }
+        </div>
+    </div>
 }
 
 @code {
-    [Parameter] public int Id { get; set; }
+    [Parameter] public string Cycle { get; set; } = string.Empty;
 
-    private BoardReportDetailViewModel? _model;
+    private BoardReportDocument? _document;
+    private bool _loading = true;
+    private bool _working;
+    private string? _editing;
+    private string _draft = string.Empty;
 
-    protected override void OnInitialized() => _model = BoardSvc.GetDetail(Id);
+    protected override Task OnParametersSetAsync() => LoadAsync();
 
-    private static string IconFor(string section) => section switch
+    private async Task LoadAsync()
     {
-        "Matrícula"            => Icons.Material.Filled.School,
-        "Aprovechamiento"      => Icons.Material.Filled.TrendingUp,
-        "Titulación"           => Icons.Material.Filled.EmojiEvents,
-        "Becas"                => Icons.Material.Filled.CreditCard,
-        "Infraestructura"      => Icons.Material.Filled.Apartment,
-        "Eventos Protocolarios"=> Icons.Material.Filled.Campaign,
-        _                      => Icons.Material.Filled.Article,
-    };
+        _loading = true;
+        _document = await BoardSvc.GetDocumentAsync(Cycle);
+        _loading = false;
+    }
+
+    private void Edit(string key, string? text)
+    {
+        _editing = key;
+        _draft = text ?? string.Empty;
+    }
+
+    private async Task SaveAsync(string key, string? text)
+    {
+        _working = true;
+        var result = await BoardSvc.SaveNarrativeAsync(Cycle, key, text);
+        _working = false;
+
+        if (!result.Saved)
+        {
+            Snackbar.Add(result.Message ?? "No se pudo guardar el texto.", Severity.Error);
+            return;
+        }
+
+        _editing = null;
+        await LoadAsync();
+        Snackbar.Add(string.IsNullOrWhiteSpace(text) ? "Se restauró la redacción sugerida." : "Texto guardado.", Severity.Success);
+    }
+
+    private async Task SubmitAsync()
+    {
+        _working = true;
+        var result = await BoardSvc.SubmitAsync(Cycle);
+        _working = false;
+
+        if (!result.Saved)
+        {
+            Snackbar.Add(result.Message ?? "No se pudo enviar el informe.", Severity.Warning);
+            return;
+        }
+
+        await LoadAsync();
+        Snackbar.Add("Informe enviado a la Junta Directiva.", Severity.Success);
+    }
+
+    private static string Pending(BoardReportChapter chapter)
+    {
+        var pending = chapter.Blocks.Count(b => b.Kind == BoardReportBlockKinds.Pending);
+        var suggested = chapter.Blocks.Count(b => b.Kind == BoardReportBlockKinds.Narrative && b.IsSuggested);
+
+        if (pending > 0 && suggested > 0) return $"{pending} sin captura · {suggested} por redactar";
+        if (pending > 0) return ReportUi.Plural(pending, "apartado sin captura", "apartados sin captura");
+        if (suggested > 0) return ReportUi.Plural(suggested, "texto por redactar", "textos por redactar");
+        return "Completo";
+    }
 }
