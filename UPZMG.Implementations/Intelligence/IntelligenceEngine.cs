@@ -31,9 +31,23 @@ public static class IntelligenceEngine
 
     public static EnrollmentForecast Forecast(AcademicHistory history, int periodsAhead)
     {
-        if (!history.CanForecast) return EnrollmentForecast.None;
+        if (history.Periods.Count == 0) return EnrollmentForecast.None;
 
         var observed = history.Periods.Select(p => (double)p.Enrolled).ToList();
+
+        // One observed period is useful historical data, but not enough to infer
+        // a trend. Return it so the chart can still be rendered.
+        if (!history.CanForecast)
+        {
+            return new EnrollmentForecast(
+                history.Periods.Select(p => p.Label).ToList(),
+                observed,
+                [], [], [],
+                observed.Count,
+                0, observed[0], 0, 0,
+                HasModel: false);
+        }
+
         var fit = Statistics.Fit(observed);
         if (fit is null) return EnrollmentForecast.None;
 

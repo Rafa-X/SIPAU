@@ -95,7 +95,7 @@
     <div class="sipau-chart-xaxis">
         @for (int c = 0; c < Labels.Count; c++)
         {
-            <span class="@(_hover == c ? "on" : null)" style="@Pct("left", _scale.BandCenter(c, Labels.Count) / VbW * 100)">
+            <span class="@AxisLabelClass(c)" style="@Pct("left", _scale.BandCenter(c, Labels.Count) / VbW * 100)">
                 @Labels[c]
             </span>
         }
@@ -145,6 +145,12 @@
         var baseline = _scale.Y(Math.Max(0, _scale.Min));
 
         return new Bar(startX + slot * 0.08, Math.Min(y, baseline), slot * 0.84, Math.Abs(baseline - y));
+    }
+
+    private string AxisLabelClass(int index)
+    {
+        var edge = index == 0 ? "is-first" : index == Labels.Count - 1 ? "is-last" : null;
+        return _hover == index ? $"{edge} on".Trim() : edge ?? string.Empty;
     }
 
     private static string Pct(string property, double value) =>

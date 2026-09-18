@@ -113,21 +113,24 @@ else
                     {
                         <LoadingState Text="Ajustando la regresión…" />
                     }
-                    else if (!_forecast.HasModel)
+                    else if (_forecast.Labels.Count == 0)
                     {
                         <EmptyState Title="Sin historial suficiente"
-                                    Description="La proyección necesita inscripciones en al menos tres periodos." />
+                                    Description="Captura inscripciones en al menos un periodo para mostrar el historial." />
                     }
                     else
                     {
-                        <div class="sipau-projection">
-                            <span class="sipau-projection-figure">@(_forecast.NextValue?.ToString("N0"))</span>
-                            <span class="sipau-projection-note">
-                                alumnos en @_forecast.NextLabel · ± @(_forecast.NextMargin?.ToString("N0"))
-                            </span>
-                        </div>
+                        @if (_forecast.HasModel)
+                        {
+                            <div class="sipau-projection">
+                                <span class="sipau-projection-figure">@(_forecast.NextValue?.ToString("N0"))</span>
+                                <span class="sipau-projection-note">
+                                    alumnos en @_forecast.NextLabel · ± @(_forecast.NextMargin?.ToString("N0"))
+                                </span>
+                            </div>
+                        }
                         <TrendChart Labels="_forecast.Labels" Series="_forecastSeries" Height="150" ShowLegend="false"
-                                    ForecastFromIndex="_forecast.HistoricalCount"
+                                    ForecastFromIndex="@(_forecast.HasModel ? _forecast.HistoricalCount : null)"
                                     AriaLabel="Matrícula observada y proyectada" />
                     }
                 </ChildContent>
@@ -311,11 +314,13 @@ else
         _anomalies = await anomalies;
         _dropout = await dropout;
 
-        _forecastSeries =
-        [
-            new ChartSeriesData("Matrícula", _forecast.Actual, ChartPalette.Teal, Filled: true),
-            new ChartSeriesData("Tendencia", _forecast.Trend, ChartPalette.Indigo, Dashed: true),
-        ];
+        _forecastSeries = _forecast.HasModel
+            ?
+            [
+                new ChartSeriesData("Matrícula", _forecast.Actual, ChartPalette.Teal, Filled: true),
+                new ChartSeriesData("Tendencia", _forecast.Trend, ChartPalette.Indigo, Dashed: true),
+            ]
+            : [new ChartSeriesData("Matrícula", _forecast.Actual, ChartPalette.Teal, Filled: true)];
         _aiLoading = false;
     }
 

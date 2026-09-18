@@ -24,8 +24,8 @@ public sealed record AcademicHistory(IReadOnlyList<PeriodStats> Periods, IReadOn
 {
     public static readonly AcademicHistory Empty = new([], []);
 
-    // Three points is the least a regression can be fitted to.
-    public bool CanForecast => Periods.Count >= 3;
+    // Two points define the first usable trend for an enrolment projection.
+    public bool CanForecast => Periods.Count >= 2;
 }
 
 public static class AcademicHistoryBuilder

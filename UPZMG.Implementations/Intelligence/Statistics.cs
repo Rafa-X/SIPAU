@@ -14,13 +14,13 @@ public sealed record LinearFit(double Slope, double Intercept, double R2, double
 public static class Statistics
 {
     /// <summary>
-    /// Least-squares line over y indexed at x = 0..n-1. Null below three points:
-    /// two points always fit perfectly and would claim R² = 1 on no evidence.
+    /// Least-squares line over y indexed at x = 0..n-1. Two points provide the
+    /// minimum trend required for an initial enrolment projection.
     /// </summary>
     public static LinearFit? Fit(IReadOnlyList<double> y)
     {
         int n = y.Count;
-        if (n < 3) return null;
+        if (n < 2) return null;
 
         double sumX = 0, sumY = 0, sumXy = 0, sumXx = 0;
         for (int i = 0; i < n; i++)
@@ -49,8 +49,9 @@ public static class Statistics
         // A flat series has no variance to explain, and the line reproduces it exactly.
         double r2 = ssTot < 1e-9 ? 1 : 1 - ssRes / ssTot;
 
-        // n − 2 degrees of freedom: slope and intercept used two.
-        double stdError = Math.Sqrt(ssRes / (n - 2));
+        // Two observations leave no residual degrees of freedom; their fitted
+        // line is exact, so use a zero uncertainty band until more history exists.
+        double stdError = n == 2 ? 0 : Math.Sqrt(ssRes / (n - 2));
 
         return new LinearFit(slope, intercept, Math.Clamp(r2, 0, 1), stdError);
     }

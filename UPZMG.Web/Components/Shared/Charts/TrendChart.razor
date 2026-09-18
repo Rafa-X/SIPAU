@@ -127,7 +127,7 @@
     <div class="sipau-chart-xaxis">
         @for (int i = 0; i < Labels.Count; i++)
         {
-            <span class="@LabelClass(i)" style="@Pct("left", _scale.X(i, Labels.Count) / VbW * 100)">
+            <span class="@AxisLabelClass(i)" style="@Pct("left", _scale.X(i, Labels.Count) / VbW * 100)">
                 @Labels[i]
             </span>
         }
@@ -181,6 +181,12 @@
                  : i % fine == 0 ? "is-fine"
                  : "is-hidden";
         return _hover == i ? $"{tier} on".Trim() : tier;
+    }
+
+    private string AxisLabelClass(int i)
+    {
+        var edge = i == 0 ? "is-first" : i == Labels.Count - 1 ? "is-last" : null;
+        return string.Join(' ', new[] { LabelClass(i), edge }.Where(value => !string.IsNullOrWhiteSpace(value)));
     }
 
     private double? ForecastX =>

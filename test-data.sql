@@ -432,10 +432,42 @@ END;
 
 -- 15) Asignature registrations for testing
 DECLARE @NoWithdrawReason UNIQUEIDENTIFIER = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+DECLARE @ClassGroupProgrammingB UNIQUEIDENTIFIER = '99999999-9999-9999-9999-999999999801';
+DECLARE @ClassGroupBiologyB UNIQUEIDENTIFIER = '99999999-9999-9999-9999-999999999802';
+DECLARE @ClassGroupMathematicsB UNIQUEIDENTIFIER = '99999999-9999-9999-9999-999999999803';
+DECLARE @ClassGroupProgrammingC UNIQUEIDENTIFIER = '99999999-9999-9999-9999-999999999901';
+DECLARE @ClassGroupBiologyC UNIQUEIDENTIFIER = '99999999-9999-9999-9999-999999999902';
+DECLARE @ClassGroupIndustrialSafetyC UNIQUEIDENTIFIER = '99999999-9999-9999-9999-999999999903';
 
 BEGIN
     INSERT INTO WithdrawReason (Id, Description)
     VALUES (@NoWithdrawReason, 'Sin baja');
+END;
+
+-- Groups must belong to the same period as their registrations.
+BEGIN
+    INSERT INTO classGroups
+        (Id, FacilityId, Schedule, Capacity, Enrolled, Weekhours,
+         PeriodId, CareerId, TeacherId, AsignatureId, IsTheory)
+    VALUES
+        (@ClassGroupProgrammingB, @FacilityLaboratory,
+         '[{"Day":"Lunes y miércoles","Time":"11:00-13:00 hrs"}]',
+         30, 3, 4, @Period2025B, @CareerComputing, @TeacherEmployeeId, @AsignatureProgramming, 0),
+        (@ClassGroupBiologyB, @FacilityLaboratory,
+         '[{"Day":"Martes y jueves","Time":"13:00-15:00 hrs"}]',
+         30, 3, 4, @Period2025B, @CareerBiomedic, @TeacherThreeEmployeeId, @AsignatureBiology, 0),
+        (@ClassGroupMathematicsB, @FacilityClassroom,
+         '[{"Day":"Viernes","Time":"09:00-13:00 hrs"}]',
+         35, 3, 4, @Period2025B, @CareerIndustrial, @TeacherTwoEmployeeId, @AsignatureMathematics, 1),
+        (@ClassGroupProgrammingC, @FacilityLaboratory,
+         '[{"Day":"Lunes y miércoles","Time":"11:00-13:00 hrs"}]',
+         30, 4, 4, @Period2025C, @CareerComputing, @TeacherEmployeeId, @AsignatureProgramming, 0),
+        (@ClassGroupBiologyC, @FacilityLaboratory,
+         '[{"Day":"Martes y jueves","Time":"13:00-15:00 hrs"}]',
+         30, 4, 4, @Period2025C, @CareerBiomedic, @TeacherThreeEmployeeId, @AsignatureBiology, 0),
+        (@ClassGroupIndustrialSafetyC, @FacilityClassroom,
+         '[{"Day":"Viernes","Time":"11:00-13:00 hrs"}]',
+         35, 4, 2, @Period2025C, @CareerIndustrial, @TeacherTwoEmployeeId, @AsignatureIndustrialSafety, 1);
 END;
 
 BEGIN
@@ -453,5 +485,23 @@ BEGIN
         (NEWID(), @StudentFiveId, @ClassGroupMathematics, @Period2025A, 1, 0, @NoWithdrawReason),
         (NEWID(), @StudentFiveId, @ClassGroupIndustrialSafety, @Period2025A, 1, 0, @NoWithdrawReason),
         (NEWID(), @StudentSixId, @ClassGroupBiology, @Period2025A, 1, 0, @NoWithdrawReason),
-        (NEWID(), @StudentSixId, @ClassGroupPhysics, @Period2025A, 1, 0, @NoWithdrawReason);
+        (NEWID(), @StudentSixId, @ClassGroupPhysics, @Period2025A, 1, 0, @NoWithdrawReason),
+
+        -- May-Ago: 6 distinct students.
+        (NEWID(), @StudentOneId, @ClassGroupProgrammingB, @Period2025B, 0, 0, @NoWithdrawReason),
+        (NEWID(), @StudentTwoId, @ClassGroupMathematicsB, @Period2025B, 1, 0, @NoWithdrawReason),
+        (NEWID(), @StudentThreeId, @ClassGroupBiologyB, @Period2025B, 1, 0, @NoWithdrawReason),
+        (NEWID(), @StudentFourId, @ClassGroupProgrammingB, @Period2025B, 1, 0, @NoWithdrawReason),
+        (NEWID(), @StudentFiveId, @ClassGroupMathematicsB, @Period2025B, 1, 0, @NoWithdrawReason),
+        (NEWID(), @StudentSixId, @ClassGroupBiologyB, @Period2025B, 1, 0, @NoWithdrawReason),
+
+        -- Sep-Dic: 8 distinct students, providing a third observed point.
+        (NEWID(), @StudentOneId, @ClassGroupProgrammingC, @Period2025C, 0, 0, @NoWithdrawReason),
+        (NEWID(), @StudentTwoId, @ClassGroupIndustrialSafetyC, @Period2025C, 1, 0, @NoWithdrawReason),
+        (NEWID(), @StudentThreeId, @ClassGroupBiologyC, @Period2025C, 1, 0, @NoWithdrawReason),
+        (NEWID(), @StudentFourId, @ClassGroupProgrammingC, @Period2025C, 1, 0, @NoWithdrawReason),
+        (NEWID(), @StudentFiveId, @ClassGroupIndustrialSafetyC, @Period2025C, 1, 0, @NoWithdrawReason),
+        (NEWID(), @StudentSixId, @ClassGroupBiologyC, @Period2025C, 1, 0, @NoWithdrawReason),
+        (NEWID(), @StudentSevenId, @ClassGroupProgrammingC, @Period2025C, 1, 0, @NoWithdrawReason),
+        (NEWID(), @StudentEightId, @ClassGroupIndustrialSafetyC, @Period2025C, 1, 0, @NoWithdrawReason);
 END;

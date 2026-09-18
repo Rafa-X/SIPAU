@@ -183,9 +183,15 @@ public class IntelligenceEngineTests
     // ── Forecast ────────────────────────────────────────────────────────────
 
     [Fact]
-    public void Forecast_NeedsThreePeriods()
+    public void Forecast_GraphsOnePeriodAndProjectsFromTwo()
     {
-        Assert.False(IntelligenceEngine.Forecast(History(500, 520), 2).HasModel);
+        var onePeriod = IntelligenceEngine.Forecast(History(500), 2);
+        Assert.False(onePeriod.HasModel);
+        Assert.Equal(new[] { 500d }, onePeriod.Actual);
+
+        var twoPeriods = IntelligenceEngine.Forecast(History(500, 520), 2);
+        Assert.True(twoPeriods.HasModel);
+        Assert.Equal(540, twoPeriods.NextValue);
         Assert.Same(EnrollmentForecast.None, IntelligenceEngine.Forecast(AcademicHistory.Empty, 2));
     }
 

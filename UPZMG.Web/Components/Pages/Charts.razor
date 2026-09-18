@@ -26,17 +26,17 @@
                 </MudTooltip>
             </Actions>
             <ChildContent>
-                @if (_model.Enrollment.HasModel)
+                @if (_model.Enrollment.Labels.Count > 0)
                 {
                     <TrendChart Id="enrollment-chart" Labels="_model.Enrollment.Labels" Series="_model.Enrollment.Series" Height="160"
-                                ForecastFromIndex="_model.Enrollment.ForecastFromIndex"
+                                ForecastFromIndex="@(_model.Enrollment.HasModel ? _model.Enrollment.ForecastFromIndex : null)"
                                 AriaLabel="Matrícula histórica y su proyección" />
                 }
                 else
                 {
                     <EmptyState Icon="@Icons.Material.Filled.Timeline"
                                 Title="Aún no hay historial suficiente"
-                                Description="La regresión necesita inscripciones en al menos tres periodos." />
+                                Description="Captura inscripciones en al menos un periodo para mostrar el historial." />
                 }
             </ChildContent>
             <Footer>
@@ -211,11 +211,13 @@
         _model.Enrollment.NextValue = forecast.NextValue;
         _model.Enrollment.NextMargin = forecast.NextMargin;
         _model.Enrollment.Labels = forecast.Labels;
-        _model.Enrollment.Series =
-        [
-            new ChartSeriesData("Matrícula", forecast.Actual, ChartPalette.Teal, Filled: true),
-            new ChartSeriesData("Tendencia del modelo", forecast.Trend, ChartPalette.Indigo, Dashed: true),
-        ];
+        _model.Enrollment.Series = forecast.HasModel
+            ?
+            [
+                new ChartSeriesData("Matrícula", forecast.Actual, ChartPalette.Teal, Filled: true),
+                new ChartSeriesData("Tendencia del modelo", forecast.Trend, ChartPalette.Indigo, Dashed: true),
+            ]
+            : [new ChartSeriesData("Matrícula", forecast.Actual, ChartPalette.Teal, Filled: true)];
         _model.Enrollment.ForecastFromIndex = forecast.HistoricalCount;
         _model.Enrollment.Slope = forecast.Slope;
         _model.Enrollment.Intercept = forecast.Intercept;
