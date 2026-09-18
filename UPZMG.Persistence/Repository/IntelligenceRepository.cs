@@ -68,6 +68,9 @@ public class IntelligenceRepository(AppDBContext db, IntelligenceModelCache cach
     public async Task<EnrollmentForecast> GetForecastAsync(int periodsAhead) =>
         IntelligenceEngine.Forecast((await GetStateAsync()).History, periodsAhead);
 
+    // Enrolment, pass rate and outcomes of every period that has registrations
+    public async Task<AcademicHistory> GetHistoryAsync() => (await GetStateAsync()).History;
+
     // Statistical alerts over the same history
     public async Task<IReadOnlyList<AnomalyAlert>> GetAnomaliesAsync() =>
         IntelligenceEngine.DetectAnomalies((await GetStateAsync()).History);

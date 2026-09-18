@@ -38,6 +38,7 @@ try
     builder.Services.AddSingleton(new ReportTemplateStore(
         Path.Combine(builder.Environment.ContentRootPath, "ReportTemplates")));
     builder.Services.AddScoped<IntelligenceRepository>();
+    builder.Services.AddScoped<BoardReportRepository>();
     // The trained model outlives a request; it is rebuilt when the academic data changes
     builder.Services.AddSingleton<IntelligenceModelCache>();
 
