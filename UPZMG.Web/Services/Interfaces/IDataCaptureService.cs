@@ -6,11 +6,6 @@ namespace UPZMG.Web.Services;
 
 public interface IDataCaptureService
 {
-    DataCaptureIndexViewModel GetIndex();
-
-    IReadOnlyList<SelectOption> Careers { get; }
-    IReadOnlyList<SelectOption> Periods { get; }
-    IReadOnlyList<SelectOption> InternalAreas { get; }
     IReadOnlyList<string> ContractTypes { get; }
     IReadOnlyList<string> SpaceUseTypes { get; }
     IReadOnlyList<string> Sectors { get; }
@@ -23,8 +18,5 @@ public interface IDataCaptureService
     Task<Employee?> CreateTeacher(CreateEmployee request);
     Task<ClassGroups?> CreateClassGroup(CreateClassGroup request);
 
-    IReadOnlyList<TeacherListItemModel> GetTeachersList();
-    IReadOnlyList<InfrastructureListItemModel> GetInfrastructureList();
-    IReadOnlyList<ExtensionListItemModel> GetExtensionList();
-    IReadOnlyList<FinanceListItemModel> GetFinanceList();
+    Task<IReadOnlyList<TeacherListItem>> GetTeachersListAsync();
 }

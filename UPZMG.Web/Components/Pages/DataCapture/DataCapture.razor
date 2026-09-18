@@ -1,92 +1,136 @@
 @page "/datacapture"
 @attribute [Authorize]
-@inject IDataCaptureService CaptureSvc
-@inject NavigationManager Nav
+@using UPZMG.Implementations.Dashboard
+@inject IDashboardService DashboardSvc
+@inject IGeneralDataService GeneralDataSvc
+
+@*
+    What each area has stored today. Areas without a table of their own say so instead of
+    showing a progress bar that measures nothing.
+*@
 
 <PageTitle>Captura de Datos — SIPAU</PageTitle>
 
-<PageHeader Eyebrow="Captura de datos" Title="Captura de Datos" Subtitle="Registra la información de cada área institucional del periodo activo">
+<PageHeader Title="Captura de Datos"
+            Subtitle="Registro de la información institucional. Lo capturado aquí alimenta el tablero, las gráficas, los formatos oficiales y el Informe de Junta.">
     <Actions>
-        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.UploadFile" Href="/datacapture/bulk">
+        @if (_summary?.ActivePeriod is { } period)
+        {
+            <MudChip T="string" Color="Color.Secondary" Variant="Variant.Text" Icon="@Icons.Material.Filled.Event">
+                Periodo @period.Period @period.SchoolCycle
+            </MudChip>
+        }
+        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary"
+                   StartIcon="@Icons.Material.Filled.UploadFile" Href="/datacapture/bulk">
             Importación masiva
         </MudButton>
     </Actions>
 </PageHeader>
 
-<MudGrid>
-    @foreach (var area in _model.Areas)
-    {
-        var meta = MetaFor(area.ActionName);
-        <MudItem xs="12" sm="6" md="4">
-            <MudCard Elevation="1" Class="d-flex flex-column" Style="height:100%">
-                <MudCardContent Class="flex-grow-1">
-                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
-                        <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Rounded="true">
-                            <MudIcon Icon="@meta.Icon" />
-                        </MudAvatar>
-                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@SigieUi.StatusColor(area.Status)">
-                            @area.Status
-                        </MudChip>
-                    </MudStack>
-
-                    <MudText Typo="Typo.h6">@area.AreaName</MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">Responsable: @area.ResponsiblePerson</MudText>
-
-                    <div class="mt-4">
-                        <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mb-1">
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">Avance</MudText>
-                            <MudText Typo="Typo.caption" Style="font-weight:700">@area.Percentage%</MudText>
-                        </MudStack>
-                        <MudProgressLinear Color="Color.Primary" Value="area.Percentage"
-                                           Style="height:8px" />
-                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
-                            Actualizado: @area.LastUpdated.ToString("dd/MM/yyyy")
-                        </MudText>
-                    </div>
-                </MudCardContent>
-                <MudCardActions>
-                    <MudStack Row="true" Spacing="2" Class="flex-grow-1">
-                        @if (meta.IsBlazor)
+@if (_loading)
+{
+    <LoadingState Text="Contando lo capturado…" />
+}
+else
+{
+    <MudGrid>
+        @foreach (var area in Areas)
+        {
+            <MudItem xs="12" sm="6" lg="4">
+                <SectionCard Title="@area.Name" Subtitle="@area.Responsible" Icon="@area.Icon">
+                    <ChildContent>
+                        @if (area.Stored is { } stored)
                         {
-                            <MudButton Variant="Variant.Filled" Color="Color.Secondary" FullWidth="true"
-                                       StartIcon="@Icons.Material.Filled.EditNote" Href="@meta.Href">
-                                Capturar
-                            </MudButton>
+                            <div class="sipau-projection">
+                                <span class="sipau-projection-figure">@stored.ToString("N0")</span>
+                                <span class="sipau-projection-note">@area.Unit</span>
+                            </div>
+                            <div class="sipau-risk-sub">@area.Detail</div>
                         }
                         else
                         {
-                            <MudButton Variant="Variant.Filled" Color="Color.Secondary" FullWidth="true"
-                                       StartIcon="@Icons.Material.Filled.EditNote"
-                                       OnClick="@(() => Nav.NavigateTo(meta.Href, forceLoad: true))">
-                                Capturar
-                            </MudButton>
+                            <p class="sipau-board-pending">@area.Detail</p>
                         }
-                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true"
-                                   StartIcon="@Icons.Material.Filled.Search" Href="@meta.ConsultHref">
-                            Consultar
-                        </MudButton>
-                    </MudStack>
-                </MudCardActions>
-            </MudCard>
-        </MudItem>
-    }
-</MudGrid>
+                    </ChildContent>
+                    <Footer>
+                        <MudStack Row="true" Spacing="2" Style="flex-wrap:wrap">
+                            @if (area.CaptureHref is { } capture)
+                            {
+                                <MudButton Size="Size.Small" Variant="@(area.Stored is null ? Variant.Outlined : Variant.Filled)"
+                                           Color="@(area.Stored is null ? Color.Secondary : Color.Primary)"
+                                           StartIcon="@Icons.Material.Filled.EditNote" Href="@capture">
+                                    @(area.Stored is null ? "Ver formulario" : "Capturar")
+                                </MudButton>
+                            }
+                            @if (area.ConsultHref is { } consult)
+                            {
+                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary"
+                                           StartIcon="@Icons.Material.Filled.ListAlt" Href="@consult">
+                                    Consultar
+                                </MudButton>
+                            }
+                        </MudStack>
+                    </Footer>
+                </SectionCard>
+            </MudItem>
+        }
+    </MudGrid>
+}
 
 @code {
-    private DataCaptureIndexViewModel _model = new();
+    private DashboardSummary? _summary;
+    private int _facilities;
+    private bool _loading = true;
 
-    protected override void OnInitialized() => _model = CaptureSvc.GetIndex();
+    private sealed record CaptureArea(
+        string Name, string Responsible, string Icon, int? Stored, string Unit, string Detail,
+        string? CaptureHref, string? ConsultHref);
 
-    private sealed record AreaMeta(string Icon, string Href, string ConsultHref, bool IsBlazor);
-
-    private static AreaMeta MetaFor(string action) => action switch
+    protected override async Task OnInitializedAsync()
     {
-        "Students"       => new(Icons.Material.Filled.School, "/datacapture/students", "/datacapture/students/consult", true),
-        "Teachers"       => new(Icons.Material.Filled.Groups, "/datacapture/teachers", "/datacapture/teachers/consult", true),
-        "Infrastructure" => new(Icons.Material.Filled.Apartment, "/datacapture/infrastructure", "/datacapture/infrastructure/consult", true),
-        "Extension"      => new(Icons.Material.Filled.Handshake, "/datacapture/extension", "/datacapture/extension/consult", true),
-        "Finance"        => new(Icons.Material.Filled.Payments, "/datacapture/finance", "/datacapture/finance/consult", true),
-    "ClassGroups"   => new(Icons.Material.Filled.Groups, "/datacapture/class-groups", "/datacapture/class-groups", true),
-        _                => new(Icons.Material.Filled.EditNote, "/datacapture", "/datacapture", true),
-    };
+        try
+        {
+            _summary = await DashboardSvc.GetSummaryAsync();
+            _facilities = (await GeneralDataSvc.GetFacilitiesAsync()).Count;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            _summary = null;
+        }
+
+        _loading = false;
+    }
+
+    private List<CaptureArea> Areas =>
+    [
+        new("Alumnos", "Control Escolar", Icons.Material.Filled.School,
+            _summary?.TotalStudents, "alumnos registrados",
+            $"{_summary?.ActiveStudents ?? 0:N0} con estatus activo · {_summary?.NewEnrollments ?? 0:N0} de nuevo ingreso en el periodo",
+            "/datacapture/students", "/datacapture/students/consult"),
+
+        new("Docentes y personal", "Recursos Humanos", Icons.Material.Filled.Groups,
+            _summary?.TotalTeachers, "docentes registrados",
+            $"{_summary?.TeachersWithPostgrad ?? 0:N0} con posgrado",
+            "/datacapture/teachers", "/datacapture/teachers/consult"),
+
+        new("Grupos de clase", "Dirección Académica", Icons.Material.Filled.Class,
+            _summary?.ClassGroups, "grupos del periodo activo",
+            $"{_summary?.GroupEnrolled ?? 0:N0} inscritos de {_summary?.GroupCapacity ?? 0:N0} lugares",
+            "/datacapture/classgroups", null),
+
+        new("Infraestructura", "Recursos Materiales y Servicios Generales", Icons.Material.Filled.Domain,
+            _facilities, "espacios registrados",
+            "Los espacios se dan de alta junto con los grupos; la captura propia del área todavía no guarda.",
+            "/datacapture/infrastructure", "/datacapture/infrastructure/consult"),
+
+        new("Extensión y vinculación", "Vinculación", Icons.Material.Filled.Diversity3,
+            null, string.Empty,
+            "Todavía sin tabla propia. Se reporta en el formato 911.10 · Institución.",
+            "/datacapture/extension", "/datacapture/extension/consult"),
+
+        new("Finanzas", "Administración y Finanzas", Icons.Material.Filled.Payments,
+            null, string.Empty,
+            "Todavía sin tabla propia. Se reporta en el formato 911.10 · Institución.",
+            "/datacapture/finance", "/datacapture/finance/consult"),
+    ];
 }

@@ -1,12 +1,18 @@
 @page "/datacapture/bulk"
 @attribute [Authorize]
 @inject IDataCaptureService CaptureSvc
-@inject ISnackbar Snackbar
 @inject NavigationManager Nav
 
 <PageTitle>Importación masiva — SIPAU</PageTitle>
 
 <PageHeader Eyebrow="Captura de datos" Title="Importación masiva" Subtitle="Carga un archivo delimitado en lugar de capturar registro por registro" BackHref="/datacapture" />
+
+<MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4">
+    <b>La importación masiva todavía no está conectada.</b>
+    El archivo no se envía a ningún lado: falta el endpoint que lo lea y valide contra los catálogos.
+    Mientras tanto, la captura registro por registro de Alumnos, Docentes y Grupos sí guarda.
+    <MudLink Href="/datacapture" Typo="Typo.body2" Class="ml-1">Volver a captura</MudLink>
+</MudAlert>
 
 <MudPaper Elevation="1" Class="pa-6">
     <MudForm @ref="_form">
@@ -44,7 +50,12 @@
         </MudGrid>
 
         <MudStack Row="true" Spacing="2" Class="mt-6">
-            <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.CloudUpload" OnClick="Submit">Procesar archivo</MudButton>
+            <MudTooltip Text="Disponible cuando exista el endpoint de importación" Placement="Placement.Top">
+                <span>
+                    <MudButton Variant="Variant.Filled" Color="Color.Secondary"
+                               StartIcon="@Icons.Material.Filled.CloudUpload" Disabled="true">Procesar archivo</MudButton>
+                </span>
+            </MudTooltip>
             <MudButton Variant="Variant.Outlined" OnClick="@(() => Nav.NavigateTo("/datacapture"))">Cancelar</MudButton>
         </MudStack>
     </MudForm>
@@ -55,12 +66,4 @@
     private BulkImportViewModel _model = new();
     private IBrowserFile? _file;
 
-    private async Task Submit()
-    {
-        await _form.ValidateAsync();
-        if (!_form.IsValid) return;
-        var name = _file?.Name ?? "archivo.txt";
-        Snackbar.Add($"Archivo '{name}' procesado: 128 registros importados al área seleccionada.", Severity.Success);
-        Nav.NavigateTo("/datacapture");
-    }
 }

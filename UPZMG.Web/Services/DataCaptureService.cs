@@ -11,45 +11,7 @@ public sealed record SelectOption(string Value, string Text);
 
 public sealed class DataCaptureService(ISecurityService securityService): IDataCaptureService
 {
-    private const string ActivePeriodLabel = "2026 Ene-Abr";
     private static readonly JsonSerializerOptions ResponseOptions = new(JsonSerializerDefaults.Web);
-
-    public DataCaptureIndexViewModel GetIndex() => new()
-    {
-        ActivePeriod = ActivePeriodLabel,
-        Areas = new List<DataCaptureAreaModel>
-        {
-            new() { Id = 1, AreaName = "Alumnos", ResponsiblePerson = "Lic. Ana Martínez", Percentage = 82, Status = "En progreso", LastUpdated = DateTime.Now.AddDays(-1), IsCaptureAvailable = true, ActionName = "Students" },
-            new() { Id = 2, AreaName = "Docentes / RRHH", ResponsiblePerson = "Lic. Carlos López", Percentage = 100, Status = "Completo", LastUpdated = DateTime.Now.AddDays(-3), IsCaptureAvailable = true, ActionName = "Teachers" },
-            new() { Id = 3, AreaName = "Infraestructura", ResponsiblePerson = "Ing. Roberto Díaz", Percentage = 45, Status = "En progreso", LastUpdated = DateTime.Now.AddDays(-5), IsCaptureAvailable = true, ActionName = "Infrastructure" },
-            new() { Id = 4, AreaName = "Extensión y Vinculación", ResponsiblePerson = "Mtro. Pedro Sánchez", Percentage = 30, Status = "Pendiente", LastUpdated = DateTime.Now.AddDays(-8), IsCaptureAvailable = true, ActionName = "Extension" },
-            new() { Id = 5, AreaName = "Finanzas", ResponsiblePerson = "C.P. María García", Percentage = 100, Status = "Completo", LastUpdated = DateTime.Now.AddDays(-2), IsCaptureAvailable = true, ActionName = "Finance" },
-            new() { Id = 6, AreaName = "Grupos de Clase", ResponsiblePerson = "Dirección Académica", Percentage = 0, Status = "Pendiente", LastUpdated = DateTime.Now, IsCaptureAvailable = true, ActionName = "ClassGroups" },
-        },
-    };
-
-    public IReadOnlyList<SelectOption> Careers { get; } = new List<SelectOption>
-    {
-        new("11111111-1111-1111-1111-111111111111", "Ingeniería en Sistemas Computacionales"),
-        new("11111111-1111-1111-1111-111111111113", "Ingeniería Industrial"),
-        new("11111111-1111-1111-1111-111111111112", "Ingeniería en Biotecnología"),
-    };
-
-    public IReadOnlyList<SelectOption> Periods { get; } = new List<SelectOption>
-    {
-        new("22222222-2222-2222-2222-222222222201", "2026 Ene-Abr"),
-        new("22222222-2222-2222-2222-222222222202", "2026 May-Ago"),
-        new("22222222-2222-2222-2222-222222222203", "2026 Sep-Dic"),
-    };
-
-    public IReadOnlyList<SelectOption> InternalAreas { get; } = new List<SelectOption>
-    {
-        new("1", "Rectoría"),
-        new("2", "Dirección Académica"),
-        new("3", "Servicios Escolares"),
-        new("4", "Recursos Humanos"),
-        new("5", "Planeación"),
-    };
 
   
     public IReadOnlyList<string> ContractTypes { get; } = new[] { "Tiempo completo", "Medio tiempo", "Asignatura / Honorarios" };
@@ -124,32 +86,26 @@ public sealed class DataCaptureService(ISecurityService securityService): IDataC
 #endregion
 
 
-#region TODO
-    // TODO: replace with real API-backed queries once list endpoints exist for these entities.
-    public IReadOnlyList<TeacherListItemModel> GetTeachersList() => new List<TeacherListItemModel>
+#region Listings
+    // Teaching staff already captured; empty when the area cannot read them.
+    public async Task<IReadOnlyList<TeacherListItem>> GetTeachersListAsync()
     {
-        new() { Id = 1, EmployeeNumber = "E-1001", Name = "Lic. Carlos López", Area = InternalAreas[1].Text, ContractType = ContractTypes[0], Period = Periods[0].Text, CapturedOn = DateTime.Now.AddDays(-3) },
-        new() { Id = 2, EmployeeNumber = "E-1002", Name = "Mtra. Diana Cruz", Area = InternalAreas[3].Text, ContractType = ContractTypes[1], Period = Periods[0].Text, CapturedOn = DateTime.Now.AddDays(-7) },
-        new() { Id = 3, EmployeeNumber = "E-1003", Name = "Ing. Roberto Díaz", Area = InternalAreas[2].Text, ContractType = ContractTypes[2], Period = Periods[1].Text, CapturedOn = DateTime.Now.AddDays(-11) },
-    };
+        var requesterKey = await securityService.GetRequesterKeyAsync();
+        try
+        {
+            var response = await securityService.SendGetRequestAsync<IReadOnlyList<TeacherListItem>>(
+                "data-capture/employees/teachers", requesterKey);
 
-    public IReadOnlyList<InfrastructureListItemModel> GetInfrastructureList() => new List<InfrastructureListItemModel>
-    {
-        new() { Id = 1, Name = "Aula 101", UseType = SpaceUseTypes[0], Capacity = 40, Period = Periods[0].Text, CapturedOn = DateTime.Now.AddDays(-5) },
-        new() { Id = 2, Name = "Laboratorio de Cómputo 1", UseType = SpaceUseTypes[1], Capacity = 30, Period = Periods[0].Text, CapturedOn = DateTime.Now.AddDays(-10) },
-        new() { Id = 3, Name = "Biblioteca central", UseType = SpaceUseTypes[4], Capacity = 80, Period = Periods[1].Text, CapturedOn = DateTime.Now.AddDays(-15) },
-    };
-
-    public IReadOnlyList<ExtensionListItemModel> GetExtensionList() => new List<ExtensionListItemModel>
-    {
-        new() { Id = 1, Name = "Estadía profesional Sistemas", OrganizationName = "Grupo Industrial GRIN", ActivityType = ActivityTypes[0], Period = Periods[0].Text, CapturedOn = DateTime.Now.AddDays(-8) },
-        new() { Id = 2, Name = "Servicio social comunitario", OrganizationName = "DIF Municipal", ActivityType = ActivityTypes[1], Period = Periods[1].Text, CapturedOn = DateTime.Now.AddDays(-14) },
-    };
-
-    public IReadOnlyList<FinanceListItemModel> GetFinanceList() => new List<FinanceListItemModel>
-    {
-        new() { Id = 1, Name = $"Resumen financiero {DateTime.Now.Year}", TotalIncome = 12_500_000m, TotalExpense = 11_800_000m, Period = Periods[0].Text, CapturedOn = DateTime.Now.AddDays(-2) },
-        new() { Id = 2, Name = $"Resumen financiero {DateTime.Now.Year - 1}", TotalIncome = 11_900_000m, TotalExpense = 11_400_000m, Period = Periods[2].Text, CapturedOn = DateTime.Now.AddDays(-200) },
-    };
+            if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+            {
+                return JsonSerializer.Deserialize<List<TeacherListItem>>(response.Result, ResponseOptions) ?? [];
+            }
+        }
+        catch (HttpRequestException)
+        {
+            // The listing is limited to Admin and Recursos Humanos.
+        }
+        return [];
+    }
 #endregion
 }

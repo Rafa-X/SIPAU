@@ -48,6 +48,12 @@ public class DataCaptureController(
         return Ok(result);
     }
 
+    [HttpGet("employees/teachers")]
+    [Authorize(Roles = EmployeeRoles)]
+    // Teaching staff already captured
+    public async Task<IActionResult> GetTeachersList() =>
+        Ok(await employeesRepository.GetTeachersListAsync());
+
     [HttpPost("employees/create")]
     [Authorize(Roles = EmployeeRoles)]
     // Create a new employee

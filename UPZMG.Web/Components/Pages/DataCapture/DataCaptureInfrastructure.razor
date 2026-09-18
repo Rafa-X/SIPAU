@@ -1,12 +1,19 @@
 @page "/datacapture/infrastructure"
 @attribute [Authorize]
 @inject IDataCaptureService CaptureSvc
-@inject ISnackbar Snackbar
 @inject NavigationManager Nav
 
 <PageTitle>Captura de Infraestructura — SIPAU</PageTitle>
 
 <PageHeader Eyebrow="Captura de datos" Title="Captura de Infraestructura" Subtitle="Espacios físicos e inventario TIC" BackHref="/datacapture" />
+
+<MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4">
+    <b>Esta área todavía no tiene dónde guardarse.</b>
+    El formulario muestra los campos acordados, pero el sistema aún no tiene tabla para ellos, así que
+    el botón de guardar está deshabilitado. Mientras tanto estas cifras se reportan en
+    el formato SII · Infraestructura y el Anexo de Tecnologías de la Información, y de ahí las toma el Informe de Junta.
+    <MudLink Href="/reports" Typo="Typo.body2" Class="ml-1">Ir a los formatos</MudLink>
+</MudAlert>
 
 <MudPaper Elevation="1" Class="pa-6">
     <MudForm @ref="_form">
@@ -45,7 +52,12 @@
         </MudGrid>
 
         <MudStack Row="true" Spacing="2" Class="mt-6">
-            <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Save" OnClick="Submit">Guardar espacio</MudButton>
+            <MudTooltip Text="Disponible cuando el área tenga almacenamiento propio" Placement="Placement.Top">
+                <span>
+                    <MudButton Variant="Variant.Filled" Color="Color.Secondary"
+                               StartIcon="@Icons.Material.Filled.Save" Disabled="true">Guardar espacio</MudButton>
+                </span>
+            </MudTooltip>
             <MudButton Variant="Variant.Outlined" OnClick="@(() => Nav.NavigateTo("/datacapture"))">Cancelar</MudButton>
         </MudStack>
     </MudForm>
@@ -55,11 +67,4 @@
     private MudForm _form = null!;
     private InfrastructureFormViewModel _model = new();
 
-    private async Task Submit()
-    {
-        await _form.ValidateAsync();
-        if (!_form.IsValid) return;
-        Snackbar.Add($"Espacio físico '{_model.SpaceName}' guardado correctamente.", Severity.Success);
-        Nav.NavigateTo("/datacapture");
-    }
 }
