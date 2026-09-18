@@ -24,6 +24,11 @@ public class IntelligenceController(
     public async Task<ActionResult<EnrollmentForecast>> GetForecast([FromQuery] int ahead = 2) =>
         Ok(await intelligenceRepository.GetForecastAsync(Math.Clamp(ahead, 0, MaxPeriodsAhead)));
 
+    [HttpGet("history")]
+    // Enrolment, pass rate and outcomes of every period that has registrations
+    public async Task<ActionResult<IReadOnlyList<PeriodStats>>> GetHistory() =>
+        Ok((await intelligenceRepository.GetHistoryAsync()).Periods);
+
     [HttpGet("anomalies")]
     // Statistical alerts over the enrolment, pass and withdrawal series
     public async Task<ActionResult<IReadOnlyList<AnomalyAlert>>> GetAnomalies() =>
