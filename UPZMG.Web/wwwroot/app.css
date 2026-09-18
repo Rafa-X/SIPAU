@@ -995,6 +995,8 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
     color: var(--mud-palette-text-secondary);
     transition: color var(--sipau-fast) var(--sipau-ease);
 }
+.sipau-chart-xaxis span.is-first { transform: translateX(0); }
+.sipau-chart-xaxis span.is-last { transform: translateX(-100%); }
 .sipau-chart-xaxis span.on { color: var(--mud-palette-text-primary); font-weight: 700; }
 /* Axis labels appear by tier as the chart gets wider, so long period names never collide. */
 .sipau-chart { container-type: inline-size; }
@@ -1151,16 +1153,71 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
 .sipau-login-wall {
     display: none;
     position: relative;
-    background: var(--sipau-anil);
+    background: #042B4D;
     color: #F8FBFF;
     padding: 60px 64px 52px;
     overflow: hidden;
 }
-@media (min-width: 1024px) { .sipau-login-wall { display: flex; flex-direction: column; justify-content: space-between; } }
+@media (min-width: 1024px) { .sipau-login-wall { display: flex; flex-direction: column; justify-content: center; } }
+
+.sipau-login-wall::before {
+    content: '';
+    position: absolute;
+    inset: -18%;
+    z-index: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(circle at 18% 24%, rgba(29, 107, 168, 0.26), transparent 34%),
+        radial-gradient(circle at 78% 72%, rgba(4, 50, 91, 0.58), transparent 38%),
+        radial-gradient(circle at 66% 18%, rgba(95, 163, 209, 0.10), transparent 28%);
+    transform: translate3d(-2%, -1%, 0) scale(1.04);
+    animation: sipau-login-drift 24s ease-in-out infinite alternate;
+}
+
+.sipau-login-ambient {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    animation: sipau-login-sheen 30s ease-in-out infinite alternate;
+}
+
+.sipau-login-network {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: block;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.sipau-login-block {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: none;
+}
+
+@keyframes sipau-login-drift {
+    0% { transform: translate3d(-3%, -2%, 0) scale(1.04); }
+    50% { transform: translate3d(2%, 1%, 0) scale(1.09); }
+    100% { transform: translate3d(-1%, 3%, 0) scale(1.06); }
+}
+
+@keyframes sipau-login-sheen {
+    from { background-position: 0% 35%, 0 0; }
+    to { background-position: 100% 65%, 0 0; }
+}
 
 .sipau-login-wall > * {
     position: relative;
-    max-width: min(92%, 760px);
+    max-width: 90%;
+}
+.sipau-login-wall > .sipau-login-ambient,
+.sipau-login-wall > .sipau-login-network {
+    position: absolute;
+    max-width: none;
 }
 
 .sipau-login-lineage {
@@ -1176,11 +1233,28 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
     font-weight: 800; letter-spacing: 0; line-height: 1.05;
     margin: 0; text-wrap: balance;
 }
+.sipau-login-identity {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    width: 100%;
+}
+.sipau-login-artwork {
+    display: flex;
+    width: 100%;
+    justify-content: center;
+}
+.sipau-login-artwork img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border-radius: 15px;
+}
 .sipau-login-rule {
     width: 84px; height: 4px; margin: 28px 0 24px;
     border: 0; background: #F8FBFF;
 }
-.sipau-login-system { font-size: 1.0625rem; line-height: 1.55; color: rgba(248, 251, 255, 0.9); margin: 0; }
+.sipau-login-system { font-size: 1.4rem; line-height: 1.55; color: rgba(248, 251, 255, 0.9); margin: 0; }
 .sipau-login-system b { font-weight: 800; letter-spacing: 0.01em; }
 .sipau-login-dept { font-size: 0.9375rem; color: rgba(248, 251, 255, 0.66); margin: 6px 0 0; }
 

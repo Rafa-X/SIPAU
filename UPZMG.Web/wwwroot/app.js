@@ -94,6 +94,106 @@
         setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
     };
 
+    window.sipauInitLoginNetwork = function () {
+        var canvas = document.getElementById('sipau-login-network');
+        var wall = canvas && canvas.closest('.sipau-login-wall');
+        if (!canvas || !wall) return;
+
+        if (typeof canvas._sipauNetworkDispose === 'function') canvas._sipauNetworkDispose();
+
+        var context = canvas.getContext('2d');
+        if (!context) return;
+
+        var nodes = [];
+        var frameId = 0;
+        var width = 0;
+        var height = 0;
+        var dpr = 1;
+        var settings = { density: 24000, minNodes: 26, maxNodes: 48, maxDistance: 210, speed: 0.4 };
+
+        function makeNode() {
+            var angle = Math.random() * Math.PI * 2;
+            var speed = settings.speed * (0.45 + Math.random() * 0.8);
+            return {
+                x: Math.random() * width,
+                y: Math.random() * height,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                radius: 2.2 + Math.random() * 2.2,
+                phase: Math.random() * Math.PI * 2
+            };
+        }
+
+        function resize() {
+            var rect = wall.getBoundingClientRect();
+            width = Math.max(1, rect.width);
+            height = Math.max(1, rect.height);
+            dpr = Math.min(window.devicePixelRatio || 1, 2);
+            canvas.width = Math.round(width * dpr);
+            canvas.height = Math.round(height * dpr);
+            context.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            var count = Math.max(settings.minNodes, Math.min(settings.maxNodes, Math.round(width * height / settings.density)));
+            if (nodes.length > count) nodes.length = count;
+            while (nodes.length < count) nodes.push(makeNode());
+        }
+
+        function draw(time) {
+            context.clearRect(0, 0, width, height);
+            for (var i = 0; i < nodes.length; i++) {
+                for (var j = i + 1; j < nodes.length; j++) {
+                    var first = nodes[i];
+                    var second = nodes[j];
+                    var distance = Math.hypot(first.x - second.x, first.y - second.y);
+                    if (distance >= settings.maxDistance) continue;
+
+                    context.beginPath();
+                    context.moveTo(first.x, first.y);
+                    context.lineTo(second.x, second.y);
+                    context.strokeStyle = 'rgba(196, 226, 255, ' + ((1 - distance / settings.maxDistance) * 0.48) + ')';
+                    context.lineWidth = 1.2;
+                    context.stroke();
+                }
+            }
+
+            nodes.forEach(function (node) {
+                var pulse = 0.82 + Math.sin(time * 0.0015 + node.phase) * 0.18;
+                context.beginPath();
+                context.arc(node.x, node.y, node.radius * pulse, 0, Math.PI * 2);
+                context.fillStyle = 'rgba(226, 241, 255, 0.92)';
+                context.fill();
+            });
+        }
+
+        function animate(time) {
+            nodes.forEach(function (node) {
+                node.x += node.vx;
+                node.y += node.vy;
+                if (node.x < -12) node.x = width + 12;
+                if (node.x > width + 12) node.x = -12;
+                if (node.y < -12) node.y = height + 12;
+                if (node.y > height + 12) node.y = -12;
+            });
+            draw(time);
+            frameId = window.requestAnimationFrame(animate);
+        }
+
+        function restart() {
+            window.cancelAnimationFrame(frameId);
+            resize();
+            frameId = window.requestAnimationFrame(animate);
+        }
+
+        var resizeObserver = new ResizeObserver(restart);
+        resizeObserver.observe(wall);
+        canvas._sipauNetworkDispose = function () {
+            window.cancelAnimationFrame(frameId);
+            resizeObserver.disconnect();
+        };
+
+        restart();
+    };
+
     // Export the chart plot together with its HTML axes and legend.
     window.sigieDownloadChartPng = function (chartId, filename, title) {
         var chart = document.getElementById(chartId);

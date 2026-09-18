@@ -2,31 +2,23 @@
 @layout LoginLayout
 @inject AuthenticationStateProvider AuthState
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 <PageTitle>Iniciar sesión — SIPAU</PageTitle>
 <div class="sipau-login">
 
     <section class="sipau-login-wall">
-        <p class="sipau-login-lineage">Secretaría de Educación Pública · Universidades Politécnicas</p>
+        <div class="sipau-login-ambient" aria-hidden="true"></div>
+        <canvas id="sipau-login-network" class="sipau-login-network" aria-hidden="true"></canvas>
 
         <div class="sipau-login-block">
-            <span class="sipau-login-seal">
-                <img src="logo_UPZMG.png" width="100" height="102"
-                     alt="Logotipo de la Universidad Politécnica de la Zona Metropolitana de Guadalajara" />
-            </span>
-            <h1 class="sipau-login-institution">
-                Universidad Politécnica de la<br />Zona Metropolitana de Guadalajara
-            </h1>
-
-            <hr class="sipau-login-rule" />
-
-            <p class="sipau-login-system">
-                <b>SIPAU</b> · Sistema Inteligente de Gestión de Información Estadística
-            </p>
-            <p class="sipau-login-dept">Dirección de Planeación, Evaluación y Calidad</p>
+            <div class="sipau-login-identity">
+                <span class="sipau-login-artwork">
+                    <img src="login.png"
+                         alt="Logotipo de la Universidad Politécnica de la Zona Metropolitana de Guadalajara" />
+                </span>
+            </div>
         </div>
-
-        <p class="sipau-login-lineage">Formatos 911 · SII</p>
     </section>
 
     <section class="sipau-login-card">
@@ -109,5 +101,11 @@
         }
 
         _hasError = new Uri(Nav.Uri).Query.Contains("error", StringComparison.OrdinalIgnoreCase);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await JS.InvokeVoidAsync("sipauInitLoginNetwork");
     }
 }
