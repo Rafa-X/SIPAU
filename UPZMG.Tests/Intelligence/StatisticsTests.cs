@@ -52,13 +52,21 @@ public class StatisticsTests
     [Theory]
     [InlineData(0)]
     [InlineData(1)]
-    [InlineData(2)]
-    public void Fit_RefusesFewerThanThreePoints(int count)
+    public void Fit_RefusesFewerThanTwoPoints(int count)
     {
-        // Two points always fit perfectly and would claim R² = 1 on no evidence.
         var y = Enumerable.Range(1, count).Select(i => (double)i).ToList();
 
         Assert.Null(Statistics.Fit(y));
+    }
+
+    [Fact]
+    public void Fit_AllowsTwoPointsForAnInitialProjection()
+    {
+        var fit = Statistics.Fit([500, 520]);
+
+        Assert.NotNull(fit);
+        Assert.Equal(20, fit.Slope);
+        Assert.Equal(0, fit.StdError);
     }
 
     [Fact]
