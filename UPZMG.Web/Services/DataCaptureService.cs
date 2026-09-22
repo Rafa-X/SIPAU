@@ -28,7 +28,7 @@ public sealed class DataCaptureService(ISecurityService securityService): IDataC
     {
         new("students", "Alumnos"),
         new("teachers", "Docentes / RRHH"),
-        new("classgroups", "Grupos de clase"),
+        //new("classgroups", "Grupos de clase"),
     };
 
 #region Student
