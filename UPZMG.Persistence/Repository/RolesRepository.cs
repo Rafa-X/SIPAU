@@ -46,6 +46,21 @@ public class RolesRepository(AppDBContext _db)
         return role;
     }
 
+    public async Task DeleteRoleAsync(DeleteRole request)
+    {
+        var role = await db.Roles.FirstOrDefaultAsync(r => r.Id == request.RoleId)
+            ?? throw new Exception($"No role found with ID {request.RoleId}");
+
+        if (role.Name == "Admin")
+            throw new InvalidOperationException("The Admin role cannot be deleted.");
+
+        db.UserRoles.RemoveRange(db.UserRoles.Where(ur => ur.RoleId == request.RoleId));
+        db.RolePermissions.RemoveRange(db.RolePermissions.Where(rp => rp.RoleId == request.RoleId));
+        db.RoleReportsPermissions.RemoveRange(db.RoleReportsPermissions.Where(rrp => rrp.RoleId == request.RoleId));
+        db.Roles.Remove(role);
+        await db.SaveChangesAsync();
+    }
+
     public async Task<List<Guid>> GetRolePermissionIdsAsync(GetRolePermissions request)
     {
         return await db.RolePermissions

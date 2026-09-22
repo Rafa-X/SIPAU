@@ -16,7 +16,7 @@ public class DataCaptureController(
 {
     private const string StudentRoles = "Admin,Control Escolar,Servicios Estudiantiles";
     private const string EmployeeRoles = "Admin,Recursos Humanos";
-    private const string ClassGroupRoles = "Admin,Direccion Academica";
+    private const string ClassGroupRoles = "Admin,Dirección Académica";
 
     private async Task<bool> ValidatePermissions<T>(T request)
     {
@@ -34,9 +34,15 @@ public class DataCaptureController(
     public async Task<IActionResult> CreateStudent([FromBody] CreateStudent request)
     {
         //if (!await ValidatePermissions(request)) return Unauthorized();
-        var student = await studentsRepository.CreateStudentAsync(request);
-
-        return Created($"/api/students/{student.Id}", student);
+        try
+        {
+            var student = await studentsRepository.CreateStudentAsync(request);
+            return Created($"/api/students/{student.Id}", student);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
     }
 
     [HttpGet("students/list")]
@@ -60,16 +66,35 @@ public class DataCaptureController(
     public async Task<IActionResult> CreateEmployee([FromBody] CreateEmployee request)
     {
         //if (!await ValidatePermissions(request)) return Unauthorized();
-        var employee = await employeesRepository.CreateEmployeeAsync(request);
-
-        return Created($"/api/employees/{employee.Id}", employee);
+        try
+        {
+            var employee = await employeesRepository.CreateEmployeeAsync(request);
+            return Created($"/api/employees/{employee.Id}", employee);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
     }
 
     [HttpPost("class-groups/create")]
     [Authorize(Roles = ClassGroupRoles)]
     public async Task<IActionResult> CreateClassGroup([FromBody] CreateClassGroup request)
     {
-        var group = await classGroupsRepository.CreateAsync(request);
-        return Created($"/api/class-groups/{group.Id}", group);
+        try
+        {
+            var group = await classGroupsRepository.CreateAsync(request);
+            return Created($"/api/class-groups/{group.Id}", group);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
     }
+
+    [HttpGet("class-groups/list")]
+    [Authorize(Roles = ClassGroupRoles)]
+    // Captured class groups already registered
+    public async Task<IActionResult> GetClassGroupsList() =>
+        Ok(await classGroupsRepository.GetClassGroupsListAsync());
 }

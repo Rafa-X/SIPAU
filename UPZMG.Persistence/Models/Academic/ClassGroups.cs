@@ -18,7 +18,7 @@ public class ClassGroups
     public Guid PeriodId { get; set; } //fk
     public Guid CareerId { get; set; } //fk
     public Guid TeacherId { get; set; } //fk
-    public Guid AsignatureId { get; set; } //fk
+    public Guid CourseId { get; set; } //fk
     public bool IsTheory { get; set; } // theoretical (true) or laboratory (false)
 }
 

@@ -27,6 +27,7 @@ public class DashboardRepository(AppDBContext db)
             .AsNoTracking()
             .Select(c => new
             {
+                Alias = c.Alias ?? "Sin alias",
                 Name = c.Name ?? "Sin nombre",
                 Students = db.Students.Count(s => s.CareerId == c.Id && s.Status == StudentStatus.Activo),
             })
@@ -53,7 +54,7 @@ public class DashboardRepository(AppDBContext db)
             StudentsByCareer = careers
                 .OrderByDescending(c => c.Students)
                 .ThenBy(c => c.Name)
-                .Select(c => new CareerStudents(c.Name, c.Students))
+                .Select(c => new CareerStudents(c.Alias, c.Name, c.Students))
                 .ToList(),
             IntakeByPeriod = intake,
         };

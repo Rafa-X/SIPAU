@@ -13,7 +13,7 @@ public sealed class ClassGroupFormViewModel
 {
     public Guid? PeriodId { get; set; }
     public Guid? CareerId { get; set; }
-    public Guid? AsignatureId { get; set; }
+    public Guid? CourseId { get; set; }
     public Guid? TeacherId { get; set; }
     public Guid? FacilityId { get; set; }
     public bool IsTheory { get; set; } = true;

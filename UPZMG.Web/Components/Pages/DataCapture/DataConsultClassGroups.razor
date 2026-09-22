@@ -1,0 +1,201 @@
+@page "/datacapture/class-groups/consult"
+@attribute [Authorize]
+@using System.Globalization
+@using System.Text
+@using UPZMG.Implementations.DataCapture
+@using UPZMG.Shared.Enums
+@inject IDataCaptureService CaptureSvc
+@inject IGeneralDataService GeneralDataSvc
+
+<PageTitle>Consultar grupos de clase — SIPAU</PageTitle>
+
+<PageHeader Title="Consultar grupos de clase" BackHref="/datacapture"
+            Subtitle="Grupos registrados en el periodo activo" />
+
+@if (_loading)
+{
+    <LoadingState Text="Leyendo los grupos capturados…" />
+}
+else if (_groups.Count == 0)
+{
+    <SectionCard FullHeight="false">
+        <EmptyState Icon="@Icons.Material.Filled.Class"
+                    Title="Sin grupos registrados"
+                    Description="Captura un grupo de clase y aparecerá aquí. Si tu área no es Dirección Académica, el listado no se muestra.">
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/datacapture/class-groups">
+                Capturar grupo
+            </MudButton>
+        </EmptyState>
+    </SectionCard>
+}
+else
+{
+    <SectionCard Flush="true" FullHeight="false">
+        <DataToolbar @bind-Search="_search" Placeholder="Buscar por docente o materia…"
+                     Count="Filtered.Count" Total="_groups.Count">
+            <Filters>
+                <div style="flex-basis:100%; height:0"></div>
+                <MudSelect T="string" Value="@_careerId" ValueChanged="OnCareerChanged" Dense="true"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Class="sipau-toolbar-filter-wide mt-0"
+                           Placeholder="Carrera" Clearable="true">
+                    <MudSelectItem T="string" Value="@(null!)">Todas las carreras</MudSelectItem>
+                    @foreach (var career in _careers)
+                    {
+                        <MudSelectItem T="string" Value="@career.Id.ToString()">@career.Value</MudSelectItem>
+                    }
+                </MudSelect>
+                <div class="d-flex flex-column" style="gap:4px">
+                    <MudSelect T="string" Value="@_periodId" ValueChanged="OnPeriodChanged" Dense="true"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Class="sipau-toolbar-filter-wide mt-0"
+                               Placeholder="Periodo" Clearable="true">
+                        <MudSelectItem T="string" Value="@(null!)">Todos los periodos</MudSelectItem>
+                        @foreach (var period in _periods)
+                        {
+                            <MudSelectItem T="string" Value="@period.Id.ToString()">@period.Value</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudSelect T="string" Value="@_facilityId" ValueChanged="OnFacilityChanged" Dense="true"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Class="sipau-toolbar-filter-wide mt-0"
+                               Placeholder="Espacio / aula" Clearable="true">
+                        <MudSelectItem T="string" Value="@(null!)">Todos los espacios</MudSelectItem>
+                        @foreach (var facility in _facilities)
+                        {
+                            <MudSelectItem T="string" Value="@facility.Id.ToString()">@facility.Value</MudSelectItem>
+                        }
+                    </MudSelect>
+                </div>
+                <div class="d-flex" style="gap:6px">
+                    @foreach (var day in Enum.GetValues<Days>())
+                    {
+                        <div class="d-flex flex-column align-center">
+                            <MudCheckBox T="bool" Value="@_selectedDays.Contains(day)"
+                                         ValueChanged="@(v => ToggleDay(day, v))"
+                                         Color="Color.Secondary" Dense="true" />
+                            <MudText Typo="Typo.caption">@DayLetter(day)</MudText>
+                        </div>
+                    }
+                </div>
+            </Filters>
+        </DataToolbar>
+
+        <MudDataGrid T="ClassGroupListItem" Items="Filtered" Hover="true" Dense="true" Elevation="0" SortMode="SortMode.Single">
+            <Columns>
+                <PropertyColumn Property="x => x.Course" Title="Materia" />
+                <PropertyColumn Property="x => x.Career" Title="Carrera" />
+                <PropertyColumn Property="x => x.Teacher" Title="Docente" />
+                <PropertyColumn Property="x => x.Facility" Title="Espacio" />
+                <PropertyColumn Property="x => x.Period" Title="Periodo" />
+                <TemplateColumn Title="Horario" Sortable="false">
+                    <CellTemplate>
+                        @foreach (var slot in context.Item.Schedule)
+                        {
+                            <div>@slot.Day @slot.Time</div>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Inscritos" SortBy="x => x.Enrolled">
+                    <CellTemplate>@context.Item.Enrolled / @context.Item.Capacity</CellTemplate>
+                </TemplateColumn>
+            </Columns>
+            <NoRecordsContent>
+                <EmptyState Icon="@Icons.Material.Filled.SearchOff" Title="Sin coincidencias"
+                            Description="Ningún grupo coincide con la búsqueda o los filtros aplicados." />
+            </NoRecordsContent>
+        </MudDataGrid>
+    </SectionCard>
+}
+
+@code {
+    private IReadOnlyList<ClassGroupListItem> _groups = [];
+    private IReadOnlyList<PeriodLookupOption> _periods = [];
+    private IReadOnlyList<LookupOption> _facilities = [];
+    private IReadOnlyList<LookupOption> _careers = [];
+    private bool _loading = true;
+    private string _search = string.Empty;
+    private string? _periodId;
+    private string? _facilityId;
+    private string? _careerId;
+    private readonly HashSet<Days> _selectedDays = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var groupsTask = CaptureSvc.GetClassGroupsListAsync();
+        var periodsTask = GeneralDataSvc.GetPeriodsAsync();
+        var facilitiesTask = GeneralDataSvc.GetFacilitiesAsync();
+        var careersTask = GeneralDataSvc.GetCareersSelectableAsync();
+        await Task.WhenAll(groupsTask, periodsTask, facilitiesTask, careersTask);
+
+        _groups = await groupsTask;
+        _periods = await periodsTask;
+        _facilities = await facilitiesTask;
+        _careers = await careersTask;
+        _loading = false;
+    }
+
+    private void OnPeriodChanged(string? value) => _periodId = value;
+    private void OnFacilityChanged(string? value) => _facilityId = value;
+    private void OnCareerChanged(string? value) => _careerId = value;
+
+    private static string DayLetter(Days day) => day switch
+    {
+        Days.Lunes => "L",
+        Days.Martes => "M",
+        Days.Miercoles => "I",
+        Days.Jueves => "J",
+        Days.Viernes => "V",
+        Days.Sabado => "S",
+        _ => day.ToString()[..1]
+    };
+
+    private void ToggleDay(Days day, bool isChecked)
+    {
+        if (isChecked) _selectedDays.Add(day);
+        else _selectedDays.Remove(day);
+    }
+
+    private List<ClassGroupListItem> Filtered => _groups.Where(Matches).ToList();
+
+    private bool Matches(ClassGroupListItem group)
+    {
+        if (!string.IsNullOrWhiteSpace(_search))
+        {
+            var query = _search.Trim();
+            var matchesText = group.Teacher.Contains(query, StringComparison.CurrentCultureIgnoreCase)
+                || group.Course.Contains(query, StringComparison.CurrentCultureIgnoreCase);
+            if (!matchesText) return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_periodId) && Guid.TryParse(_periodId, out var periodId) && group.PeriodId != periodId)
+            return false;
+
+        if (!string.IsNullOrWhiteSpace(_facilityId) && Guid.TryParse(_facilityId, out var facilityId) && group.FacilityId != facilityId)
+            return false;
+
+        if (!string.IsNullOrWhiteSpace(_careerId) && Guid.TryParse(_careerId, out var careerId) && group.CareerId != careerId)
+            return false;
+
+        if (_selectedDays.Count > 0 && !group.Schedule.Any(slot => ParseDays(slot.Day).Overlaps(_selectedDaysNormalized)))
+            return false;
+
+        return true;
+    }
+
+    private IEnumerable<string> _selectedDaysNormalized => _selectedDays.Select(d => Normalize(d.ToString()));
+
+    // Splits combined day cells like "Lunes y miércoles" into individual normalized day tokens.
+    private static HashSet<string> ParseDays(string day) =>
+        day.Split([',', '/', '&', ' '], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Where(token => !string.Equals(token, "y", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(token, "e", StringComparison.OrdinalIgnoreCase))
+            .Select(Normalize)
+            .Where(token => token.Length > 0)
+            .ToHashSet();
+
+    private static string Normalize(string value)
+    {
+        var decomposed = value.Trim().Normalize(NormalizationForm.FormD);
+        var withoutAccents = decomposed.Where(c => CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark);
+        return new string(withoutAccents.ToArray()).ToLowerInvariant();
+    }
+}
+

@@ -34,6 +34,13 @@ public class RolesController(RolesRepository rolesRepository) : ControllerBase
         return Ok(role);
     }
 
+    [HttpPost("delete")]
+    public async Task<IActionResult> DeleteRole([FromBody] DeleteRole request)
+    {
+        await rolesRepository.DeleteRoleAsync(request);
+        return Ok();
+    }
+
     [HttpPost("get-permissions")]
     // Retrieve the permission ids currently assigned to a role
     public async Task<IActionResult> GetRolePermissions([FromBody] GetRolePermissions request)

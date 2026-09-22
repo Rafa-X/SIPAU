@@ -119,8 +119,8 @@ public class IntelligenceRepository(AppDBContext db, IntelligenceModelCache cach
                 db.Students.Count(),
                 db.Students.Sum(s => (int?)s.Status) ?? 0,
                 db.Students.Count(s => s.Works),
-                db.Registrations.Count(),
-                db.Registrations.Sum(r => (int?)r.FinalStatus) ?? 0,
+                db.CourseEnrollment.Count(),
+                db.CourseEnrollment.Sum(r => (int?)r.FinalStatus) ?? 0,
                 db.Kardexes.Count(),
                 db.Kardexes.Sum(k => (double?)k.Grade) ?? 0))
             .FirstOrDefaultAsync()
@@ -158,7 +158,7 @@ public class IntelligenceRepository(AppDBContext db, IntelligenceModelCache cach
             .ToList();
 
         // One row per subject in the table; the model only needs one per student and period.
-        var registrations = await db.Registrations
+        var registrations = await db.CourseEnrollment
             .AsNoTracking()
             .Select(r => new { r.StudentId, r.PeriodId, r.FinalStatus })
             .Distinct()

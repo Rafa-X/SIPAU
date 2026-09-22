@@ -21,7 +21,7 @@ public sealed class StudentsService(
         {
             return JsonSerializer.Deserialize<Student>(response.Result, ResponseOptions) ?? null;
         }
-        return null;
+        throw new InvalidOperationException(response.ErrorMessage ?? "No fue posible guardar al alumno.");
     }
 
     public async Task<StudentsListResponse> GetStudentsListAsync(StudentsListRequest request)

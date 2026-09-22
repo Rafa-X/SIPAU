@@ -25,9 +25,21 @@ public class EmployeesRepository(AppDBContext db)
 
     public async Task<Employee> CreateEmployeeAsync(CreateEmployee request)
     {
-        var exist = await db.Employees.AnyAsync(s => s.EmployeeNumber == request.EmployeeNumber);
-        if( exist)
-            throw new InvalidOperationException("Employee with the same employee number already exists.");
+        var existEmployeeNumber = await db.Employees.AnyAsync(e => e.EmployeeNumber == request.EmployeeNumber);
+        if (existEmployeeNumber)
+            throw new InvalidOperationException($"Ya existe un empleado con el número de empleado '{request.EmployeeNumber}'.");
+
+        var existEmail = await db.Employees.AnyAsync(e => e.Email == request.Email);
+        if (existEmail)
+            throw new InvalidOperationException($"Ya existe un empleado con el correo '{request.Email}'.");
+
+        var existRfc = await db.Employees.AnyAsync(e => e.Rfc == request.Rfc);
+        if (existRfc)
+            throw new InvalidOperationException($"Ya existe un empleado con el RFC '{request.Rfc}'.");
+
+        var existCurp = await db.Employees.AnyAsync(e => e.Curp == request.Curp);
+        if (existCurp)
+            throw new InvalidOperationException($"Ya existe un empleado con la CURP '{request.Curp}'.");
 
         var matchedLanguageIds = await db.IndigenousLanguages
             .Where(l => l.Language != null && request.IndigenousLanguages.Contains(l.Language))

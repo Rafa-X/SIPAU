@@ -40,7 +40,7 @@ public class ChartsRepository(AppDBContext db)
             from career in db.Careers.AsNoTracking()
             join classGroup in db.ClassGroups.AsNoTracking()
                 on career.Id equals classGroup.CareerId
-            join registrations in db.Registrations.AsNoTracking()
+            join registrations in db.CourseEnrollment.AsNoTracking()
                 on classGroup.Id equals registrations.GroupId
             join students in db.Students.AsNoTracking()
                 on registrations.StudentId equals students.Id

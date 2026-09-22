@@ -340,23 +340,23 @@ BEGIN
         (@FacilityLaboratory, 'Laboratorio de Cómputo 1', 9, 30, 1, 1, 1, 1, '[]');
 END;
 
-DECLARE @AsignatureProgramming UNIQUEIDENTIFIER = '77777777-7777-7777-7777-777777777701';
-DECLARE @AsignatureMathematics UNIQUEIDENTIFIER = '77777777-7777-7777-7777-777777777702';
-DECLARE @AsignatureDatabases UNIQUEIDENTIFIER = '77777777-7777-7777-7777-777777777703';
-DECLARE @AsignatureBiology UNIQUEIDENTIFIER = '77777777-7777-7777-7777-777777777704';
-DECLARE @AsignaturePhysics UNIQUEIDENTIFIER = '77777777-7777-7777-7777-777777777705';
-DECLARE @AsignatureIndustrialSafety UNIQUEIDENTIFIER = '77777777-7777-7777-7777-777777777706';
+DECLARE @CourseProgramming UNIQUEIDENTIFIER = '77777777-7777-7777-7777-777777777701';
+DECLARE @CourseMathematics UNIQUEIDENTIFIER = '77777777-7777-7777-7777-777777777702';
+DECLARE @CourseDatabases UNIQUEIDENTIFIER = '77777777-7777-7777-7777-777777777703';
+DECLARE @CourseBiology UNIQUEIDENTIFIER = '77777777-7777-7777-7777-777777777704';
+DECLARE @CoursePhysics UNIQUEIDENTIFIER = '77777777-7777-7777-7777-777777777705';
+DECLARE @CourseIndustrialSafety UNIQUEIDENTIFIER = '77777777-7777-7777-7777-777777777706';
 
 BEGIN
-    INSERT INTO asignatures
-        (Id, CareerId, AsignatureCode, AsignatureName, Credits, Cuatrimestre, IsMandatory)
+    INSERT INTO courses
+        (Id, CareerId, CourseCode, CourseName, Credits, Cuatrimestre, IsMandatory)
     VALUES
-        (@AsignatureProgramming, @CareerComputing, '88888888-8888-8888-8888-888888888701', 'Programación Orientada a Objetos', 8, 3, 1),
-        (@AsignatureDatabases, @CareerComputing, '88888888-8888-8888-8888-888888888703', 'Bases de Datos', 8, 4, 1),
-        (@AsignatureBiology, @CareerBiomedic, '88888888-8888-8888-8888-888888888704', 'Biología Celular', 8, 1, 1),
-        (@AsignaturePhysics, @CareerBiomedic, '88888888-8888-8888-8888-888888888705', 'Física Aplicada', 8, 2, 1),
-        (@AsignatureMathematics, @CareerIndustrial, '88888888-8888-8888-8888-888888888702', 'Cálculo Diferencial', 8, 1, 1),
-        (@AsignatureIndustrialSafety, @CareerIndustrial, '88888888-8888-8888-8888-888888888706', 'Seguridad Industrial', 8, 2, 1);
+        (@CourseProgramming, @CareerComputing, '88888888-8888-8888-8888-888888888701', 'Programación Orientada a Objetos', 8, 3, 1),
+        (@CourseDatabases, @CareerComputing, '88888888-8888-8888-8888-888888888703', 'Bases de Datos', 8, 4, 1),
+        (@CourseBiology, @CareerBiomedic, '88888888-8888-8888-8888-888888888704', 'Biología Celular', 8, 1, 1),
+        (@CoursePhysics, @CareerBiomedic, '88888888-8888-8888-8888-888888888705', 'Física Aplicada', 8, 2, 1),
+        (@CourseMathematics, @CareerIndustrial, '88888888-8888-8888-8888-888888888702', 'Cálculo Diferencial', 8, 1, 1),
+        (@CourseIndustrialSafety, @CareerIndustrial, '88888888-8888-8888-8888-888888888706', 'Seguridad Industrial', 8, 2, 1);
 END;
 
 DECLARE @ClassGroupProgramming UNIQUEIDENTIFIER = '99999999-9999-9999-9999-999999999701';
@@ -369,26 +369,26 @@ DECLARE @ClassGroupIndustrialSafety UNIQUEIDENTIFIER = '99999999-9999-9999-9999-
 BEGIN
     INSERT INTO classGroups
         (Id, FacilityId, Schedule, Capacity, Enrolled, Weekhours,
-         PeriodId, CareerId, TeacherId, AsignatureId, IsTheory)
+         PeriodId, CareerId, TeacherId, CourseId, IsTheory)
     VALUES
         (@ClassGroupProgramming, @FacilityLaboratory,
          '[{"Day":"Lunes y miércoles","Time":"11:00-13:00 hrs"}]',
-         30, 2, 4, @Period2025A, @CareerComputing, @TeacherEmployeeId, @AsignatureProgramming, 0),
+         30, 2, 4, @Period2025A, @CareerComputing, @TeacherEmployeeId, @CourseProgramming, 0),
         (@ClassGroupMathematics, @FacilityClassroom,
          '[{"Day":"Martes y jueves","Time":"09:00-11:00 hrs"}]',
-         35, 2, 4, @Period2025A, @CareerIndustrial, @TeacherTwoEmployeeId, @AsignatureMathematics, 1),
+         35, 2, 4, @Period2025A, @CareerIndustrial, @TeacherTwoEmployeeId, @CourseMathematics, 1),
         (@ClassGroupBiology, @FacilityLaboratory,
          '[{"Day":"Lunes y miércoles","Time":"13:00-15:00 hrs"}]',
-         30, 2, 4, @Period2025A, @CareerBiomedic, @TeacherThreeEmployeeId, @AsignatureBiology, 0),
+         30, 2, 4, @Period2025A, @CareerBiomedic, @TeacherThreeEmployeeId, @CourseBiology, 0),
         (@ClassGroupPhysics, @FacilityClassroom,
          '[{"Day":"Martes y jueves","Time":"11:00-13:00 hrs"}]',
-         35, 2, 4, @Period2025A, @CareerBiomedic, @TeacherThreeEmployeeId, @AsignaturePhysics, 1),
+         35, 2, 4, @Period2025A, @CareerBiomedic, @TeacherThreeEmployeeId, @CoursePhysics, 1),
         (@ClassGroupDatabases, @FacilityLaboratory,
          '[{"Day":"Viernes","Time":"09:00-13:00 hrs"}]',
-         30, 2, 4, @Period2025A, @CareerComputing, @TeacherFourEmployeeId, @AsignatureDatabases, 0),
+         30, 2, 4, @Period2025A, @CareerComputing, @TeacherFourEmployeeId, @CourseDatabases, 0),
         (@ClassGroupIndustrialSafety, @FacilityClassroom,
          '[{"Day":"Viernes","Time":"11:00-13:00 hrs"}]',
-         35, 2, 2, @Period2025A, @CareerIndustrial, @TeacherTwoEmployeeId, @AsignatureIndustrialSafety, 1);
+         35, 2, 2, @Period2025A, @CareerIndustrial, @TeacherTwoEmployeeId, @CourseIndustrialSafety, 1);
 END;
 
 -- 14) Students for testing
@@ -430,7 +430,7 @@ BEGIN
         (NEWID(), @StudentTwoId, @Language2);
 END;
 
--- 15) Asignature registrations for testing
+-- 15) Course registrations for testing
 DECLARE @NoWithdrawReason UNIQUEIDENTIFIER = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 DECLARE @ClassGroupProgrammingB UNIQUEIDENTIFIER = '99999999-9999-9999-9999-999999999801';
 DECLARE @ClassGroupBiologyB UNIQUEIDENTIFIER = '99999999-9999-9999-9999-999999999802';
@@ -448,30 +448,30 @@ END;
 BEGIN
     INSERT INTO classGroups
         (Id, FacilityId, Schedule, Capacity, Enrolled, Weekhours,
-         PeriodId, CareerId, TeacherId, AsignatureId, IsTheory)
+         PeriodId, CareerId, TeacherId, CourseId, IsTheory)
     VALUES
         (@ClassGroupProgrammingB, @FacilityLaboratory,
          '[{"Day":"Lunes y miércoles","Time":"11:00-13:00 hrs"}]',
-         30, 3, 4, @Period2025B, @CareerComputing, @TeacherEmployeeId, @AsignatureProgramming, 0),
+         30, 3, 4, @Period2025B, @CareerComputing, @TeacherEmployeeId, @CourseProgramming, 0),
         (@ClassGroupBiologyB, @FacilityLaboratory,
          '[{"Day":"Martes y jueves","Time":"13:00-15:00 hrs"}]',
-         30, 3, 4, @Period2025B, @CareerBiomedic, @TeacherThreeEmployeeId, @AsignatureBiology, 0),
+         30, 3, 4, @Period2025B, @CareerBiomedic, @TeacherThreeEmployeeId, @CourseBiology, 0),
         (@ClassGroupMathematicsB, @FacilityClassroom,
          '[{"Day":"Viernes","Time":"09:00-13:00 hrs"}]',
-         35, 3, 4, @Period2025B, @CareerIndustrial, @TeacherTwoEmployeeId, @AsignatureMathematics, 1),
+         35, 3, 4, @Period2025B, @CareerIndustrial, @TeacherTwoEmployeeId, @CourseMathematics, 1),
         (@ClassGroupProgrammingC, @FacilityLaboratory,
          '[{"Day":"Lunes y miércoles","Time":"11:00-13:00 hrs"}]',
-         30, 4, 4, @Period2025C, @CareerComputing, @TeacherEmployeeId, @AsignatureProgramming, 0),
+         30, 4, 4, @Period2025C, @CareerComputing, @TeacherEmployeeId, @CourseProgramming, 0),
         (@ClassGroupBiologyC, @FacilityLaboratory,
          '[{"Day":"Martes y jueves","Time":"13:00-15:00 hrs"}]',
-         30, 4, 4, @Period2025C, @CareerBiomedic, @TeacherThreeEmployeeId, @AsignatureBiology, 0),
+         30, 4, 4, @Period2025C, @CareerBiomedic, @TeacherThreeEmployeeId, @CourseBiology, 0),
         (@ClassGroupIndustrialSafetyC, @FacilityClassroom,
          '[{"Day":"Viernes","Time":"11:00-13:00 hrs"}]',
-         35, 4, 2, @Period2025C, @CareerIndustrial, @TeacherTwoEmployeeId, @AsignatureIndustrialSafety, 1);
+         35, 4, 2, @Period2025C, @CareerIndustrial, @TeacherTwoEmployeeId, @CourseIndustrialSafety, 1);
 END;
 
 BEGIN
-    INSERT INTO assignatureRegistrations
+    INSERT INTO courseEnrollment
         (Id, StudentId, GroupId, PeriodId, InscriptionType, FinalStatus, WithdrawReasonId)
     VALUES
         (NEWID(), @StudentOneId, @ClassGroupProgramming, @Period2025A, 0, 0, @NoWithdrawReason),

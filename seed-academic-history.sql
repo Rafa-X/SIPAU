@@ -6,7 +6,7 @@
 -- synthetic but coherent history on top of test-data.sql:
 --   * cohorts entering every period from 2018 Ene-Abr to 2026 Ene-Abr, so every term
 --     of a 15-term programme is already populated when the record starts,
---   * registrations (assignatureRegistrations) and kardex from 2023 Ene-Abr to 2026 Ene-Abr,
+--   * registrations (courseEnrollment) and kardex from 2023 Ene-Abr to 2026 Ene-Abr,
 --   * graduates, temporary and definitive withdrawals, and extraordinary exams.
 --
 -- A hidden performance score (0..99) drives both grades and withdrawals, as in real life;
@@ -58,20 +58,20 @@ DECLARE @OldStudents TABLE (Id UNIQUEIDENTIFIER PRIMARY KEY);
 INSERT INTO @OldStudents SELECT Id FROM students WHERE EnrollmentNumber LIKE 'UPH%';
 
 DECLARE @OldSubjects TABLE (Id UNIQUEIDENTIFIER PRIMARY KEY);
-INSERT INTO @OldSubjects SELECT Id FROM asignatures WHERE CAST(AsignatureCode AS CHAR(36)) LIKE 'A5E0A5E0-%';
+INSERT INTO @OldSubjects SELECT Id FROM Courses WHERE CAST(CourseCode AS CHAR(36)) LIKE 'A5E0A5E0-%';
 
-DELETE FROM kardex                     WHERE StudentId IN (SELECT Id FROM @OldStudents) OR AsignatureId IN (SELECT Id FROM @OldSubjects);
+DELETE FROM kardex                     WHERE StudentId IN (SELECT Id FROM @OldStudents) OR CourseId IN (SELECT Id FROM @OldSubjects);
 DELETE FROM tutoringSessions           WHERE StudentId IN (SELECT Id FROM @OldStudents)
-                                          OR GroupId IN (SELECT Id FROM classGroups WHERE AsignatureId IN (SELECT Id FROM @OldSubjects));
-DELETE FROM assignatureRegistrations   WHERE StudentId IN (SELECT Id FROM @OldStudents)
-                                          OR GroupId IN (SELECT Id FROM classGroups WHERE AsignatureId IN (SELECT Id FROM @OldSubjects));
+                                          OR GroupId IN (SELECT Id FROM classGroups WHERE CourseId IN (SELECT Id FROM @OldSubjects));
+DELETE FROM courseEnrollment   WHERE StudentId IN (SELECT Id FROM @OldStudents)
+                                          OR GroupId IN (SELECT Id FROM classGroups WHERE CourseId IN (SELECT Id FROM @OldSubjects));
 DELETE FROM studentDisabilities        WHERE StudentId IN (SELECT Id FROM @OldStudents);
 DELETE FROM scolarshipAssigneds        WHERE StudentId IN (SELECT Id FROM @OldStudents);
 DELETE FROM titulationProcesses        WHERE StudentId IN (SELECT Id FROM @OldStudents);
 DELETE FROM IndigenousLanguagesSpeakers WHERE SpeakerId IN (SELECT Id FROM @OldStudents);
 DELETE FROM students                   WHERE Id IN (SELECT Id FROM @OldStudents);
-DELETE FROM classGroups                WHERE AsignatureId IN (SELECT Id FROM @OldSubjects);
-DELETE FROM asignatures                WHERE Id IN (SELECT Id FROM @OldSubjects);
+DELETE FROM classGroups                WHERE CourseId IN (SELECT Id FROM @OldSubjects);
+DELETE FROM courses                WHERE Id IN (SELECT Id FROM @OldSubjects);
 
 -- 2) Periods: G = 0 is 2018 Ene-Abr, G = 24 is 2026 Ene-Abr (the active period in test-data.sql)
 DECLARE @FirstRecorded INT = 15;   -- 2023 Ene-Abr
@@ -175,7 +175,7 @@ SELECT n.CareerIdx, n.Term, n.Slot
 FROM #SubjectNames n JOIN #Careers c ON c.Idx = n.CareerIdx
 WHERE n.Term <= c.Duration;
 
-INSERT INTO asignatures (Id, CareerId, AsignatureCode, AsignatureName, Credits, Cuatrimestre, IsMandatory)
+INSERT INTO courses (Id, CareerId, CourseCode, CourseName, Credits, Cuatrimestre, IsMandatory)
 SELECT s.Id, c.Id,
        -- The 'A5E0A5E0' prefix marks the subjects this script owns.
        CAST(CONCAT('A5E0A5E0-0000-4000-8000-', RIGHT(CONCAT('000000000000', s.CareerIdx * 1000 + s.Term * 10 + s.Slot), 12)) AS UNIQUEIDENTIFIER),
@@ -356,7 +356,7 @@ CROSS JOIN (VALUES (1), (2), (3), (4), (5)) AS sl (Slot)
 GROUP BY e.G, s.CareerIdx, e.Term, sl.Slot;
 
 INSERT INTO classGroups
-    (Id, FacilityId, Schedule, Capacity, Enrolled, Weekhours, PeriodId, CareerId, TeacherId, AsignatureId, IsTheory)
+    (Id, FacilityId, Schedule, Capacity, Enrolled, Weekhours, PeriodId, CareerId, TeacherId, CourseId, IsTheory)
 SELECT g.Id,
        CASE WHEN g.Slot = 4 THEN @Laboratory ELSE @Classroom END,
        CONCAT(N'[{"Day":"', CHOOSE(g.Slot, N'Lunes y miércoles', N'Martes y jueves', N'Lunes y miércoles', N'Viernes', N'Martes y jueves'),
@@ -378,7 +378,7 @@ JOIN #Teachers t ON t.Idx = (g.G + g.Term + g.Slot) % @TeacherCount;
 
 -- 8) Registrations: one row per subject taken
 -- InscriptionType: 0 NuevoIngreso, 2 Reinscripcion
-INSERT INTO assignatureRegistrations (Id, StudentId, GroupId, PeriodId, InscriptionType, FinalStatus, WithdrawReasonId)
+INSERT INTO courseEnrollment (Id, StudentId, GroupId, PeriodId, InscriptionType, FinalStatus, WithdrawReasonId)
 SELECT NEWID(), s.Id, g.Id, p.Id,
        CASE WHEN e.G = s.G0 THEN 0 ELSE 2 END,
        e.FinalStatus,
@@ -421,14 +421,14 @@ CROSS APPLY (SELECT CASE WHEN a.Passed = 1 OR e.IsDropPeriod = 1 THEN NULL
                          ELSE CAST(0 AS BIT) END AS ExtraPassed) x;
 
 -- Opportunity: 0 Ordinario, 1 Extraordinario
-INSERT INTO kardex (Id, StudentId, AsignatureId, PeriodId, Grade, IsPassed, Opportunity)
+INSERT INTO kardex (Id, StudentId, CourseId, PeriodId, Grade, IsPassed, Opportunity)
 SELECT NEWID(), s.Id, sub.Id, p.Id, a.Grade, a.Passed, 0
 FROM #Attempts a
 JOIN #Students s ON s.Seq = a.Seq
 JOIN #Periods p ON p.G = a.G
 JOIN #Subjects sub ON sub.CareerIdx = s.CareerIdx AND sub.Term = a.Term AND sub.Slot = a.Slot;
 
-INSERT INTO kardex (Id, StudentId, AsignatureId, PeriodId, Grade, IsPassed, Opportunity)
+INSERT INTO kardex (Id, StudentId, CourseId, PeriodId, Grade, IsPassed, Opportunity)
 SELECT NEWID(), s.Id, sub.Id, p.Id, a.ExtraGrade, a.ExtraPassed, 1
 FROM #Attempts a
 JOIN #Students s ON s.Seq = a.Seq
@@ -446,7 +446,7 @@ SELECT p.SchoolCycle + ' ' + p.SEP_Period AS period,
        COUNT(DISTINCT CASE WHEN r.FinalStatus IN (1, 2) THEN r.StudentId END) AS withdrawn,
        COUNT(DISTINCT CASE WHEN r.FinalStatus = 3 THEN r.StudentId END) AS graduated
 FROM periods p
-JOIN assignatureRegistrations r ON r.PeriodId = p.Id
+JOIN courseEnrollment r ON r.PeriodId = p.Id
 JOIN students s ON s.Id = r.StudentId AND s.EnrollmentNumber LIKE 'UPH%'
 GROUP BY p.SchoolCycle, p.SEP_Period, p.StartDate
 ORDER BY p.StartDate;

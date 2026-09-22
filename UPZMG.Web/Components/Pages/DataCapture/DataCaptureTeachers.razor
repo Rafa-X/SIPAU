@@ -189,7 +189,16 @@
             IsTeacher = _model.IsTeacher,
         };
 
-        await _captureService.CreateTeacher(request);
+        try
+        {
+            await _captureService.CreateTeacher(request);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            return;
+        }
+
         Snackbar.Add($"Docente {_model.FirstName} {_model.LastName} guardado correctamente.", Severity.Success);
         Nav.NavigateTo("/datacapture");
     }

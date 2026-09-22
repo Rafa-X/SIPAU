@@ -7,13 +7,13 @@ namespace UPZMG.Persistence.Models;
 /// Represents a course program in the academic system.
 /// </summary>
 
-public class Asignatures
+public class Courses
 {
     public Guid Id { get; set; }
     public Guid CareerId { get; set; } //fk
-    public Guid AsignatureCode { get; set; }
+    public Guid CourseCode { get; set; }
     [MaxLength(120)]
-    public string AsignatureName { get; set; } = null!;
+    public string CourseName { get; set; } = null!;
     public int Credits { get; set; }
     public int Cuatrimestre { get; set; }
     public bool IsMandatory { get; set; } // Mandatory in the study plan or elective

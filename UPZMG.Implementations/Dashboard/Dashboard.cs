@@ -27,6 +27,6 @@ public sealed class DashboardSummary
     public IReadOnlyList<PeriodIntake> IntakeByPeriod { get; set; } = [];
 }
 
-public sealed record CareerStudents(string Career, int Students);
+public sealed record CareerStudents(string Alias, string Career, int Students);
 
 public sealed record PeriodIntake(Guid PeriodId, string Period, int Students);
