@@ -9,7 +9,7 @@
 
 <PageTitle>Roles y Permisos — SIPAU</PageTitle>
 
-<PageHeader Eyebrow="Administración" Title="Roles y Permisos" Subtitle="Da de alta roles, asigna permisos y controla el acceso al sistema." />
+<PageHeader Eyebrow="Administración" Title="Roles y Permisos" Subtitle="Da de alta roles, asigna permisos y controla el acceso al sistema." BackHref="/settings"/>
 
 <MudGrid>
     <MudItem xs="12" md="6">
@@ -44,6 +44,12 @@
                                     <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
                                                StartIcon="@Icons.Material.Filled.Edit" OnClick="() => OpenEditRole(context.Item)">
                                         Editar
+                                    </MudButton>
+                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error"
+                                               StartIcon="@Icons.Material.Filled.Delete" Class="ml-2"
+                                               Disabled="@(context.Item.Name == "Admin")"
+                                               OnClick="() => DeleteRoleAsync(context.Item)">
+                                        Eliminar
                                     </MudButton>
                                 </CellTemplate>
                             </TemplateColumn>
@@ -86,6 +92,11 @@
                                     <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
                                                StartIcon="@Icons.Material.Filled.Edit" OnClick="() => OpenEditPermission(context.Item)">
                                         Editar
+                                    </MudButton>
+                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error"
+                                               StartIcon="@Icons.Material.Filled.Delete" Class="ml-2"
+                                               OnClick="() => DeletePermissionAsync(context.Item)">
+                                        Eliminar
                                     </MudButton>
                                 </CellTemplate>
                             </TemplateColumn>
@@ -186,6 +197,36 @@
             : $"Rol '{saved.Name}' creado correctamente.", Severity.Success);
     }
 
+    private async Task DeleteRoleAsync(Role role)
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Eliminar rol",
+            $"Se eliminará el rol '{role.Name}' y sus asignaciones de permisos y usuarios.",
+            yesText: "Eliminar", cancelText: "Conservar");
+
+        if (confirmed != true) return;
+
+        var requesterKey = await _securityService.GetRequesterKeyAsync();
+        if (requesterKey == Guid.Empty) return;
+
+        try
+        {
+            if (!await _securityService.DeleteRole(new DeleteRole
+                { RequesterKey = requesterKey, RoleId = role.Id }))
+            {
+                Snackbar.Add("No se pudo eliminar el rol.", Severity.Error);
+                return;
+            }
+
+            await ReloadAsync(requesterKey);
+            Snackbar.Add($"Rol '{role.Name}' eliminado correctamente.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
     private async Task OpenRolePermissions(Role role)
     {
         var requesterKey = await _securityService.GetRequesterKeyAsync();
@@ -265,5 +306,35 @@
         Snackbar.Add(saved.IsEditing
             ? $"Permiso '{saved.Name}' actualizado correctamente."
             : $"Permiso '{saved.Name}' creado correctamente.", Severity.Success);
+    }
+
+    private async Task DeletePermissionAsync(Permission permission)
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Eliminar permiso",
+            $"Se eliminará el permiso '{permission.Name}' de todos los roles que lo tengan asignado.",
+            yesText: "Eliminar", cancelText: "Conservar");
+
+        if (confirmed != true) return;
+
+        var requesterKey = await _securityService.GetRequesterKeyAsync();
+        if (requesterKey == Guid.Empty) return;
+
+        try
+        {
+            if (!await _securityService.DeletePermission(new DeletePermission
+                { RequesterKey = requesterKey, PermissionId = permission.Id }))
+            {
+                Snackbar.Add("No se pudo eliminar el permiso.", Severity.Error);
+                return;
+            }
+
+            await ReloadAsync(requesterKey);
+            Snackbar.Add($"Permiso '{permission.Name}' eliminado correctamente.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
     }
 }

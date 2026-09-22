@@ -16,9 +16,9 @@ public class GeneralDataController(
     public async Task<ActionResult<List<LookupOption>>> GetCareers() =>
             Ok(await generalDataRepository.GetCareersSelectableAsync());
 
-    [HttpGet("lookups/asignatures/{careerId:guid}")]
-    public async Task<ActionResult<List<LookupOption>>> GetAsignatures(Guid careerId) =>
-        Ok(await generalDataRepository.GetAsignaturesAsync(careerId));
+    [HttpGet("lookups/courses/{careerId:guid}")]
+    public async Task<ActionResult<List<LookupOption>>> GetCourses(Guid careerId) =>
+        Ok(await generalDataRepository.GetCoursesAsync(careerId));
 
     [HttpGet("lookups/periods")]
     public async Task<ActionResult<List<PeriodLookupOption>>> GetPeriods() =>

@@ -10,11 +10,9 @@ namespace UPZMG.Web.Models;
 public class BulkImportViewModel
 {
     public string AreaKey { get; set; } = string.Empty;
-    public string Delimiter { get; set; } = ",";
     public bool HasHeaderRow { get; set; } = true;
     public IFormFile? File { get; set; }
 
     // Dropdown options (mock data, populated by the controller)
     public List<SelectListItem> Areas { get; set; } = new();
-    public List<SelectListItem> Delimiters { get; set; } = new();
 }

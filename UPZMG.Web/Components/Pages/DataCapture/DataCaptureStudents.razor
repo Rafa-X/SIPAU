@@ -211,7 +211,16 @@
             BirthState = _model.BirthState.Trim(),
         };
 
-        await _studentsService.CreateStudent(request);
+        try
+        {
+            await _studentsService.CreateStudent(request);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            return;
+        }
+
         Snackbar.Add($"Alumno {_model.FirstName} {_model.LastName} guardado correctamente.", Severity.Success);
         Nav.NavigateTo("/datacapture");
     }

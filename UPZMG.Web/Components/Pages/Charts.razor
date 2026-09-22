@@ -61,7 +61,7 @@
     </MudItem>
 
     <MudItem xs="12" lg="5">
-        <SectionCard Title="Distribución por carrera"
+        <SectionCard Title="Distribución de Alumnos por carrera"
                      Icon="@Icons.Material.Filled.School" Accent="teal">
             <Actions>
                 <MudTooltip Text="Descargar gráfica PNG" Placement="Placement.Top">
@@ -78,7 +78,7 @@
                           AriaLabel="Alumnos por carrera" />
             </ChildContent>
             <Footer>
-                Programa con mayor matrícula: <b>@_model.CareerDistribution.TopLabel</b> · total <b>@_model.CareerDistribution.Total.ToString("N0")</b> alumnos
+                Carrera con mayor matrícula: <b>@_model.CareerDistribution.TopLabel</b> · total <b>@_model.CareerDistribution.Total.ToString("N0")</b> alumnos
             </Footer>
         </SectionCard>
     </MudItem>
@@ -90,7 +90,7 @@
                      Subtitle="Grupos y alumnos inscritos por carrera en el periodo activo"
                      Icon="@Icons.Material.Filled.Groups" Accent="navy">
             <ChildContent>
-                <BarChart Id="groups-chart" Labels="_model.GroupDistributionByCareer.Labels" Series="_model.GroupDistributionByCareer.Series" Height="220"
+                <BarChart Id="groups-chart" Labels="_model.GroupDistributionByCareer.Labels" Series="_model.GroupDistributionByCareer.Series" Height="160"
                           AriaLabel="Grupos y alumnos inscritos por carrera" />
             </ChildContent>
             <Actions>

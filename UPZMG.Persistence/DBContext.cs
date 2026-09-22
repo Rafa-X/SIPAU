@@ -19,12 +19,12 @@ public class AppDBContext(DbContextOptions<AppDBContext> options) : DbContext(op
     // Academic
     public DbSet<Careers> Careers => Set<Careers>();
     public DbSet<ClassGroups> ClassGroups => Set<ClassGroups>();
-    public DbSet<Asignatures> Asignatures => Set<Asignatures>();
+    public DbSet<Courses> Courses => Set<Courses>();
     public DbSet<InstitutionalConfiguration> InstitutionalConfigurations => Set<InstitutionalConfiguration>();
     public DbSet<InstitutionalEvaluation> InstitutionalEvaluations => Set<InstitutionalEvaluation>();
     public DbSet<Kardex> Kardexes => Set<Kardex>();
     public DbSet<Periods> Periods => Set<Periods>();
-    public DbSet<AsignatureRegistrations> Registrations => Set<AsignatureRegistrations>();
+    public DbSet<CourseEnrollment> CourseEnrollment => Set<CourseEnrollment>();
     public DbSet<ScolarshipAssigned> ScolarshipAssigneds => Set<ScolarshipAssigned>();
     public DbSet<Student> Students => Set<Student>();
     public DbSet<StudentDisabilities> StudentDisabilities => Set<StudentDisabilities>();
@@ -152,23 +152,24 @@ public class AppDBContext(DbContextOptions<AppDBContext> options) : DbContext(op
             entity.HasOne<Careers>()
                 .WithMany()
                 .HasForeignKey(x => x.CareerId);
-            entity.HasOne<Asignatures>()
+            entity.HasOne<Courses>()
                 .WithMany()
-                .HasForeignKey(x => x.AsignatureId);
+                .HasForeignKey(x => x.CourseId);
             entity.HasOne<Employee>()
                 .WithMany()
                 .HasForeignKey(x => x.TeacherId);
             entity.HasOne<SchoolFacility>()
                 .WithMany()
                 .HasForeignKey(x => x.FacilityId);
+            entity.HasIndex(x => new { x.FacilityId, x.PeriodId }); // speeds up the schedule-overlap lookup on create
             entity.Property(x => x.Schedule)
                 .HasColumnType("nvarchar(max)")
                 .HasConversion(
                     schedule => JsonSerializer.Serialize(schedule, (JsonSerializerOptions?)null),
                     schedule => JsonSerializer.Deserialize<List<Schedule>>(schedule) ?? new List<Schedule>());
         });
-        modelBuilder.Entity<Asignatures>(entity => {
-            entity.ToTable("asignatures");
+        modelBuilder.Entity<Courses>(entity => {
+            entity.ToTable("courses");
             entity.HasKey(x => x.Id);
             entity.HasOne<Careers>()
                 .WithMany()
@@ -191,9 +192,9 @@ public class AppDBContext(DbContextOptions<AppDBContext> options) : DbContext(op
             entity.HasOne<Student>()
                 .WithMany()
                 .HasForeignKey(x => x.StudentId);
-            entity.HasOne<Asignatures>()
+            entity.HasOne<Courses>()
                 .WithMany()
-                .HasForeignKey(x => x.AsignatureId);
+                .HasForeignKey(x => x.CourseId);
             entity.HasOne<Periods>()
                 .WithMany()
                 .HasForeignKey(x => x.PeriodId);
@@ -202,8 +203,8 @@ public class AppDBContext(DbContextOptions<AppDBContext> options) : DbContext(op
             entity.ToTable("periods");
             entity.HasKey(x => x.Id);
         });
-        modelBuilder.Entity<AsignatureRegistrations>(entity =>{
-            entity.ToTable("assignatureRegistrations");
+        modelBuilder.Entity<CourseEnrollment>(entity =>{
+            entity.ToTable("courseEnrollment");
             entity.HasKey(x => x.Id);
             entity.HasOne<Student>()
                 .WithMany()

@@ -31,4 +31,11 @@ public class PermissionsController(PermissionsRepository permissionsRepository) 
         var permission = await permissionsRepository.EditPermissionAsync(request);
         return Ok(permission);
     }
+
+    [HttpPost("delete")]
+    public async Task<IActionResult> DeletePermission([FromBody] DeletePermission request)
+    {
+        await permissionsRepository.DeletePermissionAsync(request);
+        return Ok();
+    }
 }

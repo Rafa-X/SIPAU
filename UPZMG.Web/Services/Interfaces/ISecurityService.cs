@@ -20,10 +20,12 @@ public interface ISecurityService
     Task<List<Role>> GetAllRoles(GetAllRoles request);
     Task<Role> CreateRole(CreateRole request);
     Task<Role> EditRole(EditRole request);
+    Task<bool> DeleteRole(DeleteRole request);
     Task<List<Guid>> GetRolePermissions(GetRolePermissions request);
     Task<bool> SetRolePermissions(SetRolePermissions request);
 
     Task<List<Permission>> GetAllPermissions(GetAllPermissions request);
     Task<Permission> CreatePermission(CreatePermission request);
     Task<Permission> EditPermission(EditPermission request);
+    Task<bool> DeletePermission(DeletePermission request);
 }

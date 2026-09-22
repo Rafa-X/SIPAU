@@ -119,6 +119,9 @@ body,
 }
 * { scrollbar-color: var(--sipau-hairline-strong) transparent; scrollbar-width: thin; }
 
+.bulk-import-container { width: 100%; max-width: 70%; margin: 0 auto; }
+.bulk-import-grid { margin: 0; }
+
 .mud-input-root { caret-color: var(--mud-palette-primary); }
 
 :focus-visible {

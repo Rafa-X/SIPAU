@@ -1,69 +1,385 @@
 @page "/datacapture/bulk"
 @attribute [Authorize]
+@using System.Globalization
+@using System.Reflection
+@using System.Text
+@using System.Text.Json
+@using CsvHelper
+@using CsvHelper.Configuration
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Forms
+@using MudBlazor
+@using UPZMG.Implementations.DataCapture
+@using UPZMG.Shared.Enums
+@using UPZMG.Web.Components.Shared
 @inject IDataCaptureService CaptureSvc
+@inject IGeneralDataService GeneralDataSvc
+@inject ISecurityService SecuritySvc
+@inject ISnackbar Snackbar
 @inject NavigationManager Nav
 
 <PageTitle>Importación masiva — SIPAU</PageTitle>
 
-<PageHeader Eyebrow="Captura de datos" Title="Importación masiva" Subtitle="Carga un archivo delimitado en lugar de capturar registro por registro" BackHref="/datacapture" />
+<PageHeader Eyebrow="Captura de datos" Title="Importación masiva" Subtitle="Carga un CSV con una fila por entidad" BackHref="/datacapture" />
 
 <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4">
-    <b>La importación masiva todavía no está conectada.</b>
-    El archivo no se envía a ningún lado: falta el endpoint que lo lea y valide contra los catálogos.
-    Mientras tanto, la captura registro por registro de Alumnos, Docentes y Grupos sí guarda.
-    <MudLink Href="/datacapture" Typo="Typo.body2" Class="ml-1">Volver a captura</MudLink>
+    Para campos <b>ID</b> se acepta el alias/nombre del parametro, por ejemplo <b>INCO</b> para una carrera y <b>2026-EA</b> para un periodo.
+    La columna de lenguas indígenas puede quedar vacía; para varias lenguas usa una celda entre comillas, por ejemplo <b>"Náhuatl,Maya Yucateco"</b>.
 </MudAlert>
 
-<MudPaper Elevation="1" Class="pa-6">
+<MudPaper Elevation="1" Class="bulk-import-container pa-6">
     <MudForm @ref="_form">
-        <MudGrid>
-            <MudItem md="6">
-                <MudSelect T="string" @bind-Value="_model.AreaKey" Label="Área destino"
-                           Required="true" RequiredError="Selecciona un área.">
-                    @foreach (var a in CaptureSvc.BulkAreas) { <MudSelectItem T="string" Value="@a.Value">@a.Text</MudSelectItem> }
+        <MudGrid Class="bulk-import-grid" Spacing="3">
+            <MudItem xs="12" md="6" Class="d-flex justify-center">
+                <MudSelect T="string" @bind-Value="_areaKey" Label="Área destino" Required="true" RequiredError="Selecciona un área.">
+                    @foreach (var area in CaptureSvc.BulkAreas)
+                    {
+                        <MudSelectItem T="string" Value="@area.Value">@area.Text</MudSelectItem>
+                    }
                 </MudSelect>
             </MudItem>
-            <MudItem md="6">
-                <MudSelect T="string" @bind-Value="_model.Delimiter" Label="Delimitador">
-                    @foreach (var d in CaptureSvc.Delimiters) { <MudSelectItem T="string" Value="@d.Value">@d.Text</MudSelectItem> }
-                </MudSelect>
+            <MudItem xs="12" md="6" Class="d-flex justify-center">
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary"
+                           StartIcon="@Icons.Material.Filled.Download"
+                           Disabled="@string.IsNullOrWhiteSpace(_areaKey)"
+                           Href="@TemplateUrl" download="@TemplateFileName">
+                    Descargar plantilla CSV
+                </MudButton>
             </MudItem>
-
-            <MudItem xs="12" Class="d-flex align-center">
-                <MudSwitch T="bool" @bind-Value="_model.HasHeaderRow" Color="Color.Secondary" Label="El archivo incluye fila de encabezados" />
-            </MudItem>
-
-            <MudItem xs="12">
-                <MudFileUpload T="IBrowserFile" @bind-Files="_file" Accept=".txt,.csv" Hidden="true">
+            <MudItem xs="12" Class="d-flex justify-center mt-2">
+                <MudFileUpload T="IBrowserFile" @bind-Files="_file" Accept=".csv,text/csv" Hidden="true">
                     <CustomContent Context="upload">
                         <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AttachFile"
                                    OnClick="@(() => upload.OpenFilePickerAsync())">
-                            Seleccionar archivo (.txt / .csv)
+                            Seleccionar archivo (.csv)
                         </MudButton>
                     </CustomContent>
                 </MudFileUpload>
-                @if (_file is not null)
-                {
-                    <MudChip T="string" Class="mt-2" Icon="@Icons.Material.Filled.Description" Color="Color.Default">@_file.Name</MudChip>
-                }
             </MudItem>
+            @if (_file is not null)
+            {
+                <MudItem xs="12" Class="d-flex justify-center">
+                    <MudChip T="string" Icon="@Icons.Material.Filled.Description" Color="Color.Default">@_file.Name</MudChip>
+                </MudItem>
+            }
         </MudGrid>
 
-        <MudStack Row="true" Spacing="2" Class="mt-6">
-            <MudTooltip Text="Disponible cuando exista el endpoint de importación" Placement="Placement.Top">
-                <span>
-                    <MudButton Variant="Variant.Filled" Color="Color.Secondary"
-                               StartIcon="@Icons.Material.Filled.CloudUpload" Disabled="true">Procesar archivo</MudButton>
-                </span>
-            </MudTooltip>
+        @if (_errors.Count > 0)
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-4">
+                @foreach (var error in _errors)
+                {
+                    <div>@error</div>
+                }
+            </MudAlert>
+        }
+
+        @if (_processedRows > 0)
+        {
+            <MudAlert Severity="@(_errors.Count == 0 ? Severity.Success : Severity.Warning)" Class="mt-4">
+                Filas creadas: @_createdRows. Filas con error: @_errors.Count. Filas procesadas: @_processedRows.
+            </MudAlert>
+        }
+
+        <MudStack Row="true" Justify="Justify.Center" Spacing="2" Class="mt-6">
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.CloudUpload"
+                       Disabled="@(_isProcessing || _file is null || string.IsNullOrWhiteSpace(_areaKey))" OnClick="ProcessAsync">
+                @(_isProcessing ? "Procesando..." : "Procesar archivo")
+            </MudButton>
             <MudButton Variant="Variant.Outlined" OnClick="@(() => Nav.NavigateTo("/datacapture"))">Cancelar</MudButton>
         </MudStack>
     </MudForm>
 </MudPaper>
 
 @code {
+    private const long MaxFileSize = 10 * 1024 * 1024;
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private MudForm _form = null!;
-    private BulkImportViewModel _model = new();
     private IBrowserFile? _file;
+    private string _areaKey = string.Empty;
+    private bool _isProcessing;
+    private int _createdRows;
+    private int _processedRows;
+    private readonly List<string> _errors = [];
 
+    private static readonly IReadOnlyDictionary<string, string> StudentHeaders = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        [nameof(CreateStudent.EnrollmentNumber)] = "Matrícula",
+        [nameof(CreateStudent.CURP)] = "CURP",
+        [nameof(CreateStudent.Name)] = "Nombre",
+        [nameof(CreateStudent.MiddleName)] = "Segundo nombre",
+        [nameof(CreateStudent.LastName)] = "Apellido paterno",
+        [nameof(CreateStudent.BirthDate)] = "Fecha de nacimiento",
+        [nameof(CreateStudent.Gender)] = "Sexo",
+        [nameof(CreateStudent.IndigenousLanguages)] = "Lenguas indígenas",
+        [nameof(CreateStudent.PostalCode)] = "Código postal",
+        [nameof(CreateStudent.EnglishLevel)] = "Nivel de inglés",
+        [nameof(CreateStudent.MaritalStatus)] = "Estado civil",
+        [nameof(CreateStudent.NumberOfChildren)] = "Número de hijos",
+        [nameof(CreateStudent.Works)] = "Trabaja",
+        [nameof(CreateStudent.Address)] = "Domicilio",
+        [nameof(CreateStudent.CareerId)] = "Carrera",
+        [nameof(CreateStudent.PeriodIdStart)] = "Periodo de inicio",
+        [nameof(CreateStudent.InscriptionType)] = "Tipo de inscripción",
+        [nameof(CreateStudent.Status)] = "Estatus",
+        [nameof(CreateStudent.BirthCountry)] = "País de nacimiento",
+        [nameof(CreateStudent.BirthState)] = "Estado de nacimiento",
+    };
+
+    private static readonly IReadOnlyDictionary<string, string> EmployeeHeaders = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        [nameof(CreateEmployee.EmployeeNumber)] = "Número de empleado",
+        [nameof(CreateEmployee.FullName)] = "Nombre completo",
+        [nameof(CreateEmployee.Email)] = "Correo electrónico",
+        [nameof(CreateEmployee.Rfc)] = "RFC",
+        [nameof(CreateEmployee.Curp)] = "CURP",
+        [nameof(CreateEmployee.Gender)] = "Sexo",
+        [nameof(CreateEmployee.BirthDate)] = "Fecha de nacimiento",
+        [nameof(CreateEmployee.HighestEducationLevel)] = "Nivel máximo de estudios",
+        [nameof(CreateEmployee.TitleStatus)] = "Estatus de titulación",
+        [nameof(CreateEmployee.IndigenousLanguages)] = "Lenguas indígenas",
+        [nameof(CreateEmployee.HasDisability)] = "Tiene discapacidad",
+        [nameof(CreateEmployee.ExternalXPYears)] = "Años de experiencia externa",
+        [nameof(CreateEmployee.FirstHiredDate)] = "Fecha de primera contratación",
+        [nameof(CreateEmployee.IsTeacher)] = "Es docente",
+    };
+
+    private static readonly IReadOnlyDictionary<string, string> ClassGroupHeaders = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        [nameof(CreateClassGroup.Schedule)] = "Horario",
+        [nameof(CreateClassGroup.CourseId)] = "Asignatura",
+        [nameof(CreateClassGroup.PeriodId)] = "Periodo",
+        [nameof(CreateClassGroup.CareerId)] = "Carrera",
+        [nameof(CreateClassGroup.TeacherId)] = "Docente",
+        [nameof(CreateClassGroup.FacilityId)] = "Instalación",
+        [nameof(CreateClassGroup.IsTheory)] = "Es teórico",
+        [nameof(CreateClassGroup.Capacity)] = "Capacidad",
+        [nameof(CreateClassGroup.Weekhours)] = "Horas semanales",
+    };
+
+    private string TemplateFileName => _areaKey switch
+    {
+        "students" => "CreateStudent.csv",
+        "teachers" => "CreateEmployee.csv",
+        "classgroups" => "CreateClassGroup.csv",
+        _ => string.Empty
+    };
+
+    private string TemplateUrl => $"/BulkImportTemplates/{TemplateFileName}";
+
+    private async Task ProcessAsync()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid || _file is null || string.IsNullOrWhiteSpace(_areaKey)) return;
+        if (!string.Equals(Path.GetExtension(_file.Name), ".csv", StringComparison.OrdinalIgnoreCase))
+        {
+            Snackbar.Add("Sólo se aceptan archivos .csv.", Severity.Error);
+            return;
+        }
+
+        _isProcessing = true;
+        _createdRows = 0;
+        _processedRows = 0;
+        _errors.Clear();
+        try
+        {
+            var requesterKey = await SecuritySvc.GetRequesterKeyAsync();
+            if (requesterKey == Guid.Empty)
+            {
+                _errors.Add("No se pudo identificar al usuario actual.");
+                return;
+            }
+
+            await ImportCsvAsync(requesterKey);
+        }
+        catch (Exception ex)
+        {
+            _errors.Add($"No se pudo leer el archivo: {ex.Message}");
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+
+    private async Task ImportCsvAsync(Guid requesterKey)
+    {
+        var requestType = RequestTypeFor(_areaKey);
+        var properties = requestType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.Name != nameof(CreateStudent.RequesterKey) && p.CanWrite)
+            .ToArray();
+
+        await using var stream = _file!.OpenReadStream(MaxFileSize);
+        using var reader = new StreamReader(stream);
+        using var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)
+        {
+            HasHeaderRecord = true,
+            MissingFieldFound = null,
+            BadDataFound = null,
+            TrimOptions = TrimOptions.Trim,
+        });
+
+        if (!await csv.ReadAsync() || !csv.ReadHeader() || csv.HeaderRecord is null)
+            throw new InvalidOperationException("El CSV debe tener una fila de encabezados.");
+
+        var headers = csv.HeaderRecord.Select(h => h.Trim()).ToList();
+        var headerMap = properties.ToDictionary(
+            property => property.Name,
+            property => FindHeader(requestType, property.Name, headers),
+            StringComparer.OrdinalIgnoreCase);
+        var missing = headerMap.Where(pair => pair.Value is null).Select(pair => CsvHeaderFor(requestType, pair.Key)).ToList();
+        if (missing.Count > 0)
+            throw new InvalidOperationException($"Faltan columnas requeridas: {string.Join(", ", missing)}.");
+
+        while (await csv.ReadAsync())
+        {
+            var rowNumber = csv.Context.Parser?.Row ?? 0;
+            _processedRows++;
+            try
+            {
+                var values = properties.ToDictionary(p => p.Name, p => csv.GetField(headerMap[p.Name]!) ?? string.Empty, StringComparer.OrdinalIgnoreCase);
+                var request = await BuildRequestAsync(requestType, properties, values, requesterKey);
+                await CreateAsync(request);
+                _createdRows++;
+            }
+            catch (Exception ex)
+            {
+                _errors.Add($"Fila {rowNumber-1}: {ex.Message}");
+            }
+        }
+    }
+
+    private static string? FindHeader(Type requestType, string propertyName, IReadOnlyList<string> headers)
+    {
+        var spanishHeader = CsvHeaderFor(requestType, propertyName);
+        return headers.FirstOrDefault(header => string.Equals(NormalizeHeader(header), NormalizeHeader(spanishHeader), StringComparison.Ordinal))
+            ?? headers.FirstOrDefault(header => string.Equals(NormalizeHeader(header), NormalizeHeader(propertyName), StringComparison.Ordinal));
+    }
+
+    private static string CsvHeaderFor(Type requestType, string propertyName) =>
+        (requestType == typeof(CreateStudent) ? StudentHeaders :
+         requestType == typeof(CreateEmployee) ? EmployeeHeaders : ClassGroupHeaders)
+        .GetValueOrDefault(propertyName, propertyName);
+
+    private static string NormalizeHeader(string value)
+    {
+        var decomposed = value.Normalize(NormalizationForm.FormD);
+        return string.Concat(decomposed.Where(character =>
+                CharUnicodeInfo.GetUnicodeCategory(character) != UnicodeCategory.NonSpacingMark && char.IsLetterOrDigit(character)))
+            .ToLowerInvariant();
+    }
+
+    private async Task<object> BuildRequestAsync(Type requestType, PropertyInfo[] properties, Dictionary<string, string> values, Guid requesterKey)
+    {
+        var request = Activator.CreateInstance(requestType)!;
+        requestType.GetProperty(nameof(CreateStudent.RequesterKey))!.SetValue(request, requesterKey);
+        foreach (var property in properties)
+        {
+            var value = await ConvertValueAsync(property.Name, property.PropertyType, values[property.Name], values);
+            property.SetValue(request, value);
+        }
+        return request;
+    }
+
+    private async Task<object?> ConvertValueAsync(string propertyName, Type targetType, string rawValue, IReadOnlyDictionary<string, string> rowValues)
+    {
+        var value = rawValue.Trim();
+        var nullableType = Nullable.GetUnderlyingType(targetType);
+        var actualType = nullableType ?? targetType;
+        if (actualType == typeof(string)) return value;
+        if (actualType == typeof(Guid)) return await ResolveGuidAsync(propertyName, value, rowValues);
+        if (actualType == typeof(DateOnly)) return DateOnly.Parse(value, CultureInfo.InvariantCulture);
+        if (actualType == typeof(bool)) return bool.Parse(value);
+        if (actualType == typeof(int)) return int.Parse(value, CultureInfo.InvariantCulture);
+        if (actualType == typeof(double)) return double.Parse(value, CultureInfo.InvariantCulture);
+        if (actualType == typeof(Gender)) return ParseGender(value);
+        if (actualType.IsEnum) return Enum.Parse(actualType, value, true);
+        if (actualType == typeof(List<string>))
+            return string.IsNullOrWhiteSpace(value)
+                ? []
+                : value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).ToList();
+        if (actualType == typeof(List<Schedule>))
+            return JsonSerializer.Deserialize<List<Schedule>>(value, JsonOptions)
+                ?? throw new FormatException($"'{propertyName}' debe ser un JSON de horarios.");
+        throw new NotSupportedException($"El tipo de la columna '{propertyName}' no está soportado.");
+    }
+
+    private static Gender ParseGender(string value) => value.Trim().ToLowerInvariant() switch
+    {
+        "hombre" or "h" => Gender.H,
+        "mujer" or "m" => Gender.M,
+        _ => throw new FormatException($"El género '{value}' no es válido. Usa 'Hombre' o 'Mujer'.")
+    };
+
+    private async Task<Guid> ResolveGuidAsync(string propertyName, string value, IReadOnlyDictionary<string, string> rowValues)
+    {
+        if (Guid.TryParse(value, out var id)) return id;
+        if (propertyName == nameof(CreateStudent.CareerId))
+        {
+            var career = (await GeneralDataSvc.GetCareersSelectableAsync()).FirstOrDefault(x =>
+                string.Equals(x.Value, value, StringComparison.OrdinalIgnoreCase) || string.Equals(x.Alias, value, StringComparison.OrdinalIgnoreCase));
+            return career?.Id ?? throw new FormatException($"No se encontró la carrera '{value}'.");
+        }
+        if (propertyName is nameof(CreateStudent.PeriodIdStart) or nameof(CreateClassGroup.PeriodId))
+        {
+            var period = (await GeneralDataSvc.GetPeriodsAsync()).FirstOrDefault(x =>
+                string.Equals(x.IdCode, value, StringComparison.OrdinalIgnoreCase) || string.Equals(x.Value, value, StringComparison.OrdinalIgnoreCase));
+            return period?.Id ?? throw new FormatException($"No se encontró el periodo '{value}'.");
+        }
+        if (propertyName == nameof(CreateClassGroup.CourseId))
+        {
+            if (!rowValues.TryGetValue(nameof(CreateClassGroup.CareerId), out var careerValue))
+                throw new FormatException("La columna Carrera es necesaria para resolver la asignatura.");
+
+            var career = (await GeneralDataSvc.GetCareersSelectableAsync()).FirstOrDefault(x =>
+                string.Equals(x.Value, careerValue.Trim(), StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(x.Alias, careerValue.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (career is null)
+                throw new FormatException($"No se encontró la carrera '{careerValue}'.");
+
+            var course = (await GeneralDataSvc.GetCoursesAsync(career.Id)).FirstOrDefault(x =>
+                string.Equals(x.Value, value, StringComparison.OrdinalIgnoreCase));
+            return course?.Id ?? throw new FormatException($"No se encontró la asignatura '{value}' para la carrera '{careerValue}'.");
+        }
+        var lookup = propertyName switch
+        {
+            nameof(CreateClassGroup.TeacherId) => await GeneralDataSvc.GetTeachersAsync(),
+            nameof(CreateClassGroup.FacilityId) => await GeneralDataSvc.GetFacilitiesAsync(),
+            _ => []
+        };
+        var option = lookup.FirstOrDefault(x => string.Equals(x.Value, value, StringComparison.OrdinalIgnoreCase));
+        return option?.Id ?? throw new FormatException($"No se encontró '{value}' para {propertyName}.");
+    }
+
+    private async Task CreateAsync(object request)
+    {
+        object? result;
+        if (request is CreateStudent student)
+        {
+            result = await CaptureSvc.CreateStudent(student);
+        }
+        else if (request is CreateEmployee employee)
+        {
+            result = await CaptureSvc.CreateTeacher(employee);
+        }
+        else if (request is CreateClassGroup group)
+        {
+            result = await CaptureSvc.CreateClassGroup(group);
+        }
+        else
+        {
+            throw new NotSupportedException($"Área de captura no soportada: {_areaKey}.");
+        }
+
+        if (result is null)
+            throw new InvalidOperationException("El API rechazó la creación de la entidad.");
+    }
+
+    private static Type RequestTypeFor(string areaKey) => areaKey switch
+    {
+        "students" => typeof(CreateStudent),
+        "teachers" => typeof(CreateEmployee),
+        "classgroups" => typeof(CreateClassGroup),
+        _ => throw new InvalidOperationException("El área de captura no tiene una entidad de captura funcional.")
+    };
 }

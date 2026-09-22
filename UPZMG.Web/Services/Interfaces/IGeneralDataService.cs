@@ -8,7 +8,7 @@ public interface IGeneralDataService
 {
     Task<IReadOnlyList<Careers>> GetCareersAsync();
     Task<IReadOnlyList<LookupOption>> GetCareersSelectableAsync();
-    Task<IReadOnlyList<LookupOption>> GetAsignaturesAsync(Guid careerId);
+    Task<IReadOnlyList<LookupOption>> GetCoursesAsync(Guid careerId);
     Task<IReadOnlyList<PeriodLookupOption>> GetPeriodsAsync();
     Task<IReadOnlyList<LookupOption>> GetMaxDegreesAsync();
     Task<IReadOnlyList<LookupOption>> GetContractTypesAsync();

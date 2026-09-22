@@ -28,17 +28,7 @@ public sealed class DataCaptureService(ISecurityService securityService): IDataC
     {
         new("students", "Alumnos"),
         new("teachers", "Docentes / RRHH"),
-        new("infrastructure", "Infraestructura"),
-        new("extension", "Extensión y Vinculación"),
-        new("finance", "Finanzas"),
-    };
-
-    public IReadOnlyList<SelectOption> Delimiters { get; } = new List<SelectOption>
-    {
-        new(",", "Coma ( , )"),
-        new(";", "Punto y coma ( ; )"),
-        new("tab", "Tabulación ( Tab )"),
-        new("|", "Barra vertical ( | )"),
+        new("classgroups", "Grupos de clase"),
     };
 
 #region Student
@@ -52,7 +42,7 @@ public sealed class DataCaptureService(ISecurityService securityService): IDataC
         {
             return JsonSerializer.Deserialize<Student>(response.Result, ResponseOptions) ?? null;
         }
-        return null;
+        throw new InvalidOperationException(response.ErrorMessage ?? "No fue posible guardar al alumno.");
     }
 #endregion
 
@@ -67,7 +57,7 @@ public sealed class DataCaptureService(ISecurityService securityService): IDataC
         {
             return JsonSerializer.Deserialize<Employee>(response.Result, ResponseOptions);
         }
-        return null;
+        throw new InvalidOperationException(response.ErrorMessage ?? "No fue posible guardar al empleado.");
     }
 
     public async Task<ClassGroups?> CreateClassGroup(CreateClassGroup request)
@@ -80,7 +70,7 @@ public sealed class DataCaptureService(ISecurityService securityService): IDataC
         {
             return JsonSerializer.Deserialize<ClassGroups>(response.Result, ResponseOptions);
         }
-        return null;
+        throw new InvalidOperationException(response.ErrorMessage ?? "No fue posible guardar el grupo de clase.");
     }
 
 #endregion
@@ -104,6 +94,27 @@ public sealed class DataCaptureService(ISecurityService securityService): IDataC
         catch (HttpRequestException)
         {
             // The listing is limited to Admin and Recursos Humanos.
+        }
+        return [];
+    }
+
+    // Captured class groups; empty when the area cannot read them.
+    public async Task<IReadOnlyList<ClassGroupListItem>> GetClassGroupsListAsync()
+    {
+        var requesterKey = await securityService.GetRequesterKeyAsync();
+        try
+        {
+            var response = await securityService.SendGetRequestAsync<IReadOnlyList<ClassGroupListItem>>(
+                "data-capture/class-groups/list", requesterKey);
+
+            if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+            {
+                return JsonSerializer.Deserialize<List<ClassGroupListItem>>(response.Result, ResponseOptions) ?? [];
+            }
+        }
+        catch (HttpRequestException)
+        {
+            // The listing is limited to Admin and Dirección Académica.
         }
         return [];
     }

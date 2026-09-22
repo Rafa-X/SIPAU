@@ -71,11 +71,12 @@ public sealed class SecurityService(
             }
             else
             {
+                var errorContent = await response.Content.ReadAsStringAsync();
                 return new DataResponse
                 {
                     StatusCode = response.StatusCode,
                     Sucess = false,
-                    ErrorMessage = $"Request failed with status code: {response.StatusCode}"
+                    ErrorMessage = ExtractErrorMessage(errorContent) ?? $"Request failed with status code: {response.StatusCode}"
                 };
             }
         }
@@ -87,6 +88,23 @@ public sealed class SecurityService(
                 Sucess = false,
                 ErrorMessage = ex.Message
             };
+        }
+    }
+
+    // Reads the {"message": "..."} shape returned by Conflict(new { message }) responses.
+    private static string? ExtractErrorMessage(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content)) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(content);
+            return doc.RootElement.TryGetProperty("message", out var messageProp) && messageProp.ValueKind == JsonValueKind.String
+                ? messageProp.GetString()
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
         }
     }
 
@@ -179,6 +197,14 @@ public sealed class SecurityService(
         return new Role();
     }
 
+    public async Task<bool> DeleteRole(DeleteRole request)
+    {
+        var response = await SendPostRequestAsync<DeleteRole, object>(
+            "roles/delete", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        return response.StatusCode == HttpStatusCode.OK;
+    }
+
     public async Task<List<Guid>> GetRolePermissions(GetRolePermissions request)
     {
         var response = await SendPostRequestAsync<GetRolePermissions, List<Guid>>(
@@ -236,6 +262,14 @@ public sealed class SecurityService(
             return JsonSerializer.Deserialize<Permission>(response.Result, ResponseOptions) ?? new Permission();
         }
         return new Permission();
+    }
+
+    public async Task<bool> DeletePermission(DeletePermission request)
+    {
+        var response = await SendPostRequestAsync<DeletePermission, object>(
+            "permissions/delete", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        return response.StatusCode == HttpStatusCode.OK;
     }
 #endregion
 }

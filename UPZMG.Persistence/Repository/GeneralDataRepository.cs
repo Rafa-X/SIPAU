@@ -11,15 +11,15 @@ public class GeneralDataRepository(AppDBContext db)
         await db.Careers
             .AsNoTracking()
             .OrderBy(c => c.Name)
-            .Select(c => new LookupOption(c.Id, c.Name ?? "Sin nombre"))
+            .Select(c => new LookupOption(c.Id, c.Name ?? "Sin nombre", c.Alias))
             .ToListAsync();
 
-    public async Task<List<LookupOption>> GetAsignaturesAsync(Guid careerId) =>
-        await db.Asignatures
+    public async Task<List<LookupOption>> GetCoursesAsync(Guid careerId) =>
+        await db.Courses
             .AsNoTracking()
             .Where(a => a.CareerId == careerId)
-            .OrderBy(a => a.AsignatureName)
-            .Select(a => new LookupOption(a.Id, a.AsignatureName))
+            .OrderBy(a => a.CourseName)
+            .Select(a => new LookupOption(a.Id, a.CourseName))
             .ToListAsync();
 
         public async Task<List<PeriodLookupOption>> GetPeriodsAsync() =>
@@ -29,7 +29,8 @@ public class GeneralDataRepository(AppDBContext db)
                 .Select(p => new PeriodLookupOption(
                     p.Id,
                     p.SEP_Period,
-                    p.SchoolCycle))
+                    p.SchoolCycle,
+                    p.IdCode))
                 .ToListAsync();
 
     public async Task<List<LookupOption>> GetMaxDegreesAsync() =>

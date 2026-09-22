@@ -340,7 +340,7 @@ else
 
     private void BuildCharts(DashboardSummary summary)
     {
-        _careerLabels = summary.StudentsByCareer.Select(c => c.Career).ToList();
+        _careerLabels = summary.StudentsByCareer.Select(c => c.Alias).ToList();
         _careerSeries =
         [
             new ChartSeriesData("Alumnos activos", summary.StudentsByCareer.Select(c => (double)c.Students).ToList(), ChartPalette.Navy),

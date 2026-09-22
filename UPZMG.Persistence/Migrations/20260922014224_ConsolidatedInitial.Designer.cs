@@ -12,7 +12,7 @@ using UPZMG.Persistence;
 namespace UPZMG.Persistence.Migrations
 {
     [DbContext(typeof(AppDBContext))]
-    [Migration("20260917181146_ConsolidatedInitial")]
+    [Migration("20260922014224_ConsolidatedInitial")]
     partial class ConsolidatedInitial
     {
         /// <inheritdoc />
@@ -24,76 +24,6 @@ namespace UPZMG.Persistence.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
-
-            modelBuilder.Entity("UPZMG.Persistence.Models.AsignatureRegistrations", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("FinalStatus")
-                        .HasColumnType("int");
-
-                    b.Property<Guid>("GroupId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("InscriptionType")
-                        .HasColumnType("int");
-
-                    b.Property<Guid>("PeriodId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("StudentId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("WithdrawReasonId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("GroupId");
-
-                    b.HasIndex("PeriodId");
-
-                    b.HasIndex("StudentId");
-
-                    b.HasIndex("WithdrawReasonId");
-
-                    b.ToTable("assignatureRegistrations", (string)null);
-                });
-
-            modelBuilder.Entity("UPZMG.Persistence.Models.Asignatures", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("AsignatureCode")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("AsignatureName")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("nvarchar(120)");
-
-                    b.Property<Guid>("CareerId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("Credits")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Cuatrimestre")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("IsMandatory")
-                        .HasColumnType("bit");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CareerId");
-
-                    b.ToTable("asignatures", (string)null);
-                });
 
             modelBuilder.Entity("UPZMG.Persistence.Models.Careers", b =>
                 {
@@ -147,13 +77,13 @@ namespace UPZMG.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("AsignatureId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<int>("Capacity")
                         .HasColumnType("int");
 
                     b.Property<Guid>("CareerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CourseId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("Enrolled")
@@ -180,15 +110,15 @@ namespace UPZMG.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AsignatureId");
-
                     b.HasIndex("CareerId");
 
-                    b.HasIndex("FacilityId");
+                    b.HasIndex("CourseId");
 
                     b.HasIndex("PeriodId");
 
                     b.HasIndex("TeacherId");
+
+                    b.HasIndex("FacilityId", "PeriodId");
 
                     b.ToTable("classGroups", (string)null);
                 });
@@ -210,6 +140,76 @@ namespace UPZMG.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("contractTypes", (string)null);
+                });
+
+            modelBuilder.Entity("UPZMG.Persistence.Models.CourseEnrollment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("FinalStatus")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("InscriptionType")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("PeriodId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("WithdrawReasonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GroupId");
+
+                    b.HasIndex("PeriodId");
+
+                    b.HasIndex("StudentId");
+
+                    b.HasIndex("WithdrawReasonId");
+
+                    b.ToTable("courseEnrollment", (string)null);
+                });
+
+            modelBuilder.Entity("UPZMG.Persistence.Models.Courses", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CareerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CourseCode")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CourseName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<int>("Credits")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Cuatrimestre")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsMandatory")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CareerId");
+
+                    b.ToTable("courses", (string)null);
                 });
 
             modelBuilder.Entity("UPZMG.Persistence.Models.Disabilities", b =>
@@ -430,7 +430,7 @@ namespace UPZMG.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("AsignatureId")
+                    b.Property<Guid>("CourseId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<double>("Grade")
@@ -450,7 +450,7 @@ namespace UPZMG.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AsignatureId");
+                    b.HasIndex("CourseId");
 
                     b.HasIndex("PeriodId");
 
@@ -1003,7 +1003,40 @@ namespace UPZMG.Persistence.Migrations
                     b.ToTable("WithdrawReason");
                 });
 
-            modelBuilder.Entity("UPZMG.Persistence.Models.AsignatureRegistrations", b =>
+            modelBuilder.Entity("UPZMG.Persistence.Models.ClassGroups", b =>
+                {
+                    b.HasOne("UPZMG.Persistence.Models.Careers", null)
+                        .WithMany()
+                        .HasForeignKey("CareerId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("UPZMG.Persistence.Models.Courses", null)
+                        .WithMany()
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("UPZMG.Persistence.Models.SchoolFacility", null)
+                        .WithMany()
+                        .HasForeignKey("FacilityId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("UPZMG.Persistence.Models.Periods", null)
+                        .WithMany()
+                        .HasForeignKey("PeriodId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("UPZMG.Persistence.Models.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("TeacherId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("UPZMG.Persistence.Models.CourseEnrollment", b =>
                 {
                     b.HasOne("UPZMG.Persistence.Models.ClassGroups", null)
                         .WithMany()
@@ -1030,44 +1063,11 @@ namespace UPZMG.Persistence.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("UPZMG.Persistence.Models.Asignatures", b =>
+            modelBuilder.Entity("UPZMG.Persistence.Models.Courses", b =>
                 {
                     b.HasOne("UPZMG.Persistence.Models.Careers", null)
                         .WithMany()
                         .HasForeignKey("CareerId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("UPZMG.Persistence.Models.ClassGroups", b =>
-                {
-                    b.HasOne("UPZMG.Persistence.Models.Asignatures", null)
-                        .WithMany()
-                        .HasForeignKey("AsignatureId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.HasOne("UPZMG.Persistence.Models.Careers", null)
-                        .WithMany()
-                        .HasForeignKey("CareerId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.HasOne("UPZMG.Persistence.Models.SchoolFacility", null)
-                        .WithMany()
-                        .HasForeignKey("FacilityId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.HasOne("UPZMG.Persistence.Models.Periods", null)
-                        .WithMany()
-                        .HasForeignKey("PeriodId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.HasOne("UPZMG.Persistence.Models.Employee", null)
-                        .WithMany()
-                        .HasForeignKey("TeacherId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
                 });
@@ -1091,9 +1091,9 @@ namespace UPZMG.Persistence.Migrations
 
             modelBuilder.Entity("UPZMG.Persistence.Models.Kardex", b =>
                 {
-                    b.HasOne("UPZMG.Persistence.Models.Asignatures", null)
+                    b.HasOne("UPZMG.Persistence.Models.Courses", null)
                         .WithMany()
-                        .HasForeignKey("AsignatureId")
+                        .HasForeignKey("CourseId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 

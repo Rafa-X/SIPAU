@@ -12,9 +12,13 @@ public class StudentsRepository(AppDBContext db)
 
     public async Task<Student> CreateStudentAsync(CreateStudent request)
     {
-        var exist = await db.Students.AnyAsync(s => s.EnrollmentNumber == request.EnrollmentNumber);
-        if( exist)
-            throw new InvalidOperationException("Student with the same enrollment number already exists.");
+        var existEnrollment = await db.Students.AnyAsync(s => s.EnrollmentNumber == request.EnrollmentNumber);
+        if (existEnrollment)
+            throw new InvalidOperationException($"Ya existe un alumno con la matrícula '{request.EnrollmentNumber}'.");
+
+        var existCurp = await db.Students.AnyAsync(s => s.CURP == request.CURP);
+        if (existCurp)
+            throw new InvalidOperationException($"Ya existe un alumno con la CURP '{request.CURP}'.");
 
         var matchedLanguageIds = await db.IndigenousLanguages
             .Where(l => l.Language != null && request.IndigenousLanguages.Contains(l.Language))

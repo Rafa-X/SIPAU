@@ -35,11 +35,11 @@ public sealed class GeneralDataService(ISecurityService securityService): IGener
         return [];
     }
 
-    public async Task<IReadOnlyList<LookupOption>> GetAsignaturesAsync(Guid careerId)
+    public async Task<IReadOnlyList<LookupOption>> GetCoursesAsync(Guid careerId)
     {
         var requesterKey = await securityService.GetRequesterKeyAsync();
         var response = await securityService.SendGetRequestAsync<IReadOnlyList<LookupOption>>(
-            $"general-data/lookups/asignatures/{careerId}", requesterKey);
+            $"general-data/lookups/courses/{careerId}", requesterKey);
         if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
         {
             return JsonSerializer.Deserialize<IReadOnlyList<LookupOption>>(response.Result, ResponseOptions) ?? [];

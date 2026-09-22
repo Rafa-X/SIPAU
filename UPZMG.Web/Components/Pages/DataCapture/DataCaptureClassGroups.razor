@@ -40,11 +40,11 @@
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" md="4">
-                <MudSelect T="Guid?" @bind-Value="_model.AsignatureId" Label="Materia" Required="true"
+                <MudSelect T="Guid?" @bind-Value="_model.CourseId" Label="Materia" Required="true"
                            RequiredError="Selecciona una materia.">
-                    @foreach (var asignature in _asignatures)
+                    @foreach (var course in _courses)
                     {
-                        <MudSelectItem T="Guid?" Value="@asignature.Id">@asignature.Value</MudSelectItem>
+                        <MudSelectItem T="Guid?" Value="@course.Id">@course.Value</MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
@@ -143,7 +143,7 @@
     private ClassGroupFormViewModel _model = new();
     private IReadOnlyList<PeriodLookupOption> _periods = [];
     private IReadOnlyList<LookupOption> _careers = [];
-    private IReadOnlyList<LookupOption> _asignatures = [];
+    private IReadOnlyList<LookupOption> _courses = [];
     private IReadOnlyList<LookupOption> _teachers = [];
     private IReadOnlyList<LookupOption> _facilities = [];
 
@@ -165,9 +165,9 @@
     private async Task OnCareerChanged(Guid? careerId)
     {
         _model.CareerId = careerId;
-        _model.AsignatureId = null;
-        _asignatures = careerId.HasValue && careerId.Value != Guid.Empty ? await GeneralDataSvc.GetAsignaturesAsync(careerId.Value) : [];
-        var test = _asignatures;
+        _model.CourseId = null;
+        _courses = careerId.HasValue && careerId.Value != Guid.Empty ? await GeneralDataSvc.GetCoursesAsync(careerId.Value) : [];
+        var test = _courses;
     }
 
     private void AddSchedule() => _model.Schedules.Add(new ScheduleItemViewModel());
@@ -180,7 +180,7 @@
         await _form.ValidateAsync();
         if (!_form.IsValid) return;
 
-        if (_model.PeriodId is null || _model.CareerId is null || _model.AsignatureId is null ||
+        if (_model.PeriodId is null || _model.CareerId is null || _model.CourseId is null ||
             _model.TeacherId is null || _model.FacilityId is null || _model.Capacity is null)
         {
             Snackbar.Add("Por favor completa todos los campos requeridos.", Severity.Warning);
@@ -209,23 +209,32 @@
             return (end - start).TotalHours;
         });
 
-        var result = await CaptureSvc.CreateClassGroup(new CreateClassGroup
+        ClassGroups? result;
+        try
         {
-            RequesterKey = await SecuritySvc.GetRequesterKeyAsync(),
-            PeriodId = _model.PeriodId.Value,
-            CareerId = _model.CareerId.Value,
-            AsignatureId = _model.AsignatureId.Value,
-            TeacherId = _model.TeacherId.Value,
-            FacilityId = _model.FacilityId.Value,
-            IsTheory = _model.IsTheory,
-            Capacity = _model.Capacity.Value,
-            Weekhours = weekHours,
-            Schedule = _model.Schedules.Select(s => new Schedule
+            result = await CaptureSvc.CreateClassGroup(new CreateClassGroup
             {
-                Day = s.Day?.ToString() ?? string.Empty,
-                Time = $"{FormatTime(s.StartTime)}-{FormatTime(s.EndTime)} hrs"
-            }).ToList()
-        });
+                RequesterKey = await SecuritySvc.GetRequesterKeyAsync(),
+                PeriodId = _model.PeriodId.Value,
+                CareerId = _model.CareerId.Value,
+                CourseId = _model.CourseId.Value,
+                TeacherId = _model.TeacherId.Value,
+                FacilityId = _model.FacilityId.Value,
+                IsTheory = _model.IsTheory,
+                Capacity = _model.Capacity.Value,
+                Weekhours = weekHours,
+                Schedule = _model.Schedules.Select(s => new Schedule
+                {
+                    Day = s.Day?.ToString() ?? string.Empty,
+                    Time = $"{FormatTime(s.StartTime)}-{FormatTime(s.EndTime)} hrs"
+                }).ToList()
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            return;
+        }
 
         if (result is null)
         {

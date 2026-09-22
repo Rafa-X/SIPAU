@@ -44,4 +44,14 @@ public class PermissionsRepository(AppDBContext _db)
 
         return permission;
     }
+
+    public async Task DeletePermissionAsync(DeletePermission request)
+    {
+        var permission = await db.Permissions.FirstOrDefaultAsync(p => p.Id == request.PermissionId)
+            ?? throw new Exception($"No permission found with ID {request.PermissionId}");
+
+        db.RolePermissions.RemoveRange(db.RolePermissions.Where(rp => rp.PermissionId == request.PermissionId));
+        db.Permissions.Remove(permission);
+        await db.SaveChangesAsync();
+    }
 }

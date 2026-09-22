@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using MudBlazor.Services;
 using UPZMG.Web.Components;
 using UPZMG.Web.Security;
@@ -107,6 +108,11 @@ try
 
     app.UseHttpsRedirection();
     app.UseStaticFiles();
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(Path.Combine(app.Environment.ContentRootPath, "BulkImportTemplates")),
+        RequestPath = "/BulkImportTemplates"
+    });
 
     app.UseRouting();
     app.UseSession();

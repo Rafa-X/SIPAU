@@ -12,11 +12,11 @@ public interface IDataCaptureService
     IReadOnlyList<string> CompanySizes { get; }
     IReadOnlyList<string> ActivityTypes { get; }
     IReadOnlyList<SelectOption> BulkAreas { get; }
-    IReadOnlyList<SelectOption> Delimiters { get; }
 
     Task<Student?> CreateStudent(CreateStudent request);
     Task<Employee?> CreateTeacher(CreateEmployee request);
     Task<ClassGroups?> CreateClassGroup(CreateClassGroup request);
 
     Task<IReadOnlyList<TeacherListItem>> GetTeachersListAsync();
+    Task<IReadOnlyList<ClassGroupListItem>> GetClassGroupsListAsync();
 }
