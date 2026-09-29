@@ -1,40 +1,47 @@
 @page "/datacapture/extension"
 @attribute [Authorize]
+@using UPZMG.Implementations.DataCapture
 @inject IDataCaptureService CaptureSvc
+@inject IGeneralDataService GeneralDataSvc
+@inject ISecurityService SecuritySvc
+@inject ISnackbar Snackbar
 @inject NavigationManager Nav
+
+@*
+    One row per linkage project instead of a total: the 911 and SII formats ask for these
+    counts broken down by sector and by activity, and a total cannot be broken down again.
+*@
 
 <PageTitle>Captura de Extensión — SIPAU</PageTitle>
 
-<PageHeader Eyebrow="Captura de datos" Title="Captura de Extensión y Vinculación" Subtitle="Convenios y proyectos de vinculación" BackHref="/datacapture" />
-
-<MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4">
-    <b>Esta área todavía no tiene dónde guardarse.</b>
-    El formulario muestra los campos acordados, pero el sistema aún no tiene tabla para ellos, así que
-    el botón de guardar está deshabilitado. Mientras tanto estas cifras se reportan en
-    el formato 911.10 · Institución, apartado de vinculación, y de ahí las toma el Informe de Junta.
-    <MudLink Href="/reports" Typo="Typo.body2" Class="ml-1">Ir a los formatos</MudLink>
-</MudAlert>
+<PageHeader Eyebrow="Captura de datos" Title="Captura de Extensión y Vinculación"
+            Subtitle="Convenios y proyectos de vinculación por periodo" BackHref="/datacapture">
+    <Actions>
+        <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/datacapture/extension/consult"
+                   StartIcon="@Icons.Material.Filled.ListAlt">Consultar proyectos</MudButton>
+    </Actions>
+</PageHeader>
 
 <MudPaper Elevation="1" Class="pa-6">
     <MudForm @ref="_form">
         <MudText Typo="Typo.h6">Organización</MudText>
         <MudGrid>
             <MudItem md="6">
-                <MudTextField @bind-Value="_model.OrganizationName" Label="Nombre de la organización"
-                              Required="true" RequiredError="Requerido." />
+                <MudTextField @bind-Value="_organization" Label="Nombre de la organización"
+                              Required="true" RequiredError="Indica la organización." MaxLength="200" />
             </MudItem>
             <MudItem md="6">
-                <MudSelect T="string" @bind-Value="_model.Sector" Label="Sector">
+                <MudSelect T="string" @bind-Value="_sector" Label="Sector" Required="true" RequiredError="Indica el sector.">
                     @foreach (var s in CaptureSvc.Sectors) { <MudSelectItem T="string" Value="@s">@s</MudSelectItem> }
                 </MudSelect>
             </MudItem>
             <MudItem md="6">
-                <MudSelect T="string" @bind-Value="_model.CompanySize" Label="Tamaño de empresa">
+                <MudSelect T="string" @bind-Value="_companySize" Label="Tamaño de empresa" Required="true" RequiredError="Indica el tamaño.">
                     @foreach (var c in CaptureSvc.CompanySizes) { <MudSelectItem T="string" Value="@c">@c</MudSelectItem> }
                 </MudSelect>
             </MudItem>
             <MudItem md="6">
-                <MudSelect T="string" @bind-Value="_model.ActivityType" Label="Tipo de actividad">
+                <MudSelect T="string" @bind-Value="_activityType" Label="Tipo de actividad" Required="true" RequiredError="Indica la actividad.">
                     @foreach (var a in CaptureSvc.ActivityTypes) { <MudSelectItem T="string" Value="@a">@a</MudSelectItem> }
                 </MudSelect>
             </MudItem>
@@ -43,34 +50,35 @@
         <MudText Typo="Typo.h6" Class="mt-8">Proyecto</MudText>
         <MudGrid>
             <MudItem md="6">
-                <MudTextField @bind-Value="_model.ProjectName" Label="Nombre del proyecto" Required="true" RequiredError="Requerido." />
+                <MudTextField @bind-Value="_projectName" Label="Nombre del proyecto"
+                              Required="true" RequiredError="Indica el nombre del proyecto." MaxLength="200" />
             </MudItem>
             <MudItem md="6">
-                <MudTextField @bind-Value="_model.StudentEnrollmentNumber" Label="Matrícula del alumno" />
+                <MudTextField @bind-Value="_enrollmentNumber" Label="Matrícula del alumno (opcional)"
+                              HelperText="Si la capturas, el proyecto queda ligado a ese alumno." MaxLength="20" />
             </MudItem>
             <MudItem md="4">
-                <MudSelect T="int" @bind-Value="_model.PeriodId" Label="Periodo" Disabled="true">
-                    <MudSelectItem T="int" Value="0">Periodo activo</MudSelectItem>
+                <MudSelect T="Guid" @bind-Value="_periodId" Label="Periodo" Required="true" RequiredError="Elige el periodo.">
+                    @foreach (var period in _periods)
+                    {
+                        <MudSelectItem T="Guid" Value="@period.Id">@period.Value</MudSelectItem>
+                    }
                 </MudSelect>
             </MudItem>
             <MudItem md="4">
-                <MudDatePicker @bind-Date="_model.StartDate" Label="Fecha de inicio" />
+                <MudDatePicker @bind-Date="_startDate" Label="Fecha de inicio" />
             </MudItem>
             <MudItem md="4">
-                <MudDatePicker @bind-Date="_model.EndDate" Label="Fecha de término" />
+                <MudDatePicker @bind-Date="_endDate" Label="Fecha de término" />
             </MudItem>
             <MudItem md="4">
-                <MudNumericField T="int" @bind-Value="_model.AccreditedHours" Label="Horas acreditadas" Min="0" />
+                <MudNumericField T="int" @bind-Value="_accreditedHours" Label="Horas acreditadas" Min="0" Max="5000" />
             </MudItem>
         </MudGrid>
 
         <MudStack Row="true" Spacing="2" Class="mt-6">
-            <MudTooltip Text="Disponible cuando el área tenga almacenamiento propio" Placement="Placement.Top">
-                <span>
-                    <MudButton Variant="Variant.Filled" Color="Color.Secondary"
-                               StartIcon="@Icons.Material.Filled.Save" Disabled="true">Guardar proyecto</MudButton>
-                </span>
-            </MudTooltip>
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Save"
+                       Disabled="_saving" OnClick="Submit">Guardar proyecto</MudButton>
             <MudButton Variant="Variant.Outlined" OnClick="@(() => Nav.NavigateTo("/datacapture"))">Cancelar</MudButton>
         </MudStack>
     </MudForm>
@@ -78,6 +86,69 @@
 
 @code {
     private MudForm _form = null!;
-    private ExtensionFormViewModel _model = new();
+    private bool _saving;
 
+    private IReadOnlyList<PeriodLookupOption> _periods = [];
+
+    private string _organization = string.Empty;
+    private string _sector = string.Empty;
+    private string _companySize = string.Empty;
+    private string _activityType = string.Empty;
+    private string _projectName = string.Empty;
+    private string _enrollmentNumber = string.Empty;
+    private Guid _periodId;
+    private DateTime? _startDate;
+    private DateTime? _endDate;
+    private int _accreditedHours;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _periods = await GeneralDataSvc.GetPeriodsAsync();
+
+        // Periods arrive oldest first, so the newest one is the default the area captures.
+        _periodId = _periods.LastOrDefault()?.Id ?? Guid.Empty;
+    }
+
+    private async Task Submit()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid) return;
+
+        if (_periodId == Guid.Empty)
+        {
+            Snackbar.Add("Elige el periodo del proyecto.", Severity.Warning);
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            await CaptureSvc.CreateOutreachProject(new CreateOutreachProject
+            {
+                RequesterKey = await SecuritySvc.GetRequesterKeyAsync(),
+                OrganizationName = _organization.Trim(),
+                Sector = _sector,
+                CompanySize = _companySize,
+                ActivityType = _activityType,
+                ProjectName = _projectName.Trim(),
+                PeriodId = _periodId,
+                StudentEnrollmentNumber = string.IsNullOrWhiteSpace(_enrollmentNumber) ? null : _enrollmentNumber.Trim(),
+                StartDate = _startDate is { } start ? DateOnly.FromDateTime(start) : null,
+                EndDate = _endDate is { } end ? DateOnly.FromDateTime(end) : null,
+                AccreditedHours = _accreditedHours,
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            return;
+        }
+        finally
+        {
+            _saving = false;
+        }
+
+        Snackbar.Add($"Proyecto «{_projectName.Trim()}» guardado correctamente.", Severity.Success);
+        Nav.NavigateTo("/datacapture/extension/consult");
+    }
 }

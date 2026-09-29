@@ -125,7 +125,7 @@ else
                             <div class="sipau-projection">
                                 <span class="sipau-projection-figure">@(_forecast.NextValue?.ToString("N0"))</span>
                                 <span class="sipau-projection-note">
-                                    alumnos en @_forecast.NextLabel · ± @(_forecast.NextMargin?.ToString("N0"))
+                                    alumnos en @_forecast.NextLabel@(_forecast.NextMargin is { } margin ? $" · ± {margin:N0}" : "")
                                 </span>
                             </div>
                         }
@@ -139,7 +139,10 @@ else
                     {
                         <span>
                             Pendiente <b>@_forecast.Slope.ToString("+0.0;-0.0")</b> alumnos por periodo ·
-                            R² <b>@_forecast.R2.ToString("0.00")</b> ·
+                            @if (_forecast.R2 is { } r2)
+                            {
+                                <text>R² <b>@r2.ToString("0.00")</b> · </text>
+                            }
                             <MudLink Href="/charts" Typo="Typo.caption">Ver en Gráficas</MudLink>
                         </span>
                     }
@@ -236,8 +239,51 @@ else
             <SectionCard Title="Indicadores académicos"
                          Subtitle="Aprovechamiento, deserción y eficiencia terminal"
                          Icon="@Icons.Material.Filled.Insights" FullHeight="false">
-                <EmptyState Title="En construcción"
-                            Description="Estos indicadores se calcularán con las fórmulas acordadas con la universidad cuando esté listo el módulo de métricas." />
+                <ChildContent>
+                    @if (_indicators is null)
+                    {
+                        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+                    }
+                    else if (!_indicators.HasData)
+                    {
+                        <EmptyState Title="Sin periodos calificados"
+                                    Description="En cuanto haya calificaciones capturadas, los tres indicadores se calculan solos." />
+                    }
+                    else
+                    {
+                        <div class="sipau-indicators">
+                            <div>
+                                <span class="sipau-field-label">Aprovechamiento</span>
+                                <b>@(_indicators.Achievement?.ToString("0.00") ?? "—")</b>
+                                <span class="sipau-indicator-note">promedio de calificaciones · @_indicators.PeriodLabel</span>
+                            </div>
+                            <div>
+                                <span class="sipau-field-label">Deserción</span>
+                                <b>@(_indicators.DropoutRate?.ToString("0.00") ?? "—") %</b>
+                                <span class="sipau-indicator-note">
+                                    @_indicators.WithdrawnStudents.ToString("N0") bajas de @_indicators.EnrolledStudents.ToString("N0") inscritos
+                                </span>
+                            </div>
+                            <div>
+                                <span class="sipau-field-label">Eficiencia terminal</span>
+                                <b>@(_indicators.TerminalEfficiency?.ToString("0.00") ?? "—") %</b>
+                                <span class="sipau-indicator-note">
+                                    @if (_indicators.CohortLabel is { } cohort)
+                                    {
+                                        <text>@_indicators.CohortGraduates.ToString("N0") egresados de @_indicators.CohortEntrants.ToString("N0") · generación @cohort</text>
+                                    }
+                                    else
+                                    {
+                                        <text>ninguna generación ha cumplido su duración</text>
+                                    }
+                                </span>
+                            </div>
+                        </div>
+                    }
+                </ChildContent>
+                <Footer>
+                    <span>Fórmulas del SII: el aprovechamiento es el promedio de calificaciones, no la tasa de aprobación.</span>
+                </Footer>
             </SectionCard>
         </MudItem>
     </MudGrid>
@@ -250,6 +296,7 @@ else
     [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
 
     private DashboardSummary? _summary;
+    private AcademicIndicators? _indicators;
     private bool _loading = true;
 
     private bool _aiLoading = true;
@@ -296,6 +343,9 @@ else
 
         if (_summary is not null)
             BuildCharts(_summary);
+
+        // Indicators query the records directly, so they are cheap and never block the counts.
+        _indicators = await DashboardSvc.GetIndicatorsAsync();
 
         await LoadIntelligenceAsync();
     }

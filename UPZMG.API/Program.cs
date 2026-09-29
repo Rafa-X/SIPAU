@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using UPZMG.Persistence;
@@ -39,6 +40,11 @@ try
         Path.Combine(builder.Environment.ContentRootPath, "ReportTemplates")));
     builder.Services.AddScoped<IntelligenceRepository>();
     builder.Services.AddScoped<BoardReportRepository>();
+    builder.Services.AddScoped<InstitutionRepository>();
+    builder.Services.AddScoped<InfraestructureRepository>();
+    builder.Services.AddScoped<ExtensionRepository>();
+    builder.Services.AddScoped<FinanceRepository>();
+    builder.Services.AddScoped<ScholarshipsRepository>();
     // The trained model outlives a request; it is rebuilt when the academic data changes
     builder.Services.AddSingleton<IntelligenceModelCache>();
 
@@ -64,7 +70,13 @@ try
         });
 
     builder.Services.AddSingleton<UPZMG.Api.Services.ISecurityEventLogger, UPZMG.Api.Services.SecurityLogger>();
+    // Counted per account, so repeated wrong passwords stop being free.
+    builder.Services.AddSingleton<UPZMG.API.Security.LoginThrottle>();
+    // Authorisation asks the database what this user may do, so a withdrawn permission or a
+    // suspended account takes effect on the next request instead of when the token expires.
     builder.Services.AddAuthorization();
+    builder.Services.AddSingleton<IAuthorizationPolicyProvider, UPZMG.API.Security.PermissionPolicyProvider>();
+    builder.Services.AddScoped<IAuthorizationHandler, UPZMG.API.Security.PermissionAuthorizationHandler>();
 
     startupLogger.LogInformation("API secret validation completed successfully.");
 

@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 namespace UPZMG.Persistence.Models;
 
 /// <summary>
@@ -14,6 +15,13 @@ public class Reports
     public string AnswersJson { get; set; } = "{}";
     public DateTime DateCreated { get; set; }
     public DateTime LastModified { get; set; }
+
+    /// <summary>
+    /// Row version. Two areas can have the same capture open; whoever saves second writes against
+    /// the version they read, so a save can no longer overwrite a submission it never saw.
+    /// </summary>
+    [Timestamp]
+    public byte[]? RowVersion { get; set; }
 }
 
 public enum ReportStatus

@@ -1,5 +1,7 @@
 using UPZMG.Shared.Enums;
 
+using System.ComponentModel.DataAnnotations;
+
 namespace UPZMG.Persistence.Models;
 
 /// <summary>
@@ -17,5 +19,11 @@ public class TitulationProcess
     public DateOnly CertificateTitulationDate { get; set; }
     public DateOnly TitleExpeditionDate { get; set; }
     public bool HasProfessionalLicence { get; set; }
-    public TitulationModality ProfessionalLicenceNumber { get; set; }
+    /// <summary>How the student graduated. It was named ProfessionalLicenceNumber while the
+    /// table was empty, but its type always said modality; the name now matches what it holds.</summary>
+    public TitulationModality Modality { get; set; }
+
+    /// <summary>Cédula profesional, when it has already been issued.</summary>
+    [MaxLength(20)]
+    public string? ProfessionalLicenceNumber { get; set; }
 }

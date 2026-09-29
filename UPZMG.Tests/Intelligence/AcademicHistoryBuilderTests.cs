@@ -64,7 +64,14 @@ public class AcademicHistoryBuilderTests
 
         Assert.Equal(new[] { "2020 Ene-Abr", "2020 Sep-Dic" }, history.Periods.Select(x => x.Label));
         Assert.Equal(new[] { "2021 Ene-Abr", "2021 May-Ago" }, history.UpcomingLabels);
-        Assert.False(history.CanForecast);
+
+        // Two periods draw a trend, but the projection must not claim a measured fit.
+        Assert.True(history.CanForecast);
+        var forecast = IntelligenceEngine.Forecast(history, 1);
+        Assert.True(forecast.HasModel);
+        Assert.Null(forecast.R2);
+        Assert.Null(forecast.NextMargin);
+        Assert.Empty(forecast.Upper);
     }
 
     [Fact]

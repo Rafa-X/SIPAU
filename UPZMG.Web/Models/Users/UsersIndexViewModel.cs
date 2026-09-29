@@ -3,7 +3,7 @@ using UPZMG.Persistence.Models;
 namespace UPZMG.Web.Models.Users;
 
 /// <summary>
-/// ViewModel for the user management landing page (mock, no real persistence).
+/// State of the user management listing.
 /// Mirrors seguridad.usuarios_sistema joined with its single role.
 /// </summary>
 public class UsersIndexViewModel

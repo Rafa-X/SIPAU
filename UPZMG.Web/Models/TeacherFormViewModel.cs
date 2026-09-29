@@ -4,7 +4,8 @@ using UPZMG.Shared.Enums;
 namespace UPZMG.Web.Models;
 
 /// <summary>
-/// ViewModel for the employee / staff (RRHH) registration form (mock, no real persistence).
+/// Form state for capturing or correcting an employee. It mirrors CreateEmployee, with the
+/// nullable dates and the name split into three inputs.
 /// Mirrors key fields of the rrhh.empleados table from the SIPAU design.
 /// </summary>
 public class EmployeeFormViewModel
@@ -32,6 +33,6 @@ public class EmployeeFormViewModel
     public int WeeklyHours { get; set; }
     public bool HasPostgraduate { get; set; }
 
-    // Dropdown options (mock data, populated by the controller)
+    // Dropdown options, filled from the catalogues the API serves.
     public List<SelectListItem> Areas { get; set; } = new();
 }

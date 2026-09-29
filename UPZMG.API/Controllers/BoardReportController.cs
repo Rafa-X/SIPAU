@@ -4,19 +4,20 @@ using Microsoft.AspNetCore.Authorization;
 using UPZMG.Implementations.BoardReport;
 using UPZMG.Persistence.Repository;
 
+using UPZMG.API.Security;
+using UPZMG.Implementations.Security;
+
 namespace UPZMG.Api.Controllers;
 
 [ApiController]
 [Route("boardreport")]
-[Authorize(Roles = AreaRoles)]
+[RequirePermission(AppPermissions.ReadBoardReport)]
 public class BoardReportController(
     BoardReportRepository boardReportRepository) : ControllerBase
 {
     // Every area can read the report it contributed to.
-    private const string AreaRoles = "Admin,Control Escolar,Servicios Estudiantiles,Recursos Humanos,Direccion Academica,Recursos Materiales y Servicios Generales";
 
     // Planeación writes and submits it.
-    private const string EditorRoles = "Admin";
 
     private const int MaxNarrative = 8_000;
 
@@ -39,7 +40,7 @@ public class BoardReportController(
     }
 
     [HttpPost("narrative")]
-    [Authorize(Roles = EditorRoles)]
+    [RequirePermission(AppPermissions.WriteBoardReport)]
     // Replaces the wording of one block; empty text restores the suggested one
     public async Task<ActionResult<BoardReportSaveResult>> SaveNarrative([FromBody] SaveBoardNarrative request)
     {
@@ -51,7 +52,7 @@ public class BoardReportController(
     }
 
     [HttpPost("submit")]
-    [Authorize(Roles = EditorRoles)]
+    [RequirePermission(AppPermissions.WriteBoardReport)]
     // Freezes the document once every format of the cycle has been sent
     public async Task<ActionResult<BoardReportSaveResult>> Submit([FromBody] SubmitBoardReport request)
     {

@@ -62,9 +62,7 @@ try
     builder.Services.AddScoped<IStudentsService, StudentsService>();
     builder.Services.AddScoped<IGeneralDataService, GeneralDataService>();
     builder.Services.AddScoped<IPeriodsService, PeriodsService>();
-    builder.Services.AddScoped<IMinutesService, MinutesService>();
     builder.Services.AddScoped<IBoardReportService, BoardReportService>();
-    builder.Services.AddSingleton<ISettingsService, SettingsService>();
     builder.Services.AddScoped<IReportsService, ReportsService>();
     // Scoped: the model runs in the API and each call carries the user's token.
     builder.Services.AddScoped<IIntelligenceService, IntelligenceService>();

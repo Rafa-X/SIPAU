@@ -93,6 +93,13 @@ else
                         }
                     </CellTemplate>
                 </TemplateColumn>
+                <TemplateColumn Title="" Sortable="false" CellClass="sipau-cell-end">
+                    <CellTemplate>
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Edit"
+                                   Href="@($"/datacapture/class-groups/{context.Item.Id}/editar")">Corregir</MudButton>
+                    </CellTemplate>
+                </TemplateColumn>
                 <TemplateColumn Title="Inscritos" SortBy="x => x.Enrolled">
                     <CellTemplate>@context.Item.Enrolled / @context.Item.Capacity</CellTemplate>
                 </TemplateColumn>

@@ -1,15 +1,116 @@
 @page "/datacapture/infrastructure/consult"
 @attribute [Authorize]
+@using UPZMG.Implementations.DataCapture
+@inject IDataCaptureService CaptureSvc
+@inject IJSRuntime JS
 
 <PageTitle>Consultar infraestructura — SIPAU</PageTitle>
 
 <PageHeader Title="Consultar infraestructura" BackHref="/datacapture"
-            Subtitle="Esta área todavía no guarda registros propios" />
+            Subtitle="Espacios físicos registrados y su uso en el periodo activo" />
 
-<SectionCard FullHeight="false">
-    <EmptyState Icon="@Icons.Material.Filled.Domain"
-                Title="Todavía no hay registros de esta área"
-                Description="Los espacios educativos aún no tienen tabla propia en el sistema. Mientras tanto se reportan en el formato SII · Infraestructura y el Anexo de Tecnologías de la Información, y de ahí los toma el Informe de Junta.">
-        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/reports">Ir a los formatos</MudButton>
-    </EmptyState>
-</SectionCard>
+@if (_loading)
+{
+    <LoadingState Text="Leyendo los espacios registrados…" />
+}
+else if (_facilities.Count == 0)
+{
+    <SectionCard FullHeight="false">
+        <EmptyState Icon="@Icons.Material.Filled.Domain"
+                    Title="Sin espacios registrados"
+                    Description="Captura un espacio y aparecerá aquí. Si tu área no es Recursos Materiales, el listado no se muestra.">
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/datacapture/infrastructure">
+                Capturar espacio
+            </MudButton>
+        </EmptyState>
+    </SectionCard>
+}
+else
+{
+    <SectionCard Flush="true" FullHeight="false">
+        <DataToolbar @bind-Search="_search" Placeholder="Buscar por nombre o tipo…"
+                     Count="Filtered.Count" Total="_facilities.Count" OnExport="ExportAsync" />
+
+        <MudDataGrid T="FacilityListItem" Items="Filtered" Hover="true" Dense="true" Elevation="0" SortMode="SortMode.Single">
+            <Columns>
+                <PropertyColumn Property="x => x.Name" Title="Espacio" />
+                <PropertyColumn Property="x => x.Type" Title="Tipo" />
+                <TemplateColumn Title="Superficie" SortBy="x => x.SquareMeters">
+                    <CellTemplate>@(context.Item.SquareMeters > 0 ? $"{context.Item.SquareMeters:N0} m²" : "—")</CellTemplate>
+                </TemplateColumn>
+                <PropertyColumn Property="x => x.Capacity" Title="Capacidad" />
+                <PropertyColumn Property="x => x.ComputersInOperation" Title="Equipos" />
+                <TemplateColumn Title="Servicios" Sortable="false">
+                    <CellTemplate>
+                        @if (context.Item.HasInternet)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">Internet</MudChip>
+                        }
+                        @if (context.Item.SupportDisabilities)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Success">Accesible</MudChip>
+                        }
+                        @if (!context.Item.InUse)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Default">Fuera de uso</MudChip>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Grupos del periodo" SortBy="x => x.GroupsThisPeriod">
+                    <CellTemplate>
+                        @if (context.Item.GroupsThisPeriod > 0)
+                        {
+                            <b>@context.Item.GroupsThisPeriod</b>
+                        }
+                        else
+                        {
+                            <span class="sipau-field-empty">sin uso</span>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+            <NoRecordsContent>
+                <EmptyState Icon="@Icons.Material.Filled.SearchOff" Title="Sin coincidencias"
+                            Description="Ningún espacio coincide con la búsqueda." />
+            </NoRecordsContent>
+        </MudDataGrid>
+    </SectionCard>
+}
+
+@code {
+    private IReadOnlyList<FacilityListItem> _facilities = [];
+    private bool _loading = true;
+    private string _search = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _facilities = await CaptureSvc.GetFacilitiesListAsync();
+        _loading = false;
+    }
+
+    private List<FacilityListItem> Filtered => _facilities.Where(Matches).ToList();
+
+    private bool Matches(FacilityListItem facility)
+    {
+        if (string.IsNullOrWhiteSpace(_search)) return true;
+        var query = _search.Trim();
+        return facility.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase)
+            || facility.Type.Contains(query, StringComparison.CurrentCultureIgnoreCase);
+    }
+
+    private async Task ExportAsync()
+    {
+        var csv = CsvExport.Build(Filtered,
+            ("Espacio", f => f.Name),
+            ("Tipo", f => f.Type),
+            ("Metros cuadrados", f => f.SquareMeters),
+            ("Capacidad", f => f.Capacity),
+            ("Computadoras en operación", f => f.ComputersInOperation),
+            ("Internet", f => f.HasInternet ? "Sí" : "No"),
+            ("Accesible", f => f.SupportDisabilities ? "Sí" : "No"),
+            ("En uso", f => f.InUse ? "Sí" : "No"),
+            ("Grupos del periodo", f => f.GroupsThisPeriod));
+
+        await JS.InvokeVoidAsync("sigieDownload", CsvExport.FileName("espacios"), csv);
+    }
+}

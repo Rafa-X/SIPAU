@@ -1,4 +1,6 @@
 using System.Globalization;
+using UPZMG.Implementations.DataCapture;
+using UPZMG.Implementations.Intelligence;
 using UPZMG.Implementations.Reports;
 
 namespace UPZMG.Implementations.BoardReport;
@@ -111,7 +113,7 @@ public static class BoardReportBuilder
                 BoardReportBlockKinds.Chart,
                 Title: "Evolución y proyección de la matrícula",
                 Source: "Inscripciones registradas · proyección por mínimos cuadrados",
-                Note: $"Pendiente de {Decimal(forecast.Slope)} alumnos por periodo, con R² de {Decimal(forecast.R2, 2)}.",
+                Note: $"Pendiente de {Decimal(forecast.Slope)} alumnos por periodo, {FitNote(forecast)}.",
                 Chart: new BoardReportChart(
                     "line",
                     forecast.Labels,
@@ -225,10 +227,42 @@ public static class BoardReportBuilder
         var students = Capture(captures, "SII_Alumnos");
         var career = Capture(captures, "Carrera911_9A");
 
+        var blocks = new List<BoardReportBlock>();
+
+        // What Control Escolar registered, which is where the rate actually comes from.
+        if (input.Titulation is { Graduates: > 0 } titulation)
+        {
+            blocks.Add(new BoardReportBlock(
+                BoardReportBlockKinds.Figures,
+                Title: "Titulación registrada",
+                Source: "Registros del sistema · Control Escolar",
+                Note: "La eficiencia de titulación es titulados entre egresados; ninguno de los dos se captura a mano.",
+                Figures:
+                [
+                    new("Egresados", Count(titulation.Graduates), "con estatus de egresado"),
+                    new("Titulados", Count(titulation.Titled), "procesos registrados"),
+                    new("Eficiencia de titulación", Percent(titulation.TitulationRate), null),
+                ]));
+
+            if (titulation.ByModality.Count > 0)
+            {
+                blocks.Add(new BoardReportBlock(
+                    BoardReportBlockKinds.Table,
+                    Title: "Titulados por modalidad",
+                    Source: "Registros del sistema · Control Escolar",
+                    Table: new BoardReportTable(
+                        ["Modalidad", "Titulados"],
+                        [.. titulation.ByModality.Select(m => new BoardReportRow(m.Modality, [Count(m.Count)]))],
+                        Total: [Count(titulation.Titled)])));
+            }
+        }
+
+        blocks.Add(MatrixTable(students, "titulados", "Egreso y titulación", "Formato SII · Perfil del alumno"));
+
         return new BoardReportChapter("IV", "Egreso y titulación",
             "Egresados, titulados y cédulas profesionales del ciclo.",
             [
-                MatrixTable(students, "titulados", "Egreso y titulación", "Formato SII · Perfil del alumno"),
+                .. blocks,
                 MatrixTable(career, "egresados_titulados", "Egresados y titulados del programa", "Formato 911.9A · Carrera"),
                 Narrative(input, "titulacion.analisis", "Análisis de la titulación",
                     "La diferencia entre egreso y titulación se concentra en el trámite de cédula profesional. "
@@ -242,10 +276,31 @@ public static class BoardReportBuilder
         var students = Capture(captures, "SII_Alumnos");
         var school = Capture(captures, "Escuela911_9");
 
+        var blocks = new List<BoardReportBlock>();
+
+        // The grant register, which is what the format's totals are supposed to summarise.
+        if (input.Scholarships is { } scholarships && scholarships.Sources.Count > 0)
+        {
+            blocks.Add(new BoardReportBlock(
+                BoardReportBlockKinds.Table,
+                Title: "Becas registradas por origen del financiamiento",
+                Source: "Registros del sistema · Servicios Estudiantiles",
+                Table: new BoardReportTable(
+                    ["Origen", "Alumnos becados", "Monto"],
+                    [.. scholarships.Sources.Select((source, i) => new BoardReportRow(source,
+                    [
+                        Count(scholarships.Students[i]),
+                        Money((double)scholarships.Amounts[i]),
+                    ]))],
+                    Total: [Count(scholarships.TotalStudents), Money((double)scholarships.TotalAmount)])));
+        }
+
+        blocks.Add(MatrixTable(students, "becas", "Becas por programa", "Formato SII · Perfil del alumno", onlyWithValues: true));
+
         return new BoardReportChapter("V", "Becas y apoyos",
             "Becas vigentes por programa y por origen del financiamiento.",
             [
-                MatrixTable(students, "becas", "Becas por programa", "Formato SII · Perfil del alumno", onlyWithValues: true),
+                .. blocks,
                 MatrixTable(school, "becas_por_origen", "Becas por origen del financiamiento", "Formato 911.9 · Escuela"),
                 Narrative(input, "becas.analisis", "Análisis de becas",
                     "La cobertura de becas sostiene la permanencia de los alumnos con menor ingreso familiar. "
@@ -352,16 +407,56 @@ public static class BoardReportBuilder
     {
         var institution = Capture(captures, "Institucion911_10");
 
+        var blocks = new List<BoardReportBlock>();
+
+        // What the area registered project by project, so the counts can be traced back.
+        if (input.Outreach.Count > 0)
+        {
+            blocks.Add(new BoardReportBlock(
+                BoardReportBlockKinds.Figures,
+                Title: "Proyectos registrados",
+                Source: "Registros del sistema · Vinculación",
+                Figures:
+                [
+                    new("Proyectos", Count(input.Outreach.Count), "registrados"),
+                    new("Organizaciones", Count(input.Outreach.Select(p => p.Organization)
+                        .Distinct(StringComparer.CurrentCultureIgnoreCase).Count()), "distintas"),
+                    new("Horas acreditadas", Count(input.Outreach.Sum(p => p.AccreditedHours)), "en total"),
+                    new("Con alumno asignado", Count(input.Outreach.Count(p => p.HasStudent)), "proyectos"),
+                ]));
+
+            blocks.Add(new BoardReportBlock(
+                BoardReportBlockKinds.Table,
+                Title: "Proyectos por sector y actividad",
+                Source: "Registros del sistema · Vinculación",
+                Table: new BoardReportTable(
+                    ["Sector", "Proyectos", "Horas acreditadas", "Con alumno"],
+                    [.. input.Outreach
+                        .GroupBy(p => p.Sector)
+                        .OrderByDescending(g => g.Count())
+                        .Select(g => new BoardReportRow(g.Key,
+                        [
+                            Count(g.Count()),
+                            Count(g.Sum(p => p.AccreditedHours)),
+                            Count(g.Count(p => p.HasStudent)),
+                        ]))],
+                    Total:
+                    [
+                        Count(input.Outreach.Count),
+                        Count(input.Outreach.Sum(p => p.AccreditedHours)),
+                        Count(input.Outreach.Count(p => p.HasStudent)),
+                    ])));
+        }
+
+        blocks.Add(MatrixTable(institution, "servicio_social", "Servicio social por sector", "Formato 911.10 · Institución"));
+        blocks.Add(MatrixTable(institution, "practicas_profesionales", "Prácticas profesionales por sector", "Formato 911.10 · Institución"));
+        blocks.Add(MatrixTable(institution, "proyectos_vinculacion", "Proyectos de vinculación por sector", "Formato 911.10 · Institución", onlyWithValues: true));
+        blocks.Add(Narrative(input, "vinculacion.analisis", "Análisis de la vinculación",
+            "Los convenios vigentes sostienen la colocación de alumnos en estadía. "
+            + "Se buscará ampliar la participación del sector social en el siguiente ciclo."));
+
         return new BoardReportChapter("VIII", "Vinculación y extensión",
-            "Servicio social, prácticas profesionales y proyectos con los sectores.",
-            [
-                MatrixTable(institution, "servicio_social", "Servicio social por sector", "Formato 911.10 · Institución"),
-                MatrixTable(institution, "practicas_profesionales", "Prácticas profesionales por sector", "Formato 911.10 · Institución"),
-                MatrixTable(institution, "proyectos_vinculacion", "Proyectos de vinculación por sector", "Formato 911.10 · Institución", onlyWithValues: true),
-                Narrative(input, "vinculacion.analisis", "Análisis de la vinculación",
-                    "Los convenios vigentes sostienen la colocación de alumnos en estadía. "
-                    + "Se buscará ampliar la participación del sector social en el siguiente ciclo."),
-            ]);
+            "Servicio social, prácticas profesionales y proyectos con los sectores.", blocks);
     }
 
     private static BoardReportChapter Finance(
@@ -401,6 +496,31 @@ public static class BoardReportBuilder
             blocks.Add(Pending("Ingresos del ejercicio", institution, "Formato 911.10 · Institución"));
         }
 
+        // The administration's own summary: income and expenditure of the closed fiscal year.
+        if (input.Finance is { } finance)
+        {
+            blocks.Add(new BoardReportBlock(
+                BoardReportBlockKinds.Table,
+                Title: $"Ingresos y egresos del ejercicio {finance.FiscalYear}",
+                Source: "Registros del sistema · Administración y Finanzas",
+                Table: new BoardReportTable(
+                    ["Concepto", "Importe"],
+                    [
+                        new BoardReportRow("Subsidio federal", [Money((double)finance.FederalIncome)]),
+                        new BoardReportRow("Subsidio estatal", [Money((double)finance.StateIncome)]),
+                        new BoardReportRow("Ingresos propios: inscripciones", [Money((double)finance.OwnIncomeEnrollment)]),
+                        new BoardReportRow("Ingresos propios: servicios", [Money((double)finance.OwnIncomeServices)]),
+                        new BoardReportRow("Total de ingresos", [Money((double)finance.TotalIncome)]),
+                        new BoardReportRow("Nómina", [Money((double)finance.PayrollExpense)]),
+                        new BoardReportRow("Materiales", [Money((double)finance.MaterialsExpense)]),
+                        new BoardReportRow("Servicios", [Money((double)finance.ServicesExpense)]),
+                        new BoardReportRow("Inversión", [Money((double)finance.InvestmentExpense)]),
+                        new BoardReportRow("Total de egresos", [Money((double)finance.TotalExpense)]),
+                    ],
+                    Total: [Money((double)(finance.TotalIncome - finance.TotalExpense))]),
+                Note: "El renglón final es el balance del ejercicio: ingresos menos egresos."));
+        }
+
         blocks.Add(Narrative(input, "finanzas.analisis", "Análisis financiero",
             "El subsidio público sigue siendo la principal fuente de ingreso de la universidad. "
             + "Los ingresos propios se destinan a mantenimiento y equipamiento."));
@@ -423,9 +543,9 @@ public static class BoardReportBuilder
                 Figures:
                 [
                     new(forecast.NextLabel ?? "Siguiente periodo", Count((int)Math.Round(next)),
-                        $"± {Decimal(forecast.NextMargin ?? 0, 0)} alumnos"),
+                        forecast.NextMargin is { } margin ? $"± {Decimal(margin, 0)} alumnos" : "sin margen medible"),
                     new("Crecimiento por periodo", Decimal(forecast.Slope), "alumnos"),
-                    new("Ajuste del modelo", Decimal(forecast.R2, 2), "R²"),
+                    new("Ajuste del modelo", forecast.R2 is { } r2 ? Decimal(r2, 2) : "—", "R²"),
                 ]));
         }
 
@@ -575,6 +695,12 @@ public static class BoardReportBuilder
     private static BoardReportRow Row(string label, string value) => new(label, [value]);
 
     private static string Count(int value) => value.ToString("N0", Mx);
+
+    // Two observed periods fit any line exactly, so the report says so instead of printing R² = 1.
+    private static string FitNote(EnrollmentForecast forecast) =>
+        forecast.R2 is { } r2
+            ? $"con R² de {Decimal(r2, 2)}"
+            : "tendencia preliminar: con dos periodos observados el ajuste todavía no puede medirse";
 
     private static string Decimal(double value, int decimals = 1) =>
         Math.Abs(value - Math.Round(value)) < 0.001

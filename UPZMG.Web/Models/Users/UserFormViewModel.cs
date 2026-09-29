@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 namespace UPZMG.Web.Models.Users;
 
 /// <summary>
-/// ViewModel for creating or editing a system user (mock, no real persistence).
+/// Form state for creating or editing a system user.
 /// Enforces the "one user = one role" model: a single RoleId is selected.
 /// </summary>
 public class UserFormViewModel

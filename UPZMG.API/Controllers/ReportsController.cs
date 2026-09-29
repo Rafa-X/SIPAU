@@ -5,17 +5,19 @@ using UPZMG.Persistence.Models;
 using UPZMG.Persistence.Repository;
 using UPZMG.Implementations.Reports;
 
+using UPZMG.API.Security;
+using UPZMG.Implementations.Security;
+
 namespace UPZMG.Api.Controllers;
 
 [ApiController]
 [Route("reports")]
-[Authorize(Roles = AreaRoles)]
+[RequirePermission(AppPermissions.CaptureReports)]
 public class ReportsController(
     ReportTemplatesRepository reportTemplatesRepository,
     ReportsRepository reportsRepository) : ControllerBase
 {
     // Every institutional area captures the official formats it is responsible for.
-    private const string AreaRoles = "Admin,Control Escolar,Servicios Estudiantiles,Recursos Humanos,Direccion Academica,Recursos Materiales y Servicios Generales";
 
     // Far above the largest official format; stops a runaway payload.
     private const int MaxAnswers = 20_000;
@@ -40,7 +42,7 @@ public class ReportsController(
     }
 
     [HttpGet("templates/{reportType}/{version}/source")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(AppPermissions.PublishReports)]
     // The template file as it was authored, for the template editor
     public async Task<ActionResult<ReportTemplateSource>> GetTemplateSource(string reportType, string version)
     {
@@ -51,13 +53,13 @@ public class ReportsController(
     // Both template writes answer 200 even when they refuse: a template that does
     // not validate yet is part of authoring it, and the editor needs to read why.
     [HttpPost("templates/save")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(AppPermissions.PublishReports)]
     // Create or edit a template; it is parsed and validated before it is written
     public async Task<ActionResult<TemplateSaveResult>> SaveTemplate([FromBody] SaveReportTemplate request) =>
         Ok(await reportTemplatesRepository.SaveTemplateAsync(request));
 
     [HttpPost("templates/delete")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(AppPermissions.PublishReports)]
     // Remove a template that nobody has captured with
     public async Task<ActionResult<TemplateSaveResult>> DeleteTemplate([FromBody] DeleteReportTemplate request) =>
         Ok(await reportTemplatesRepository.DeleteTemplateAsync(request));

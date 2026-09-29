@@ -15,8 +15,8 @@ public class StatisticsTests
         Assert.NotNull(fit);
         Assert.Equal(50, fit.Slope, precision: 6);
         Assert.Equal(100, fit.Intercept, precision: 6);
-        Assert.Equal(1.0, fit.R2, precision: 6);
-        Assert.Equal(0, fit.StdError, precision: 6);
+        Assert.Equal(1.0, fit.R2!.Value, precision: 6);
+        Assert.Equal(0, fit.StdError!.Value, precision: 6);
     }
 
     [Fact]
@@ -27,8 +27,8 @@ public class StatisticsTests
 
         Assert.Equal(1.9, fit.Slope, precision: 9);
         Assert.Equal(1.9, fit.Intercept, precision: 9);
-        Assert.Equal(1 - 0.7 / 18.75, fit.R2, precision: 9);
-        Assert.Equal(Math.Sqrt(0.7 / 2), fit.StdError, precision: 9);
+        Assert.Equal(1 - 0.7 / 18.75, fit.R2!.Value, precision: 9);
+        Assert.Equal(Math.Sqrt(0.7 / 2), fit.StdError!.Value, precision: 9);
     }
 
     [Fact]
@@ -60,13 +60,17 @@ public class StatisticsTests
     }
 
     [Fact]
-    public void Fit_AllowsTwoPointsForAnInitialProjection()
+    public void Fit_AllowsTwoPointsButCannotMeasureTheirQuality()
     {
         var fit = Statistics.Fit([500, 520]);
 
         Assert.NotNull(fit);
         Assert.Equal(20, fit.Slope);
-        Assert.Equal(0, fit.StdError);
+
+        // Any line passes exactly through two points: reporting R² = 1 with a ±0
+        // band would claim certainty the data cannot support.
+        Assert.Null(fit.R2);
+        Assert.Null(fit.StdError);
     }
 
     [Fact]
@@ -75,7 +79,7 @@ public class StatisticsTests
         var fit = Statistics.Fit([500, 500, 500, 500])!;
 
         Assert.Equal(0, fit.Slope, precision: 6);
-        Assert.Equal(1.0, fit.R2, precision: 6);
+        Assert.Equal(1.0, fit.R2!.Value, precision: 6);
     }
 
     [Fact]

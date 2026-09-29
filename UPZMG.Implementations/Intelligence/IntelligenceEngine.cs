@@ -44,7 +44,7 @@ public static class IntelligenceEngine
                 observed,
                 [], [], [],
                 observed.Count,
-                0, observed[0], 0, 0,
+                0, observed[0], null, null,
                 HasModel: false);
         }
 
@@ -57,24 +57,31 @@ public static class IntelligenceEngine
 
         var actual = new double[n + ahead];
         var trend = new double[n + ahead];
-        var upper = new double[n + ahead];
-        var lower = new double[n + ahead];
+
+        // A measured error of zero is a real (zero-width) band; an unmeasurable one is not.
+        bool hasBand = fit.StdError is not null;
+        var upper = hasBand ? new double[n + ahead] : [];
+        var lower = hasBand ? new double[n + ahead] : [];
 
         for (int i = 0; i < n + ahead; i++)
         {
             trend[i] = Math.Round(fit.PredictAt(i), 1);
             actual[i] = i < n ? observed[i] : Math.Max(0, Math.Round(fit.PredictAt(i)));
 
+            if (!hasBand) continue;
+
             // ±2 standard errors, widening with each step past the data.
-            double spread = 2 * fit.StdError * (i < n ? 1 : 1 + 0.35 * (i - n + 1));
+            double spread = 2 * fit.StdError!.Value * (i < n ? 1 : 1 + 0.35 * (i - n + 1));
             upper[i] = Math.Round(trend[i] + spread, 1);
             lower[i] = Math.Round(Math.Max(0, trend[i] - spread), 1);
         }
 
         return new EnrollmentForecast(
             labels, actual, trend, upper, lower, n,
-            Math.Round(fit.Slope, 2), Math.Round(fit.Intercept, 1), Math.Round(fit.R2, 4),
-            Math.Round(fit.StdError, 2), HasModel: true);
+            Math.Round(fit.Slope, 2), Math.Round(fit.Intercept, 1),
+            fit.R2 is { } r2 ? Math.Round(r2, 4) : null,
+            fit.StdError is { } error ? Math.Round(error, 2) : null,
+            HasModel: true);
     }
 
     // Known upcoming periods first, then the SEP sequence, then a generic label.
@@ -228,7 +235,7 @@ public static class IntelligenceEngine
             for (int i = 0; i < enrolment.Count; i++)
             {
                 var residual = enrolment[i] - fit.PredictAt(i);
-                var sigmas = residual / fit.StdError;
+                var sigmas = residual / fit.StdError.Value;
                 if (Math.Abs(sigmas) < 2) continue;
 
                 found.Add(new AnomalyAlert(

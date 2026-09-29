@@ -17,6 +17,8 @@ public class ScolarshipAssigned
     [MaxLength(100)]
     public string? ScolarshipObjective { get; set; }
     public FinantialSource FinantialSource { get; set; }
-    public float Amount { get; set; }
+    /// <summary>Amount in pesos. Decimal, never float: a grant that rounds differently
+    /// each time it is added up is a grant nobody can audit.</summary>
+    public decimal Amount { get; set; }
     public DateOnly? AssignedDate { get; set; }
 }

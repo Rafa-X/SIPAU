@@ -18,7 +18,8 @@ public class BoardReportRepository(
     AppDBContext db,
     ReportTemplatesRepository reportTemplatesRepository,
     DashboardRepository dashboardRepository,
-    IntelligenceRepository intelligenceRepository)
+    IntelligenceRepository intelligenceRepository,
+    ScholarshipsRepository scholarshipsRepository)
 {
     public const string NarrativeReportType = "InformeJunta";
 
@@ -108,6 +109,10 @@ public class BoardReportRepository(
             Anomalies: await intelligenceRepository.GetAnomaliesAsync(),
             Staff: await StaffAsync(),
             Facilities: await FacilitiesAsync(),
+            Outreach: await OutreachAsync(),
+            Scholarships: await scholarshipsRepository.GetScholarshipsBySourceAsync(),
+            Titulation: await scholarshipsRepository.GetTitulationSummaryAsync(),
+            Finance: await FinanceAsync(),
             Captures: captures,
             Narratives: narratives,
             Status: document?.Status == nameof(ReportStatus.submitted) ? BoardReportStatus.Submitted : BoardReportStatus.Draft,
@@ -207,6 +212,32 @@ public class BoardReportRepository(
             .AsNoTracking()
             .Select(e => new BoardStaffMember(e.Gender.ToString(), (int)e.HighestEducationLevel, e.IsTeacher))
             .ToListAsync();
+
+    /// <summary>Projects the outreach area registered, whatever period they belong to.</summary>
+    private async Task<List<BoardOutreachProject>> OutreachAsync() =>
+        await db.OutreachProjects
+            .AsNoTracking()
+            .Select(p => new BoardOutreachProject(p.Sector, p.ActivityType, p.OrganizationName,
+                p.AccreditedHours, p.StudentId != null))
+            .ToListAsync();
+
+    /// <summary>
+    /// The most recent fiscal year the administration captured, never one still in the future:
+    /// a year that has not happened cannot be the exercise the Junta is being informed about.
+    /// </summary>
+    private async Task<BoardFinanceSummary?> FinanceAsync()
+    {
+        var currentYear = DateTime.UtcNow.Year;
+
+        return await db.AnnualFinances
+            .AsNoTracking()
+            .Where(f => f.FiscalYear <= currentYear)
+            .OrderByDescending(f => f.FiscalYear)
+            .Select(f => new BoardFinanceSummary(f.FiscalYear, f.FederalIncome, f.StateIncome,
+                f.OwnIncomeEnrollment, f.OwnIncomeServices, f.PayrollExpense, f.MaterialsExpense,
+                f.ServicesExpense, f.InvestmentExpense))
+            .FirstOrDefaultAsync();
+    }
 
     private async Task<List<BoardFacility>> FacilitiesAsync() =>
         await db.Set<SchoolFacility>()

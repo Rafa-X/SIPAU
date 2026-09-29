@@ -3,9 +3,11 @@ namespace UPZMG.Implementations.Intelligence;
 /// <summary>Least-squares projection of enrolment over the observed periods.</summary>
 /// <param name="Actual">Observed values, then the projection for the periods ahead.</param>
 /// <param name="Trend">The fitted line ŷ = a + b·x at every period.</param>
-/// <param name="Upper">Upper edge of the ±2 standard error band.</param>
-/// <param name="Lower">Lower edge of the band, never below zero.</param>
+/// <param name="Upper">Upper edge of the ±2 standard error band; empty when the error cannot be measured.</param>
+/// <param name="Lower">Lower edge of the band, never below zero; empty when the error cannot be measured.</param>
 /// <param name="HistoricalCount">How many leading entries are observed rather than projected.</param>
+/// <param name="R2">Null with only two observed periods: any line fits them exactly.</param>
+/// <param name="StdError">Null with only two observed periods; then the projection carries no band.</param>
 /// <param name="HasModel">False when there was too little history to fit anything.</param>
 public sealed record EnrollmentForecast(
     IReadOnlyList<string> Labels,
@@ -16,11 +18,11 @@ public sealed record EnrollmentForecast(
     int HistoricalCount,
     double Slope,
     double Intercept,
-    double R2,
-    double StdError,
+    double? R2,
+    double? StdError,
     bool HasModel)
 {
-    public static readonly EnrollmentForecast None = new([], [], [], [], [], 0, 0, 0, 0, 0, false);
+    public static readonly EnrollmentForecast None = new([], [], [], [], [], 0, 0, 0, null, null, false);
 
     // The first projected period, when there is one.
     public string? NextLabel => HasModel && Labels.Count > HistoricalCount ? Labels[HistoricalCount] : null;

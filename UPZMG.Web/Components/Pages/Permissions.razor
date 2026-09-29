@@ -86,7 +86,16 @@
                     <MudDataGrid T="Permission" Items="PermissionsFiltered" Hover="true" Dense="true" Elevation="0"
                                  Filterable="false" SortMode="SortMode.Multiple">
                         <Columns>
-                            <PropertyColumn Property="x => x.Name" Title="Permiso" />
+                            <TemplateColumn Title="Permiso" SortBy="x => x.Name">
+                                <CellTemplate>
+                                    <div>@(context.Item.DisplayName ?? context.Item.Name)</div>
+                                    <div class="sipau-field-empty sipau-mono">@context.Item.Name</div>
+                                    @if (!string.IsNullOrWhiteSpace(context.Item.Description))
+                                    {
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">@context.Item.Description</MudText>
+                                    }
+                                </CellTemplate>
+                            </TemplateColumn>
                             <TemplateColumn Title="Acciones" CellClass="sipau-cell-end" HeaderClass="sipau-cell-end" Sortable="false">
                                 <CellTemplate>
                                     <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
@@ -127,7 +136,8 @@
 
     private List<Permission> PermissionsFiltered => string.IsNullOrWhiteSpace(_permissionSearch)
         ? _permissions.ToList()
-        : _permissions.Where(p => p.Name.Contains(_permissionSearch, StringComparison.OrdinalIgnoreCase)).ToList();
+        : _permissions.Where(p => p.Name.Contains(_permissionSearch, StringComparison.OrdinalIgnoreCase)
+            || (p.DisplayName ?? string.Empty).Contains(_permissionSearch, StringComparison.CurrentCultureIgnoreCase)).ToList();
 
     protected override async Task OnInitializedAsync()
     {

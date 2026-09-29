@@ -3,6 +3,8 @@ using UPZMG.Persistence.Models;
 using UPZMG.Implementations;
 using UPZMG.Implementations.Roles;
 
+using UPZMG.Implementations.Security;
+
 namespace UPZMG.Persistence.Repository;
 
 public class RolesRepository(AppDBContext _db)
@@ -40,6 +42,11 @@ public class RolesRepository(AppDBContext _db)
         var role = await db.Roles.FirstOrDefaultAsync(r => r.Id == request.RoleId)
             ?? throw new Exception($"No role found with ID {request.RoleId}");
 
+        // Authorisation is declared by role name, so renaming Admin would leave every
+        // administrative endpoint unreachable and the delete guard blind to it.
+        if (role.Name == "Admin" && request.Name != "Admin")
+            throw new InvalidOperationException("El rol Admin no puede renombrarse: la autorización del sistema depende de su nombre.");
+
         role.Name = request.Name;
         await db.SaveChangesAsync();
 
@@ -72,6 +79,26 @@ public class RolesRepository(AppDBContext _db)
 
     public async Task SetRolePermissionsAsync(SetRolePermissions request)
     {
+        // Withdrawing the last grant of "administrar usuarios" would leave the permissions screen
+        // unreachable for everyone, including whoever is using it right now.
+        var administerId = await db.Permissions.AsNoTracking()
+            .Where(p => p.Name == AppPermissions.ManageUsers)
+            .Select(p => (Guid?)p.Id)
+            .FirstOrDefaultAsync();
+
+        if (administerId is { } manageUsers && !request.PermissionIds.Contains(manageUsers))
+        {
+            var othersKeepIt = await db.RolePermissions.AsNoTracking()
+                .AnyAsync(rp => rp.RoleId != request.RoleId && rp.PermissionId == manageUsers);
+
+            var thisRoleHadIt = await db.RolePermissions.AsNoTracking()
+                .AnyAsync(rp => rp.RoleId == request.RoleId && rp.PermissionId == manageUsers);
+
+            if (thisRoleHadIt && !othersKeepIt)
+                throw new InvalidOperationException(
+                    "Es el único rol que puede administrar usuarios: quitarle ese permiso dejaría el sistema sin administración.");
+        }
+
         var current = await db.RolePermissions
             .Where(rp => rp.RoleId == request.RoleId)
             .ToListAsync();

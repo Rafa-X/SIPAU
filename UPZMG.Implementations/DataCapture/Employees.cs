@@ -2,7 +2,7 @@ namespace UPZMG.Implementations.DataCapture;
 
 using UPZMG.Shared.Enums;
 
-public sealed class CreateEmployee
+public class CreateEmployee
 {
     public required Guid RequesterKey { get; set; }
     public required int EmployeeNumber { get; set; }
@@ -19,4 +19,10 @@ public sealed class CreateEmployee
     public int ExternalXPYears { get; set; }
     public DateOnly FirstHiredDate { get; set; }
     public bool IsTeacher { get; set; }
+}
+
+/// <summary>A correction to an employee already captured.</summary>
+public sealed class UpdateEmployee : CreateEmployee
+{
+    public required Guid Id { get; set; }
 }

@@ -5,11 +5,14 @@ using UPZMG.Persistence.Repository;
 using UPZMG.Implementations;
 using UPZMG.Implementations.Roles;
 
+using UPZMG.API.Security;
+using UPZMG.Implementations.Security;
+
 namespace UPZMG.Api.Controllers;
 
 [ApiController]
 [Route("roles")]
-[Authorize(Roles = "Admin")]
+[RequirePermission(AppPermissions.ManageUsers)]
 public class RolesController(RolesRepository rolesRepository) : ControllerBase
 {
     [HttpPost("get-all")]
@@ -30,15 +33,29 @@ public class RolesController(RolesRepository rolesRepository) : ControllerBase
     [HttpPost("edit")]
     public async Task<IActionResult> EditRole([FromBody] EditRole request)
     {
-        var role = await rolesRepository.EditRoleAsync(request);
-        return Ok(role);
+        try
+        {
+            var role = await rolesRepository.EditRoleAsync(request);
+            return Ok(role);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
     }
 
     [HttpPost("delete")]
     public async Task<IActionResult> DeleteRole([FromBody] DeleteRole request)
     {
-        await rolesRepository.DeleteRoleAsync(request);
-        return Ok();
+        try
+        {
+            await rolesRepository.DeleteRoleAsync(request);
+            return Ok();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
     }
 
     [HttpPost("get-permissions")]
@@ -53,7 +70,14 @@ public class RolesController(RolesRepository rolesRepository) : ControllerBase
     // Replace the full set of permissions assigned to a role
     public async Task<IActionResult> SetRolePermissions([FromBody] SetRolePermissions request)
     {
-        await rolesRepository.SetRolePermissionsAsync(request);
-        return Ok();
+        try
+        {
+            await rolesRepository.SetRolePermissionsAsync(request);
+            return Ok();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
     }
 }

@@ -21,7 +21,8 @@ public sealed class EnrollmentChartModel
     public double Intercept { get; set; }
     // False when there is too little history to fit the regression.
     public bool HasModel { get; set; }
-    public double R2 { get; set; }
+    // Null with two observed periods: any line fits them exactly, so the fit is not measurable.
+    public double? R2 { get; set; }
     public string? NextLabel { get; set; }
     public double? NextValue { get; set; }
     public double? NextMargin { get; set; }

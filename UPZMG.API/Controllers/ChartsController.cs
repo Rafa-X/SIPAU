@@ -1,6 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using UPZMG.Persistence.Repository;
+using UPZMG.Implementations.Charts;
+using UPZMG.Implementations.DataCapture;
+
+using UPZMG.API.Security;
+using UPZMG.Implementations.Security;
 
 namespace UPZMG.API.Controllers;
 
@@ -8,15 +13,32 @@ namespace UPZMG.API.Controllers;
 [Route("charts")]
 [Authorize]
 public class ChartsController(
+    ScholarshipsRepository scholarshipsRepository,
     ChartsRepository chartsRepository) : ControllerBase
 {
-    private const string EmployeeRoles = "Admin,Recursos Humanos";
 
     // Aggregate figures with no personal data: every area may read them.
-    private const string AreaRoles = "Admin,Control Escolar,Servicios Estudiantiles,Recursos Humanos,Direccion Academica,Recursos Materiales y Servicios Generales";
+
+    /// <summary>Grants of the active period by source; aggregate only.</summary>
+    [HttpGet("scholarships-by-source")]
+    [RequirePermission(AppPermissions.ReadIndicators)]
+    public async Task<ActionResult<ScholarshipsBySource>> GetScholarshipsBySource() =>
+        Ok(await scholarshipsRepository.GetScholarshipsBySourceAsync());
+
+    /// <summary>Titled students against graduates, with the modality breakdown.</summary>
+    [HttpGet("titulation-summary")]
+    [RequirePermission(AppPermissions.ReadIndicators)]
+    public async Task<ActionResult<TitulationSummary>> GetTitulationSummary() =>
+        Ok(await scholarshipsRepository.GetTitulationSummaryAsync());
+
+    /// <summary>Active students by programme and sex; aggregate only, so every area may read it.</summary>
+    [HttpGet("gender-distribution")]
+    [RequirePermission(AppPermissions.ReadIndicators)]
+    public async Task<ActionResult<GenderDistribution>> GetGenderDistribution() =>
+        Ok(await chartsRepository.GetGenderDistributionAsync());
 
     [HttpGet("careers-distribution")]
-    [Authorize(Roles = EmployeeRoles)]
+    [RequirePermission(AppPermissions.ReadIndicators)]
     public async Task<IActionResult> GetCareersDistribution()
     {
         var result = await chartsRepository.GetCareersDistributionAsync();
@@ -24,7 +46,7 @@ public class ChartsController(
     }
 
     [HttpGet("teachers-distribution")]
-    [Authorize(Roles = AreaRoles)]
+    [RequirePermission(AppPermissions.ReadIndicators)]
     public async Task<IActionResult> GetTeachersDistribution()
     {
         var result = await chartsRepository.GetTeachersDistributionAsync();
@@ -32,7 +54,7 @@ public class ChartsController(
     }
 
     [HttpGet("groups-distribution-career")]
-    [Authorize(Roles = EmployeeRoles)]
+    [RequirePermission(AppPermissions.ReadIndicators)]
     public async Task<IActionResult> GetGroupsDistributionByCareer()
     {
         var result = await chartsRepository.GetGroupsDistributionByCareerAsync();

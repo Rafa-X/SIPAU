@@ -3,9 +3,9 @@ namespace UPZMG.Implementations.Intelligence;
 /// <summary>Result of fitting ŷ = a + b·x by ordinary least squares.</summary>
 /// <param name="Slope">b: units of y per period.</param>
 /// <param name="Intercept">a: fitted value at x = 0.</param>
-/// <param name="R2">Goodness of fit (0..1), always shown next to a projection.</param>
-/// <param name="StdError">Residual standard error, used to size the uncertainty band.</param>
-public sealed record LinearFit(double Slope, double Intercept, double R2, double StdError)
+/// <param name="R2">Goodness of fit (0..1); null with two points, which fit any line exactly.</param>
+/// <param name="StdError">Residual standard error that sizes the uncertainty band; null with two points.</param>
+public sealed record LinearFit(double Slope, double Intercept, double? R2, double? StdError)
 {
     public double PredictAt(int x) => Intercept + Slope * x;
 }
@@ -15,7 +15,8 @@ public static class Statistics
 {
     /// <summary>
     /// Least-squares line over y indexed at x = 0..n-1. Two points provide the
-    /// minimum trend required for an initial enrolment projection.
+    /// minimum trend required for an initial enrolment projection, but they fit
+    /// any line exactly, so their quality is reported as unknown rather than perfect.
     /// </summary>
     public static LinearFit? Fit(IReadOnlyList<double> y)
     {
@@ -46,12 +47,14 @@ public static class Statistics
             ssTot += (y[i] - meanY) * (y[i] - meanY);
         }
 
+        // Two observations leave no residual degrees of freedom: the line through them is
+        // exact by construction, so neither its fit nor its error can be measured. Saying
+        // "R² = 1 with a ±0 band" would claim certainty the data does not support.
+        if (n == 2) return new LinearFit(slope, intercept, R2: null, StdError: null);
+
         // A flat series has no variance to explain, and the line reproduces it exactly.
         double r2 = ssTot < 1e-9 ? 1 : 1 - ssRes / ssTot;
-
-        // Two observations leave no residual degrees of freedom; their fitted
-        // line is exact, so use a zero uncertainty band until more history exists.
-        double stdError = n == 2 ? 0 : Math.Sqrt(ssRes / (n - 2));
+        double stdError = Math.Sqrt(ssRes / (n - 2));
 
         return new LinearFit(slope, intercept, Math.Clamp(r2, 0, 1), stdError);
     }

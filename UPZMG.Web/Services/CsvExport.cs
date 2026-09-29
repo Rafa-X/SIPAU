@@ -39,10 +39,21 @@ public static class CsvExport
         _               => value.ToString() ?? string.Empty,
     };
 
-    /// <summary>Quotes a field only when it contains a separator, quote or newline.</summary>
+    /// <summary>
+    /// Quotes a field when it contains a separator, quote or newline, and neutralises the
+    /// prefixes a spreadsheet reads as a formula.
+    /// </summary>
     private static string Escape(string field)
     {
+        // A captured name like "=1+1" is a name, not a calculation, and the file is opened by
+        // people who did not type it; a leading apostrophe keeps the spreadsheet from evaluating it.
+        if (StartsFormula(field)) field = "'" + field;
+
         if (field.IndexOfAny([',', '"', '\n', '\r']) < 0) return field;
         return $"\"{field.Replace("\"", "\"\"")}\"";
     }
+
+    // Excel, LibreOffice and Sheets all read these as the start of an expression.
+    private static bool StartsFormula(string field) =>
+        field.Length > 0 && field[0] is '=' or '+' or '-' or '@' or '\t';
 }

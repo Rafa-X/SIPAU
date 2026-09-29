@@ -1,0 +1,123 @@
+@page "/datacapture/titulation/consult"
+@attribute [Authorize]
+@using UPZMG.Implementations.DataCapture
+@inject IDataCaptureService CaptureSvc
+@inject IChartsService ChartsSvc
+@inject IJSRuntime JS
+
+<PageTitle>Consultar titulación — SIPAU</PageTitle>
+
+<PageHeader Title="Consultar titulación" BackHref="/datacapture"
+            Subtitle="Procesos de titulación registrados y su avance" />
+
+@if (_loading)
+{
+    <LoadingState Text="Leyendo los procesos de titulación…" />
+}
+else if (_titulations.Count == 0)
+{
+    <SectionCard FullHeight="false">
+        <EmptyState Icon="@Icons.Material.Filled.WorkspacePremium"
+                    Title="Sin titulaciones registradas"
+                    Description="Captura una titulación y aparecerá aquí. Si tu área no es Control Escolar, el listado no se muestra.">
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/datacapture/titulation">
+                Capturar titulación
+            </MudButton>
+        </EmptyState>
+    </SectionCard>
+}
+else
+{
+    <MudGrid Class="mb-2">
+        <MudItem xs="12" sm="4">
+            <StatCard Title="Titulados" Value="@(_summary?.Titled.ToString("N0") ?? "—")"
+                      Icon="@Icons.Material.Filled.WorkspacePremium" />
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <StatCard Title="Egresados" Value="@(_summary?.Graduates.ToString("N0") ?? "—")"
+                      Icon="@Icons.Material.Filled.School" />
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <StatCard Title="Eficiencia de titulación"
+                      Value="@($"{_summary?.TitulationRate ?? 0:0.0} %")"
+                      Subtitle="Titulados entre egresados"
+                      Icon="@Icons.Material.Filled.Percent" />
+        </MudItem>
+    </MudGrid>
+
+    <SectionCard Flush="true" FullHeight="false">
+        <DataToolbar @bind-Search="_search" Placeholder="Buscar por alumno, matrícula o modalidad…"
+                     Count="Filtered.Count" Total="_titulations.Count" OnExport="ExportAsync" />
+
+        <MudDataGrid T="TitulationListItem" Items="Filtered" Hover="true" Dense="true" Elevation="0" SortMode="SortMode.Single">
+            <Columns>
+                <PropertyColumn Property="x => x.StudentEnrollmentNumber" Title="Matrícula" />
+                <PropertyColumn Property="x => x.StudentName" Title="Alumno" />
+                <PropertyColumn Property="x => x.Career" Title="Carrera" />
+                <PropertyColumn Property="x => x.Modality" Title="Modalidad" />
+                <PropertyColumn Property="x => x.Assessor" Title="Asesor" />
+                <TemplateColumn Title="Título expedido" SortBy="x => x.TitleExpeditionDate">
+                    <CellTemplate>@context.Item.TitleExpeditionDate.ToString("dd/MM/yyyy")</CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Cédula" Sortable="false">
+                    <CellTemplate>
+                        @if (context.Item.HasProfessionalLicence)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Success">
+                                @(context.Item.ProfessionalLicenceNumber ?? "Sí")
+                            </MudChip>
+                        }
+                        else
+                        {
+                            <span class="sipau-field-empty">sin cédula</span>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+            <NoRecordsContent>
+                <EmptyState Icon="@Icons.Material.Filled.SearchOff" Title="Sin coincidencias"
+                            Description="Ninguna titulación coincide con la búsqueda." />
+            </NoRecordsContent>
+        </MudDataGrid>
+    </SectionCard>
+}
+
+@code {
+    private IReadOnlyList<TitulationListItem> _titulations = [];
+    private TitulationSummary? _summary;
+    private bool _loading = true;
+    private string _search = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _titulations = await CaptureSvc.GetTitulationsAsync();
+        _summary = await ChartsSvc.GetTitulationSummaryAsync();
+        _loading = false;
+    }
+
+    private List<TitulationListItem> Filtered => _titulations.Where(Matches).ToList();
+
+    private bool Matches(TitulationListItem item)
+    {
+        if (string.IsNullOrWhiteSpace(_search)) return true;
+        var query = _search.Trim();
+        return item.StudentName.Contains(query, StringComparison.CurrentCultureIgnoreCase)
+            || item.StudentEnrollmentNumber.Contains(query, StringComparison.OrdinalIgnoreCase)
+            || item.Modality.Contains(query, StringComparison.CurrentCultureIgnoreCase);
+    }
+
+    private async Task ExportAsync()
+    {
+        var csv = CsvExport.Build(Filtered,
+            ("Matrícula", t => t.StudentEnrollmentNumber),
+            ("Alumno", t => t.StudentName),
+            ("Carrera", t => t.Career),
+            ("Modalidad", t => t.Modality),
+            ("Asesor", t => t.Assessor),
+            ("Egreso", t => t.CreditsEgressDate.ToString("dd/MM/yyyy")),
+            ("Título expedido", t => t.TitleExpeditionDate.ToString("dd/MM/yyyy")),
+            ("Cédula", t => t.HasProfessionalLicence ? t.ProfessionalLicenceNumber ?? "Sí" : "No"));
+
+        await JS.InvokeVoidAsync("sigieDownload", CsvExport.FileName("titulacion"), csv);
+    }
+}

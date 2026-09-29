@@ -88,10 +88,28 @@
             </TemplateColumn>
             <TemplateColumn Title="Acción" CellClass="sipau-cell-end" HeaderClass="sipau-cell-end" Sortable="false">
                 <CellTemplate>
-                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.Edit" OnClick="() => OpenEdit(context.Item)">
-                        Editar
-                    </MudButton>
+                    <MudStack Row="true" Spacing="1" Justify="Justify.FlexEnd">
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Edit" OnClick="() => OpenEdit(context.Item)">
+                            Editar
+                        </MudButton>
+                        @if (context.Item.IsActive)
+                        {
+                            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error"
+                                       StartIcon="@Icons.Material.Filled.PersonOff"
+                                       OnClick="() => SetActiveAsync(context.Item, false)">
+                                Dar de baja
+                            </MudButton>
+                        }
+                        else
+                        {
+                            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Success"
+                                       StartIcon="@Icons.Material.Filled.PersonAdd"
+                                       OnClick="() => SetActiveAsync(context.Item, true)">
+                                Reactivar
+                            </MudButton>
+                        }
+                    </MudStack>
                 </CellTemplate>
             </TemplateColumn>
         </Columns>
@@ -158,6 +176,45 @@
     }
     private List<SystemUser> UsersFiltered => _users.Where(Matches).ToList();
     
+    /// <summary>
+    /// Suspending is the reversible alternative to deleting: the person stops being able to sign
+    /// in, and everything they captured stays attributed to them. Asking first, because the
+    /// affected person is locked out the moment it is confirmed.
+    /// </summary>
+    private async Task SetActiveAsync(SystemUser user, bool isActive)
+    {
+        if (isActive)
+        {
+            var confirmed = await DialogService.ShowMessageBoxAsync(
+                "Reactivar usuario",
+                $"«{user.UserName}» volverá a poder iniciar sesión.",
+                yesText: "Reactivar", cancelText: "Cancelar");
+            if (confirmed != true) return;
+        }
+        else
+        {
+            var confirmed = await DialogService.ShowMessageBoxAsync(
+                "Dar de baja al usuario",
+                $"«{user.UserName}» dejará de poder iniciar sesión. Lo que capturó se conserva y la baja se puede revertir.",
+                yesText: "Dar de baja", cancelText: "Cancelar");
+            if (confirmed != true) return;
+        }
+
+        var requesterKey = await _securityService.GetRequesterKeyAsync();
+        var result = await _userService.SetActiveAsync(requesterKey, user.Id, isActive);
+
+        if (!result.Success)
+        {
+            Snackbar.Add(result.Error ?? "No fue posible cambiar el estatus del usuario.", Severity.Error);
+            return;
+        }
+
+        await ReloadAsync(requesterKey);
+        Snackbar.Add(isActive
+            ? $"«{user.UserName}» quedó reactivado."
+            : $"«{user.UserName}» quedó dado de baja.", Severity.Success);
+    }
+
     private Task OpenCreate() => ShowDialog("Nuevo Usuario", new UserFormViewModel(), created: true);
 
     private Task OpenEdit(SystemUser user) => ShowDialog("Editar Usuario", new UserFormViewModel

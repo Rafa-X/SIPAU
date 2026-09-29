@@ -1,15 +1,123 @@
 @page "/datacapture/extension/consult"
 @attribute [Authorize]
+@using UPZMG.Implementations.DataCapture
+@inject IDataCaptureService CaptureSvc
+@inject IJSRuntime JS
 
 <PageTitle>Consultar vinculación — SIPAU</PageTitle>
 
 <PageHeader Title="Consultar vinculación" BackHref="/datacapture"
-            Subtitle="Esta área todavía no guarda registros propios" />
+            Subtitle="Convenios y proyectos registrados por periodo" />
 
-<SectionCard FullHeight="false">
-    <EmptyState Icon="@Icons.Material.Filled.Diversity3"
-                Title="Todavía no hay registros de esta área"
-                Description="Los proyectos de vinculación y extensión aún no tienen tabla propia en el sistema. Mientras tanto se reportan en el formato 911.10 · Institución, y de ahí los toma el Informe de Junta.">
-        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/reports">Ir a los formatos</MudButton>
-    </EmptyState>
-</SectionCard>
+@if (_loading)
+{
+    <LoadingState Text="Leyendo los proyectos registrados…" />
+}
+else if (_projects.Count == 0)
+{
+    <SectionCard FullHeight="false">
+        <EmptyState Icon="@Icons.Material.Filled.Handshake"
+                    Title="Sin proyectos registrados"
+                    Description="Captura un proyecto de vinculación y aparecerá aquí. Si tu área no participa en vinculación, el listado no se muestra.">
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/datacapture/extension">
+                Capturar proyecto
+            </MudButton>
+        </EmptyState>
+    </SectionCard>
+}
+else
+{
+    <MudGrid Class="mb-2">
+        <MudItem xs="12" sm="4">
+            <StatCard Title="Proyectos" Value="@_projects.Count.ToString("N0")" Icon="@Icons.Material.Filled.Handshake" />
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <StatCard Title="Organizaciones" Value="@Organizations.ToString("N0")" Icon="@Icons.Material.Filled.Business" />
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <StatCard Title="Horas acreditadas" Value="@TotalHours.ToString("N0")" Icon="@Icons.Material.Filled.Schedule" />
+        </MudItem>
+    </MudGrid>
+
+    <SectionCard Flush="true" FullHeight="false">
+        <DataToolbar @bind-Search="_search" Placeholder="Buscar por organización, proyecto o alumno…"
+                     Count="Filtered.Count" Total="_projects.Count" OnExport="ExportAsync" />
+
+        <MudDataGrid T="OutreachListItem" Items="Filtered" Hover="true" Dense="true" Elevation="0" SortMode="SortMode.Single">
+            <Columns>
+                <PropertyColumn Property="x => x.OrganizationName" Title="Organización" />
+                <PropertyColumn Property="x => x.ProjectName" Title="Proyecto" />
+                <PropertyColumn Property="x => x.Sector" Title="Sector" />
+                <PropertyColumn Property="x => x.ActivityType" Title="Actividad" />
+                <PropertyColumn Property="x => x.Period" Title="Periodo" />
+                <TemplateColumn Title="Alumno" SortBy="x => x.StudentName ?? string.Empty">
+                    <CellTemplate>
+                        @if (context.Item.StudentName is { } name)
+                        {
+                            <text>@name</text>
+                            <div class="sipau-field-empty">@context.Item.StudentEnrollmentNumber</div>
+                        }
+                        else
+                        {
+                            <span class="sipau-field-empty">sin alumno ligado</span>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+                <PropertyColumn Property="x => x.AccreditedHours" Title="Horas" />
+            </Columns>
+            <NoRecordsContent>
+                <EmptyState Icon="@Icons.Material.Filled.SearchOff" Title="Sin coincidencias"
+                            Description="Ningún proyecto coincide con la búsqueda." />
+            </NoRecordsContent>
+        </MudDataGrid>
+    </SectionCard>
+}
+
+@code {
+    private IReadOnlyList<OutreachListItem> _projects = [];
+    private bool _loading = true;
+    private string _search = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _projects = await CaptureSvc.GetOutreachListAsync();
+        _loading = false;
+    }
+
+    private int Organizations => _projects
+        .Select(p => p.OrganizationName)
+        .Distinct(StringComparer.CurrentCultureIgnoreCase)
+        .Count();
+
+    private int TotalHours => _projects.Sum(p => p.AccreditedHours);
+
+    private List<OutreachListItem> Filtered => _projects.Where(Matches).ToList();
+
+    private bool Matches(OutreachListItem project)
+    {
+        if (string.IsNullOrWhiteSpace(_search)) return true;
+        var query = _search.Trim();
+        return project.OrganizationName.Contains(query, StringComparison.CurrentCultureIgnoreCase)
+            || project.ProjectName.Contains(query, StringComparison.CurrentCultureIgnoreCase)
+            || (project.StudentName?.Contains(query, StringComparison.CurrentCultureIgnoreCase) ?? false)
+            || (project.StudentEnrollmentNumber?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false);
+    }
+
+    private async Task ExportAsync()
+    {
+        var csv = CsvExport.Build(Filtered,
+            ("Organización", p => p.OrganizationName),
+            ("Sector", p => p.Sector),
+            ("Tamaño", p => p.CompanySize),
+            ("Actividad", p => p.ActivityType),
+            ("Proyecto", p => p.ProjectName),
+            ("Periodo", p => p.Period),
+            ("Alumno", p => p.StudentName ?? string.Empty),
+            ("Matrícula", p => p.StudentEnrollmentNumber ?? string.Empty),
+            ("Inicio", p => p.StartDate?.ToString("dd/MM/yyyy") ?? string.Empty),
+            ("Término", p => p.EndDate?.ToString("dd/MM/yyyy") ?? string.Empty),
+            ("Horas acreditadas", p => p.AccreditedHours));
+
+        await JS.InvokeVoidAsync("sigieDownload", CsvExport.FileName("vinculacion"), csv);
+    }
+}

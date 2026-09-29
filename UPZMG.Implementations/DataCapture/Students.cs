@@ -2,7 +2,7 @@ namespace UPZMG.Implementations.DataCapture;
 
 using UPZMG.Shared.Enums;
 
-public sealed class CreateStudent
+public class CreateStudent
 {
     public required Guid RequesterKey { get; set; }
     public required string EnrollmentNumber { get; set; }
@@ -25,6 +25,15 @@ public sealed class CreateStudent
     public StudentStatus Status { get; set; } = StudentStatus.Activo;
     public string? BirthCountry { get; set; }
     public string? BirthState { get; set; }
+}
+
+/// <summary>
+/// A correction to a student already captured. It carries the same fields as the capture:
+/// an area that can register a student can fix a typo in it without a second form.
+/// </summary>
+public sealed class UpdateStudent : CreateStudent
+{
+    public required Guid Id { get; set; }
 }
 
 /// <summary>Search + pagination filters for the students query listing.</summary>

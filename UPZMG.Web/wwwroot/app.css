@@ -1667,3 +1667,37 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
     font-family: var(--sipau-font-narrow); font-weight: 700;
     color: var(--sipau-plano);
 }
+
+/* Read-only master data: a definition list that reads like a form without pretending to be one. */
+.sipau-datalist {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 0; margin: 0; padding: 0;
+}
+.sipau-field {
+    padding: 14px 18px;
+    border-top: 1px solid var(--sipau-hairline);
+}
+.sipau-field-label {
+    font-family: var(--sipau-font-narrow);
+    font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--sipau-plano);
+    margin: 0 0 2px;
+}
+.sipau-field-value { margin: 0; font-size: 0.9375rem; }
+.sipau-field-empty { color: var(--mud-palette-text-disabled); font-style: italic; }
+
+/* Live totals under the finance form: the parts add up in front of whoever captures them. */
+.sipau-finance-totals {
+    display: flex; flex-wrap: wrap; gap: 32px;
+    padding: 16px 18px;
+    border-top: 2px solid var(--sipau-plano);
+    background: var(--sipau-wash);
+}
+.sipau-finance-totals b { display: block; font-size: 1.125rem; font-variant-numeric: tabular-nums; }
+.sipau-negative { color: var(--sipau-rosa); }
+
+/* The three SII indicators, side by side with the figure that explains each one. */
+.sipau-indicators { display: grid; gap: 18px; }
+.sipau-indicators > div { display: flex; flex-direction: column; }
+.sipau-indicators b { font-size: 1.5rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.sipau-indicator-note { font-size: 0.8125rem; color: var(--mud-palette-text-secondary); margin-top: 2px; }

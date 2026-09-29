@@ -1,4 +1,5 @@
 @page "/datacapture/class-groups"
+@page "/datacapture/class-groups/{Id:guid}/editar"
 @attribute [Authorize]
 @using System.Text.RegularExpressions
 @using UPZMG.Implementations.DataCapture
@@ -11,11 +12,27 @@
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
 
-<PageTitle>Captura de Grupos de Clase — SIPAU</PageTitle>
+<PageTitle>@(IsEditing ? "Corregir grupo" : "Captura de Grupos de Clase") — SIPAU</PageTitle>
 
-<PageHeader Eyebrow="Captura de datos" Title="Grupos de Clase"
-            Subtitle="Registra los grupos, responsables, espacios y horarios del periodo activo"
-            BackHref="/datacapture" />
+<PageHeader Eyebrow="Captura de datos"
+            Title="@(IsEditing ? "Corregir grupo de clase" : "Grupos de Clase")"
+            Subtitle="@(IsEditing ? "Al guardar se revisa otra vez que el espacio no se empalme" : "Registra los grupos, responsables, espacios y horarios del periodo activo")"
+            BackHref="@(IsEditing ? "/datacapture/class-groups/consult" : "/datacapture")" />
+
+@if (IsEditing && _notFound)
+{
+    <SectionCard FullHeight="false">
+        <EmptyState Icon="@Icons.Material.Filled.Class"
+                    Title="No se encontró el grupo"
+                    Description="Puede que se haya eliminado, o que tu área no tenga permiso para consultarlo.">
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/datacapture/class-groups/consult">
+                Volver a la consulta
+            </MudButton>
+        </EmptyState>
+    </SectionCard>
+}
+else
+{
 
 <MudPaper Elevation="1" Class="pa-6">
     <MudForm @ref="_form">
@@ -132,14 +149,22 @@
 
         <MudStack Row="true" Spacing="2" Class="mt-6">
             <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Save"
-                       OnClick="Submit">Guardar grupo</MudButton>
+                       Disabled="_saving" OnClick="Submit">@(IsEditing ? "Guardar cambios" : "Guardar grupo")</MudButton>
             <MudButton Variant="Variant.Outlined" OnClick="@(() => Nav.NavigateTo("/datacapture"))">Cancelar</MudButton>
         </MudStack>
     </MudForm>
 </MudPaper>
 
+}
+
 @code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private bool IsEditing => Id is not null;
+
     private MudForm _form = null!;
+    private bool _notFound;
+    private bool _saving;
     private ClassGroupFormViewModel _model = new();
     private IReadOnlyList<PeriodLookupOption> _periods = [];
     private IReadOnlyList<LookupOption> _careers = [];
@@ -149,7 +174,6 @@
 
     protected override async Task OnInitializedAsync()
     {
-        AddSchedule();
         var periodsTask = GeneralDataSvc.GetPeriodsAsync();
         var careersTask = GeneralDataSvc.GetCareersSelectableAsync();
         var teachersTask = GeneralDataSvc.GetTeachersAsync();
@@ -160,7 +184,56 @@
         _careers = await careersTask;
         _teachers = await teachersTask;
         _facilities = await facilitiesTask;
+
+        if (Id is { } id) await LoadAsync(id);
+        else AddSchedule();
     }
+
+    // Editing starts from what is stored; the schedule comes back as text and is parsed into rows.
+    private async Task LoadAsync(Guid id)
+    {
+        var group = await CaptureSvc.GetClassGroupAsync(id);
+        if (group is null)
+        {
+            _notFound = true;
+            AddSchedule();
+            return;
+        }
+
+        _courses = await GeneralDataSvc.GetCoursesAsync(group.CareerId);
+
+        _model = new ClassGroupFormViewModel
+        {
+            PeriodId = group.PeriodId,
+            CareerId = group.CareerId,
+            CourseId = group.CourseId,
+            TeacherId = group.TeacherId,
+            FacilityId = group.FacilityId,
+            IsTheory = group.IsTheory,
+            Capacity = group.Capacity,
+            Schedules = [.. group.Schedule.Select(ToScheduleRow)],
+        };
+
+        if (_model.Schedules.Count == 0) AddSchedule();
+    }
+
+    // "08:00-10:00 hrs" is how the schedule is stored; the form needs the two ends apart.
+    private static ScheduleItemViewModel ToScheduleRow(Schedule schedule)
+    {
+        var row = new ScheduleItemViewModel
+        {
+            Day = Enum.TryParse<Days>(schedule.Day, ignoreCase: true, out var day) ? day : null,
+        };
+        var match = Regex.Match(schedule.Time ?? string.Empty, @"(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})");
+        if (!match.Success) return row;
+
+        row.StartTime = ParseTime(match.Groups[1].Value, match.Groups[2].Value);
+        row.EndTime = ParseTime(match.Groups[3].Value, match.Groups[4].Value);
+        return row;
+    }
+
+    private static ScheduleTime? ParseTime(string hour, string minute) =>
+        Enum.TryParse<ScheduleTime>($"_{int.Parse(hour):00}_{minute}", out var time) ? time : null;
 
     private async Task OnCareerChanged(Guid? careerId)
     {
@@ -209,11 +282,9 @@
             return (end - start).TotalHours;
         });
 
-        ClassGroups? result;
-        try
+        var request = new UpdateClassGroup
         {
-            result = await CaptureSvc.CreateClassGroup(new CreateClassGroup
-            {
+                Id = Id ?? Guid.Empty,
                 RequesterKey = await SecuritySvc.GetRequesterKeyAsync(),
                 PeriodId = _model.PeriodId.Value,
                 CareerId = _model.CareerId.Value,
@@ -227,13 +298,25 @@
                 {
                     Day = s.Day?.ToString() ?? string.Empty,
                     Time = $"{FormatTime(s.StartTime)}-{FormatTime(s.EndTime)} hrs"
-                }).ToList()
-            });
+                }).ToList(),
+        };
+
+        ClassGroups? result;
+        _saving = true;
+        try
+        {
+            result = IsEditing
+                ? await CaptureSvc.UpdateClassGroup(request)
+                : await CaptureSvc.CreateClassGroup(request);
         }
         catch (InvalidOperationException ex)
         {
             Snackbar.Add(ex.Message, Severity.Error);
             return;
+        }
+        finally
+        {
+            _saving = false;
         }
 
         if (result is null)
@@ -242,7 +325,7 @@
             return;
         }
 
-        Snackbar.Add("Grupo de clase guardado correctamente.", Severity.Success);
-        Nav.NavigateTo("/datacapture");
+        Snackbar.Add(IsEditing ? "Cambios del grupo guardados correctamente." : "Grupo de clase guardado correctamente.", Severity.Success);
+        Nav.NavigateTo(IsEditing ? "/datacapture/class-groups/consult" : "/datacapture");
     }
 }

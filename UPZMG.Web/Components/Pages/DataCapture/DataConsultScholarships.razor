@@ -1,0 +1,112 @@
+@page "/datacapture/scholarships/consult"
+@attribute [Authorize]
+@using UPZMG.Implementations.DataCapture
+@inject IDataCaptureService CaptureSvc
+@inject IJSRuntime JS
+
+<PageTitle>Consultar becas — SIPAU</PageTitle>
+
+<PageHeader Title="Consultar becas" BackHref="/datacapture"
+            Subtitle="Becas asignadas por alumno, programa y periodo" />
+
+@if (_loading)
+{
+    <LoadingState Text="Leyendo las becas registradas…" />
+}
+else if (_scholarships.Count == 0)
+{
+    <SectionCard FullHeight="false">
+        <EmptyState Icon="@Icons.Material.Filled.Savings"
+                    Title="Sin becas registradas"
+                    Description="Captura una beca y aparecerá aquí. Si tu área no es Servicios Estudiantiles, el listado no se muestra.">
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/datacapture/scholarships">
+                Capturar beca
+            </MudButton>
+        </EmptyState>
+    </SectionCard>
+}
+else
+{
+    <MudGrid Class="mb-2">
+        <MudItem xs="12" sm="4">
+            <StatCard Title="Becas" Value="@_scholarships.Count.ToString("N0")" Icon="@Icons.Material.Filled.Savings" />
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <StatCard Title="Alumnos becados" Value="@Beneficiaries.ToString("N0")" Icon="@Icons.Material.Filled.School" />
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <StatCard Title="Monto total" Value="@TotalAmount.ToString("C0", Mx)" Icon="@Icons.Material.Filled.Payments" />
+        </MudItem>
+    </MudGrid>
+
+    <SectionCard Flush="true" FullHeight="false">
+        <DataToolbar @bind-Search="_search" Placeholder="Buscar por alumno, matrícula o programa…"
+                     Count="Filtered.Count" Total="_scholarships.Count" OnExport="ExportAsync" />
+
+        <MudDataGrid T="ScholarshipListItem" Items="Filtered" Hover="true" Dense="true" Elevation="0" SortMode="SortMode.Single">
+            <Columns>
+                <PropertyColumn Property="x => x.StudentEnrollmentNumber" Title="Matrícula" />
+                <PropertyColumn Property="x => x.StudentName" Title="Alumno" />
+                <PropertyColumn Property="x => x.Career" Title="Carrera" />
+                <PropertyColumn Property="x => x.Program" Title="Programa" />
+                <PropertyColumn Property="x => x.Source" Title="Fuente" />
+                <TemplateColumn Title="Monto" SortBy="x => x.Amount">
+                    <CellTemplate>@context.Item.Amount.ToString("C2", Mx)</CellTemplate>
+                </TemplateColumn>
+                <PropertyColumn Property="x => x.Period" Title="Periodo" />
+            </Columns>
+            <NoRecordsContent>
+                <EmptyState Icon="@Icons.Material.Filled.SearchOff" Title="Sin coincidencias"
+                            Description="Ninguna beca coincide con la búsqueda." />
+            </NoRecordsContent>
+        </MudDataGrid>
+    </SectionCard>
+}
+
+@code {
+    private static readonly System.Globalization.CultureInfo Mx = new("es-MX");
+
+    private IReadOnlyList<ScholarshipListItem> _scholarships = [];
+    private bool _loading = true;
+    private string _search = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _scholarships = await CaptureSvc.GetScholarshipsAsync();
+        _loading = false;
+    }
+
+    private int Beneficiaries => _scholarships
+        .Select(s => s.StudentEnrollmentNumber)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .Count();
+
+    private decimal TotalAmount => _scholarships.Sum(s => s.Amount);
+
+    private List<ScholarshipListItem> Filtered => _scholarships.Where(Matches).ToList();
+
+    private bool Matches(ScholarshipListItem item)
+    {
+        if (string.IsNullOrWhiteSpace(_search)) return true;
+        var query = _search.Trim();
+        return item.StudentName.Contains(query, StringComparison.CurrentCultureIgnoreCase)
+            || item.StudentEnrollmentNumber.Contains(query, StringComparison.OrdinalIgnoreCase)
+            || item.Program.Contains(query, StringComparison.CurrentCultureIgnoreCase);
+    }
+
+    private async Task ExportAsync()
+    {
+        var csv = CsvExport.Build(Filtered,
+            ("Matrícula", s => s.StudentEnrollmentNumber),
+            ("Alumno", s => s.StudentName),
+            ("Carrera", s => s.Career),
+            ("Programa", s => s.Program),
+            ("Fuente", s => s.Source),
+            ("Monto", s => s.Amount),
+            ("Periodo", s => s.Period),
+            ("Objetivo", s => s.Objective ?? string.Empty),
+            ("Fecha de asignación", s => s.AssignedDate?.ToString("dd/MM/yyyy") ?? string.Empty));
+
+        await JS.InvokeVoidAsync("sigieDownload", CsvExport.FileName("becas"), csv);
+    }
+}
