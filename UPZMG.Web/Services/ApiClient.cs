@@ -28,17 +28,6 @@ public class ApiClient(IHttpClientFactory httpClientFactory, ApiTokenService tok
         }
     }
 
-    // Example API call (you can create as many as you need)
-    public async Task<List<string>> GetExampleDataAsync(Guid userId)
-    {
-        var client = await CreateAuthorizedClientAsync(userId);
-
-        // Example endpoint: GET /example
-        var result = await client.GetFromJsonAsync<List<string>>("example");
-
-        return result ?? [];
-    }
-
     public async Task<UserPermissions> GetPermissionsSnapshotAsync(Guid userId)
     {
         var client = await CreateAuthorizedClientAsync(userId);

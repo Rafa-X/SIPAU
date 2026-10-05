@@ -96,7 +96,16 @@ public class ReportsRepository(AppDBContext db)
             db.Reports.Add(report);
         }
 
-        await db.SaveChangesAsync();
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Somebody else wrote this capture between our read and our write. Whether they
+            // submitted it or only saved, ours is no longer an informed change.
+            return new SaveReportResult(SaveReportOutcome.Locked);
+        }
 
         return new SaveReportResult(
             request.ReportId is null ? SaveReportOutcome.Created : SaveReportOutcome.Updated,

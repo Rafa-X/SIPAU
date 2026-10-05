@@ -18,7 +18,8 @@ public class AuthController(
     UsersRepository usersRepository, 
     SecurityRepository securityRepository, 
     IConfiguration _cfg, 
-    ISecurityEventLogger _securityLogger) : ControllerBase
+    ISecurityEventLogger _securityLogger,
+    UPZMG.API.Security.LoginThrottle loginThrottle) : ControllerBase
 {
     public record TokenExchangeRequest(Guid UserId, string SharedSecret);
     public record WebLoginRequest(string Email, string Password, string SharedSecret);
@@ -44,10 +45,19 @@ public class AuthController(
             return Unauthorized();
         }
 
+        if (loginThrottle.RetryAfter(email) is { } wait)
+        {
+            _securityLogger.LogTokenExchangeRejected(Guid.Empty, "Web login temporarily blocked");
+            Response.Headers.RetryAfter = ((int)Math.Ceiling(wait.TotalSeconds)).ToString();
+            return StatusCode(StatusCodes.Status429TooManyRequests,
+                new { message = "Demasiados intentos fallidos. Espera unos minutos e inténtalo de nuevo." });
+        }
+
         var user = await usersRepository.GetSystemUserByEmailAsync(email);
         if (user.Id == Guid.Empty || user.IsActive == false || user.Role is null || string.IsNullOrWhiteSpace(user.Password))
         {
             _securityLogger.LogTokenExchangeRejected(Guid.Empty, "Web login user not found or inactive");
+            loginThrottle.RegisterFailure(email);
             return Unauthorized();
         }
 
@@ -64,9 +74,11 @@ public class AuthController(
         if (passwordResult == PasswordVerificationResult.Failed)
         {
             _securityLogger.LogTokenExchangeRejected(user.Id, "Web login invalid password");
+            loginThrottle.RegisterFailure(email);
             return Unauthorized();
         }
 
+        loginThrottle.RegisterSuccess(email);
         return Ok(new WebLoginResponse(user.Id, responseEmail, responseRole));
     }
 

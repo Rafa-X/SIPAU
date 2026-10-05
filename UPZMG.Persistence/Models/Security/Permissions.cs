@@ -13,6 +13,13 @@ public class Permission
     public Guid Id { get; set; }
     [MaxLength(50)]
     public string Name { get; set; } = null!;
+
+    /// <summary>How the administration screen lists it; the name alone is a slug.</summary>
+    [MaxLength(80)]
+    public string? DisplayName { get; set; }
+
+    [MaxLength(200)]
+    public string? Description { get; set; }
 }
 
 public class ReportsPermission

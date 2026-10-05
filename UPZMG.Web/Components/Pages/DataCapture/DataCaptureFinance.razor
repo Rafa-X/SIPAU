@@ -1,57 +1,173 @@
 @page "/datacapture/finance"
-@attribute [Authorize]
+@attribute [Authorize(Roles = "Admin")]
+@using UPZMG.Implementations.DataCapture
+@inject IDataCaptureService CaptureSvc
+@inject ISecurityService SecuritySvc
+@inject ISnackbar Snackbar
 @inject NavigationManager Nav
+
+@*
+    One summary per fiscal year: saving a year that already exists updates it instead of
+    creating a second budget. Totals are computed here and recomputed on the server; the
+    area never captures a total that could disagree with its own parts.
+*@
 
 <PageTitle>Captura de Finanzas — SIPAU</PageTitle>
 
-<PageHeader Eyebrow="Captura de datos" Title="Captura de Finanzas" Subtitle="Resumen financiero anual" BackHref="/datacapture" />
+<PageHeader Eyebrow="Captura de datos" Title="Captura de Finanzas"
+            Subtitle="Resumen financiero anual de la institución" BackHref="/datacapture">
+    <Actions>
+        <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/datacapture/finance/consult"
+                   StartIcon="@Icons.Material.Filled.ListAlt">Consultar ejercicios</MudButton>
+    </Actions>
+</PageHeader>
 
-<MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4">
-    <b>Esta área todavía no tiene dónde guardarse.</b>
-    El formulario muestra los campos acordados, pero el sistema aún no tiene tabla para ellos, así que
-    el botón de guardar está deshabilitado. Mientras tanto estas cifras se reportan en
-    el formato 911.10 · Institución, apartado de finanzas, y de ahí las toma el Informe de Junta.
-    <MudLink Href="/reports" Typo="Typo.body2" Class="ml-1">Ir a los formatos</MudLink>
-</MudAlert>
+@if (_existing is not null)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-4">
+        El ejercicio <b>@_fiscalYear</b> ya tiene un resumen capturado
+        (última modificación @_existing.LastModified.ToLocalTime().ToString("dd/MM/yyyy HH:mm")).
+        Si guardas, se <b>actualiza</b>: la institución tiene un solo juego de cifras por año.
+    </MudAlert>
+}
 
 <MudPaper Elevation="1" Class="pa-6">
     <MudForm @ref="_form">
         <MudGrid>
             <MudItem md="4">
-                <MudNumericField T="int" @bind-Value="_model.FiscalYear" Label="Ejercicio fiscal" Min="2000" Max="2100" />
+                <MudNumericField T="int" Value="_fiscalYear" ValueChanged="OnYearChanged" Label="Ejercicio fiscal"
+                                 Min="2000" Max="2100" Immediate="true" />
             </MudItem>
 
             <MudItem xs="12"><MudDivider Class="my-2" /><MudText Typo="Typo.subtitle1">Ingresos por fuente</MudText></MudItem>
-            <MudItem xs="12" md="3"><MudNumericField T="decimal" @bind-Value="_model.FederalIncome" Label="Federal" Min="0" Format="N2" Adornment="Adornment.Start" AdornmentText="$" /></MudItem>
-            <MudItem xs="12" md="3"><MudNumericField T="decimal" @bind-Value="_model.StateIncome" Label="Estatal" Min="0" Format="N2" Adornment="Adornment.Start" AdornmentText="$" /></MudItem>
-            <MudItem xs="12" md="3"><MudNumericField T="decimal" @bind-Value="_model.OwnIncomeEnrollment" Label="Propios: inscripciones" Min="0" Format="N2" Adornment="Adornment.Start" AdornmentText="$" /></MudItem>
-            <MudItem xs="12" md="3"><MudNumericField T="decimal" @bind-Value="_model.OwnIncomeServices" Label="Propios: servicios" Min="0" Format="N2" Adornment="Adornment.Start" AdornmentText="$" /></MudItem>
+            <MudItem xs="12" md="3"><MudNumericField T="decimal" @bind-Value="_federal" Label="Federal" Min="0" Format="N2" Adornment="Adornment.Start" AdornmentText="$" Immediate="true" /></MudItem>
+            <MudItem xs="12" md="3"><MudNumericField T="decimal" @bind-Value="_state" Label="Estatal" Min="0" Format="N2" Adornment="Adornment.Start" AdornmentText="$" Immediate="true" /></MudItem>
+            <MudItem xs="12" md="3"><MudNumericField T="decimal" @bind-Value="_enrollment" Label="Propios: inscripciones" Min="0" Format="N2" Adornment="Adornment.Start" AdornmentText="$" Immediate="true" /></MudItem>
+            <MudItem xs="12" md="3"><MudNumericField T="decimal" @bind-Value="_services" Label="Propios: servicios" Min="0" Format="N2" Adornment="Adornment.Start" AdornmentText="$" Immediate="true" /></MudItem>
 
             <MudItem xs="12"><MudDivider Class="my-2" /><MudText Typo="Typo.subtitle1">Egresos por tipo</MudText></MudItem>
-            <MudItem xs="12" md="3"><MudNumericField T="decimal" @bind-Value="_model.PayrollExpense" Label="Nómina" Min="0" Format="N2" Adornment="Adornment.Start" AdornmentText="$" /></MudItem>
-            <MudItem xs="12" md="3"><MudNumericField T="decimal" @bind-Value="_model.MaterialsExpense" Label="Materiales" Min="0" Format="N2" Adornment="Adornment.Start" AdornmentText="$" /></MudItem>
-            <MudItem xs="12" md="3"><MudNumericField T="decimal" @bind-Value="_model.ServicesExpense" Label="Servicios" Min="0" Format="N2" Adornment="Adornment.Start" AdornmentText="$" /></MudItem>
-            <MudItem xs="12" md="3"><MudNumericField T="decimal" @bind-Value="_model.InvestmentExpense" Label="Inversión" Min="0" Format="N2" Adornment="Adornment.Start" AdornmentText="$" /></MudItem>
+            <MudItem xs="12" md="3"><MudNumericField T="decimal" @bind-Value="_payroll" Label="Nómina" Min="0" Format="N2" Adornment="Adornment.Start" AdornmentText="$" Immediate="true" /></MudItem>
+            <MudItem xs="12" md="3"><MudNumericField T="decimal" @bind-Value="_materials" Label="Materiales" Min="0" Format="N2" Adornment="Adornment.Start" AdornmentText="$" Immediate="true" /></MudItem>
+            <MudItem xs="12" md="3"><MudNumericField T="decimal" @bind-Value="_servicesExpense" Label="Servicios" Min="0" Format="N2" Adornment="Adornment.Start" AdornmentText="$" Immediate="true" /></MudItem>
+            <MudItem xs="12" md="3"><MudNumericField T="decimal" @bind-Value="_investment" Label="Inversión" Min="0" Format="N2" Adornment="Adornment.Start" AdornmentText="$" Immediate="true" /></MudItem>
 
             <MudItem xs="12">
-                <MudTextField @bind-Value="_model.Notes" Label="Notas" Lines="3" />
+                <MudTextField @bind-Value="_notes" Label="Notas" Lines="3" MaxLength="1000" />
             </MudItem>
         </MudGrid>
 
+        <div class="sipau-finance-totals mt-4">
+            <div>
+                <span class="sipau-field-label">Total de ingresos</span>
+                <b>@TotalIncome.ToString("C0", Mx)</b>
+            </div>
+            <div>
+                <span class="sipau-field-label">Total de egresos</span>
+                <b>@TotalExpense.ToString("C0", Mx)</b>
+            </div>
+            <div>
+                <span class="sipau-field-label">Balance</span>
+                <b class="@(Balance < 0 ? "sipau-negative" : null)">@Balance.ToString("C0", Mx)</b>
+            </div>
+        </div>
+
+        @if (Balance < 0)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-3">
+                Los egresos superan a los ingresos en @((-Balance).ToString("C0", Mx)). Se puede guardar:
+                un ejercicio deficitario es un hecho, no un error de captura, pero conviene explicarlo en las notas.
+            </MudAlert>
+        }
+
         <MudStack Row="true" Spacing="2" Class="mt-6">
-            <MudTooltip Text="Disponible cuando el área tenga almacenamiento propio" Placement="Placement.Top">
-                <span>
-                    <MudButton Variant="Variant.Filled" Color="Color.Secondary"
-                               StartIcon="@Icons.Material.Filled.Save" Disabled="true">Guardar resumen</MudButton>
-                </span>
-            </MudTooltip>
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Save"
+                       Disabled="_saving" OnClick="Submit">Guardar resumen</MudButton>
             <MudButton Variant="Variant.Outlined" OnClick="@(() => Nav.NavigateTo("/datacapture"))">Cancelar</MudButton>
         </MudStack>
     </MudForm>
 </MudPaper>
 
 @code {
-    private MudForm _form = null!;
-    private FinanceFormViewModel _model = new() { FiscalYear = DateTime.Now.Year };
+    private static readonly System.Globalization.CultureInfo Mx = new("es-MX");
 
+    private MudForm _form = null!;
+    private bool _saving;
+
+    private IReadOnlyList<FinanceListItem> _summaries = [];
+    private FinanceListItem? _existing;
+
+    private int _fiscalYear = DateTime.Now.Year;
+    private decimal _federal, _state, _enrollment, _services;
+    private decimal _payroll, _materials, _servicesExpense, _investment;
+    private string _notes = string.Empty;
+
+    private decimal TotalIncome => _federal + _state + _enrollment + _services;
+    private decimal TotalExpense => _payroll + _materials + _servicesExpense + _investment;
+    private decimal Balance => TotalIncome - TotalExpense;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _summaries = await CaptureSvc.GetFinanceListAsync();
+        LoadYear(_fiscalYear);
+    }
+
+    private void OnYearChanged(int year)
+    {
+        _fiscalYear = year;
+        LoadYear(year);
+    }
+
+    // Opening a year that was already captured shows its figures instead of an empty form.
+    private void LoadYear(int year)
+    {
+        _existing = _summaries.FirstOrDefault(s => s.FiscalYear == year);
+        if (_existing is null) return;
+
+        _federal = _existing.FederalIncome;
+        _state = _existing.StateIncome;
+        _enrollment = _existing.OwnIncomeEnrollment;
+        _services = _existing.OwnIncomeServices;
+        _payroll = _existing.PayrollExpense;
+        _materials = _existing.MaterialsExpense;
+        _servicesExpense = _existing.ServicesExpense;
+        _investment = _existing.InvestmentExpense;
+        _notes = _existing.Notes ?? string.Empty;
+    }
+
+    private async Task Submit()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid) return;
+
+        _saving = true;
+        try
+        {
+            await CaptureSvc.SaveFinance(new SaveAnnualFinance
+            {
+                RequesterKey = await SecuritySvc.GetRequesterKeyAsync(),
+                FiscalYear = _fiscalYear,
+                FederalIncome = _federal,
+                StateIncome = _state,
+                OwnIncomeEnrollment = _enrollment,
+                OwnIncomeServices = _services,
+                PayrollExpense = _payroll,
+                MaterialsExpense = _materials,
+                ServicesExpense = _servicesExpense,
+                InvestmentExpense = _investment,
+                Notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim(),
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            return;
+        }
+        finally
+        {
+            _saving = false;
+        }
+
+        Snackbar.Add($"Resumen financiero {_fiscalYear} guardado correctamente.", Severity.Success);
+        Nav.NavigateTo("/datacapture/finance/consult");
+    }
 }

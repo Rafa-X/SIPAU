@@ -293,8 +293,11 @@ INSERT INTO students
 SELECT s.Id,
        CONCAT('UPH', RIGHT(p.SchoolCycle, 2), RIGHT(CONCAT('0000', s.Seq), 4)),
        -- Shaped like a CURP (18 characters); not a real one.
+       -- The suffix carries cohort and sequence, the same pair that makes the enrolment number
+       -- unique; a two-digit tail collided once the history grew past a hundred students.
        CONCAT('XE', CHOOSE(s.Seq % 4 + 1, 'HA', 'MO', 'RU', 'GA'), CONVERT(CHAR(6), b.BirthDate, 12),
-              CASE WHEN s.IsMale = 1 THEN 'H' ELSE 'M' END, 'JC', 'XXX', RIGHT(CONCAT('0', s.Seq % 100), 2)),
+              CASE WHEN s.IsMale = 1 THEN 'H' ELSE 'M' END, 'JC',
+              RIGHT(p.SchoolCycle, 2), RIGHT(CONCAT('000', s.Seq), 3)),
        CASE WHEN s.IsMale = 1 THEN fm.Name ELSE ff.Name END,
        CASE WHEN s.IsMale = 1 THEN sm.Name ELSE sf.Name END,
        CONCAT(l1.Name, N' ', l2.Name),

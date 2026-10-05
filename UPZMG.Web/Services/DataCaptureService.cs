@@ -73,6 +73,120 @@ public sealed class DataCaptureService(ISecurityService securityService): IDataC
         throw new InvalidOperationException(response.ErrorMessage ?? "No fue posible guardar el grupo de clase.");
     }
 
+    public async Task<SchoolFacility?> CreateFacility(CreateFacility request)
+    {
+        var response = await securityService.SendPostRequestAsync<CreateFacility, SchoolFacility>(
+            "data-capture/facilities/create", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        if ((response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.Created)
+            && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<SchoolFacility>(response.Result, ResponseOptions);
+        }
+        throw new InvalidOperationException(response.ErrorMessage ?? "No fue posible guardar el espacio.");
+    }
+
+    public async Task<OutreachProject?> CreateOutreachProject(CreateOutreachProject request)
+    {
+        var response = await securityService.SendPostRequestAsync<CreateOutreachProject, OutreachProject>(
+            "data-capture/outreach/create", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        if ((response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.Created)
+            && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<OutreachProject>(response.Result, ResponseOptions);
+        }
+        throw new InvalidOperationException(response.ErrorMessage ?? "No fue posible guardar el proyecto.");
+    }
+
+    public async Task<AnnualFinance?> SaveFinance(SaveAnnualFinance request)
+    {
+        var response = await securityService.SendPostRequestAsync<SaveAnnualFinance, AnnualFinance>(
+            "data-capture/finance/save", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        if ((response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.Created)
+            && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<AnnualFinance>(response.Result, ResponseOptions);
+        }
+        throw new InvalidOperationException(response.ErrorMessage ?? "No fue posible guardar el resumen financiero.");
+    }
+
+    public async Task<UpdateEmployee?> GetTeacherAsync(Guid id) =>
+        await GetOneAsync<UpdateEmployee>($"data-capture/employees/{id}");
+
+    public async Task<UpdateClassGroup?> GetClassGroupAsync(Guid id) =>
+        await GetOneAsync<UpdateClassGroup>($"data-capture/class-groups/{id}");
+
+    public async Task<Employee?> UpdateTeacher(UpdateEmployee request)
+    {
+        var response = await securityService.SendPostRequestAsync<UpdateEmployee, Employee>(
+            "data-capture/employees/update", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<Employee>(response.Result, ResponseOptions);
+        }
+        throw new InvalidOperationException(response.ErrorMessage ?? "No fue posible guardar los cambios del docente.");
+    }
+
+    public async Task<ClassGroups?> UpdateClassGroup(UpdateClassGroup request)
+    {
+        var response = await securityService.SendPostRequestAsync<UpdateClassGroup, ClassGroups>(
+            "data-capture/class-groups/update", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<ClassGroups>(response.Result, ResponseOptions);
+        }
+        throw new InvalidOperationException(response.ErrorMessage ?? "No fue posible guardar los cambios del grupo.");
+    }
+
+    public async Task<ScolarshipAssigned?> CreateScholarship(CreateScholarship request)
+    {
+        var response = await securityService.SendPostRequestAsync<CreateScholarship, ScolarshipAssigned>(
+            "data-capture/scholarships/create", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        if ((response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.Created)
+            && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<ScolarshipAssigned>(response.Result, ResponseOptions);
+        }
+        throw new InvalidOperationException(response.ErrorMessage ?? "No fue posible guardar la beca.");
+    }
+
+    public async Task<TitulationProcess?> CreateTitulation(CreateTitulation request)
+    {
+        var response = await securityService.SendPostRequestAsync<CreateTitulation, TitulationProcess>(
+            "data-capture/titulation/create", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        if ((response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.Created)
+            && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<TitulationProcess>(response.Result, ResponseOptions);
+        }
+        throw new InvalidOperationException(response.ErrorMessage ?? "No fue posible guardar la titulación.");
+    }
+
+    // Null when the record is gone or the area may not read it; the screen explains it.
+    private async Task<T?> GetOneAsync<T>(string path) where T : class
+    {
+        var requesterKey = await securityService.GetRequesterKeyAsync();
+        try
+        {
+            var response = await securityService.SendGetRequestAsync<T>(path, requesterKey);
+
+            if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+            {
+                return JsonSerializer.Deserialize<T>(response.Result, ResponseOptions);
+            }
+        }
+        catch (HttpRequestException)
+        {
+        }
+        return null;
+    }
+
 #endregion
 
 
@@ -118,5 +232,49 @@ public sealed class DataCaptureService(ISecurityService securityService): IDataC
         }
         return [];
     }
+
+    // School spaces already registered; empty when the area cannot read them.
+    public Task<IReadOnlyList<FacilityListItem>> GetFacilitiesListAsync() =>
+        ListAsync<FacilityListItem>("data-capture/facilities/list");
+
+    // Linkage projects already registered; empty when the area cannot read them.
+    public Task<IReadOnlyList<OutreachListItem>> GetOutreachListAsync() =>
+        ListAsync<OutreachListItem>("data-capture/outreach/list");
+
+    // Annual financial summaries; empty when the area cannot read them.
+    public Task<IReadOnlyList<FinanceListItem>> GetFinanceListAsync() =>
+        ListAsync<FinanceListItem>("data-capture/finance/list");
+
+    // Scholarships already granted; empty when the area cannot read them.
+    public Task<IReadOnlyList<ScholarshipListItem>> GetScholarshipsAsync() =>
+        ListAsync<ScholarshipListItem>("data-capture/scholarships/list");
+
+    // Titulation processes already registered; empty when the area cannot read them.
+    public Task<IReadOnlyList<TitulationListItem>> GetTitulationsAsync() =>
+        ListAsync<TitulationListItem>("data-capture/titulation/list");
+
+    // The scholarship programmes the area can choose from.
+    public Task<IReadOnlyList<LookupOption>> GetScholarshipProgramsAsync() =>
+        ListAsync<LookupOption>("data-capture/scholarships/programs");
+
+    private async Task<IReadOnlyList<T>> ListAsync<T>(string path)
+    {
+        var requesterKey = await securityService.GetRequesterKeyAsync();
+        try
+        {
+            var response = await securityService.SendGetRequestAsync<IReadOnlyList<T>>(path, requesterKey);
+
+            if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+            {
+                return JsonSerializer.Deserialize<List<T>>(response.Result, ResponseOptions) ?? [];
+            }
+        }
+        catch (HttpRequestException)
+        {
+            // Each listing is limited to the areas that own it.
+        }
+        return [];
+    }
+
 #endregion
 }

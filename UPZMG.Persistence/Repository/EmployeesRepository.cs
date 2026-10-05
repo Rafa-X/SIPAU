@@ -23,6 +23,95 @@ public class EmployeesRepository(AppDBContext db)
                 employee.HasDisability))
             .ToListAsync();
 
+    /// <summary>The whole employee, to fill the correction form.</summary>
+    public async Task<UpdateEmployee?> GetEmployeeAsync(Guid id)
+    {
+        var employee = await db.Employees.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id);
+        if (employee is null) return null;
+
+        var languages = await db.IndigenousLanguagesSpeakers.AsNoTracking()
+            .Where(s => s.SpeakerId == id)
+            .Join(db.IndigenousLanguages.AsNoTracking(), s => s.LanguageId, l => l.Id, (s, l) => l.Language)
+            .Where(language => language != null)
+            .ToListAsync();
+
+        return new UpdateEmployee
+        {
+            Id = employee.Id,
+            RequesterKey = Guid.Empty,
+            EmployeeNumber = employee.EmployeeNumber,
+            FullName = employee.FullName,
+            Email = employee.Email,
+            Rfc = employee.Rfc,
+            Curp = employee.Curp,
+            Gender = employee.Gender,
+            BirthDate = employee.BirthDate,
+            HighestEducationLevel = employee.HighestEducationLevel,
+            TitleStatus = employee.TitleStatus,
+            IndigenousLanguages = [.. languages!],
+            HasDisability = employee.HasDisability,
+            ExternalXPYears = employee.ExternalXPYears,
+            FirstHiredDate = employee.FirstHiredDate,
+            IsTeacher = employee.IsTeacher,
+        };
+    }
+
+    /// <summary>
+    /// Corrects a captured employee. Employee number, e-mail, RFC and CURP stay unique among
+    /// the others: the row being edited is excluded so saving it unchanged is not a conflict.
+    /// </summary>
+    public async Task<Employee> UpdateEmployeeAsync(UpdateEmployee request)
+    {
+        var employee = await db.Employees.FirstOrDefaultAsync(e => e.Id == request.Id)
+            ?? throw new InvalidOperationException("El empleado ya no existe.");
+
+        if (await db.Employees.AnyAsync(e => e.Id != request.Id && e.EmployeeNumber == request.EmployeeNumber))
+            throw new InvalidOperationException($"Ya existe otro empleado con el número '{request.EmployeeNumber}'.");
+
+        if (await db.Employees.AnyAsync(e => e.Id != request.Id && e.Email == request.Email))
+            throw new InvalidOperationException($"Ya existe otro empleado con el correo '{request.Email}'.");
+
+        if (await db.Employees.AnyAsync(e => e.Id != request.Id && e.Rfc == request.Rfc))
+            throw new InvalidOperationException($"Ya existe otro empleado con el RFC '{request.Rfc}'.");
+
+        if (await db.Employees.AnyAsync(e => e.Id != request.Id && e.Curp == request.Curp))
+            throw new InvalidOperationException($"Ya existe otro empleado con la CURP '{request.Curp}'.");
+
+        employee.EmployeeNumber = request.EmployeeNumber;
+        employee.FullName = request.FullName;
+        employee.Email = request.Email;
+        employee.Rfc = request.Rfc;
+        employee.Curp = request.Curp;
+        employee.Gender = request.Gender;
+        employee.BirthDate = request.BirthDate;
+        employee.HighestEducationLevel = request.HighestEducationLevel;
+        employee.TitleStatus = request.TitleStatus;
+        employee.HasDisability = request.HasDisability;
+        employee.ExternalXPYears = request.ExternalXPYears;
+        employee.FirstHiredDate = request.FirstHiredDate;
+        employee.IsTeacher = request.IsTeacher;
+
+        var previous = db.IndigenousLanguagesSpeakers.Where(s => s.SpeakerId == request.Id);
+        db.IndigenousLanguagesSpeakers.RemoveRange(previous);
+
+        var languageIds = await db.IndigenousLanguages
+            .Where(l => l.Language != null && request.IndigenousLanguages.Contains(l.Language))
+            .Select(l => l.Id).Distinct().ToListAsync();
+
+        foreach (var languageId in languageIds)
+        {
+            db.IndigenousLanguagesSpeakers.Add(new IndigenousLanguagesSpeakers
+            {
+                Id = Guid.NewGuid(),
+                SpeakerId = employee.Id,
+                LanguageId = languageId,
+            });
+        }
+
+        await db.SaveGuardingUniquenessAsync("Ya existe otro empleado con ese número, correo, RFC o CURP.");
+        return employee;
+    }
+
     public async Task<Employee> CreateEmployeeAsync(CreateEmployee request)
     {
         var existEmployeeNumber = await db.Employees.AnyAsync(e => e.EmployeeNumber == request.EmployeeNumber);
@@ -74,7 +163,7 @@ public class EmployeesRepository(AppDBContext db)
 
         employee.IndigenousLanguages = matchedLanguageIds;
         db.Employees.Add(employee);
-        await db.SaveChangesAsync();
+        await db.SaveGuardingUniquenessAsync("Ya existe otro empleado con ese número, correo, RFC o CURP.");
 
         return employee;
     }

@@ -1,4 +1,5 @@
 @page "/datacapture/students"
+@page "/datacapture/students/{Id:guid}/editar"
 @attribute [Authorize]
 @using UPZMG.Implementations.DataCapture
 @using UPZMG.Shared.Enums
@@ -9,9 +10,27 @@
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
 
-<PageTitle>Captura de Alumnos — SIPAU</PageTitle>
+<PageTitle>@(IsEditing ? "Corregir alumno" : "Captura de Alumnos") — SIPAU</PageTitle>
 
-<PageHeader Eyebrow="Captura de datos" Title="Captura de Alumnos" Subtitle="Registro individual de alumnos del periodo activo" BackHref="/datacapture" />
+<PageHeader Eyebrow="Captura de datos"
+            Title="@(IsEditing ? "Corregir alumno" : "Captura de Alumnos")"
+            Subtitle="@(IsEditing ? "Los cambios sustituyen lo capturado antes" : "Registro individual de alumnos del periodo activo")"
+            BackHref="@(IsEditing ? "/datacapture/students/consult" : "/datacapture")" />
+
+@if (IsEditing && _notFound)
+{
+    <SectionCard FullHeight="false">
+        <EmptyState Icon="@Icons.Material.Filled.PersonOff"
+                    Title="No se encontró al alumno"
+                    Description="Puede que se haya eliminado, o que tu área no tenga permiso para consultarlo.">
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/datacapture/students/consult">
+                Volver a la consulta
+            </MudButton>
+        </EmptyState>
+    </SectionCard>
+}
+else
+{
 
 <MudPaper Elevation="1" Class="pa-6">
     <MudForm @ref="_form">
@@ -152,16 +171,23 @@
 
         <MudStack Row="true" Spacing="2" Class="mt-6">
             <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Save"
-                       OnClick="Submit">Guardar Alumno</MudButton>
+                       Disabled="_saving" OnClick="Submit">@(IsEditing ? "Guardar cambios" : "Guardar Alumno")</MudButton>
             <MudButton Variant="Variant.Outlined" Color="Color.Default"
-                       OnClick="@(() => Nav.NavigateTo("/datacapture"))">Cancelar</MudButton>
+                       OnClick="@(() => Nav.NavigateTo(IsEditing ? "/datacapture/students/consult" : "/datacapture"))">Cancelar</MudButton>
         </MudStack>
     </MudForm>
 </MudPaper>
+}
 
 
 @code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private bool IsEditing => Id is not null;
+
     private MudForm _form = null!;
+    private bool _notFound;
+    private bool _saving;
     private StudentFormViewModel _model = new();
     private IReadOnlyList<LookupOption> _careers = [];
     private IReadOnlyList<PeriodLookupOption> _periods = [];
@@ -174,6 +200,42 @@
 
         _careers = await careersTask;
         _periods = await periodsTask;
+
+        if (Id is { } id) await LoadAsync(id);
+    }
+
+    // Editing starts from what is stored, so an untouched field is saved exactly as it was.
+    private async Task LoadAsync(Guid id)
+    {
+        var student = await _studentsService.GetStudentAsync(id);
+        if (student is null)
+        {
+            _notFound = true;
+            return;
+        }
+
+        _model = new StudentFormViewModel
+        {
+            EnrollmentNumber = student.EnrollmentNumber,
+            Curp = student.CURP,
+            FirstName = student.Name,
+            MiddleName = student.MiddleName,
+            LastName = student.LastName,
+            BirthDate = student.BirthDate == default ? null : student.BirthDate.ToDateTime(TimeOnly.MinValue),
+            Gender = student.Gender,
+            CareerId = student.CareerId,
+            PeriodIdStart = student.PeriodIdStart,
+            InscriptionType = student.InscriptionType,
+            Status = student.Status,
+            IndigenousLanguages = student.IndigenousLanguages,
+            EnglishLevel = student.EnglishLevel,
+            MaritalStatus = student.MaritalStatus,
+            NumberOfChildren = student.NumberOfChildren,
+            Works = student.Works,
+            BirthCountry = student.BirthCountry ?? string.Empty,
+            BirthState = student.BirthState ?? string.Empty,
+            Address = student.Address,
+        };
     }
 
     private static string? ValidateCurp(string? curp)
@@ -187,9 +249,11 @@
         await _form.ValidateAsync();
         if (!_form.IsValid) return;
 
-        var request = new CreateStudent
+        var requesterKey = await _securityService.GetRequesterKeyAsync();
+        var request = new UpdateStudent
         {
-            RequesterKey = await _securityService.GetRequesterKeyAsync(),
+            Id = Id ?? Guid.Empty,
+            RequesterKey = requesterKey,
             EnrollmentNumber = _model.EnrollmentNumber.Trim(),
             CURP = _model.Curp.Trim(),
             Name = _model.FirstName.Trim(),
@@ -211,17 +275,25 @@
             BirthState = _model.BirthState.Trim(),
         };
 
+        _saving = true;
         try
         {
-            await _studentsService.CreateStudent(request);
+            if (IsEditing) await _studentsService.UpdateStudent(request);
+            else await _studentsService.CreateStudent(request);
         }
         catch (InvalidOperationException ex)
         {
             Snackbar.Add(ex.Message, Severity.Error);
             return;
         }
+        finally
+        {
+            _saving = false;
+        }
 
-        Snackbar.Add($"Alumno {_model.FirstName} {_model.LastName} guardado correctamente.", Severity.Success);
-        Nav.NavigateTo("/datacapture");
+        Snackbar.Add(IsEditing
+            ? $"Cambios de {_model.FirstName} {_model.LastName} guardados correctamente."
+            : $"Alumno {_model.FirstName} {_model.LastName} guardado correctamente.", Severity.Success);
+        Nav.NavigateTo(IsEditing ? "/datacapture/students/consult" : "/datacapture");
     }
 }

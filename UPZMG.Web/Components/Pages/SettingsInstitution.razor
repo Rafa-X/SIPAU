@@ -1,65 +1,75 @@
 @page "/settings/institution"
 @attribute [Authorize(Roles = "Admin")]
-@inject ISettingsService SettingsSvc
-@inject ISnackbar Snackbar
+@using UPZMG.Implementations.Institution
+@inject IGeneralDataService GeneralDataSvc
+
+@*
+    Read-only on purpose. These values are the ones the university reported in the official
+    911.10 format, and they are the ones that head the board report. Editing them here would
+    create a second version of the same data that could disagree with what was sent.
+*@
 
 <PageTitle>Datos de la institución — SIPAU</PageTitle>
 
-<PageHeader Eyebrow="Administración" Title="Datos de la institución" Subtitle="Información maestra que encabeza los reportes generados" BackHref="/settings" />
+<PageHeader Eyebrow="Administración" Title="Datos de la institución"
+            Subtitle="Información maestra que encabeza los reportes generados" BackHref="/settings" />
 
-<MudForm @ref="_form">
-    <MudPaper Elevation="1" Class="pa-6 mb-4">
-        <MudText Typo="Typo.h6" Class="mb-3">Identificación</MudText>
-        <MudGrid>
-            <MudItem xs="12" md="8"><MudTextField @bind-Value="_m.InstitutionName" Label="Nombre de la institución" Required="true" RequiredError="Requerido." /></MudItem>
-            <MudItem xs="12" md="4"><MudTextField @bind-Value="_m.InstitutionKey" Label="Clave institucional" /></MudItem>
-            <MudItem xs="12" md="4"><MudTextField @bind-Value="_m.CampusName" Label="Plantel / Campus" /></MudItem>
-            <MudItem xs="12" md="4"><MudTextField @bind-Value="_m.CctKey" Label="Clave CCT" /></MudItem>
-            <MudItem xs="12" md="4"><MudTextField @bind-Value="_m.RectorName" Label="Rector(a)" /></MudItem>
-            <MudItem xs="12" md="4">
-                <MudSelect T="string" @bind-Value="_m.Sostenimiento" Label="Sostenimiento">
-                    @foreach (var o in SettingsSvc.SostenimientoOptions) { <MudSelectItem T="string" Value="@o.Value">@o.Text</MudSelectItem> }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" md="4"><MudTextField @bind-Value="_m.Phone" Label="Teléfono" /></MudItem>
-            <MudItem xs="12" md="4"><MudTextField @bind-Value="_m.Website" Label="Sitio web" /></MudItem>
-        </MudGrid>
-    </MudPaper>
+@if (_profile is null)
+{
+    <SectionCard FullHeight="false">
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    </SectionCard>
+}
+else if (!_profile.IsReported)
+{
+    <SectionCard FullHeight="false">
+        <EmptyState Icon="@Icons.Material.Filled.AccountBalance"
+                    Title="Todavía no se ha capturado el formato de institución"
+                    Description="Estos datos no se escriben aquí: provienen del formato 911.10 — Institución. En cuanto Dirección Académica lo capture, aparecerán en esta pantalla y en el encabezado del informe a la Junta.">
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/reports"
+                       StartIcon="@Icons.Material.Filled.Assignment">Ir a Reportes</MudButton>
+        </EmptyState>
+    </SectionCard>
+}
+else
+{
+    <MudAlert Severity="@(_profile.IsSubmitted ? Severity.Info : Severity.Warning)" Variant="Variant.Outlined" Class="mb-4">
+        @if (_profile.IsSubmitted)
+        {
+            <text>
+                Datos tomados del formato <b>911.10 — Institución</b> del ciclo <b>@_profile.SourceCycle</b>, ya enviado.
+                Para corregirlos hay que capturar el formato del ciclo siguiente: una captura enviada no se modifica.
+            </text>
+        }
+        else
+        {
+            <text>
+                Datos tomados del formato <b>911.10 — Institución</b> del ciclo <b>@_profile.SourceCycle</b>,
+                que todavía está <b>en borrador</b>. Pueden cambiar hasta que el área lo envíe.
+            </text>
+        }
+    </MudAlert>
 
-    <MudPaper Elevation="1" Class="pa-6 mb-4">
-        <MudText Typo="Typo.h6" Class="mb-3">Responsable de captura</MudText>
-        <MudGrid>
-            <MudItem xs="12" md="4"><MudTextField @bind-Value="_m.ResponsibleName" Label="Nombre" /></MudItem>
-            <MudItem xs="12" md="4"><MudTextField @bind-Value="_m.ResponsiblePosition" Label="Cargo" /></MudItem>
-            <MudItem xs="12" md="4"><MudTextField @bind-Value="_m.ResponsibleEmail" Label="Correo" InputType="InputType.Email" /></MudItem>
-        </MudGrid>
-    </MudPaper>
+    <SectionCard Title="Identificación" FullHeight="false">
+        <dl class="sipau-datalist">
+            <Field Label="Nombre de la institución" Value="@_profile.InstitutionName" />
+            <Field Label="Clave institucional" Value="@_profile.InstitutionKey" />
+            <Field Label="Rector(a)" Value="@_profile.RectorName" />
+            <Field Label="Sostenimiento" Value="@_profile.Sostenimiento" />
+            <Field Label="Municipio" Value="@_profile.Municipality" />
+            <Field Label="Entidad" Value="@_profile.State" />
+            <Field Label="Correo del responsable" Value="@_profile.ResponsibleEmail" />
+        </dl>
+    </SectionCard>
 
-    <MudPaper Elevation="1" Class="pa-6 mb-4">
-        <MudText Typo="Typo.h6" Class="mb-3">Domicilio</MudText>
-        <MudGrid>
-            <MudItem xs="12" md="6"><MudTextField @bind-Value="_m.Street" Label="Calle" /></MudItem>
-            <MudItem xs="12" md="2"><MudTextField @bind-Value="_m.StreetNumber" Label="Número" /></MudItem>
-            <MudItem xs="12" md="4"><MudTextField @bind-Value="_m.Neighborhood" Label="Colonia" /></MudItem>
-            <MudItem xs="12" md="4"><MudTextField @bind-Value="_m.Municipality" Label="Municipio" /></MudItem>
-            <MudItem xs="12" md="4"><MudTextField @bind-Value="_m.State" Label="Estado" /></MudItem>
-            <MudItem xs="12" md="4"><MudTextField @bind-Value="_m.PostalCode" Label="Código postal" /></MudItem>
-        </MudGrid>
-    </MudPaper>
-
-    <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Save" OnClick="Submit">Guardar configuración</MudButton>
-</MudForm>
+    <div class="mt-4">
+        <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/reports"
+                   EndIcon="@Icons.Material.Filled.ArrowForward">Ver la captura de origen</MudButton>
+    </div>
+}
 
 @code {
-    private MudForm _form = null!;
-    private InstitutionSettingsViewModel _m = new();
+    private InstitutionProfile? _profile;
 
-    protected override void OnInitialized() => _m = SettingsSvc.GetInstitution();
-
-    private async Task Submit()
-    {
-        await _form.ValidateAsync();
-        if (!_form.IsValid) return;
-        Snackbar.Add("Configuración institucional guardada correctamente.", Severity.Success);
-    }
+    protected override async Task OnInitializedAsync() => _profile = await GeneralDataSvc.GetInstitutionAsync();
 }

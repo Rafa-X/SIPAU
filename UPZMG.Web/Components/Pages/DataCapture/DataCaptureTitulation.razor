@@ -1,0 +1,143 @@
+@page "/datacapture/titulation"
+@attribute [Authorize]
+@using UPZMG.Implementations.DataCapture
+@using UPZMG.Shared.Enums
+@inject IDataCaptureService CaptureSvc
+@inject IGeneralDataService GeneralDataSvc
+@inject ISecurityService SecuritySvc
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+@*
+    Only an egresado can be titled: the titulation rate the SII reads is titled over graduates,
+    so registering a title for someone who never finished would inflate it.
+*@
+
+<PageTitle>Captura de Titulación — SIPAU</PageTitle>
+
+<PageHeader Eyebrow="Captura de datos" Title="Captura de Titulación"
+            Subtitle="Procesos de titulación de alumnos egresados" BackHref="/datacapture">
+    <Actions>
+        <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/datacapture/titulation/consult"
+                   StartIcon="@Icons.Material.Filled.ListAlt">Consultar titulaciones</MudButton>
+    </Actions>
+</PageHeader>
+
+<MudPaper Elevation="1" Class="pa-6">
+    <MudForm @ref="_form">
+        <MudText Typo="Typo.h6" Class="mb-3">Proceso de titulación</MudText>
+        <MudGrid>
+            <MudItem md="4">
+                <MudTextField @bind-Value="_enrollmentNumber" Label="Matrícula del alumno"
+                              Required="true" RequiredError="Indica la matrícula." MaxLength="20"
+                              HelperText="El alumno debe tener estatus de egresado." />
+            </MudItem>
+            <MudItem md="4">
+                <MudSelect T="TitulationModality" @bind-Value="_modality" Label="Modalidad">
+                    @foreach (var modality in Enum.GetValues<TitulationModality>())
+                    {
+                        <MudSelectItem T="TitulationModality" Value="@modality">@modality</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem md="4">
+                <MudSelect T="Guid" @bind-Value="_assessorId" Label="Asesor de titulación"
+                           Required="true" RequiredError="Elige al asesor.">
+                    @foreach (var teacher in _teachers)
+                    {
+                        <MudSelectItem T="Guid" Value="@teacher.Id">@teacher.Value</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+
+            <MudItem md="4">
+                <MudDatePicker @bind-Date="_creditsEgressDate" Label="Egreso (100 % de créditos)" />
+            </MudItem>
+            <MudItem md="4">
+                <MudDatePicker @bind-Date="_certificateDate" Label="Certificado de titulación" />
+            </MudItem>
+            <MudItem md="4">
+                <MudDatePicker @bind-Date="_titleDate" Label="Expedición del título" />
+            </MudItem>
+
+            <MudItem md="4" Class="d-flex align-center">
+                <MudSwitch T="bool" @bind-Value="_hasLicence" Color="Color.Secondary" Label="Tiene cédula profesional" />
+            </MudItem>
+            <MudItem md="4">
+                <MudTextField @bind-Value="_licenceNumber" Label="Número de cédula" MaxLength="20"
+                              Disabled="@(!_hasLicence)" />
+            </MudItem>
+        </MudGrid>
+
+        <MudStack Row="true" Spacing="2" Class="mt-6">
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Save"
+                       Disabled="_saving" OnClick="Submit">Guardar titulación</MudButton>
+            <MudButton Variant="Variant.Outlined" OnClick="@(() => Nav.NavigateTo("/datacapture"))">Cancelar</MudButton>
+        </MudStack>
+    </MudForm>
+</MudPaper>
+
+@code {
+    private MudForm _form = null!;
+    private bool _saving;
+
+    private IReadOnlyList<LookupOption> _teachers = [];
+
+    private string _enrollmentNumber = string.Empty;
+    private TitulationModality _modality = TitulationModality.Tesis;
+    private Guid _assessorId;
+    private DateTime? _creditsEgressDate = DateTime.Today;
+    private DateTime? _certificateDate = DateTime.Today;
+    private DateTime? _titleDate = DateTime.Today;
+    private bool _hasLicence;
+    private string _licenceNumber = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _teachers = await GeneralDataSvc.GetTeachersAsync();
+        _assessorId = _teachers.FirstOrDefault()?.Id ?? Guid.Empty;
+    }
+
+    private async Task Submit()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid) return;
+
+        if (_assessorId == Guid.Empty)
+        {
+            Snackbar.Add("Elige al asesor de titulación.", Severity.Warning);
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            await CaptureSvc.CreateTitulation(new CreateTitulation
+            {
+                RequesterKey = await SecuritySvc.GetRequesterKeyAsync(),
+                StudentEnrollmentNumber = _enrollmentNumber.Trim(),
+                TitulationAssessorId = _assessorId,
+                Modality = _modality,
+                CreditsEgressDate = DateOnly.FromDateTime(_creditsEgressDate ?? DateTime.Today),
+                CertificateTitulationDate = DateOnly.FromDateTime(_certificateDate ?? DateTime.Today),
+                TitleExpeditionDate = DateOnly.FromDateTime(_titleDate ?? DateTime.Today),
+                HasProfessionalLicence = _hasLicence,
+                ProfessionalLicenceNumber = _hasLicence && !string.IsNullOrWhiteSpace(_licenceNumber)
+                    ? _licenceNumber.Trim()
+                    : null,
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            return;
+        }
+        finally
+        {
+            _saving = false;
+        }
+
+        Snackbar.Add($"Titulación de {_enrollmentNumber.Trim()} guardada correctamente.", Severity.Success);
+        Nav.NavigateTo("/datacapture/titulation/consult");
+    }
+}

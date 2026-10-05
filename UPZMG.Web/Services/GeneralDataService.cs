@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using UPZMG.Implementations.DataCapture;
+using UPZMG.Implementations.Institution;
 using UPZMG.Persistence.Models;
 
 namespace UPZMG.Web.Services;
@@ -9,17 +10,26 @@ public sealed class GeneralDataService(ISecurityService securityService): IGener
 {
     private static readonly JsonSerializerOptions ResponseOptions = new(JsonSerializerDefaults.Web);
 
-    public async Task<IReadOnlyList<Careers>> GetCareersAsync()
+    public async Task<InstitutionProfile> GetInstitutionAsync()
     {
         var requesterKey = await securityService.GetRequesterKeyAsync();
-        var response = await securityService.SendGetRequestAsync<IReadOnlyList<Careers>>(
-            "general-data/lookups/careers-selectable", requesterKey);
-
-        if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+        try
         {
-            return JsonSerializer.Deserialize<IReadOnlyList<Careers>>(response.Result, ResponseOptions) ?? [];
+            var response = await securityService.SendGetRequestAsync<InstitutionProfile>(
+                "general-data/institution", requesterKey);
+
+            if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+            {
+                return JsonSerializer.Deserialize<InstitutionProfile>(response.Result, ResponseOptions)
+                    ?? InstitutionProfile.Unreported;
+            }
         }
-        return [];
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            // The screen shows "sin capturar" rather than failing when the API is down.
+        }
+
+        return InstitutionProfile.Unreported;
     }
 
     public async Task<IReadOnlyList<LookupOption>> GetCareersSelectableAsync()
@@ -108,58 +118,6 @@ public sealed class GeneralDataService(ISecurityService securityService): IGener
     {
         var requesterKey = await securityService.GetRequesterKeyAsync();
         var response = await securityService.SendGetRequestAsync<IReadOnlyList<LookupOption>>(path, requesterKey);
-        if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
-        {
-            return JsonSerializer.Deserialize<IReadOnlyList<LookupOption>>(response.Result, ResponseOptions) ?? [];
-        }
-        return [];
-    }
-
-    public async Task<IReadOnlyList<LookupOption>> GetSpaceUseTypesAsync()
-    {
-        var requesterKey = await securityService.GetRequesterKeyAsync();
-        var response = await securityService.SendGetRequestAsync<IReadOnlyList<LookupOption>>(
-            "general-data/lookups/space-use-types", requesterKey);
-
-        if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
-        {
-            return JsonSerializer.Deserialize<IReadOnlyList<LookupOption>>(response.Result, ResponseOptions) ?? [];
-        }
-        return [];
-    }
-
-    public async Task<IReadOnlyList<LookupOption>> GetSectorsAsync()
-    {
-        var requesterKey = await securityService.GetRequesterKeyAsync();
-        var response = await securityService.SendGetRequestAsync<IReadOnlyList<LookupOption>>(
-            "general-data/lookups/sectors", requesterKey);
-
-        if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
-        {
-            return JsonSerializer.Deserialize<IReadOnlyList<LookupOption>>(response.Result, ResponseOptions) ?? [];
-        }
-        return [];
-    }
-
-    public async Task<IReadOnlyList<LookupOption>> GetCompanySizesAsync()
-    {
-        var requesterKey = await securityService.GetRequesterKeyAsync();
-        var response = await securityService.SendGetRequestAsync<IReadOnlyList<LookupOption>>(
-            "general-data/lookups/company-sizes", requesterKey);
-
-        if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
-        {
-            return JsonSerializer.Deserialize<IReadOnlyList<LookupOption>>(response.Result, ResponseOptions) ?? [];
-        }
-        return [];
-    }
-
-    public async Task<IReadOnlyList<LookupOption>> GetActivityTypesAsync()
-    {
-        var requesterKey = await securityService.GetRequesterKeyAsync();
-        var response = await securityService.SendGetRequestAsync<IReadOnlyList<LookupOption>>(
-            "general-data/lookups/activity-types", requesterKey);
-
         if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
         {
             return JsonSerializer.Deserialize<IReadOnlyList<LookupOption>>(response.Result, ResponseOptions) ?? [];

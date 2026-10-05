@@ -46,6 +46,13 @@
             <PropertyColumn Property="x => x.Career" Title="Carrera" />
             <PropertyColumn Property="x => x.Period" Title="Periodo" />
             <PropertyColumn Property="x => x.Status" Title="Estatus" />
+            <TemplateColumn Title="" Sortable="false" CellClass="sipau-cell-end">
+                <CellTemplate>
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Edit"
+                               Href="@($"/datacapture/students/{context.Item.Id}/editar")">Corregir</MudButton>
+                </CellTemplate>
+            </TemplateColumn>
         </Columns>
         <PagerContent>
             <MudDataGridPager T="StudentListItem" RowsPerPageString="Filas por página" InfoFormat="{first_item}-{last_item} de {all_items}" />

@@ -20,4 +20,10 @@ public class SchoolFacility
     public bool HasComputers { get; set; }
     public bool SupportDisabilities { get; set; }
     public List<string> Problems { get; set; } = null!;
+
+    /// <summary>Surface in square metres, as the 911 infrastructure format asks for it.</summary>
+    public double SquareMeters { get; set; }
+
+    /// <summary>Computers in working order inside the space; feeds the TIC annex.</summary>
+    public int ComputersInOperation { get; set; }
 }

@@ -45,10 +45,21 @@
                     <span>
                         Regresión lineal por mínimos cuadrados ·
                         pendiente <b>@_model.Enrollment.Slope.ToString("+0.0;-0.0")</b> alumnos por periodo ·
-                        R² <b>@_model.Enrollment.R2.ToString("0.00")</b>
+                        @if (_model.Enrollment.R2 is { } r2)
+                        {
+                            <text>R² <b>@r2.ToString("0.00")</b></text>
+                        }
+                        else
+                        {
+                            <text>tendencia preliminar: con dos periodos el ajuste no puede medirse</text>
+                        }
                         @if (_model.Enrollment.NextValue is { } next)
                         {
-                            <text> · @_model.Enrollment.NextLabel: <b>@next.ToString("N0")</b> ± @(_model.Enrollment.NextMargin?.ToString("N0"))</text>
+                            <text> · @_model.Enrollment.NextLabel: <b>@next.ToString("N0")</b></text>
+                            @if (_model.Enrollment.NextMargin is { } margin)
+                            {
+                                <text> ± @margin.ToString("N0")</text>
+                            }
                         }
                     </span>
                 }

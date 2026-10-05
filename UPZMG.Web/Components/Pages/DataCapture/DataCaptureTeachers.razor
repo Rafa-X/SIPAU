@@ -1,4 +1,5 @@
 @page "/datacapture/teachers"
+@page "/datacapture/teachers/{Id:guid}/editar"
 @attribute [Authorize]
 @using UPZMG.Implementations.DataCapture
 @using UPZMG.Shared.Enums
@@ -8,9 +9,27 @@
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
 
-<PageTitle>Captura de Docentes — SIPAU</PageTitle>
+<PageTitle>@(IsEditing ? "Corregir docente" : "Captura de Docentes") — SIPAU</PageTitle>
 
-<PageHeader Eyebrow="Captura de datos" Title="Captura de Docentes / RRHH" Subtitle="Registro de personal docente y administrativo" BackHref="/datacapture" />
+<PageHeader Eyebrow="Captura de datos"
+            Title="@(IsEditing ? "Corregir docente o empleado" : "Captura de Docentes / RRHH")"
+            Subtitle="@(IsEditing ? "Los cambios sustituyen lo capturado antes" : "Registro de personal docente y administrativo")"
+            BackHref="@(IsEditing ? "/datacapture/teachers/consult" : "/datacapture")" />
+
+@if (IsEditing && _notFound)
+{
+    <SectionCard FullHeight="false">
+        <EmptyState Icon="@Icons.Material.Filled.PersonOff"
+                    Title="No se encontró al empleado"
+                    Description="Puede que se haya eliminado, o que tu área no tenga permiso para consultarlo.">
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/datacapture/teachers/consult">
+                Volver a la consulta
+            </MudButton>
+        </EmptyState>
+    </SectionCard>
+}
+else
+{
 
 <MudPaper Elevation="1" Class="pa-6">
     <MudForm @ref="_form">
@@ -140,14 +159,23 @@
         </MudGrid>
 
         <MudStack Row="true" Spacing="2" Class="mt-6">
-            <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Save" OnClick="Submit">Guardar Empleado</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Save"
+                       Disabled="_saving" OnClick="Submit">@(IsEditing ? "Guardar cambios" : "Guardar Empleado")</MudButton>
             <MudButton Variant="Variant.Outlined" OnClick="@(() => Nav.NavigateTo("/datacapture"))">Cancelar</MudButton>
         </MudStack>
     </MudForm>
 </MudPaper>
 
+}
+
 @code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private bool IsEditing => Id is not null;
+
     private MudForm _form = null!;
+    private bool _notFound;
+    private bool _saving;
     private EmployeeFormViewModel _model = new();
     private IReadOnlyList<LookupOption> _maxDegrees = [];
     private IReadOnlyList<LookupOption> _contractTypes = [];
@@ -163,6 +191,41 @@
         _maxDegrees = await maxDegreesTask;
         _contractTypes = await contractTypesTask;
         _internalAreas = await internalAreasTask;
+
+        if (Id is { } id) await LoadAsync(id);
+    }
+
+    // Editing starts from what is stored, so an untouched field is saved exactly as it was.
+    private async Task LoadAsync(Guid id)
+    {
+        var employee = await _captureService.GetTeacherAsync(id);
+        if (employee is null)
+        {
+            _notFound = true;
+            return;
+        }
+
+        // The full name is stored as one field; split it back for the three inputs.
+        var parts = employee.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        _model = new EmployeeFormViewModel
+        {
+            EmployeeNumber = employee.EmployeeNumber,
+            FirstName = parts.Length > 0 ? parts[0] : string.Empty,
+            MiddleName = parts.Length > 2 ? string.Join(' ', parts[1..^1]) : string.Empty,
+            LastName = parts.Length > 1 ? parts[^1] : string.Empty,
+            Email = employee.Email,
+            Rfc = employee.Rfc,
+            Curp = employee.Curp,
+            Gender = employee.Gender,
+            BirthDate = employee.BirthDate == default ? null : employee.BirthDate.ToDateTime(TimeOnly.MinValue),
+            HighestEducationLevel = employee.HighestEducationLevel,
+            TitleStatus = employee.TitleStatus,
+            IndigenousLanguages = employee.IndigenousLanguages,
+            HasDisability = employee.HasDisability,
+            ExternalXPYears = employee.ExternalXPYears,
+            FirstHiredDate = employee.FirstHiredDate == default ? null : employee.FirstHiredDate.ToDateTime(TimeOnly.MinValue),
+            IsTeacher = employee.IsTeacher,
+        };
     }
 
     private async Task Submit()
@@ -170,8 +233,9 @@
         await _form.ValidateAsync();
         if (!_form.IsValid) return;
 
-        var request = new CreateEmployee
+        var request = new UpdateEmployee
         {
+            Id = Id ?? Guid.Empty,
             RequesterKey = await _securityService.GetRequesterKeyAsync(),
             EmployeeNumber = _model.EmployeeNumber,
             FullName = string.Join(' ', new[] { _model.FirstName, _model.MiddleName, _model.LastName }).Trim(),
@@ -189,17 +253,25 @@
             IsTeacher = _model.IsTeacher,
         };
 
+        _saving = true;
         try
         {
-            await _captureService.CreateTeacher(request);
+            if (IsEditing) await _captureService.UpdateTeacher(request);
+            else await _captureService.CreateTeacher(request);
         }
         catch (InvalidOperationException ex)
         {
             Snackbar.Add(ex.Message, Severity.Error);
             return;
         }
+        finally
+        {
+            _saving = false;
+        }
 
-        Snackbar.Add($"Docente {_model.FirstName} {_model.LastName} guardado correctamente.", Severity.Success);
-        Nav.NavigateTo("/datacapture");
+        Snackbar.Add(IsEditing
+            ? $"Cambios de {_model.FirstName} {_model.LastName} guardados correctamente."
+            : $"Docente {_model.FirstName} {_model.LastName} guardado correctamente.", Severity.Success);
+        Nav.NavigateTo(IsEditing ? "/datacapture/teachers/consult" : "/datacapture");
     }
 }

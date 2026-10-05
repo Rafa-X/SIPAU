@@ -40,6 +40,13 @@ else
                 <TemplateColumn Title="Primera contratación" SortBy="x => x.FirstHiredDate">
                     <CellTemplate>@context.Item.FirstHiredDate.ToString("dd/MM/yyyy")</CellTemplate>
                 </TemplateColumn>
+                <TemplateColumn Title="" Sortable="false" CellClass="sipau-cell-end">
+                    <CellTemplate>
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Edit"
+                                   Href="@($"/datacapture/teachers/{context.Item.Id}/editar")">Corregir</MudButton>
+                    </CellTemplate>
+                </TemplateColumn>
             </Columns>
             <NoRecordsContent>
                 <EmptyState Icon="@Icons.Material.Filled.SearchOff" Title="Sin coincidencias"

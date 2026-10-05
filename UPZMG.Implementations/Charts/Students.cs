@@ -21,3 +21,12 @@ public sealed record TeachersDistribution(
     IReadOnlyList<ChartCategory> ByDegree,
     IReadOnlyList<ChartCategory> BySeniority);
 public sealed record GroupDistributionCategory(string Label, int Groups, int Enrolled, int Capacity);
+/// <summary>Active students by programme, split by sex, as the 911 and SII formats require.</summary>
+public sealed record GenderDistribution(
+    IReadOnlyList<string> Careers,
+    IReadOnlyList<int> Women,
+    IReadOnlyList<int> Men)
+{
+    public int TotalWomen => Women.Sum();
+    public int TotalMen => Men.Sum();
+}

@@ -1,4 +1,5 @@
 using UPZMG.Implementations.DataCapture;
+using UPZMG.Implementations.Institution;
 using UPZMG.Persistence.Models;
 using UPZMG.Web.Models;
 
@@ -6,7 +7,6 @@ namespace UPZMG.Web.Services;
 
 public interface IGeneralDataService
 {
-    Task<IReadOnlyList<Careers>> GetCareersAsync();
     Task<IReadOnlyList<LookupOption>> GetCareersSelectableAsync();
     Task<IReadOnlyList<LookupOption>> GetCoursesAsync(Guid careerId);
     Task<IReadOnlyList<PeriodLookupOption>> GetPeriodsAsync();
@@ -15,5 +15,8 @@ public interface IGeneralDataService
     Task<IReadOnlyList<LookupOption>> GetInternalAreasAsync();
     Task<IReadOnlyList<LookupOption>> GetTeachersAsync();
     Task<IReadOnlyList<LookupOption>> GetFacilitiesAsync();
+
+    /// <summary>Institution master data from the 911.10 capture; never null.</summary>
+    Task<InstitutionProfile> GetInstitutionAsync();
 
 }

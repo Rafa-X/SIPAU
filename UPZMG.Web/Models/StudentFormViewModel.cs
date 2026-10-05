@@ -4,7 +4,8 @@ using UPZMG.Shared.Enums;
 namespace UPZMG.Web.Models;
 
 /// <summary>
-/// ViewModel for the student registration form (mock, no real persistence).
+/// Form state for capturing or correcting a student. It mirrors CreateStudent, with the
+/// nullable dates and strings a form needs before it is validated.
 /// </summary>
 public class StudentFormViewModel
 {
@@ -28,7 +29,7 @@ public class StudentFormViewModel
     public string BirthState { get; set; } = string.Empty;
     public string Address { get; set; } = string.Empty;
 
-    // Dropdown options (mock data, populated by the controller)
+    // Dropdown options, filled from the catalogues the API serves.
     public List<SelectListItem> Careers { get; set; } = [];
     public List<SelectListItem> Periods { get; set; } = [];
 }

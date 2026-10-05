@@ -15,7 +15,8 @@ public class UsersRepository(AppDBContext db)
             join ur in db.UserRoles.AsNoTracking() on su.Id equals ur.UserId
             join r in db.Roles.AsNoTracking() on ur.RoleId equals r.Id
             join e in db.Employees.AsNoTracking() on su.EmployeeId equals e.Id
-            where su.IsActive
+            // Suspended accounts stay in the listing: hiding them is what makes a suspension
+            // irreversible, and the administrator has to be able to bring one back.
             select new SystemUser
             {
                 Id = su.Id,
@@ -39,14 +40,14 @@ public class UsersRepository(AppDBContext db)
             from su in db.SystemUsers.AsNoTracking()
             join ur in db.UserRoles.AsNoTracking() on su.Id equals ur.UserId
             join r in db.Roles.AsNoTracking() on ur.RoleId equals r.Id
-            where su.Id == userId && su.IsActive
+            where su.Id == userId
             select new SystemUser
             {
                 Id = su.Id,
                 EmployeeId = su.EmployeeId,
                 UserName = su.UserName,
                 Email = su.Email,
-                Password = su.Password,
+                // No password here: only the sign-in lookup needs the hash.
                 IsActive = su.IsActive,
                 LastLogin = su.LastLogin,
                 Role = new Role
@@ -83,8 +84,30 @@ public class UsersRepository(AppDBContext db)
 
         db.SystemUsers.Add(user);
         db.UserRoles.Add(userrole);
-        await db.SaveChangesAsync();
+        await db.SaveGuardingUniquenessAsync("Ya existe un usuario con ese correo.");
 
+        return user;
+    }
+
+    /// <summary>
+    /// Suspends or restores an account. Signing in already refuses an inactive user, so this is
+    /// the reversible alternative to deleting: the person stops entering, their captures stay
+    /// attributed to them. An administrator cannot suspend their own account, which is the one
+    /// mistake that would lock everyone out of user management.
+    /// </summary>
+    public async Task<SystemUser> SetUserActiveAsync(Guid userId, bool isActive, Guid requestedBy)
+    {
+        if (!isActive && userId == requestedBy)
+            throw new InvalidOperationException("No puedes darte de baja a ti mismo.");
+
+        var user = await db.SystemUsers.FirstOrDefaultAsync(u => u.Id == userId)
+            ?? throw new InvalidOperationException("El usuario ya no existe.");
+
+        if (!isActive && !await db.SystemUsers.AnyAsync(u => u.Id != userId && u.IsActive))
+            throw new InvalidOperationException("Es la única cuenta activa: dar de baja dejaría el sistema sin acceso.");
+
+        user.IsActive = isActive;
+        await db.SaveChangesAsync();
         return user;
     }
 
@@ -107,6 +130,17 @@ public class UsersRepository(AppDBContext db)
 
 
     // Authentication methods
+    /// <summary>The user as the API returns it: everything except the hash.</summary>
+    public static UserView ToResponse(SystemUser user) =>
+        new(user.Id, user.EmployeeId, user.UserName, user.Email, user.IsActive, user.LastLogin,
+            user.Role?.Id, user.Role?.Name);
+
+    public async Task<UserView> GetResponseAsync(Guid userId)
+    {
+        var user = await GetSystemUserByIdAsync(userId);
+        return ToResponse(user);
+    }
+
     public async Task<SystemUser> GetSystemUserByEmailAsync(string email)
     {
         return await (

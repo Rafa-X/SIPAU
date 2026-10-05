@@ -1,15 +1,107 @@
 @page "/datacapture/finance/consult"
-@attribute [Authorize]
+@attribute [Authorize(Roles = "Admin")]
+@using UPZMG.Implementations.DataCapture
+@inject IDataCaptureService CaptureSvc
+@inject IJSRuntime JS
 
 <PageTitle>Consultar finanzas — SIPAU</PageTitle>
 
 <PageHeader Title="Consultar finanzas" BackHref="/datacapture"
-            Subtitle="Esta área todavía no guarda registros propios" />
+            Subtitle="Resúmenes financieros anuales registrados" />
 
-<SectionCard FullHeight="false">
-    <EmptyState Icon="@Icons.Material.Filled.Payments"
-                Title="Todavía no hay registros de esta área"
-                Description="Los ingresos y egresos del ejercicio aún no tienen tabla propia en el sistema. Mientras tanto se reportan en el formato 911.10 · Institución, y de ahí los toma el Informe de Junta.">
-        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/reports">Ir a los formatos</MudButton>
-    </EmptyState>
-</SectionCard>
+@if (_loading)
+{
+    <LoadingState Text="Leyendo los ejercicios registrados…" />
+}
+else if (_summaries.Count == 0)
+{
+    <SectionCard FullHeight="false">
+        <EmptyState Icon="@Icons.Material.Filled.AccountBalanceWallet"
+                    Title="Sin ejercicios registrados"
+                    Description="Captura el resumen de un ejercicio fiscal y aparecerá aquí.">
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/datacapture/finance">
+                Capturar resumen
+            </MudButton>
+        </EmptyState>
+    </SectionCard>
+}
+else
+{
+    <SectionCard Flush="true" FullHeight="false">
+        <DataToolbar @bind-Search="_search" Placeholder="Buscar por ejercicio…"
+                     Count="Filtered.Count" Total="_summaries.Count" OnExport="ExportAsync" />
+
+        <MudDataGrid T="FinanceListItem" Items="Filtered" Hover="true" Dense="true" Elevation="0" SortMode="SortMode.Single">
+            <Columns>
+                <PropertyColumn Property="x => x.FiscalYear" Title="Ejercicio" />
+                <TemplateColumn Title="Ingresos" SortBy="x => x.TotalIncome">
+                    <CellTemplate>@context.Item.TotalIncome.ToString("C0", Mx)</CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Egresos" SortBy="x => x.TotalExpense">
+                    <CellTemplate>@context.Item.TotalExpense.ToString("C0", Mx)</CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Balance" SortBy="x => x.Balance">
+                    <CellTemplate>
+                        <span class="@(context.Item.Balance < 0 ? "sipau-negative" : null)">
+                            @context.Item.Balance.ToString("C0", Mx)
+                        </span>
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Nómina" SortBy="x => x.PayrollExpense">
+                    <CellTemplate>@context.Item.PayrollExpense.ToString("C0", Mx)</CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Última modificación" SortBy="x => x.LastModified">
+                    <CellTemplate>@context.Item.LastModified.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="" Sortable="false" CellClass="sipau-cell-end">
+                    <CellTemplate>
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                                   Href="/datacapture/finance">Editar</MudButton>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+            <NoRecordsContent>
+                <EmptyState Icon="@Icons.Material.Filled.SearchOff" Title="Sin coincidencias"
+                            Description="Ningún ejercicio coincide con la búsqueda." />
+            </NoRecordsContent>
+        </MudDataGrid>
+    </SectionCard>
+}
+
+@code {
+    private static readonly System.Globalization.CultureInfo Mx = new("es-MX");
+
+    private IReadOnlyList<FinanceListItem> _summaries = [];
+    private bool _loading = true;
+    private string _search = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _summaries = await CaptureSvc.GetFinanceListAsync();
+        _loading = false;
+    }
+
+    private List<FinanceListItem> Filtered => _summaries
+        .Where(s => string.IsNullOrWhiteSpace(_search) || s.FiscalYear.ToString().Contains(_search.Trim()))
+        .ToList();
+
+    private async Task ExportAsync()
+    {
+        var csv = CsvExport.Build(Filtered,
+            ("Ejercicio", s => s.FiscalYear),
+            ("Federal", s => s.FederalIncome),
+            ("Estatal", s => s.StateIncome),
+            ("Propios: inscripciones", s => s.OwnIncomeEnrollment),
+            ("Propios: servicios", s => s.OwnIncomeServices),
+            ("Total ingresos", s => s.TotalIncome),
+            ("Nómina", s => s.PayrollExpense),
+            ("Materiales", s => s.MaterialsExpense),
+            ("Servicios", s => s.ServicesExpense),
+            ("Inversión", s => s.InvestmentExpense),
+            ("Total egresos", s => s.TotalExpense),
+            ("Balance", s => s.Balance),
+            ("Notas", s => s.Notes ?? string.Empty));
+
+        await JS.InvokeVoidAsync("sigieDownload", CsvExport.FileName("finanzas"), csv);
+    }
+}

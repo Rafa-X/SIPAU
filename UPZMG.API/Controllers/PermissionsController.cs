@@ -3,11 +3,14 @@ using Microsoft.AspNetCore.Authorization;
 using UPZMG.Persistence.Repository;
 using UPZMG.Implementations.Permissions;
 
+using UPZMG.API.Security;
+using UPZMG.Implementations.Security;
+
 namespace UPZMG.Api.Controllers;
 
 [ApiController]
 [Route("permissions")]
-[Authorize(Roles = "Admin")]
+[RequirePermission(AppPermissions.ManageUsers)]
 public class PermissionsController(PermissionsRepository permissionsRepository) : ControllerBase
 {
     [HttpPost("get-all")]

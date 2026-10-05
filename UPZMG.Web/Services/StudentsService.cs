@@ -61,7 +61,35 @@ public sealed class StudentsService(
     }
 
     // No backing API endpoints exist yet for these; nothing in the app calls them today.
-    public Task<Student?> GetStudentById(Guid studentId) => throw new NotImplementedException();
-    public Task<List<Student>> GetAllStudents() => throw new NotImplementedException();
-    public Task<bool> DeleteStudent(Guid studentId) => throw new NotImplementedException();
+    public async Task<UpdateStudent?> GetStudentAsync(Guid studentId)
+    {
+        var requesterKey = await securityService.GetRequesterKeyAsync();
+        try
+        {
+            var response = await securityService.SendGetRequestAsync<UpdateStudent>(
+                $"data-capture/students/{studentId}", requesterKey);
+
+            if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+            {
+                return JsonSerializer.Deserialize<UpdateStudent>(response.Result, ResponseOptions);
+            }
+        }
+        catch (HttpRequestException)
+        {
+            // Missing student, or an area that may not read it: the screen says so.
+        }
+        return null;
+    }
+
+    public async Task<Student?> UpdateStudent(UpdateStudent request)
+    {
+        var response = await securityService.SendPostRequestAsync<UpdateStudent, Student>(
+            "data-capture/students/update", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<Student>(response.Result, ResponseOptions);
+        }
+        throw new InvalidOperationException(response.ErrorMessage ?? "No fue posible guardar los cambios del alumno.");
+    }
 }

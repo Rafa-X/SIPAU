@@ -1,0 +1,18 @@
+@*
+    One label and its value inside a definition list. Values the university has not
+    reported yet read "Sin capturar" instead of showing an empty gap.
+*@
+
+<div class="sipau-field">
+    <dt class="sipau-field-label">@Label</dt>
+    <dd class="sipau-field-value @(HasValue ? null : "sipau-field-empty")">
+        @(HasValue ? Value : "Sin capturar")
+    </dd>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+    [Parameter] public string? Value { get; set; }
+
+    private bool HasValue => !string.IsNullOrWhiteSpace(Value);
+}

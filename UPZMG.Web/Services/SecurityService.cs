@@ -182,7 +182,9 @@ public sealed class SecurityService(
         {
             return JsonSerializer.Deserialize<Role>(response.Result, ResponseOptions) ?? new Role();
         }
-        return new Role();
+
+        // Returning an empty role here is what let the screen announce a save that never happened.
+        throw new InvalidOperationException(response.ErrorMessage ?? "No fue posible crear el rol.");
     }
 
     public async Task<Role> EditRole(EditRole request)
@@ -194,7 +196,9 @@ public sealed class SecurityService(
         {
             return JsonSerializer.Deserialize<Role>(response.Result, ResponseOptions) ?? new Role();
         }
-        return new Role();
+
+        // Returning an empty role here is what let the screen announce a save that never happened.
+        throw new InvalidOperationException(response.ErrorMessage ?? "No fue posible guardar el rol.");
     }
 
     public async Task<bool> DeleteRole(DeleteRole request)
@@ -222,7 +226,11 @@ public sealed class SecurityService(
         var response = await SendPostRequestAsync<SetRolePermissions, object>(
             $"roles/set-permissions", JsonSerializer.Serialize(request), request.RequesterKey);
 
-        return response.StatusCode == HttpStatusCode.OK;
+        if (response.StatusCode == HttpStatusCode.OK) return true;
+
+        // The API refuses, for instance, withdrawing the last grant of "administrar usuarios";
+        // swallowing that would announce a change the system did not make.
+        throw new InvalidOperationException(response.ErrorMessage ?? "No fue posible guardar los permisos del rol.");
     }
 #endregion
 
@@ -249,7 +257,8 @@ public sealed class SecurityService(
         {
             return JsonSerializer.Deserialize<Permission>(response.Result, ResponseOptions) ?? new Permission();
         }
-        return new Permission();
+
+        throw new InvalidOperationException(response.ErrorMessage ?? "No fue posible crear el permiso.");
     }
 
     public async Task<Permission> EditPermission(EditPermission request)
@@ -261,7 +270,8 @@ public sealed class SecurityService(
         {
             return JsonSerializer.Deserialize<Permission>(response.Result, ResponseOptions) ?? new Permission();
         }
-        return new Permission();
+
+        throw new InvalidOperationException(response.ErrorMessage ?? "No fue posible guardar el permiso.");
     }
 
     public async Task<bool> DeletePermission(DeletePermission request)

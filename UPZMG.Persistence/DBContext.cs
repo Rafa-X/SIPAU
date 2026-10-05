@@ -39,16 +39,23 @@ public class AppDBContext(DbContextOptions<AppDBContext> options) : DbContext(op
 
     // // Public
     // public DbSet<Disabilities> Disabilities => Set<Disabilities>();
-    // public DbSet<ScolarshipProgram> ScolarshipPrograms => Set<ScolarshipProgram>();
+    public DbSet<ScolarshipProgram> ScolarshipPrograms => Set<ScolarshipProgram>();
     // public DbSet<WithdrawReason> WithdrawReasons => Set<WithdrawReason>();
     public DbSet<IndigenousLanguages> IndigenousLanguages => Set<IndigenousLanguages>();
     public DbSet<IndigenousLanguagesSpeakers> IndigenousLanguagesSpeakers => Set<IndigenousLanguagesSpeakers>();
 
-    // // Resources
+    // Resources
+    public DbSet<SchoolFacility> SchoolFacilities => Set<SchoolFacility>();
+    // // Pending areas of the 911 infrastructure questionnaire
     // public DbSet<AnnualTICInventory> AnnualTICInventories => Set<AnnualTICInventory>();
     // public DbSet<Infraestructure> Infraestructures => Set<Infraestructure>();
     // public DbSet<ParkingLots> ParkingLots => Set<ParkingLots>();
-    // public DbSet<SchoolFacility> SchoolFacilities => Set<SchoolFacility>();
+
+    // Extension
+    public DbSet<OutreachProject> OutreachProjects => Set<OutreachProject>();
+
+    // Finance
+    public DbSet<AnnualFinance> AnnualFinances => Set<AnnualFinance>();
 
     // RRHH
     public DbSet<Employee> Employees => Set<Employee>();
@@ -71,6 +78,8 @@ public class AppDBContext(DbContextOptions<AppDBContext> options) : DbContext(op
         // Security
         modelBuilder.Entity<SystemUser>(entity => {
             entity.ToTable("systemUser");
+            // Sign-in looks a user up by e-mail: two rows with the same one make it ambiguous.
+            entity.HasIndex(x => x.Email).IsUnique();
             entity.HasKey(x => x.Id);
         });
         modelBuilder.Entity<Role>(entity => {
@@ -81,6 +90,8 @@ public class AppDBContext(DbContextOptions<AppDBContext> options) : DbContext(op
             entity.ToTable("permissions");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Name).HasMaxLength(50);
+            entity.Property(x => x.DisplayName).HasMaxLength(80);
+            entity.Property(x => x.Description).HasMaxLength(200);
             entity.HasIndex(x => x.Name).IsUnique();
         });
         modelBuilder.Entity<ReportsPermission>(entity => {
@@ -97,6 +108,8 @@ public class AppDBContext(DbContextOptions<AppDBContext> options) : DbContext(op
             entity.Property(x => x.AnswersJson).HasColumnType("nvarchar(max)");
             entity.Property(x => x.DateCreated).HasColumnType("datetime2");
             entity.Property(x => x.LastModified).HasColumnType("datetime2");
+            // SQL Server keeps this column up to date; EF uses it as the concurrency token.
+            entity.Property(x => x.RowVersion).IsRowVersion();
             entity.HasIndex(x => new { x.ReportType, x.TemplateVersion });
         });
         modelBuilder.Entity<RolePermission>(entity => {
@@ -231,10 +244,17 @@ public class AppDBContext(DbContextOptions<AppDBContext> options) : DbContext(op
              entity.HasOne<ScolarshipProgram>()
                 .WithMany()
                 .HasForeignKey(x => x.ScolarshipProgramId);
+            entity.Property(x => x.Amount).HasPrecision(18, 2);
+            // The same student cannot hold the same grant twice in one period.
+            entity.HasIndex(x => new { x.StudentId, x.PeriodId, x.ScolarshipProgramId }).IsUnique();
         });
         modelBuilder.Entity<Student>(entity => {
             entity.ToTable("students");
             entity.HasKey(x => x.Id);
+            // Two simultaneous captures cannot both win: the database decides, not a prior read.
+            entity.HasIndex(x => x.EnrollmentNumber).IsUnique();
+            // CURP is optional in the capture, so only the ones actually given have to be unique.
+            entity.HasIndex(x => x.CURP).IsUnique().HasFilter("[CURP] <> ''");
             entity.Property(x => x.Gender)
                 .HasConversion<string>()
                 .HasColumnType("char(1)");
@@ -271,6 +291,8 @@ public class AppDBContext(DbContextOptions<AppDBContext> options) : DbContext(op
             entity.HasOne<Employee>()
                 .WithMany()
                 .HasForeignKey(x => x.TitulationAssessorId);
+            // A student graduates from a programme once.
+            entity.HasIndex(x => x.StudentId).IsUnique();
         });
         modelBuilder.Entity<TutoringSessions>(entity => {
             entity.ToTable("tutoringSessions");
@@ -300,10 +322,11 @@ public class AppDBContext(DbContextOptions<AppDBContext> options) : DbContext(op
         //     entity.ToTable("disabilities");
         //     entity.HasKey(x => x.Id);
         // });
-        // modelBuilder.Entity<ScolarshipProgram>(entity => {
-        //     entity.ToTable("scolarshipPrograms");
-        //     entity.HasKey(x => x.Id);
-        // });
+        // The catalogue the official formats read, and now also the scholarship capture.
+        modelBuilder.Entity<ScolarshipProgram>(entity => {
+            entity.ToTable("ScolarshipProgram");
+            entity.HasKey(x => x.Id);
+        });
         // modelBuilder.Entity<WithdrawReason>(entity => {
         //     entity.ToTable("withdrawReasons");
         //     entity.HasKey(x => x.Id);
@@ -322,14 +345,61 @@ public class AppDBContext(DbContextOptions<AppDBContext> options) : DbContext(op
         //     entity.ToTable("parkingLots");
         //     entity.HasKey(x => x.Id);
         // });
-        // modelBuilder.Entity<SchoolFacility>(entity => {
-        //     entity.ToTable("schoolFacilities");
-        //     entity.HasKey(x => x.Id);
-        // });
+        // The table already existed because class groups point at it; now the area owns it.
+        modelBuilder.Entity<SchoolFacility>(entity => {
+            entity.ToTable("SchoolFacility");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Problems)
+                .HasColumnType("nvarchar(max)")
+                .HasConversion(
+                    problems => JsonSerializer.Serialize(problems, (JsonSerializerOptions?)null),
+                    problems => JsonSerializer.Deserialize<List<string>>(problems, (JsonSerializerOptions?)null) ?? new List<string>());
+        });
+
+        // Extension
+        modelBuilder.Entity<OutreachProject>(entity => {
+            entity.ToTable("outreachProjects");
+            entity.HasKey(x => x.Id);
+            entity.HasOne<Periods>()
+                .WithMany()
+                .HasForeignKey(x => x.PeriodId);
+            entity.HasOne<Student>()
+                .WithMany()
+                .HasForeignKey(x => x.StudentId);
+            entity.Property(x => x.OrganizationName).HasMaxLength(200);
+            entity.Property(x => x.ProjectName).HasMaxLength(200);
+            entity.Property(x => x.Sector).HasMaxLength(50);
+            entity.Property(x => x.CompanySize).HasMaxLength(50);
+            entity.Property(x => x.ActivityType).HasMaxLength(50);
+            entity.Property(x => x.StudentEnrollmentNumber).HasMaxLength(20);
+            entity.HasIndex(x => x.PeriodId);
+        });
+
+        // Finance
+        modelBuilder.Entity<AnnualFinance>(entity => {
+            entity.ToTable("annualFinances");
+            entity.HasKey(x => x.Id);
+            // One summary per fiscal year: two rows for the same year would be two budgets.
+            entity.HasIndex(x => x.FiscalYear).IsUnique();
+            entity.Ignore(x => x.TotalIncome);
+            entity.Ignore(x => x.TotalExpense);
+            foreach (var amount in new[] { nameof(AnnualFinance.FederalIncome), nameof(AnnualFinance.StateIncome),
+                                           nameof(AnnualFinance.OwnIncomeEnrollment), nameof(AnnualFinance.OwnIncomeServices),
+                                           nameof(AnnualFinance.PayrollExpense), nameof(AnnualFinance.MaterialsExpense),
+                                           nameof(AnnualFinance.ServicesExpense), nameof(AnnualFinance.InvestmentExpense) })
+            {
+                entity.Property(amount).HasPrecision(18, 2);
+            }
+            entity.Property(x => x.Notes).HasMaxLength(1000);
+        });
 
         // RRHH
         modelBuilder.Entity<Employee>(entity => {
             entity.ToTable("employees");
+            entity.HasIndex(x => x.EmployeeNumber).IsUnique();
+            entity.HasIndex(x => x.Email).IsUnique();
+            entity.HasIndex(x => x.Rfc).IsUnique();
+            entity.HasIndex(x => x.Curp).IsUnique();
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Gender)
                 .HasConversion<string>()

@@ -59,8 +59,107 @@ public class StudentsRepository(AppDBContext db)
 
         student.IndigenousLanguages = matchedLanguageIds;
         db.Students.Add(student);
-        await db.SaveChangesAsync();
+        await db.SaveGuardingUniquenessAsync(
+            $"Ya existe un alumno con la matrícula '{request.EnrollmentNumber}' o esa CURP.");
 
+        return student;
+    }
+
+    /// <summary>The whole student, to fill the correction form.</summary>
+    public async Task<UpdateStudent?> GetStudentAsync(Guid id)
+    {
+        var student = await db.Students.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
+        if (student is null) return null;
+
+        var languages = await db.IndigenousLanguagesSpeakers.AsNoTracking()
+            .Where(s => s.SpeakerId == id)
+            .Join(db.IndigenousLanguages.AsNoTracking(), s => s.LanguageId, l => l.Id, (s, l) => l.Language)
+            .Where(language => language != null)
+            .ToListAsync();
+
+        return new UpdateStudent
+        {
+            Id = student.Id,
+            RequesterKey = Guid.Empty,
+            EnrollmentNumber = student.EnrollmentNumber,
+            CURP = student.CURP,
+            Name = student.Name,
+            MiddleName = student.MiddleName,
+            LastName = student.LastName,
+            BirthDate = student.BirthDate,
+            Gender = student.Gender,
+            IndigenousLanguages = [.. languages!],
+            PostalCode = student.PostalCode,
+            EnglishLevel = student.EnglishLevel,
+            MaritalStatus = student.MaritalStatus,
+            NumberOfChildren = student.NumberOfChildren,
+            Works = student.Works,
+            Address = student.Address ?? string.Empty,
+            CareerId = student.CareerId,
+            PeriodIdStart = student.PeriodIdStart,
+            InscriptionType = student.InscriptionType,
+            Status = student.Status,
+            BirthCountry = student.BirthCountry,
+            BirthState = student.BirthState,
+        };
+    }
+
+    /// <summary>
+    /// Corrects a captured student. The enrolment number and the CURP stay unique, but the
+    /// student's own row is excluded from that check: saving it unchanged must not be a conflict.
+    /// </summary>
+    public async Task<Student> UpdateStudentAsync(UpdateStudent request)
+    {
+        var student = await db.Students.FirstOrDefaultAsync(s => s.Id == request.Id)
+            ?? throw new InvalidOperationException("El alumno ya no existe.");
+
+        if (await db.Students.AnyAsync(s => s.Id != request.Id && s.EnrollmentNumber == request.EnrollmentNumber))
+            throw new InvalidOperationException($"Ya existe otro alumno con la matrícula '{request.EnrollmentNumber}'.");
+
+        if (await db.Students.AnyAsync(s => s.Id != request.Id && s.CURP == request.CURP))
+            throw new InvalidOperationException($"Ya existe otro alumno con la CURP '{request.CURP}'.");
+
+        student.EnrollmentNumber = request.EnrollmentNumber;
+        student.CURP = request.CURP;
+        student.Name = request.Name;
+        student.MiddleName = request.MiddleName;
+        student.LastName = request.LastName;
+        student.BirthDate = request.BirthDate;
+        student.Gender = request.Gender;
+        student.PostalCode = request.PostalCode;
+        student.EnglishLevel = request.EnglishLevel;
+        student.MaritalStatus = request.MaritalStatus;
+        student.NumberOfChildren = request.NumberOfChildren;
+        student.Works = request.Works;
+        student.BirthCountry = request.BirthCountry;
+        student.BirthState = request.BirthState;
+        student.Address = request.Address;
+        student.CareerId = request.CareerId;
+        student.PeriodIdStart = request.PeriodIdStart;
+        student.InscriptionType = request.InscriptionType;
+        student.Status = request.Status;
+
+        // Spoken languages are a set: rebuild it rather than trying to diff it.
+        var previous = db.IndigenousLanguagesSpeakers.Where(s => s.SpeakerId == request.Id);
+        db.IndigenousLanguagesSpeakers.RemoveRange(previous);
+
+        var languageIds = await db.IndigenousLanguages
+            .Where(l => l.Language != null && request.IndigenousLanguages.Contains(l.Language))
+            .Select(l => l.Id).Distinct().ToListAsync();
+
+        foreach (var languageId in languageIds)
+        {
+            db.IndigenousLanguagesSpeakers.Add(new IndigenousLanguagesSpeakers
+            {
+                Id = Guid.NewGuid(),
+                SpeakerId = student.Id,
+                LanguageId = languageId,
+            });
+        }
+
+        student.IndigenousLanguages = languageIds;
+        await db.SaveGuardingUniquenessAsync(
+            $"Ya existe otro alumno con la matrícula '{request.EnrollmentNumber}' o esa CURP.");
         return student;
     }
 

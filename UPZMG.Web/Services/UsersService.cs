@@ -65,6 +65,22 @@ public sealed class UsersService(
         return new SystemUser();
     }
 
+    /// <summary>Suspends or restores an account; the message explains a refusal.</summary>
+    public async Task<UserSaveResult> SetActiveAsync(Guid requesterKey, Guid userId, bool isActive)
+    {
+        var request = new SetUserActive { RequesterKey = requesterKey, UserId = userId, IsActive = isActive };
+        var response = await securityService.SendPostRequestAsync<SetUserActive, SystemUser>(
+            "users/set-active", JsonSerializer.Serialize(request), requesterKey);
+
+        if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+        {
+            return new UserSaveResult(true, JsonSerializer.Deserialize<SystemUser>(response.Result, ResponseOptions), null);
+        }
+
+        logger.LogWarning("Changing the active flag of {UserId} failed with {Status}", userId, response.StatusCode);
+        return new UserSaveResult(false, null, response.ErrorMessage ?? "No fue posible cambiar el estatus del usuario.");
+    }
+
     public async Task<UserSaveResult> SaveAsync(Guid requesterKey, UserFormViewModel model)
     {
         var email = (model.Email ?? string.Empty).Trim();

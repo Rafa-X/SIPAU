@@ -3,11 +3,14 @@ using Microsoft.AspNetCore.Authorization;
 using UPZMG.Persistence.Repository;
 using UPZMG.Implementations.Settings;
 
+using UPZMG.API.Security;
+using UPZMG.Implementations.Security;
+
 namespace UPZMG.Api.Controllers;
 
 [ApiController]
 [Route("periods")]
-[Authorize(Roles = "Admin")]
+[RequirePermission(AppPermissions.ManagePeriods)]
 public class PeriodsController(
     PeriodsRepository periodsRepository) : ControllerBase
 {

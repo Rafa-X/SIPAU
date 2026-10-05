@@ -1,63 +1,77 @@
 @page "/datacapture/infrastructure"
 @attribute [Authorize]
+@using UPZMG.Implementations.DataCapture
+@using UPZMG.Shared.Enums
 @inject IDataCaptureService CaptureSvc
+@inject ISecurityService SecuritySvc
+@inject ISnackbar Snackbar
 @inject NavigationManager Nav
+
+@*
+    School spaces are the same rows the timetable schedules groups into, so what this area
+    registers is immediately usable: a space captured here can hold a class the same day.
+*@
 
 <PageTitle>Captura de Infraestructura — SIPAU</PageTitle>
 
-<PageHeader Eyebrow="Captura de datos" Title="Captura de Infraestructura" Subtitle="Espacios físicos e inventario TIC" BackHref="/datacapture" />
-
-<MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4">
-    <b>Esta área todavía no tiene dónde guardarse.</b>
-    El formulario muestra los campos acordados, pero el sistema aún no tiene tabla para ellos, así que
-    el botón de guardar está deshabilitado. Mientras tanto estas cifras se reportan en
-    el formato SII · Infraestructura y el Anexo de Tecnologías de la Información, y de ahí las toma el Informe de Junta.
-    <MudLink Href="/reports" Typo="Typo.body2" Class="ml-1">Ir a los formatos</MudLink>
-</MudAlert>
+<PageHeader Eyebrow="Captura de datos" Title="Captura de Infraestructura"
+            Subtitle="Espacios físicos de la universidad" BackHref="/datacapture">
+    <Actions>
+        <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/datacapture/infrastructure/consult"
+                   StartIcon="@Icons.Material.Filled.ListAlt">Consultar espacios</MudButton>
+    </Actions>
+</PageHeader>
 
 <MudPaper Elevation="1" Class="pa-6">
     <MudForm @ref="_form">
         <MudText Typo="Typo.h6" Class="mb-3">Espacio físico</MudText>
         <MudGrid>
             <MudItem md="6">
-                <MudTextField @bind-Value="_model.SpaceName" Label="Nombre del espacio"
-                              Required="true" RequiredError="Requerido." />
+                <MudTextField @bind-Value="_name" Label="Nombre del espacio"
+                              Required="true" RequiredError="Indica el nombre del espacio." MaxLength="50" />
             </MudItem>
             <MudItem md="6">
-                <MudSelect T="string" @bind-Value="_model.UseType" Label="Tipo de uso">
-                    @foreach (var u in CaptureSvc.SpaceUseTypes) { <MudSelectItem T="string" Value="@u">@u</MudSelectItem> }
+                <MudSelect T="SchoolFacilityType" @bind-Value="_type" Label="Tipo de espacio">
+                    @foreach (var type in Enum.GetValues<SchoolFacilityType>())
+                    {
+                        <MudSelectItem T="SchoolFacilityType" Value="@type">@Readable(type)</MudSelectItem>
+                    }
                 </MudSelect>
             </MudItem>
 
             <MudItem md="6">
-                <MudNumericField T="decimal" @bind-Value="_model.SquareMeters" Label="Metros cuadrados" Min="0" Format="0.##" />
+                <MudNumericField T="double" @bind-Value="_squareMeters" Label="Metros cuadrados" Min="0" Max="100000" Format="0.##" />
             </MudItem>
             <MudItem md="6">
-                <MudNumericField T="int" @bind-Value="_model.Capacity" Label="Capacidad (personas)" Min="0" />
+                <MudNumericField T="int" @bind-Value="_capacity" Label="Capacidad (personas)" Min="0" Max="2000" />
             </MudItem>
 
             <MudItem md="6">
-                <MudNumericField T="int" @bind-Value="_model.ComputersInOperation" Label="Computadoras en operación" Min="0" />
+                <MudNumericField T="int" @bind-Value="_computers" Label="Computadoras en operación" Min="0" Max="2000" />
+            </MudItem>
+            <MudItem md="6" Class="d-flex align-center">
+                <MudSwitch T="bool" @bind-Value="_inUse" Color="Color.Secondary" Label="En uso" />
             </MudItem>
 
             <MudItem md="4" Class="d-flex align-center">
-                <MudSwitch T="bool" @bind-Value="_model.HasInternet" Color="Color.Secondary" Label="Cuenta con internet" />
+                <MudSwitch T="bool" @bind-Value="_hasInternet" Color="Color.Secondary" Label="Cuenta con internet" />
             </MudItem>
             <MudItem md="4" Class="d-flex align-center">
-                <MudSwitch T="bool" @bind-Value="_model.HasComputerEquipment" Color="Color.Secondary" Label="Equipo de cómputo" />
+                <MudSwitch T="bool" @bind-Value="_hasComputers" Color="Color.Secondary" Label="Equipo de cómputo" />
             </MudItem>
             <MudItem md="4" Class="d-flex align-center">
-                <MudSwitch T="bool" @bind-Value="_model.IsAdapted" Color="Color.Secondary" Label="Adaptado (accesibilidad)" />
+                <MudSwitch T="bool" @bind-Value="_supportDisabilities" Color="Color.Secondary" Label="Adaptado (accesibilidad)" />
+            </MudItem>
+
+            <MudItem md="12">
+                <MudTextField @bind-Value="_problems" Label="Problemas detectados (uno por línea)"
+                              Lines="3" Placeholder="Filtraciones en el techo&#10;Falta de iluminación" />
             </MudItem>
         </MudGrid>
 
         <MudStack Row="true" Spacing="2" Class="mt-6">
-            <MudTooltip Text="Disponible cuando el área tenga almacenamiento propio" Placement="Placement.Top">
-                <span>
-                    <MudButton Variant="Variant.Filled" Color="Color.Secondary"
-                               StartIcon="@Icons.Material.Filled.Save" Disabled="true">Guardar espacio</MudButton>
-                </span>
-            </MudTooltip>
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Save"
+                       Disabled="_saving" OnClick="Submit">Guardar espacio</MudButton>
             <MudButton Variant="Variant.Outlined" OnClick="@(() => Nav.NavigateTo("/datacapture"))">Cancelar</MudButton>
         </MudStack>
     </MudForm>
@@ -65,6 +79,59 @@
 
 @code {
     private MudForm _form = null!;
-    private InfrastructureFormViewModel _model = new();
+    private bool _saving;
 
+    private string _name = string.Empty;
+    private SchoolFacilityType _type = SchoolFacilityType.Aula;
+    private double _squareMeters;
+    private int _capacity;
+    private int _computers;
+    private bool _inUse = true;
+    private bool _hasInternet;
+    private bool _hasComputers;
+    private bool _supportDisabilities;
+    private string _problems = string.Empty;
+
+    // The enum is written without spaces; the screen shows it the way the area reads it.
+    private static string Readable(SchoolFacilityType type) =>
+        System.Text.RegularExpressions.Regex.Replace(type.ToString(), "(?<!^)([A-Z])", " $1");
+
+    private async Task Submit()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid) return;
+
+        _saving = true;
+        try
+        {
+            await CaptureSvc.CreateFacility(new CreateFacility
+            {
+                RequesterKey = await SecuritySvc.GetRequesterKeyAsync(),
+                Name = _name.Trim(),
+                Type = _type,
+                SquareMeters = _squareMeters,
+                Capacity = _capacity,
+                ComputersInOperation = _computers,
+                InUse = _inUse,
+                HasInternet = _hasInternet,
+                HasComputers = _hasComputers,
+                SupportDisabilities = _supportDisabilities,
+                Problems = _problems
+                    .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .ToList(),
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            return;
+        }
+        finally
+        {
+            _saving = false;
+        }
+
+        Snackbar.Add($"Espacio «{_name.Trim()}» guardado correctamente.", Severity.Success);
+        Nav.NavigateTo("/datacapture/infrastructure/consult");
+    }
 }

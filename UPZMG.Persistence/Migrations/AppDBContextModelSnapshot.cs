@@ -22,6 +22,68 @@ namespace UPZMG.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("UPZMG.Persistence.Models.AnnualFinance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("DateCreated")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("FederalIncome")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("FiscalYear")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("InvestmentExpense")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("LastModified")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("MaterialsExpense")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<decimal>("OwnIncomeEnrollment")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("OwnIncomeServices")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("PayrollExpense")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("ServicesExpense")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("StateIncome")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FiscalYear")
+                        .IsUnique();
+
+                    b.ToTable("annualFinances", (string)null);
+                });
+
             modelBuilder.Entity("UPZMG.Persistence.Models.Careers", b =>
                 {
                     b.Property<Guid>("Id")
@@ -283,6 +345,18 @@ namespace UPZMG.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Curp")
+                        .IsUnique();
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("EmployeeNumber")
+                        .IsUnique();
+
+                    b.HasIndex("Rfc")
+                        .IsUnique();
+
                     b.ToTable("employees", (string)null);
                 });
 
@@ -475,6 +549,71 @@ namespace UPZMG.Persistence.Migrations
                     b.ToTable("maxDegrees", (string)null);
                 });
 
+            modelBuilder.Entity("UPZMG.Persistence.Models.OutreachProject", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("AccreditedHours")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ActivityType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("CompanySize")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("DateCreated")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateOnly?>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("OrganizationName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("PeriodId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ProjectName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Sector")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateOnly?>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("StudentEnrollmentNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid?>("StudentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PeriodId");
+
+                    b.HasIndex("StudentId");
+
+                    b.ToTable("outreachProjects", (string)null);
+                });
+
             modelBuilder.Entity("UPZMG.Persistence.Models.Periods", b =>
                 {
                     b.Property<Guid>("Id")
@@ -516,6 +655,14 @@ namespace UPZMG.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -552,6 +699,11 @@ namespace UPZMG.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(40)
                         .HasColumnType("nvarchar(40)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -664,6 +816,9 @@ namespace UPZMG.Persistence.Migrations
                     b.Property<int>("Capacity")
                         .HasColumnType("int");
 
+                    b.Property<int>("ComputersInOperation")
+                        .HasColumnType("int");
+
                     b.Property<bool>("HasComputers")
                         .HasColumnType("bit");
 
@@ -678,9 +833,12 @@ namespace UPZMG.Persistence.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.PrimitiveCollection<string>("Problems")
+                    b.Property<string>("Problems")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<double>("SquareMeters")
+                        .HasColumnType("float");
 
                     b.Property<bool>("SupportDisabilities")
                         .HasColumnType("bit");
@@ -690,7 +848,7 @@ namespace UPZMG.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("SchoolFacility");
+                    b.ToTable("SchoolFacility", (string)null);
                 });
 
             modelBuilder.Entity("UPZMG.Persistence.Models.ScolarshipAssigned", b =>
@@ -699,8 +857,9 @@ namespace UPZMG.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<float>("Amount")
-                        .HasColumnType("real");
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateOnly?>("AssignedDate")
                         .HasColumnType("date");
@@ -727,7 +886,8 @@ namespace UPZMG.Persistence.Migrations
 
                     b.HasIndex("ScolarshipProgramId");
 
-                    b.HasIndex("StudentId");
+                    b.HasIndex("StudentId", "PeriodId", "ScolarshipProgramId")
+                        .IsUnique();
 
                     b.ToTable("scolarshipAssigneds", (string)null);
                 });
@@ -748,7 +908,7 @@ namespace UPZMG.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ScolarshipProgram");
+                    b.ToTable("ScolarshipProgram", (string)null);
                 });
 
             modelBuilder.Entity("UPZMG.Persistence.Models.Student", b =>
@@ -835,6 +995,13 @@ namespace UPZMG.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CURP")
+                        .IsUnique()
+                        .HasFilter("[CURP] <> ''");
+
+                    b.HasIndex("EnrollmentNumber")
+                        .IsUnique();
+
                     b.ToTable("students", (string)null);
                 });
 
@@ -891,6 +1058,9 @@ namespace UPZMG.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Email")
+                        .IsUnique();
+
                     b.ToTable("systemUser", (string)null);
                 });
 
@@ -912,8 +1082,12 @@ namespace UPZMG.Persistence.Migrations
                     b.Property<bool>("HasProfessionalLicence")
                         .HasColumnType("bit");
 
-                    b.Property<int>("ProfessionalLicenceNumber")
+                    b.Property<int>("Modality")
                         .HasColumnType("int");
+
+                    b.Property<string>("ProfessionalLicenceNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<Guid>("StudentId")
                         .HasColumnType("uniqueidentifier");
@@ -928,7 +1102,8 @@ namespace UPZMG.Persistence.Migrations
 
                     b.HasIndex("CareerId");
 
-                    b.HasIndex("StudentId");
+                    b.HasIndex("StudentId")
+                        .IsUnique();
 
                     b.HasIndex("TitulationAssessorId");
 
@@ -1105,6 +1280,19 @@ namespace UPZMG.Persistence.Migrations
                         .HasForeignKey("StudentId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("UPZMG.Persistence.Models.OutreachProject", b =>
+                {
+                    b.HasOne("UPZMG.Persistence.Models.Periods", null)
+                        .WithMany()
+                        .HasForeignKey("PeriodId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("UPZMG.Persistence.Models.Student", null)
+                        .WithMany()
+                        .HasForeignKey("StudentId");
                 });
 
             modelBuilder.Entity("UPZMG.Persistence.Models.RolePermission", b =>

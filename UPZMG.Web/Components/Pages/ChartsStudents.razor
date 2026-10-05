@@ -5,8 +5,10 @@
 @using UPZMG.Web.Models.Charts
 @using UPZMG.Implementations.Intelligence
 
+@using UPZMG.Implementations.DataCapture
 @inject IStudentsService _studentsService
 @inject IIntelligenceService Ai
+@inject IChartsService ChartsSvc
 
 <PageTitle>Gráficas de Alumnos - SIPAU</PageTitle>
 
@@ -102,17 +104,73 @@
         </SectionCard>
     </MudItem>
 
+    <MudItem xs="12" lg="7">
+        <SectionCard Title="Matrícula por programa y sexo"
+                     Subtitle="Alumnos activos, el desglose que piden el 911 y el SII"
+                     Icon="@Icons.Material.Filled.Wc" Accent="teal">
+            <ChildContent>
+                @if (_gender is null || _gender.Careers.Count == 0)
+                {
+                    <EmptyState Icon="@Icons.Material.Filled.Wc"
+                                Title="Sin alumnos activos"
+                                Description="En cuanto haya alumnos activos capturados, el desglose por sexo se calcula solo." />
+                }
+                else
+                {
+                    <BarChart Id="gender-chart" Labels="_gender.Careers" Series="_genderSeries" Height="200"
+                              AriaLabel="Alumnos activos por programa y sexo" />
+                }
+            </ChildContent>
+            <Footer>
+                @if (_gender is { } gender && gender.Careers.Count > 0)
+                {
+                    var total = gender.TotalWomen + gender.TotalMen;
+                    <span>
+                        @gender.TotalWomen.ToString("N0") mujeres y @gender.TotalMen.ToString("N0") hombres ·
+                        @(total == 0 ? "0" : (100.0 * gender.TotalWomen / total).ToString("0.0")) % de mujeres
+                    </span>
+                }
+                else
+                {
+                    <span>Calculado de los alumnos con estatus activo.</span>
+                }
+            </Footer>
+        </SectionCard>
+    </MudItem>
+
     <MudItem xs="12" lg="5">
         <SectionCard Title="Becas por fuente"
                      Subtitle="Distribución de becas vigentes por financiamiento"
                      Icon="@Icons.Material.Filled.Savings" Accent="gold">
             <ChildContent>
-                <EmptyState Icon="@Icons.Material.Filled.Savings"
-                            Title="Sin becas registradas"
-                            Description="Hoy las becas se reportan dentro del formato SII · Perfil del alumno. Esta gráfica se conectará cuando exista la captura de becas por alumno." />
+                @if (_scholarships is null || _scholarships.Sources.Count == 0)
+                {
+                    <EmptyState Icon="@Icons.Material.Filled.Savings"
+                                Title="Sin becas registradas"
+                                Description="Captura una beca por alumno y periodo, y el desglose por fuente de financiamiento aparece aquí.">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/datacapture/scholarships">
+                            Capturar beca
+                        </MudButton>
+                    </EmptyState>
+                }
+                else
+                {
+                    <BarChart Id="scholarships-chart" Labels="_scholarships.Sources" Series="_scholarshipSeries" Height="200"
+                              AriaLabel="Alumnos becados por fuente de financiamiento" />
+                }
             </ChildContent>
             <Footer>
-                Fuente prevista: padrón de becas por alumno y periodo.
+                @if (_scholarships is { } becas && becas.Sources.Count > 0)
+                {
+                    <span>
+                        @becas.TotalStudents.ToString("N0") alumnos becados ·
+                        @becas.TotalAmount.ToString("C0", Mx) en el periodo activo
+                    </span>
+                }
+                else
+                {
+                    <span>Padrón de becas por alumno y periodo.</span>
+                }
             </Footer>
 
         </SectionCard>
@@ -121,6 +179,22 @@
 
 @code {
     private ChartsStudentsModel _model = new ChartsStudentsModel();
+
+    private static readonly System.Globalization.CultureInfo Mx = new("es-MX");
+
+    private GenderDistribution? _gender;
+    private ScholarshipsBySource? _scholarships;
+
+    private List<ChartSeriesData> _scholarshipSeries =>
+    [
+        new ChartSeriesData("Alumnos becados", [.. (_scholarships?.Students ?? []).Select(v => (double)v)], ChartPalette.Ochre),
+    ];
+
+    private List<ChartSeriesData> _genderSeries =>
+    [
+        new ChartSeriesData("Mujeres", [.. (_gender?.Women ?? []).Select(v => (double)v)], ChartPalette.Teal),
+        new ChartSeriesData("Hombres", [.. (_gender?.Men ?? []).Select(v => (double)v)], ChartPalette.Navy),
+    ];
     
     // ── Aprovechamiento, calculado del kardex registrado ────────────────────
 
@@ -149,6 +223,8 @@
         _model.AllStudentsAges = [new ChartSeriesData("Todos los estudiantes", _model.AllStudents.Values, ChartPalette.Navy)];
 
         _periods = await Ai.GetHistoryAsync();
+        _gender = await ChartsSvc.GetGenderDistributionAsync();
+        _scholarships = await ChartsSvc.GetScholarshipsBySourceAsync();
     }
 
     private static ChartStudentsAges MapAges(IReadOnlyList<StudentsAges> ages) => new()

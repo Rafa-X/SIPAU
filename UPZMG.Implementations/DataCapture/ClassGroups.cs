@@ -3,7 +3,7 @@ using UPZMG.Persistence.Models;
 
 namespace UPZMG.Implementations.DataCapture;
 
-public sealed class CreateClassGroup
+public class CreateClassGroup
 {
     public required Guid RequesterKey { get; set; }
     public required List<Schedule> Schedule { get; set; } = [];
@@ -16,6 +16,12 @@ public sealed class CreateClassGroup
     [Range(1, 500)]
     public int Capacity { get; set; }
     public double Weekhours { get; set; }
+}
+
+/// <summary>A correction to a class group; the schedule is re-checked against the other groups.</summary>
+public sealed class UpdateClassGroup : CreateClassGroup
+{
+    public required Guid Id { get; set; }
 }
 
 public sealed class ClassGroupListItem

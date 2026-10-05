@@ -12,10 +12,14 @@ public class PermissionsRepository(AppDBContext _db)
     {
         return await db.Permissions
             .AsNoTracking()
+            .OrderBy(permission => permission.Name)
             .Select(permission => new Permission
             {
                 Id = permission.Id,
-                Name = permission.Name
+                Name = permission.Name,
+                // The screen lists these: a slug alone does not tell an administrator what it grants.
+                DisplayName = permission.DisplayName,
+                Description = permission.Description,
             })
             .ToListAsync();
     }

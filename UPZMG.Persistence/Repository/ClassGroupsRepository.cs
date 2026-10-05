@@ -44,6 +44,77 @@ public sealed partial class ClassGroupsRepository(AppDBContext db)
         return group;
     }
 
+    /// <summary>The whole group, to fill the correction form.</summary>
+    public async Task<UpdateClassGroup?> GetAsync(Guid id)
+    {
+        var group = await db.ClassGroups.AsNoTracking().FirstOrDefaultAsync(g => g.Id == id);
+        if (group is null) return null;
+
+        return new UpdateClassGroup
+        {
+            Id = group.Id,
+            RequesterKey = Guid.Empty,
+            Schedule = group.Schedule,
+            CourseId = group.CourseId,
+            PeriodId = group.PeriodId,
+            CareerId = group.CareerId,
+            TeacherId = group.TeacherId,
+            FacilityId = group.FacilityId,
+            IsTheory = group.IsTheory,
+            Capacity = group.Capacity,
+            Weekhours = group.Weekhours,
+        };
+    }
+
+    /// <summary>
+    /// Corrects a captured group. The room clash is checked again against the other groups of
+    /// the period — excluding this one, so a group never collides with its own former schedule.
+    /// </summary>
+    public async Task<ClassGroups> UpdateAsync(UpdateClassGroup request)
+    {
+        var group = await db.ClassGroups.FirstOrDefaultAsync(g => g.Id == request.Id)
+            ?? throw new InvalidOperationException("El grupo ya no existe.");
+
+        if (request.Capacity < group.Enrolled)
+            throw new InvalidOperationException(
+                $"El grupo ya tiene {group.Enrolled} inscritos: la capacidad no puede quedar por debajo.");
+
+        // Only what the correction actually moves is re-checked. Refusing to fix a capacity
+        // because of a clash the group did not create would leave old records uncorrectable.
+        bool moved = group.FacilityId != request.FacilityId
+            || group.PeriodId != request.PeriodId
+            || !SameSchedule(group.Schedule, request.Schedule);
+
+        if (moved)
+        {
+            var sameSpace = await db.ClassGroups
+                .AsNoTracking()
+                .Where(g => g.Id != request.Id && g.FacilityId == request.FacilityId && g.PeriodId == request.PeriodId)
+                .ToListAsync();
+
+            foreach (var existing in sameSpace)
+            {
+                var conflict = FindScheduleConflict(request.Schedule, existing.Schedule);
+                if (conflict is { } day)
+                    throw new InvalidOperationException(
+                        $"El espacio ya está ocupado el {day} en un horario que se traslapa con otro grupo de este periodo.");
+            }
+        }
+
+        group.FacilityId = request.FacilityId;
+        group.Schedule = request.Schedule.Select(s => new Schedule { Day = s.Day.Trim(), Time = s.Time.Trim() }).ToList();
+        group.PeriodId = request.PeriodId;
+        group.CareerId = request.CareerId;
+        group.CourseId = request.CourseId;
+        group.Weekhours = request.Weekhours;
+        group.TeacherId = request.TeacherId;
+        group.Capacity = request.Capacity;
+        group.IsTheory = request.IsTheory;
+
+        await db.SaveChangesAsync();
+        return group;
+    }
+
     // Captured class groups with display-friendly names instead of raw foreign keys.
     public async Task<List<ClassGroupListItem>> GetClassGroupsListAsync()
     {
@@ -73,6 +144,12 @@ public sealed partial class ClassGroupsRepository(AppDBContext db)
 
         return await query.ToListAsync();
     }
+
+    // Same days and same hours, in any order: the group did not move.
+    private static bool SameSchedule(IReadOnlyList<Schedule> stored, IReadOnlyList<Schedule> incoming) =>
+        stored.Count == incoming.Count &&
+        stored.Select(s => $"{Normalize(s.Day)}|{Normalize(s.Time)}").OrderBy(x => x)
+            .SequenceEqual(incoming.Select(s => $"{Normalize(s.Day)}|{Normalize(s.Time)}").OrderBy(x => x));
 
     // Returns the conflicting day (as written) when a new schedule shares a day and overlapping time range with an existing one.
     private static string? FindScheduleConflict(IReadOnlyList<Schedule> newSchedule, IReadOnlyList<Schedule> existingSchedule)

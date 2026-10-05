@@ -9,6 +9,31 @@ namespace UPZMG.Persistence.Repository;
 public class ChartsRepository(AppDBContext db)
 {
     
+    /// <summary>
+    /// Active students by programme and sex. Every official format asks for the M/H split,
+    /// so it is computed from the records rather than typed into each one by hand.
+    /// </summary>
+    public async Task<GenderDistribution> GetGenderDistributionAsync()
+    {
+        var rows = await (
+            from student in db.Students.AsNoTracking()
+            join career in db.Careers.AsNoTracking() on student.CareerId equals career.Id
+            where student.Status == StudentStatus.Activo
+            group student by new { Career = career.Alias ?? career.Name ?? "Sin nombre", student.Gender } into g
+            select new { g.Key.Career, g.Key.Gender, Count = g.Count() }
+        ).ToListAsync();
+
+        var careers = rows.Select(r => r.Career).Distinct().OrderBy(c => c).ToList();
+
+        int CountOf(string career, Gender gender) =>
+            rows.FirstOrDefault(r => r.Career == career && r.Gender == gender)?.Count ?? 0;
+
+        return new GenderDistribution(
+            careers,
+            [.. careers.Select(c => CountOf(c, Gender.M))],
+            [.. careers.Select(c => CountOf(c, Gender.H))]);
+    }
+
     public async Task<List<ChartCategory>> GetCareersDistributionAsync()
     {
         var result = await (

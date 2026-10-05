@@ -3,6 +3,7 @@
 @using UPZMG.Implementations.Dashboard
 @inject IDashboardService DashboardSvc
 @inject IGeneralDataService GeneralDataSvc
+@inject IDataCaptureService CaptureSvc
 
 @*
     What each area has stored today. Areas without a table of their own say so instead of
@@ -80,6 +81,12 @@ else
 @code {
     private DashboardSummary? _summary;
     private int _facilities;
+    private int _outreachProjects;
+    private int _outreachHours;
+    private int _fiscalYears;
+    private int? _lastFiscalYear;
+    private int _scholarships;
+    private int _titulations;
     private bool _loading = true;
 
     private sealed record CaptureArea(
@@ -92,6 +99,18 @@ else
         {
             _summary = await DashboardSvc.GetSummaryAsync();
             _facilities = (await GeneralDataSvc.GetFacilitiesAsync()).Count;
+
+            // Each listing returns empty when the area may not read it, so the card simply shows nothing.
+            var projects = await CaptureSvc.GetOutreachListAsync();
+            _outreachProjects = projects.Count;
+            _outreachHours = projects.Sum(p => p.AccreditedHours);
+
+            _scholarships = (await CaptureSvc.GetScholarshipsAsync()).Count;
+            _titulations = (await CaptureSvc.GetTitulationsAsync()).Count;
+
+            var finances = await CaptureSvc.GetFinanceListAsync();
+            _fiscalYears = finances.Count;
+            _lastFiscalYear = finances.Count == 0 ? null : finances.Max(f => f.FiscalYear);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
@@ -120,17 +139,35 @@ else
 
         new("Infraestructura", "Recursos Materiales y Servicios Generales", Icons.Material.Filled.Domain,
             _facilities, "espacios registrados",
-            "Los espacios se dan de alta junto con los grupos; la captura propia del área todavía no guarda.",
+            "Los mismos espacios en los que se programan los grupos de clase.",
             "/datacapture/infrastructure", "/datacapture/infrastructure/consult"),
 
+        new("Becas", "Servicios Estudiantiles", Icons.Material.Filled.Savings,
+            _scholarships, "becas asignadas",
+            _scholarships == 0
+                ? "Sin becas capturadas todavía."
+                : "Alimentan la gráfica por fuente y el capítulo de becas del informe.",
+            "/datacapture/scholarships", "/datacapture/scholarships/consult"),
+
+        new("Titulación", "Control Escolar", Icons.Material.Filled.WorkspacePremium,
+            _titulations, "procesos registrados",
+            _titulations == 0
+                ? "Sin titulaciones capturadas todavía."
+                : "Sólo de alumnos egresados: así la eficiencia de titulación es real.",
+            "/datacapture/titulation", "/datacapture/titulation/consult"),
+
         new("Extensión y vinculación", "Vinculación", Icons.Material.Filled.Diversity3,
-            null, string.Empty,
-            "Todavía sin tabla propia. Se reporta en el formato 911.10 · Institución.",
+            _outreachProjects, "proyectos registrados",
+            _outreachProjects == 0
+                ? "Sin proyectos capturados todavía."
+                : $"{_outreachHours:N0} horas acreditadas en total",
             "/datacapture/extension", "/datacapture/extension/consult"),
 
         new("Finanzas", "Administración y Finanzas", Icons.Material.Filled.Payments,
-            null, string.Empty,
-            "Todavía sin tabla propia. Se reporta en el formato 911.10 · Institución.",
+            _fiscalYears, "ejercicios capturados",
+            _lastFiscalYear is { } year
+                ? $"El más reciente es el ejercicio {year}"
+                : "Sin ejercicios capturados todavía.",
             "/datacapture/finance", "/datacapture/finance/consult"),
     ];
 }
