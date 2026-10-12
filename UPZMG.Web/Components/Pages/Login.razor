@@ -39,7 +39,14 @@
             <h2 class="sipau-login-h1">Iniciar sesión</h2>
             <p class="sipau-login-lead">Usa tus credenciales institucionales.</p>
 
-            @if (_hasError)
+            @if (_waitMinutes is { } minutes)
+            {
+                <div class="sipau-login-error" role="alert">
+                    Por seguridad, esta cuenta quedó bloqueada unos minutos después de varios intentos fallidos.
+                    Vuelve a intentarlo en @minutes minuto@(minutes == 1 ? "" : "s").
+                </div>
+            }
+            else if (_hasError)
             {
                 <div class="sipau-login-error" role="alert">
                     No pudimos validar esas credenciales. Revisa tu correo y tu contraseña;
@@ -91,6 +98,9 @@
 @code {
     private bool _hasError;
 
+    // Set when the API answered 429: the password may well be right, the account just has to wait.
+    private int? _waitMinutes;
+
     protected override async Task OnInitializedAsync()
     {
         // Already signed in → go straight to the dashboard.
@@ -101,7 +111,12 @@
             return;
         }
 
-        _hasError = new Uri(Nav.Uri).Query.Contains("error", StringComparison.OrdinalIgnoreCase);
+        var query = new Uri(Nav.Uri).Query;
+        _hasError = query.Contains("error", StringComparison.OrdinalIgnoreCase);
+
+        var waiting = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(query);
+        if (waiting.TryGetValue("minutos", out var value) && int.TryParse(value, out var minutes))
+            _waitMinutes = Math.Clamp(minutes, 1, 60);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

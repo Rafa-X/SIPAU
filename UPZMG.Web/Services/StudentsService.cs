@@ -47,17 +47,27 @@ public sealed class StudentsService(
         return new StudentsListResponse();
     }
 
-    public async Task<List<StudentsAges>> GetStudentsAgesAsync(bool newOnly = false)
+    public async Task<List<StudentsAges>?> GetStudentsAgesAsync(bool newOnly = false)
     {
-        var requesterKey = await securityService.GetRequesterKeyAsync();
-        var response = await securityService.SendGetRequestAsync<List<StudentsAges>>(
-            $"students/ages-{(newOnly ? "new" : "all")}", requesterKey);
-
-        if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+        try
         {
-            return JsonSerializer.Deserialize<List<StudentsAges>>(response.Result, ResponseOptions) ?? [];
+            var requesterKey = await securityService.GetRequesterKeyAsync();
+            var response = await securityService.SendGetRequestAsync<List<StudentsAges>>(
+                $"students/ages-{(newOnly ? "new" : "all")}", requesterKey);
+
+            if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+            {
+                return JsonSerializer.Deserialize<List<StudentsAges>>(response.Result, ResponseOptions) ?? [];
+            }
+
+            return null;
         }
-        return [];
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            // Null, not an empty histogram: one card that cannot load must not take the page
+            // down with it, and must not claim the university has no students either.
+            return null;
+        }
     }
 
     // No backing API endpoints exist yet for these; nothing in the app calls them today.

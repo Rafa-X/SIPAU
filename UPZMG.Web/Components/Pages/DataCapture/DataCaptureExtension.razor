@@ -1,5 +1,5 @@
 @page "/datacapture/extension"
-@attribute [Authorize]
+@attribute [Authorize(Policy = AppPermissions.CaptureOutreach)]
 @using UPZMG.Implementations.DataCapture
 @inject IDataCaptureService CaptureSvc
 @inject IGeneralDataService GeneralDataSvc

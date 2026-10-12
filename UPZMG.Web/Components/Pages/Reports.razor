@@ -1,5 +1,5 @@
 @page "/reports"
-@attribute [Authorize]
+@attribute [Authorize(Policy = AppPermissions.CaptureReports)]
 @using System.Text.Json
 @using UPZMG.Implementations.Reports
 @inject IReportsService ReportsSvc
@@ -13,7 +13,7 @@
     <Actions>
         @* Authoring a format is an administrative act, so the door only exists
            for the role that can walk through it. *@
-        <AuthorizeView Roles="Admin">
+        <AuthorizeView Policy="@AppPermissions.PublishReports">
             <Authorized>
                 <MudButton Variant="Variant.Outlined" Color="Color.Primary"
                            StartIcon="@Icons.Material.Filled.Tune" Href="/reports/plantillas">

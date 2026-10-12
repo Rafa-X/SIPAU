@@ -98,7 +98,10 @@ public class ReportsController(
         {
             SaveReportOutcome.Created => Created($"/reports/{result.Report!.Id}", result.Report),
             SaveReportOutcome.Updated => Ok(result.Report),
-            SaveReportOutcome.Locked => Conflict("The report was already submitted."),
+            SaveReportOutcome.Locked => Conflict(new { message = "Este formato ya se había enviado y no admite cambios." }),
+            // 412, not 409: the capture is still a draft, it just moved under this form.
+            SaveReportOutcome.Stale => StatusCode(StatusCodes.Status412PreconditionFailed,
+                new { message = "Otra persona guardó esta captura mientras la tenías abierta." }),
             SaveReportOutcome.Incomplete => UnprocessableEntity(result.Problems),
             _ => NotFound(),
         };

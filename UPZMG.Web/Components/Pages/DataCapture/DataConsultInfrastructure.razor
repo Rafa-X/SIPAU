@@ -1,5 +1,5 @@
 @page "/datacapture/infrastructure/consult"
-@attribute [Authorize]
+@attribute [Authorize(Policy = AppPermissions.ReadFacilities)]
 @using UPZMG.Implementations.DataCapture
 @inject IDataCaptureService CaptureSvc
 @inject IJSRuntime JS
@@ -12,6 +12,14 @@
 @if (_loading)
 {
     <LoadingState Text="Leyendo los espacios registrados…" />
+}
+else if (_loadFailed)
+{
+    <SectionCard FullHeight="false">
+        <EmptyState Icon="@Icons.Material.Filled.CloudOff"
+                    Title="No pudimos leer el listado"
+                    Description="El servicio no respondió, así que esta pantalla no puede afirmar que no haya registros. Vuelve a cargar la página; si sigue así, avisa a Tecnologías." />
+    </SectionCard>
 }
 else if (_facilities.Count == 0)
 {
@@ -80,11 +88,15 @@ else
 @code {
     private IReadOnlyList<FacilityListItem> _facilities = [];
     private bool _loading = true;
+    private bool _loadFailed;
     private string _search = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
-        _facilities = await CaptureSvc.GetFacilitiesListAsync();
+        var rows = await CaptureSvc.GetFacilitiesListAsync();
+        // Null is "the listing could not be read", which is not the same as having none.
+        _loadFailed = rows is null;
+        _facilities = rows ?? [];
         _loading = false;
     }
 

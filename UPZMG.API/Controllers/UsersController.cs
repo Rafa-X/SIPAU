@@ -67,16 +67,28 @@ public class UsersController(SecurityRepository securityRepository, UsersReposit
     [HttpPost("create")]
     public async Task<IActionResult> CreateUser([FromBody] CreateUser request)
     {
-        var user = await usersRepository.CreateUserAsync(request);
-
-        return Created($"/api/users/{user.Id}", UsersRepository.ToResponse(user));
+        try
+        {
+            var user = await usersRepository.CreateUserAsync(request);
+            return Created($"/api/users/{user.Id}", UsersRepository.ToResponse(user));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
     }
 
     [HttpPost("edit")]
     public async Task<IActionResult> EditUser([FromBody] EditUser request)
     {
-        var user = await usersRepository.EditUserAsync(request);
-
-        return Ok(UsersRepository.ToResponse(user));
+        try
+        {
+            var user = await usersRepository.EditUserAsync(request, CurrentUserId);
+            return Ok(UsersRepository.ToResponse(user));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
     }
 }

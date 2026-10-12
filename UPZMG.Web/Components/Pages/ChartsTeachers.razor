@@ -1,5 +1,5 @@
 @page "/charts/teachers"
-@attribute [Authorize]
+@attribute [Authorize(Policy = AppPermissions.ReadIndicators)]
 @using UPZMG.Implementations.Charts
 @inject IChartsService ChartsSvc
 

@@ -62,6 +62,13 @@ public class AccountController(
             };
             var authenticatedUser = await _securityService.AuthenticateUserAsync(request);
 
+            if (authenticatedUser is { Throttled: true })
+            {
+                _securityLogger.LogLoginRejected(email, "Sign-in temporarily blocked after repeated failures");
+                var minutes = Math.Max(1, (int)Math.Ceiling(authenticatedUser.RetryAfterSeconds / 60.0));
+                return Redirect($"/login?error=espera&minutos={minutes}");
+            }
+
             if (authenticatedUser is null || authenticatedUser.UserId == Guid.Empty || string.IsNullOrWhiteSpace(authenticatedUser.RoleName))
             {
                 _securityLogger.LogLoginRejected(email, "User not found or inactive");
@@ -120,7 +127,10 @@ public class AccountController(
     // Authorization is enforced by Blazor's AuthorizeRouteView; if the cookie
     // middleware ever hits this path, send the user somewhere valid.
     [AllowAnonymous]
-    public IActionResult AccessDenied() => LocalRedirect("/dashboard");
+    // The authorization middleware stops a page the account may not open and lands here. It
+    // used to send everybody to the dashboard without a word, so a link somebody did not have
+    // the permission for looked broken instead of refused.
+    public IActionResult AccessDenied() => LocalRedirect("/sin-permiso");
 
     // Heartbeat hit by client-side JS only while the user is active; the request
     // itself is what triggers the cookie middleware's sliding-expiration renewal.

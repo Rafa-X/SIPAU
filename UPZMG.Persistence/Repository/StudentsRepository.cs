@@ -16,9 +16,13 @@ public class StudentsRepository(AppDBContext db)
         if (existEnrollment)
             throw new InvalidOperationException($"Ya existe un alumno con la matrícula '{request.EnrollmentNumber}'.");
 
-        var existCurp = await db.Students.AnyAsync(s => s.CURP == request.CURP);
-        if (existCurp)
+        // A student with no CURP is allowed, and there can be many of them: the unique index is
+        // filtered on [CURP] <> '', so checking a blank value here rejected everyone after the first.
+        if (!string.IsNullOrWhiteSpace(request.CURP)
+            && await db.Students.AnyAsync(s => s.CURP == request.CURP))
+        {
             throw new InvalidOperationException($"Ya existe un alumno con la CURP '{request.CURP}'.");
+        }
 
         var matchedLanguageIds = await db.IndigenousLanguages
             .Where(l => l.Language != null && request.IndigenousLanguages.Contains(l.Language))
@@ -26,6 +30,9 @@ public class StudentsRepository(AppDBContext db)
         
         var student = new Student
         {
+            // Assigned here rather than by the database: the language links below copy this id,
+            // and before the entity is saved any other source for it would be an empty Guid.
+            Id = Guid.NewGuid(),
             EnrollmentNumber = request.EnrollmentNumber,
             CURP = request.CURP,
             Name = request.Name,

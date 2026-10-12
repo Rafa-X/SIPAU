@@ -136,6 +136,9 @@ public class EmployeesRepository(AppDBContext db)
 
         var employee = new Employee
         {
+            // Assigned here rather than by the database: the language links below copy this id,
+            // and before the entity is saved any other source for it would be an empty Guid.
+            Id = Guid.NewGuid(),
             EmployeeNumber = request.EmployeeNumber,
             FullName = request.FullName,
             Email = request.Email,

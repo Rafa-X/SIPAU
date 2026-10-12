@@ -31,14 +31,16 @@ public interface IDataCaptureService
     Task<OutreachProject?> CreateOutreachProject(CreateOutreachProject request);
     Task<AnnualFinance?> SaveFinance(SaveAnnualFinance request);
 
-    Task<IReadOnlyList<FacilityListItem>> GetFacilitiesListAsync();
-    Task<IReadOnlyList<OutreachListItem>> GetOutreachListAsync();
-    Task<IReadOnlyList<FinanceListItem>> GetFinanceListAsync();
+    // These five answer null when the request failed, and an empty list when the area really
+    // has nothing registered yet. The screens say which of the two it is.
+    Task<IReadOnlyList<FacilityListItem>?> GetFacilitiesListAsync();
+    Task<IReadOnlyList<OutreachListItem>?> GetOutreachListAsync();
+    Task<IReadOnlyList<FinanceListItem>?> GetFinanceListAsync();
 
     Task<ScolarshipAssigned?> CreateScholarship(CreateScholarship request);
     Task<TitulationProcess?> CreateTitulation(CreateTitulation request);
 
-    Task<IReadOnlyList<ScholarshipListItem>> GetScholarshipsAsync();
-    Task<IReadOnlyList<TitulationListItem>> GetTitulationsAsync();
+    Task<IReadOnlyList<ScholarshipListItem>?> GetScholarshipsAsync();
+    Task<IReadOnlyList<TitulationListItem>?> GetTitulationsAsync();
     Task<IReadOnlyList<LookupOption>> GetScholarshipProgramsAsync();
 }

@@ -646,6 +646,14 @@ namespace UPZMG.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("IdCode")
+                        .IsUnique();
+
+                    b.HasIndex("IsActive")
+                        .IsUnique()
+                        .HasDatabaseName("IX_periods_ActivePeriod")
+                        .HasFilter("[IsActive] = 1");
+
                     b.ToTable("periods", (string)null);
                 });
 
@@ -705,6 +713,9 @@ namespace UPZMG.Persistence.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
 
+                    b.Property<string>("SnapshotJson")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -715,6 +726,11 @@ namespace UPZMG.Persistence.Migrations
                         .HasColumnType("nvarchar(20)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TemplateVersion")
+                        .IsUnique()
+                        .HasDatabaseName("IX_reports_BoardNarrative")
+                        .HasFilter("[ReportType] = N'InformeJunta' AND [TemplateVersion] IS NOT NULL");
 
                     b.HasIndex("ReportType", "TemplateVersion");
 

@@ -3,6 +3,8 @@ using UPZMG.Implementations.Dashboard;
 using UPZMG.Web.Components.Shared.Charts;
 using UPZMG.Web.Services;
 
+using UPZMG.Implementations.Intelligence;
+
 namespace UPZMG.Web.Models.Charts;
 
 public sealed class ChartsPageViewModel
@@ -14,6 +16,12 @@ public sealed class ChartsPageViewModel
 
 public sealed class EnrollmentChartModel
 {
+    /// <summary>True when the API could not be reached, which is not the same as having no data.</summary>
+    public bool Failed { get; set; }
+
+    /// <summary>What the projection got wrong on periods it had not seen; null until measurable.</summary>
+    public ForecastAccuracy? Accuracy { get; set; }
+
     public IReadOnlyList<string> Labels { get; set; } = [];
     public IReadOnlyList<ChartSeriesData> Series { get; set; } = [];
     public int ForecastFromIndex { get; set; }

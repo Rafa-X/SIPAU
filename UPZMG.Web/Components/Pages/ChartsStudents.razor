@@ -1,5 +1,5 @@
 @page "/charts/students"
-@attribute [Authorize]
+@attribute [Authorize(Policy = AppPermissions.ReadIndicators)]
 @using UPZMG.Implementations.Charts
 @using UPZMG.Shared.Enums
 @using UPZMG.Web.Models.Charts
@@ -66,7 +66,13 @@
                      Subtitle="Índices institucionales de aprovechamiento por periodo"
                      Icon="@Icons.Material.Filled.FactCheck" Accent="navy">
             <ChildContent>
-                @if (_periods.Count == 0)
+                @if (_historyFailed)
+                {
+                    <EmptyState Icon="@Icons.Material.Filled.CloudOff"
+                                Title="No pudimos leer el historial"
+                                Description="El servicio de indicadores no respondió. Vuelve a cargar la página." />
+                }
+                else if (_graded.Count == 0)
                 {
                     <EmptyState Icon="@Icons.Material.Filled.FactCheck"
                                 Title="Sin kardex registrado"
@@ -79,16 +85,20 @@
                 }
             </ChildContent>
             <Footer>
-                @if (_periods.Count > 0)
+                @if (_graded.Count > 0)
                 {
                     <span>
-                        @_periods[^1].Label: aprobación <b>@($"{_periods[^1].PassRate:0.0}")</b> % sobre
-                        @($"{_periods[^1].Passed + _periods[^1].Failed:N0}") materias calificadas
+                        @_graded[^1].Label: aprobación <b>@($"{_graded[^1].PassRate:0.0}")</b> % sobre
+                        @($"{_graded[^1].Passed + _graded[^1].Failed:N0}") oportunidades calificadas
                         @if (_passRateChange is { } change)
                         {
-                            <text> · @(change >= 0 ? "sube" : "baja") @($"{Math.Abs(change):0.0}") puntos frente a @_periods[0].Label</text>
+                            <text> · @(change >= 0 ? "sube" : "baja") @($"{Math.Abs(change):0.0}") puntos frente a @_graded[0].Label</text>
                         }
                     </span>
+                    @if (_graded.Count < _periods.Count)
+                    {
+                        <text> · @(_periods.Count - _graded.Count) periodo(s) sin kardex capturado quedan fuera</text>
+                    }
                 }
             </Footer>
             <Actions>
@@ -140,7 +150,7 @@
 
     <MudItem xs="12" lg="5">
         <SectionCard Title="Becas por fuente"
-                     Subtitle="Distribución de becas vigentes por financiamiento"
+                     Subtitle="@ScholarshipsSubtitle"
                      Icon="@Icons.Material.Filled.Savings" Accent="gold">
             <ChildContent>
                 @if (_scholarships is null || _scholarships.Sources.Count == 0)
@@ -163,8 +173,9 @@
                 @if (_scholarships is { } becas && becas.Sources.Count > 0)
                 {
                     <span>
-                        @becas.TotalStudents.ToString("N0") alumnos becados ·
-                        @becas.TotalAmount.ToString("C0", Mx) en el periodo activo
+                        @becas.Beneficiaries.ToString("N0") alumnos becados ·
+                        @becas.Grants.ToString("N0") becas ·
+                        @becas.TotalAmount.ToString("C0", Mx) en @becas.Scope
                     </span>
                 }
                 else
@@ -185,6 +196,12 @@
     private GenderDistribution? _gender;
     private ScholarshipsBySource? _scholarships;
 
+    // The chart falls back to the whole history when the active period has no grants yet, so
+    // the card says which of the two it is showing instead of always claiming "vigentes".
+    private string ScholarshipsSubtitle => _scholarships is { Sources.Count: > 0 } becas
+        ? $"Distribución por financiamiento · {becas.Scope}"
+        : "Distribución de becas por fuente de financiamiento";
+
     private List<ChartSeriesData> _scholarshipSeries =>
     [
         new ChartSeriesData("Alumnos becados", [.. (_scholarships?.Students ?? []).Select(v => (double)v)], ChartPalette.Ochre),
@@ -199,17 +216,25 @@
     // ── Aprovechamiento, calculado del kardex registrado ────────────────────
 
     private IReadOnlyList<PeriodStats> _periods = [];
+    private bool _historyFailed;
+    private bool _agesFailed;
+
+    // Only the periods that have a kardex. A period with no grades has no pass rate: drawing
+    // the complement of a missing figure reported it as a period in which everybody failed.
+    private List<PeriodStats> _graded => [.. _periods.Where(period => period.HasGrades)];
 
     private List<ChartSeriesData> _achievement =>
     [
-        new ChartSeriesData("Aprobación", [.. _periods.Select(period => Math.Round(period.PassRate, 1))], ChartPalette.Teal),
-        new ChartSeriesData("Reprobación", [.. _periods.Select(period => Math.Round(100 - period.PassRate, 1))], ChartPalette.Clay),
+        new ChartSeriesData("Aprobación", [.. _graded.Select(period => Math.Round(period.PassRate!.Value, 1))], ChartPalette.Teal),
+        new ChartSeriesData("Reprobación", [.. _graded.Select(period => Math.Round(100 - period.PassRate!.Value, 1))], ChartPalette.Clay),
     ];
 
-    private List<string> _achievementLabels => [.. _periods.Select(period => period.Label)];
+    private List<string> _achievementLabels => [.. _graded.Select(period => period.Label)];
 
-    // Points the pass rate moved between the first and the last period on record.
-    private double? _passRateChange => _periods.Count < 2 ? null : _periods[^1].PassRate - _periods[0].PassRate;
+    // Points the pass rate moved between the first and the last graded period on record.
+    private double? _passRateChange => _graded.Count < 2
+        ? null
+        : _graded[^1].PassRate - _graded[0].PassRate;
 
     protected override async Task OnInitializedAsync()
     {
@@ -217,12 +242,16 @@
         var allStudentsTask = _studentsService.GetStudentsAgesAsync();
         var results = await Task.WhenAll(newStudentsTask, allStudentsTask);
 
-        _model.NewStudents = MapAges(results[0]);
-        _model.AllStudents = MapAges(results[1]);
+        // Each card keeps its own state: null is "this one could not load", not "no students".
+        _agesFailed = results[0] is null || results[1] is null;
+        _model.NewStudents = MapAges(results[0] ?? []);
+        _model.AllStudents = MapAges(results[1] ?? []);
         _model.NewStudentsAges = [new ChartSeriesData("Nuevo ingreso", _model.NewStudents.Values, ChartPalette.Teal)];
         _model.AllStudentsAges = [new ChartSeriesData("Todos los estudiantes", _model.AllStudents.Values, ChartPalette.Navy)];
 
-        _periods = await Ai.GetHistoryAsync();
+        var history = await Ai.GetHistoryAsync();
+        _historyFailed = history is null;
+        _periods = history ?? [];
         _gender = await ChartsSvc.GetGenderDistributionAsync();
         _scholarships = await ChartsSvc.GetScholarshipsBySourceAsync();
     }

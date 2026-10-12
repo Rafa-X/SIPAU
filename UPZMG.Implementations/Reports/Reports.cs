@@ -13,6 +13,11 @@ public sealed record ReportListItem(
     DateTime LastModified);
 
 /// <summary>A saved capture with its answers, to resume or review it.</summary>
+/// <param name="RowVersion">
+/// The version this capture had when it was read, as the database stamps it. The form sends it
+/// back on save so a write that was decided against older content is refused instead of
+/// overwriting what somebody else stored meanwhile.
+/// </param>
 public sealed record ReportDetail(
     Guid Id,
     string ReportType,
@@ -20,7 +25,8 @@ public sealed record ReportDetail(
     ReportStatus Status,
     DateTime DateCreated,
     DateTime LastModified,
-    Dictionary<string, string?> Answers);
+    Dictionary<string, string?> Answers,
+    string? RowVersion = null);
 
 public sealed class SaveReport
 {
@@ -38,17 +44,30 @@ public sealed class SaveReport
     /// <summary>draft keeps it editable; submitted freezes it.</summary>
     public ReportStatus Status { get; set; }
 
+    /// <summary>
+    /// Version the form was opened with, from <see cref="ReportDetail.RowVersion"/>. Null on a
+    /// first save, when there is nothing to overwrite.
+    /// </summary>
+    public string? RowVersion { get; set; }
+
     public Dictionary<string, string?> Answers { get; set; } = new();
 }
 
-public sealed record ReportSaved(Guid Id, ReportStatus Status, DateTime LastModified);
+/// <param name="RowVersion">The version the capture now has, for the next save from this form.</param>
+public sealed record ReportSaved(Guid Id, ReportStatus Status, DateTime LastModified, string? RowVersion = null);
 
 public enum SaveReportOutcome
 {
     Created,
     Updated,
     NotFound,
+
+    /// <summary>Already submitted: an official document is not edited in place.</summary>
     Locked,
+
+    /// <summary>Somebody else saved it after this form read it.</summary>
+    Stale,
+
     Incomplete,
 }
 

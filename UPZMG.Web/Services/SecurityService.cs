@@ -32,6 +32,19 @@ public sealed class SecurityService(
         {
             return JsonSerializer.Deserialize<AccountWebLoginResponse>(response.Result, ResponseOptions) ?? new AccountWebLoginResponse();
         }
+
+        // Telling someone their credentials are wrong when the API is only asking them to wait
+        // sends them to reset a password that was never the problem.
+        if (response.StatusCode == HttpStatusCode.TooManyRequests)
+        {
+            var wait = response.HttpResponse?.Headers.RetryAfter?.Delta?.TotalSeconds;
+            return new AccountWebLoginResponse
+            {
+                Throttled = true,
+                RetryAfterSeconds = (int)Math.Ceiling(wait ?? 300),
+            };
+        }
+
         return new AccountWebLoginResponse();
     }
 #endregion
@@ -75,6 +88,8 @@ public sealed class SecurityService(
                 return new DataResponse
                 {
                     StatusCode = response.StatusCode,
+                    // Kept on failures too: the caller may need a header, such as Retry-After.
+                    HttpResponse = response,
                     Sucess = false,
                     ErrorMessage = ExtractErrorMessage(errorContent) ?? $"Request failed with status code: {response.StatusCode}"
                 };
@@ -272,6 +287,20 @@ public sealed class SecurityService(
         }
 
         throw new InvalidOperationException(response.ErrorMessage ?? "No fue posible guardar el permiso.");
+    }
+
+    public async Task<CatalogueRestoreResult> RestorePermissionCatalogue(GetAllPermissions request)
+    {
+        var response = await SendPostRequestAsync<GetAllPermissions, CatalogueRestoreResult>(
+            "permissions/restore-catalogue", JsonSerializer.Serialize(request), request.RequesterKey);
+
+        if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<CatalogueRestoreResult>(response.Result, ResponseOptions)
+                ?? new CatalogueRestoreResult(0, 0, 0);
+        }
+
+        throw new InvalidOperationException(response.ErrorMessage ?? "No fue posible restaurar el catálogo de permisos.");
     }
 
     public async Task<bool> DeletePermission(DeletePermission request)

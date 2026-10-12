@@ -15,7 +15,7 @@ public static class DropoutFeatures
 {
     public const string Average = "Promedio";
     public const string FailureRate = "Reprobación %";
-    public const string RetakesPerPeriod = "Extraordinarios por periodo";
+    public const string RetakesPerPeriod = "Oportunidades extra por periodo";
     public const string EntryAge = "Edad al ingreso";
     public const string Works = "Trabaja";
 
@@ -23,7 +23,7 @@ public static class DropoutFeatures
     [
         new(Average, "Media de las calificaciones de su último periodo con calificaciones (0 a 10)."),
         new(FailureRate, "Intentos reprobados entre intentos cursados en ese periodo, por 100."),
-        new(RetakesPerPeriod, "Exámenes extraordinarios que presentó en ese periodo."),
+        new(RetakesPerPeriod, "Calificaciones que obtuvo en una oportunidad distinta de Ordinario en ese periodo: extraordinario, repetición o título."),
         new(EntryAge, "Años cumplidos al iniciar su primer periodo, no la edad de hoy."),
         new(Works, "1 si el alumno declaró que trabaja, 0 si no."),
     ];

@@ -106,11 +106,19 @@ public class AppDBContext(DbContextOptions<AppDBContext> options) : DbContext(op
             entity.Property(x => x.TemplateVersion).HasMaxLength(20);
             entity.Property(x => x.Status).HasMaxLength(20);
             entity.Property(x => x.AnswersJson).HasColumnType("nvarchar(max)");
+            entity.Property(x => x.SnapshotJson).HasColumnType("nvarchar(max)");
             entity.Property(x => x.DateCreated).HasColumnType("datetime2");
             entity.Property(x => x.LastModified).HasColumnType("datetime2");
             // SQL Server keeps this column up to date; EF uses it as the concurrency token.
             entity.Property(x => x.RowVersion).IsRowVersion();
             entity.HasIndex(x => new { x.ReportType, x.TemplateVersion });
+            // An official format is captured by each area, so several rows of the same format are
+            // legitimate. The board narrative is not: there is one document per cycle, and two of
+            // them would make "the informe of this cycle" ambiguous.
+            entity.HasIndex(x => x.TemplateVersion)
+                .IsUnique()
+                .HasDatabaseName("IX_reports_BoardNarrative")
+                .HasFilter("[ReportType] = N'InformeJunta' AND [TemplateVersion] IS NOT NULL");
         });
         modelBuilder.Entity<RolePermission>(entity => {
             entity.ToTable("rolePermissions");
@@ -215,6 +223,14 @@ public class AppDBContext(DbContextOptions<AppDBContext> options) : DbContext(op
         modelBuilder.Entity<Periods>(entity => {
             entity.ToTable("periods");
             entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.IdCode).IsUnique();
+            // "The active period" is read all over the system, so there has to be exactly one.
+            // Two administrators activating different periods at the same time used to be able
+            // to leave two rows marked active; the database now refuses the second one.
+            entity.HasIndex(x => x.IsActive)
+                .IsUnique()
+                .HasDatabaseName("IX_periods_ActivePeriod")
+                .HasFilter("[IsActive] = 1");
         });
         modelBuilder.Entity<CourseEnrollment>(entity =>{
             entity.ToTable("courseEnrollment");

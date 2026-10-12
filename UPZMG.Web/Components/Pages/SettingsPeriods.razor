@@ -1,5 +1,5 @@
 @page "/settings/periods"
-@attribute [Authorize(Roles = "Admin")]
+@attribute [Authorize(Policy = AppPermissions.ManagePeriods)]
 @using System.Net
 @using UPZMG.Implementations.Settings
 @inject IPeriodsService PeriodsSvc

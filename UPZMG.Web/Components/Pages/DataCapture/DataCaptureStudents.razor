@@ -1,6 +1,6 @@
 @page "/datacapture/students"
 @page "/datacapture/students/{Id:guid}/editar"
-@attribute [Authorize]
+@attribute [Authorize(Policy = AppPermissions.CaptureStudents)]
 @using UPZMG.Implementations.DataCapture
 @using UPZMG.Shared.Enums
 @using UPZMG.Web.Services

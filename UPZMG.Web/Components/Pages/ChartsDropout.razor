@@ -1,5 +1,5 @@
 @page "/charts/dropout"
-@attribute [Authorize(Roles = "Admin,Control Escolar,Servicios Estudiantiles,Direccion Academica")]
+@attribute [Authorize(Policy = AppPermissions.ReadRisk)]
 @using System.Globalization
 @using UPZMG.Implementations.Intelligence
 @inject IIntelligenceService Ai
@@ -17,7 +17,7 @@
                 Entrenado @_report.TrainedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm", Mx)
             </span>
         }
-        <AuthorizeView Roles="Admin">
+        <AuthorizeView Policy="@AppPermissions.TrainRisk">
             <MudTooltip Text="Vuelve a entrenar con los datos actuales" Placement="Placement.Bottom">
                 <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary"
                            StartIcon="@Icons.Material.Filled.ModelTraining"
@@ -31,7 +31,7 @@
 
 @if (_loading)
 {
-    <LoadingState Text="Entrenando y evaluando el modelo…" />
+    <LoadingState Text="Consultando el modelo…" />
 }
 else if (_report is null)
 {
@@ -53,6 +53,22 @@ else if (!_report.HasModel)
 else
 {
     var quality = _report.Quality;
+
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mb-4">
+        <b>Qué significa el porcentaje.</b> @_report.Target
+        Se toma como señal desde @Pct(_report.Threshold); @UnscoredNote.
+    </MudAlert>
+
+    @if (_mixedRuns)
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mb-4">
+            El resumen y el listado vienen de dos entrenamientos distintos porque los datos
+            cambiaron mientras se consultaban.
+            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Inherit" OnClick="LoadAsync">
+                Volver a cargar
+            </MudButton>
+        </MudAlert>
+    }
 
     <MudGrid>
         <MudItem xs="12" sm="6" lg="3">
@@ -295,7 +311,13 @@ else
     private static readonly CultureInfo Mx = CultureInfo.GetCultureInfo("es-MX");
 
     private DropoutModelReport? _report;
+    private StudentRiskList? _list;
     private IReadOnlyList<StudentRisk> _students = [];
+
+    // The summary and the list are two requests. If the data changed between them they describe
+    // two different trainings, and showing them side by side would present one picture that
+    // never existed.
+    private bool _mixedRuns => _report is { HasModel: true } && _list is not null && _list.RunId != _report.RunId;
     private IReadOnlyList<string> _careers = [];
     private bool _loading = true;
     private bool _retraining;
@@ -310,7 +332,8 @@ else
     {
         _loading = true;
         _report = await Ai.GetDropoutReportAsync();
-        _students = _report is { HasModel: true } ? await Ai.GetStudentRisksAsync() : [];
+        _list = _report is { HasModel: true } ? await Ai.GetStudentRisksAsync() : null;
+        _students = _list?.Students ?? [];
         _careers = _students.Select(s => s.Career).Distinct().Order(StringComparer.CurrentCulture).ToList();
         _loading = false;
     }
@@ -356,7 +379,7 @@ else
             ("Nivel", s => s.Level),
             ("Promedio", s => s.AverageGrade),
             ("Reprobación %", s => s.FailureRate),
-            ("Extraordinarios por periodo", s => s.RetakesPerPeriod),
+            ("Oportunidades extra por periodo", s => s.RetakesPerPeriod),
             ("Edad al ingreso", s => s.EntryAge),
             ("Trabaja", s => s.Works),
             ("Periodos evaluados", s => s.PeriodsObserved),
@@ -365,9 +388,23 @@ else
         await JS.InvokeVoidAsync("sigieDownload", CsvExport.FileName("riesgo-desercion"), csv);
     }
 
-    private string UnscoredNote => _report is { UnscoredActiveStudents: > 0 } r
-        ? $"{r.UnscoredActiveStudents:N0} activos aún sin calificaciones"
-        : "todos los activos con calificaciones";
+    /// <summary>
+    /// Why the active students without a score have none. It used to say "sin calificaciones"
+    /// for all of them, and students with no registration at all were in that number too.
+    /// </summary>
+    private string UnscoredNote
+    {
+        get
+        {
+            if (_report is null || _report.Unscored.Total == 0) return "todos los activos evaluados";
+
+            var reasons = new List<string>();
+            if (_report.Unscored.NoGrades > 0) reasons.Add($"{_report.Unscored.NoGrades:N0} sin calificaciones");
+            if (_report.Unscored.NoRegistrations > 0) reasons.Add($"{_report.Unscored.NoRegistrations:N0} sin inscripciones");
+
+            return $"{_report.Unscored.Total:N0} activos sin evaluar: {string.Join(" y ", reasons)}";
+        }
+    }
 
     private static string LevelClass(string level) => level switch
     {

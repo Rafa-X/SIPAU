@@ -1,5 +1,5 @@
 @page "/datacapture/teachers/consult"
-@attribute [Authorize]
+@attribute [Authorize(Policy = AppPermissions.CaptureStaff)]
 @using UPZMG.Implementations.DataCapture
 @inject IDataCaptureService CaptureSvc
 @inject IJSRuntime JS

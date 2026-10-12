@@ -1,5 +1,5 @@
 @page "/charts"
-@attribute [Authorize]
+@attribute [Authorize(Policy = AppPermissions.ReadIndicators)]
 @using UPZMG.Web.Models.Charts
 @using UPZMG.Implementations.Intelligence
 @using UPZMG.Implementations.Charts
@@ -26,11 +26,17 @@
                 </MudTooltip>
             </Actions>
             <ChildContent>
-                @if (_model.Enrollment.Labels.Count > 0)
+                @if (_model.Enrollment.Failed)
                 {
-                    <TrendChart Id="enrollment-chart" Labels="_model.Enrollment.Labels" Series="_model.Enrollment.Series" Height="160"
+                    <EmptyState Icon="@Icons.Material.Filled.CloudOff"
+                                Title="No pudimos leer la proyección"
+                                Description="El servicio de indicadores no respondió. Vuelve a cargar la página; si sigue así, avisa a Tecnologías." />
+                }
+                else if (_model.Enrollment.Labels.Count > 0)
+                {
+                    <TrendChart Id="enrollment-chart" Labels="_model.Enrollment.Labels" Series="_model.Enrollment.Series" Height="200"
                                 ForecastFromIndex="@(_model.Enrollment.HasModel ? _model.Enrollment.ForecastFromIndex : null)"
-                                AriaLabel="Matrícula histórica y su proyección" />
+                                AriaLabel="Matrícula histórica, su proyección y la banda de incertidumbre" />
                 }
                 else
                 {
@@ -62,6 +68,21 @@
                             }
                         }
                     </span>
+
+                    @if (_model.Enrollment.Accuracy is { } accuracy)
+                    {
+                        <span class="sipau-field-empty">
+                            Comprobación retrospectiva sobre @accuracy.Evaluations periodo(s) que el modelo no había visto:
+                            error promedio de <b>@accuracy.TrendError.ToString("N1")</b> alumnos.
+                            Repetir el último valor erraría @accuracy.LastValueError.ToString("N1") y
+                            sumarle el crecimiento promedio, @accuracy.DriftError.ToString("N1").
+                            @if (accuracy.TrendIsBeaten)
+                            {
+                                <text> En este historial gana <b>@accuracy.Best</b>: la recta sirve para leer la dirección,
+                                no como pronóstico puntual.</text>
+                            }
+                        </span>
+                    }
                 }
                 else
                 {
@@ -166,7 +187,7 @@
     </MudItem>
 
     @* Per-student risk is personal data; the API grants it to these areas only. *@
-    <AuthorizeView Roles="@DropoutRoles">
+    <AuthorizeView Policy="@AppPermissions.ReadRisk">
         <MudItem xs="12" sm="6" md="4">
             <MudCard Elevation="1" Class="d-flex flex-column" Style="height:100%">
                 <MudCardContent Class="flex-grow-1">
@@ -191,9 +212,7 @@
 
 @code {
     private const int ForecastAhead = 2;
-    private const string DropoutRoles = "Admin,Control Escolar,Servicios Estudiantiles,Direccion Academica";
     private ChartsPageViewModel _model = new();
-    private readonly double[] _failure = { 15.8, 14.4, 13.1, 12.5 };
 
     protected override async Task OnInitializedAsync()
     {
@@ -201,7 +220,10 @@
         var careers = await GetCareersAsync();
         var groupsByCareer = await GetGroupsByCareerAsync();
 
-        EnrollmentChart(_model, forecast);
+        // Null means the request failed. Drawing an empty chart would say the university has no
+        // enrolment history, which is a different statement.
+        _model.Enrollment.Failed = forecast is null;
+        EnrollmentChart(_model, forecast ?? EnrollmentForecast.None);
         CareerDistributionChart(_model, careers);
 
         _model.GroupDistributionByCareer.Labels = groupsByCareer.Select(group => group.Career).ToList();
@@ -221,14 +243,28 @@
         _model.Enrollment.NextLabel = forecast.NextLabel;
         _model.Enrollment.NextValue = forecast.NextValue;
         _model.Enrollment.NextMargin = forecast.NextMargin;
+        _model.Enrollment.Accuracy = forecast.Accuracy;
         _model.Enrollment.Labels = forecast.Labels;
-        _model.Enrollment.Series = forecast.HasModel
-            ?
-            [
-                new ChartSeriesData("Matrícula", forecast.Actual, ChartPalette.Teal, Filled: true),
-                new ChartSeriesData("Tendencia del modelo", forecast.Trend, ChartPalette.Indigo, Dashed: true),
-            ]
-            : [new ChartSeriesData("Matrícula", forecast.Actual, ChartPalette.Teal, Filled: true)];
+
+        var series = new List<ChartSeriesData>
+        {
+            new("Matrícula", forecast.Actual, ChartPalette.Teal, Filled: true),
+        };
+
+        if (forecast.HasModel)
+        {
+            series.Add(new ChartSeriesData("Tendencia del modelo", forecast.Trend, ChartPalette.Indigo, Dashed: true));
+
+            // The band was only a number in the footer, so the width of the projection was
+            // invisible next to the line it belongs to.
+            if (forecast.Upper.Count == forecast.Labels.Count && forecast.Lower.Count == forecast.Labels.Count)
+            {
+                series.Add(new ChartSeriesData("Banda superior (±2σ)", forecast.Upper, ChartPalette.Clay, Dashed: true));
+                series.Add(new ChartSeriesData("Banda inferior (±2σ)", forecast.Lower, ChartPalette.Clay, Dashed: true));
+            }
+        }
+
+        _model.Enrollment.Series = series;
         _model.Enrollment.ForecastFromIndex = forecast.HistoricalCount;
         _model.Enrollment.Slope = forecast.Slope;
         _model.Enrollment.Intercept = forecast.Intercept;

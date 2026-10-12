@@ -1,5 +1,5 @@
 @page "/users"
-@attribute [Authorize(Roles = "Admin")]
+@attribute [Authorize(Policy = AppPermissions.ManageUsers)]
 @using UPZMG.Implementations
 @using UPZMG.Implementations.Users
 @inject UsersService _userService

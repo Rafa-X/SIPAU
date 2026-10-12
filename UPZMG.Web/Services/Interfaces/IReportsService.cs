@@ -4,7 +4,8 @@ using UPZMG.Implementations.Reports;
 namespace UPZMG.Web.Services;
 
 /// <summary>What the API answered to a save: its status and, on success, the stored capture.</summary>
-public sealed record ReportSaveResponse(HttpStatusCode Status, ReportSaved? Report);
+/// <param name="Message">What the API said when it refused, so the screen can repeat it.</param>
+public sealed record ReportSaveResponse(HttpStatusCode Status, ReportSaved? Report, string? Message = null);
 
 public interface IReportsService
 {

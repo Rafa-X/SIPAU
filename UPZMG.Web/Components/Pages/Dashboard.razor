@@ -158,6 +158,12 @@ else
                 {
                     <LoadingState Text="Buscando desviaciones…" />
                 }
+                else if (_anomaliesFailed)
+                {
+                    <EmptyState Icon="@Icons.Material.Filled.CloudOff"
+                                Title="No pudimos revisar las series"
+                                Description="El servicio de indicadores no respondió, así que esta tarjeta no puede afirmar que no haya desviaciones." />
+                }
                 else if (_anomalies.Count == 0)
                 {
                     <EmptyState Icon="@Icons.Material.Filled.Verified"
@@ -304,6 +310,7 @@ else
     private EnrollmentForecast _forecast = EnrollmentForecast.None;
     private IReadOnlyList<ChartSeriesData> _forecastSeries = [];
     private IReadOnlyList<AnomalyAlert> _anomalies = [];
+    private bool _anomaliesFailed;
     private DropoutModelReport? _dropout;
 
     private IReadOnlyList<string> _careerLabels = [];
@@ -360,8 +367,12 @@ else
         var anomalies = Ai.GetAnomaliesAsync();
         var dropout = _canSeeRisk ? Ai.GetDropoutReportAsync() : Task.FromResult<DropoutModelReport?>(null);
 
-        _forecast = await forecast;
-        _anomalies = await anomalies;
+        // Null is "the service did not answer", which the cards below say out loud instead of
+        // showing the same thing as "there is nothing to report".
+        _forecast = await forecast ?? EnrollmentForecast.None;
+        var alerts = await anomalies;
+        _anomaliesFailed = alerts is null;
+        _anomalies = alerts ?? [];
         _dropout = await dropout;
 
         _forecastSeries = _forecast.HasModel

@@ -1,5 +1,5 @@
 @page "/datacapture/students/consult"
-@attribute [Authorize]
+@attribute [Authorize(Policy = AppPermissions.CaptureStudents)]
 @using UPZMG.Implementations.DataCapture
 @inject IGeneralDataService GeneralDataSvc
 @inject IStudentsService StudentsSvc

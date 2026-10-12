@@ -1,5 +1,5 @@
 @page "/reports/plantillas"
-@attribute [Authorize(Roles = "Admin")]
+@attribute [Authorize(Policy = AppPermissions.PublishReports)]
 @using System.Text.Json
 @using System.Text.Encodings.Web
 @using UPZMG.Implementations.Reports

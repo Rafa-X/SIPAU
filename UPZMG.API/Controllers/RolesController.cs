@@ -26,8 +26,15 @@ public class RolesController(RolesRepository rolesRepository) : ControllerBase
     [HttpPost("create")]
     public async Task<IActionResult> CreateRole([FromBody] CreateRole request)
     {
-        var role = await rolesRepository.CreateRoleAsync(request);
-        return Ok(role);
+        try
+        {
+            var role = await rolesRepository.CreateRoleAsync(request);
+            return Ok(role);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
     }
 
     [HttpPost("edit")]

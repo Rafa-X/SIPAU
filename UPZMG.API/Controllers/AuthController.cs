@@ -95,7 +95,10 @@ public class AuthController(
         }
 
         var user = await usersRepository.GetSystemUserByIdAsync(req.UserId);
-        if (user is null || user.Id == Guid.Empty || user.Role is null)
+
+        // A suspended account keeps its web cookie until it expires, so without this check it
+        // would go on exchanging it for fresh tokens after the suspension.
+        if (user is null || user.Id == Guid.Empty || user.Role is null || !user.IsActive)
         {
             _securityLogger.LogTokenExchangeRejected(req.UserId, "User not found or inactive");
             return Unauthorized();
@@ -123,7 +126,13 @@ public class AuthController(
 
         _securityLogger.LogTokenIssued(user.Id, user.Role.Name, expiresUtc);
 
-        return Ok(new { access_token = new JwtSecurityTokenHandler().WriteToken(token) });
+        // The lifetime travels with the token: the caller used to assume one, and a shorter
+        // configured lifetime left it caching a token that was already dead.
+        return Ok(new
+        {
+            access_token = new JwtSecurityTokenHandler().WriteToken(token),
+            expires_in = (int)Math.Round((expiresUtc - DateTime.UtcNow).TotalSeconds),
+        });
     }
 
     [HttpGet("permissions")]

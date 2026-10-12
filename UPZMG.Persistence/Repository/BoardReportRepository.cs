@@ -25,6 +25,14 @@ public class BoardReportRepository(
 
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
+    // The frozen document is stored and read back with the same options the API answers with.
+    // Named floating-point literals are allowed so a rate that came out as NaN is stored as it
+    // is instead of making the submission fail.
+    private static readonly JsonSerializerOptions SnapshotOptions = new(JsonSerializerDefaults.Web)
+    {
+        NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowNamedFloatingPointLiterals,
+    };
+
     /// <summary>One entry per cycle the official formats exist for, newest first.</summary>
     public async Task<List<BoardReportListItem>> GetCyclesAsync()
     {
@@ -65,8 +73,35 @@ public class BoardReportRepository(
         return items;
     }
 
-    /// <summary>The full document for a cycle; null when no official format exists for it.</summary>
+    /// <summary>
+    /// The full document for a cycle; null when no official format exists for it.
+    ///
+    /// A submitted report is returned exactly as it was submitted. Everything it consolidates —
+    /// enrolment, the risk model, becas, finanzas — goes on changing after the Junta receives
+    /// it, so rebuilding it from today's data would quietly rewrite a document that was already
+    /// sent. A draft is always rebuilt, which is the point of a draft.
+    /// </summary>
     public async Task<BoardReportDocument?> GetDocumentAsync(string cycle)
+    {
+        var frozen = await db.Reports
+            .AsNoTracking()
+            .Where(r => r.ReportType == NarrativeReportType
+                && r.TemplateVersion == cycle
+                && r.Status == nameof(ReportStatus.submitted))
+            .Select(r => r.SnapshotJson)
+            .FirstOrDefaultAsync();
+
+        if (!string.IsNullOrWhiteSpace(frozen) && ReadSnapshot(frozen) is { } stored) return stored;
+
+        var inputs = await ReadInputsAsync(cycle);
+        return inputs is null ? null : BoardReportBuilder.Build(inputs, DateTime.UtcNow);
+    }
+
+    /// <summary>
+    /// Reads everything the document is built from. <paramref name="asSubmittedAtUtc"/> builds it
+    /// as the submitted version, which is what gets frozen; otherwise the stored state decides.
+    /// </summary>
+    private async Task<BoardReportInputs?> ReadInputsAsync(string cycle, DateTime? asSubmittedAtUtc = null)
     {
         var templates = await reportTemplatesRepository.GetTemplatesAsync();
         var expected = templates.Where(t => t.Version == cycle).ToList();
@@ -83,24 +118,40 @@ public class BoardReportRepository(
         var captures = new List<BoardReportCapture>();
         foreach (var item in expected.OrderBy(t => t.ReportType))
         {
-            var row = rows.FirstOrDefault(r => r.ReportType == item.ReportType);
             var template = await reportTemplatesRepository.GetTemplateAsync(item.ReportType, cycle);
             if (template is null) continue;
 
+            // Each area captures its own formats, so there can be several rows of one format.
+            // Taking whichever came back first made the consolidated figures depend on the order
+            // the database happened to return: the sent capture is the official one, and among
+            // equals the most recently touched.
+            var matching = rows
+                .Where(r => r.ReportType == item.ReportType)
+                .OrderByDescending(r => r.Status == nameof(ReportStatus.submitted))
+                .ThenByDescending(r => r.LastModified)
+                .ThenBy(r => r.Id)
+                .ToList();
+
+            var row = matching.FirstOrDefault();
             var answers = row is null ? [] : ReadNarratives(row.AnswersJson);
+
             captures.Add(new BoardReportCapture(
                 item.ReportType,
                 item.DisplayName,
                 row?.Status ?? "pending",
                 row?.LastModified ?? default,
                 row?.CreatedBy is { } id ? authors.GetValueOrDefault(id) : null,
-                new ReportFormState(template, answers.ToDictionary(a => a.Key, a => (string?)a.Value))));
+                new ReportFormState(template, answers.ToDictionary(a => a.Key, a => (string?)a.Value)),
+                OtherCaptures: Math.Max(0, matching.Count - 1)));
         }
 
         var document = rows.FirstOrDefault(r => r.ReportType == NarrativeReportType);
         var narratives = document is null ? [] : ReadNarratives(document.AnswersJson);
 
-        var inputs = new BoardReportInputs(
+        var submittedAt = asSubmittedAtUtc
+            ?? (document?.Status == nameof(ReportStatus.submitted) ? document.LastModified : null);
+
+        return new BoardReportInputs(
             Cycle: cycle,
             Dashboard: await dashboardRepository.GetSummaryAsync(),
             History: await intelligenceRepository.GetHistoryAsync(),
@@ -115,10 +166,8 @@ public class BoardReportRepository(
             Finance: await FinanceAsync(),
             Captures: captures,
             Narratives: narratives,
-            Status: document?.Status == nameof(ReportStatus.submitted) ? BoardReportStatus.Submitted : BoardReportStatus.Draft,
-            SubmittedAtUtc: document?.Status == nameof(ReportStatus.submitted) ? document.LastModified : null);
-
-        return BoardReportBuilder.Build(inputs, DateTime.UtcNow);
+            Status: submittedAt is null ? BoardReportStatus.Draft : BoardReportStatus.Submitted,
+            SubmittedAtUtc: submittedAt);
     }
 
     /// <summary>Stores (or clears) the text of one narrative block.</summary>
@@ -160,27 +209,47 @@ public class BoardReportRepository(
             row.LastModified = now;
         }
 
-        await db.SaveChangesAsync();
+        try
+        {
+            await db.SaveGuardingUniquenessAsync("Otro usuario está redactando el informe de este ciclo. Vuelve a abrirlo.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BoardReportSaveResult.Refused(ex.Message);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return BoardReportSaveResult.Refused("El informe cambió mientras se guardaba. Vuelve a abrirlo.");
+        }
+
         return BoardReportSaveResult.Ok();
     }
 
-    /// <summary>Freezes the document: after this the narrative can no longer be edited.</summary>
+    /// <summary>
+    /// Freezes the document: the narrative can no longer be edited, and the figures it was
+    /// submitted with are stored with it so a later reading shows the document that was sent.
+    /// </summary>
     public async Task<BoardReportSaveResult> SubmitAsync(SubmitBoardReport request, Guid userId)
     {
-        var document = await GetDocumentAsync(request.Cycle);
-        if (document is null) return BoardReportSaveResult.Refused("No hay formatos oficiales de ese ciclo.");
-        if (document.IsSubmitted) return BoardReportSaveResult.Refused("El informe ya se había enviado.");
+        var row = await db.Reports
+            .FirstOrDefaultAsync(r => r.ReportType == NarrativeReportType && r.TemplateVersion == request.Cycle);
 
+        if (row is { Status: nameof(ReportStatus.submitted) })
+            return BoardReportSaveResult.Refused("El informe ya se había enviado.");
+
+        var now = DateTime.UtcNow;
+        var inputs = await ReadInputsAsync(request.Cycle, asSubmittedAtUtc: now);
+        if (inputs is null) return BoardReportSaveResult.Refused("No hay formatos oficiales de ese ciclo.");
+
+        var document = BoardReportBuilder.Build(inputs, now);
         if (document.Missing.Count > 0)
         {
             var names = string.Join(", ", document.Missing.Select(m => m.DisplayName));
             return BoardReportSaveResult.Refused($"Faltan formatos por enviar: {names}.");
         }
 
-        var row = await db.Reports
-            .FirstOrDefaultAsync(r => r.ReportType == NarrativeReportType && r.TemplateVersion == request.Cycle);
+        var snapshot = JsonSerializer.Serialize(document, SnapshotOptions);
 
-        var now = DateTime.UtcNow;
         if (row is null)
         {
             db.Reports.Add(new Models.Reports
@@ -190,7 +259,8 @@ public class BoardReportRepository(
                 ReportType = NarrativeReportType,
                 TemplateVersion = request.Cycle,
                 Status = nameof(ReportStatus.submitted),
-                AnswersJson = "{}",
+                AnswersJson = JsonSerializer.Serialize(inputs.Narratives),
+                SnapshotJson = snapshot,
                 DateCreated = now,
                 LastModified = now,
             });
@@ -198,10 +268,25 @@ public class BoardReportRepository(
         else
         {
             row.Status = nameof(ReportStatus.submitted);
+            row.SnapshotJson = snapshot;
             row.LastModified = now;
         }
 
-        await db.SaveChangesAsync();
+        try
+        {
+            // One document per cycle, enforced by a filtered unique index: two areas pressing
+            // send at the same time used to create two.
+            await db.SaveGuardingUniquenessAsync("Otro usuario envió el informe de este ciclo al mismo tiempo.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BoardReportSaveResult.Refused(ex.Message);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return BoardReportSaveResult.Refused("El informe cambió mientras se enviaba. Vuelve a abrirlo.");
+        }
+
         return BoardReportSaveResult.Ok();
     }
 
@@ -254,6 +339,24 @@ public class BoardReportRepository(
             .AsNoTracking()
             .Where(u => owners.Contains(u.Id))
             .ToDictionaryAsync(u => u.Id, u => u.Email ?? string.Empty);
+    }
+
+    /// <summary>
+    /// The frozen document, or null when it cannot be read. A snapshot written by an older
+    /// version is better reported as unreadable than silently replaced by today's figures, so
+    /// the caller falls back to rebuilding only when there is nothing stored at all.
+    /// </summary>
+    private static BoardReportDocument? ReadSnapshot(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            return JsonSerializer.Deserialize<BoardReportDocument>(json, SnapshotOptions);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static Dictionary<string, string> ReadNarratives(string? json)

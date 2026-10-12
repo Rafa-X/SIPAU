@@ -6,7 +6,10 @@ namespace UPZMG.Web.Services;
 
 /// <summary>
 /// The intelligent layer lives in the API; this service only asks for its results.
-/// The layout calls it on every page, so a failure degrades to "no data" instead of an error.
+///
+/// A failure comes back as null rather than as an empty result. The layout calls this on every
+/// page and must not break, but a screen that cannot tell "nothing stands out" from "nobody
+/// answered" ends up stating the first when the second is true.
 /// </summary>
 public sealed class IntelligenceService(
     ISecurityService securityService,
@@ -14,21 +17,20 @@ public sealed class IntelligenceService(
 {
     private static readonly JsonSerializerOptions ResponseOptions = new(JsonSerializerDefaults.Web);
 
-    public async Task<EnrollmentForecast> GetForecastAsync(int periodsAhead = 2) =>
-        await GetOrDefaultAsync<EnrollmentForecast>($"intelligence/forecast?ahead={periodsAhead}")
-        ?? EnrollmentForecast.None;
+    public Task<EnrollmentForecast?> GetForecastAsync(int periodsAhead = 2) =>
+        GetOrDefaultAsync<EnrollmentForecast>($"intelligence/forecast?ahead={periodsAhead}");
 
-    public async Task<IReadOnlyList<AnomalyAlert>> GetAnomaliesAsync() =>
-        await GetOrDefaultAsync<List<AnomalyAlert>>("intelligence/anomalies") ?? [];
+    public async Task<IReadOnlyList<AnomalyAlert>?> GetAnomaliesAsync() =>
+        await GetOrDefaultAsync<List<AnomalyAlert>>("intelligence/anomalies");
 
-    public async Task<IReadOnlyList<PeriodStats>> GetHistoryAsync() =>
-        await GetOrDefaultAsync<List<PeriodStats>>("intelligence/history") ?? [];
+    public async Task<IReadOnlyList<PeriodStats>?> GetHistoryAsync() =>
+        await GetOrDefaultAsync<List<PeriodStats>>("intelligence/history");
 
     public Task<DropoutModelReport?> GetDropoutReportAsync() =>
         GetOrDefaultAsync<DropoutModelReport>("intelligence/dropout");
 
-    public async Task<IReadOnlyList<StudentRisk>> GetStudentRisksAsync() =>
-        await GetOrDefaultAsync<List<StudentRisk>>("intelligence/dropout/students") ?? [];
+    public Task<StudentRiskList?> GetStudentRisksAsync() =>
+        GetOrDefaultAsync<StudentRiskList>("intelligence/dropout/students");
 
     public async Task<DropoutModelReport?> RetrainAsync()
     {

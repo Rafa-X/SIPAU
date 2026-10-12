@@ -34,19 +34,25 @@ public class ChartsRepository(AppDBContext db)
             [.. careers.Select(c => CountOf(c, Gender.H))]);
     }
 
+    /// <summary>
+    /// Active students per programme. Every other figure on the page counts active students, so
+    /// including withdrawals and graduates here made the same programme look larger next to the
+    /// chart beside it.
+    /// </summary>
     public async Task<List<ChartCategory>> GetCareersDistributionAsync()
     {
         var result = await (
-            from career in db.Careers
-            join student in db.Students on career.Id equals student.CareerId
+            from career in db.Careers.AsNoTracking()
+            join student in db.Students.AsNoTracking() on career.Id equals student.CareerId
+            where student.Status == StudentStatus.Activo
             group student by career into g
             select new ChartCategory(
-                g.Key.Alias ?? "Sin nombre",
+                g.Key.Alias ?? g.Key.Name ?? "Sin nombre",
                 g.Count()
             )
         ).ToListAsync();
 
-        return result.OrderByDescending(x => x.Value).ToList();
+        return result.OrderByDescending(x => x.Value).ThenBy(x => x.Label).ToList();
     }
 
     public async Task<List<GroupDistributionCareer>> GetGroupsDistributionByCareerAsync()
@@ -61,24 +67,36 @@ public class ChartsRepository(AppDBContext db)
         if (activePeriodId is null)
             return [];
 
-        var result = await (
-            from career in db.Careers.AsNoTracking()
-            join classGroup in db.ClassGroups.AsNoTracking()
-                on career.Id equals classGroup.CareerId
-            join registrations in db.CourseEnrollment.AsNoTracking()
-                on classGroup.Id equals registrations.GroupId
-            join students in db.Students.AsNoTracking()
-                on registrations.StudentId equals students.Id
-            where classGroup.PeriodId == activePeriodId.Value
-            group new { classGroup, registrations, students } by career into grouped
-            select new GroupDistributionCareer(
-                grouped.Key.Alias ?? "Sin nombre",
-                grouped.Select(x => x.classGroup.Id).Distinct().Count(),
-                grouped.Select(x => x.students.Id).Distinct().Count()
-            )
-        ).ToListAsync();
+        // Counted in two queries on purpose. Joining groups to enrolments dropped every group
+        // nobody had enrolled in yet, so a programme that had just opened its groups appeared
+        // with fewer of them than it has — or disappeared from the chart altogether.
+        var groups = await db.ClassGroups
+            .AsNoTracking()
+            .Where(classGroup => classGroup.PeriodId == activePeriodId.Value)
+            .GroupBy(classGroup => classGroup.CareerId)
+            .Select(grouped => new { CareerId = grouped.Key, Groups = grouped.Count() })
+            .ToListAsync();
 
-        return result
+        if (groups.Count == 0) return [];
+
+        var enrolled = await (
+            from classGroup in db.ClassGroups.AsNoTracking()
+            join registration in db.CourseEnrollment.AsNoTracking()
+                on classGroup.Id equals registration.GroupId
+            where classGroup.PeriodId == activePeriodId.Value
+            group registration.StudentId by classGroup.CareerId into grouped
+            select new { CareerId = grouped.Key, Students = grouped.Distinct().Count() })
+            .ToListAsync();
+
+        var names = await db.Careers
+            .AsNoTracking()
+            .ToDictionaryAsync(career => career.Id, career => career.Alias ?? career.Name ?? "Sin nombre");
+
+        return groups
+            .Select(item => new GroupDistributionCareer(
+                names.GetValueOrDefault(item.CareerId, "Sin nombre"),
+                item.Groups,
+                enrolled.FirstOrDefault(e => e.CareerId == item.CareerId)?.Students ?? 0))
             .OrderByDescending(item => item.Groups)
             .ThenBy(item => item.Career)
             .ToList();

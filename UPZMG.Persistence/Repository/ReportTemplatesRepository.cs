@@ -83,6 +83,11 @@ public class ReportTemplatesRepository(AppDBContext db, ReportTemplateStore stor
     /// Writes a template once it parses and validates. Overwriting a different
     /// format is refused: replacing one an área already captured against is a
     /// mistake, not an update.
+    ///
+    /// A format with captures already sent is frozen too. The template is the form those
+    /// answers were filled against: renaming a question key or changing a sum would leave what
+    /// the institution already sent impossible to read back, and the board report consolidates
+    /// exactly those answers. Correcting an official format means publishing the next version.
     /// </summary>
     public async Task<TemplateSaveResult> SaveTemplateAsync(SaveReportTemplate request)
     {
@@ -115,6 +120,44 @@ public class ReportTemplatesRepository(AppDBContext db, ReportTemplateStore stor
         if (File.Exists(path) && !fileKey.Equals(replacing, StringComparison.OrdinalIgnoreCase))
             return TemplateSaveResult.Refused(
                 $"Plantilla: ya existe «{template.ReportType}» versión {template.Version}. Cambia la clave o la versión.");
+
+        if (File.Exists(path))
+        {
+            var submitted = await db.Reports.CountAsync(r =>
+                r.ReportType == template.ReportType
+                && r.TemplateVersion == template.Version
+                && r.Status == nameof(ReportStatus.submitted));
+
+            if (submitted > 0)
+            {
+                return TemplateSaveResult.Refused(
+                    $"Plantilla: «{template.ReportType}» versión {template.Version} ya tiene {submitted} captura(s) "
+                    + "enviada(s). Publica una versión nueva en lugar de modificar el formato con el que se enviaron.");
+            }
+        }
+
+        // Renaming moves the file, and a capture points at the report type and version the old
+        // file declared: the captures would be left without a template to read them with.
+        if (replacing is not null && !fileKey.Equals(replacing, StringComparison.OrdinalIgnoreCase))
+        {
+            var previousPath = Path.Combine(store.Folder, replacing + ".json");
+            if (File.Exists(previousPath))
+            {
+                var (previous, _) = await ReadAsync(previousPath);
+                if (previous is not null)
+                {
+                    var captures = await db.Reports.CountAsync(r =>
+                        r.ReportType == previous.ReportType && r.TemplateVersion == previous.Version);
+
+                    if (captures > 0)
+                    {
+                        return TemplateSaveResult.Refused(
+                            $"Plantilla: «{previous.ReportType}» versión {previous.Version} tiene {captures} captura(s) "
+                            + "y no puede renombrarse. Publica la versión nueva y deja la anterior en su sitio.");
+                    }
+                }
+            }
+        }
 
         Directory.CreateDirectory(store.Folder);
         // Stored as it was written: the file stays readable in a diff, and any

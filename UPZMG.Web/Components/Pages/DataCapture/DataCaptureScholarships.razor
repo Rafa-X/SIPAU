@@ -1,5 +1,5 @@
 @page "/datacapture/scholarships"
-@attribute [Authorize]
+@attribute [Authorize(Policy = AppPermissions.CaptureScholarships)]
 @using UPZMG.Implementations.DataCapture
 @using UPZMG.Shared.Enums
 @inject IDataCaptureService CaptureSvc

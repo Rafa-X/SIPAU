@@ -9,6 +9,9 @@ public class IntelligenceEngineTests
 {
     private static readonly DateTime TrainedAt = new(2026, 9, 17, 12, 0, 0, DateTimeKind.Utc);
 
+    // Identifies the cut of the data a training read; any constant will do in a test.
+    private const string Run = "test0001";
+
     private static StudentObservation Observation(double average, double failureRate, bool works, bool? outcome, int n = 0) =>
         new(Guid.NewGuid(), $"M{n:0000}", $"Alumno {n}", n % 2 == 0 ? "Ingeniería Industrial" : "Ingeniería en Biotecnología",
             PeriodsObserved: 1, average, failureRate, Retakes: failureRate > 30 ? 2 : 0,
@@ -65,7 +68,7 @@ public class IntelligenceEngineTests
     [InlineData("Reprobación %", 22.65, null, "Reprobación mayor a 22.65 %")]
     [InlineData("Reprobación %", null, 40.0, "Reprobación de 40 % o menos")]
     [InlineData("Promedio", 5.92, 6.41, "Promedio entre 5.92 y 6.41")]
-    [InlineData("Extraordinarios por periodo", null, 2.5, "Extraordinarios por periodo de 2.5 o menos")]
+    [InlineData("Oportunidades extra por periodo", null, 2.5, "Oportunidades extra por periodo de 2.5 o menos")]
     public void Features_ReadAsPlainSpanish(string feature, double? above, double? atMost, string expected)
     {
         Assert.Equal(expected, DropoutFeatures.Describe(feature, above, atMost));
@@ -76,7 +79,7 @@ public class IntelligenceEngineTests
     [Fact]
     public void AnalyseDropout_RefusesWithTooFewFinishedTrajectories()
     {
-        var analysis = IntelligenceEngine.AnalyseDropout(Cohort(finishedPerClass: 9), unscoredActive: 3, TrainedAt);
+        var analysis = IntelligenceEngine.AnalyseDropout(Cohort(finishedPerClass: 9), new UnscoredReasons(1, 2), Run, TrainedAt);
 
         Assert.False(analysis.Report.HasModel);
         Assert.Contains("al menos 20", analysis.Report.Status);
@@ -90,7 +93,7 @@ public class IntelligenceEngineTests
     {
         var observations = Cohort().Where(o => o.Outcome != true).Concat(Cohort(finishedPerClass: 4).Where(o => o.Outcome == true)).ToList();
 
-        var report = IntelligenceEngine.AnalyseDropout(observations, 0, TrainedAt).Report;
+        var report = IntelligenceEngine.AnalyseDropout(observations, UnscoredReasons.None, Run, TrainedAt).Report;
 
         Assert.False(report.HasModel);
         Assert.Equal(4, report.Withdrawals);
@@ -100,7 +103,7 @@ public class IntelligenceEngineTests
     [Fact]
     public void AnalyseDropout_LearnsTheSignalAndScoresOnlyActiveStudents()
     {
-        var analysis = IntelligenceEngine.AnalyseDropout(Cohort(), unscoredActive: 2, TrainedAt);
+        var analysis = IntelligenceEngine.AnalyseDropout(Cohort(), new UnscoredReasons(0, 2), Run, TrainedAt);
         var report = analysis.Report;
 
         Assert.True(report.HasModel);
@@ -128,7 +131,7 @@ public class IntelligenceEngineTests
     [Fact]
     public void AnalyseDropout_SummarisesEachCareer()
     {
-        var analysis = IntelligenceEngine.AnalyseDropout(Cohort(), 0, TrainedAt);
+        var analysis = IntelligenceEngine.AnalyseDropout(Cohort(), UnscoredReasons.None, Run, TrainedAt);
 
         Assert.Equal(analysis.Students.Count, analysis.Report.ByCareer.Sum(c => c.Students));
         foreach (var career in analysis.Report.ByCareer)
@@ -144,7 +147,7 @@ public class IntelligenceEngineTests
     [Fact]
     public void AnalyseDropout_WritesRulesInPlainSpanish()
     {
-        var report = IntelligenceEngine.AnalyseDropout(Cohort(), 0, TrainedAt).Report;
+        var report = IntelligenceEngine.AnalyseDropout(Cohort(), UnscoredReasons.None, Run, TrainedAt).Report;
 
         Assert.NotEmpty(report.Rules);
         Assert.All(report.Rules, r => Assert.DoesNotContain("≤", r.Condition));
@@ -156,8 +159,8 @@ public class IntelligenceEngineTests
     {
         var cohort = Cohort();
 
-        var first = IntelligenceEngine.AnalyseDropout(cohort, 0, TrainedAt).Report;
-        var second = IntelligenceEngine.AnalyseDropout(cohort, 0, TrainedAt).Report;
+        var first = IntelligenceEngine.AnalyseDropout(cohort, UnscoredReasons.None, Run, TrainedAt).Report;
+        var second = IntelligenceEngine.AnalyseDropout(cohort, UnscoredReasons.None, Run, TrainedAt).Report;
 
         Assert.Equal(first.Quality, second.Quality);
         Assert.Equal(first.Rules, second.Rules);
@@ -166,7 +169,7 @@ public class IntelligenceEngineTests
     [Fact]
     public void Report_SurvivesTheTripThroughTheApi()
     {
-        var report = IntelligenceEngine.AnalyseDropout(Cohort(), 0, TrainedAt).Report;
+        var report = IntelligenceEngine.AnalyseDropout(Cohort(), UnscoredReasons.None, Run, TrainedAt).Report;
         var web = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 
         // The API writes camelCase; the Web reads it back with the same defaults.
@@ -233,6 +236,47 @@ public class IntelligenceEngineTests
 
         Assert.All(forecast.Actual, v => Assert.True(v >= 0));
         Assert.All(forecast.Lower, v => Assert.True(v >= 0));
+
+        // Both edges are held at zero, so the band can never come out upside down.
+        Assert.All(Enumerable.Range(0, forecast.Upper.Count),
+            i => Assert.True(forecast.Upper[i] >= forecast.Lower[i]));
+    }
+
+    [Fact]
+    public void Forecast_MeasuresItselfAgainstTheReferencesOnPeriodsItDidNotSee()
+    {
+        // Six periods: one of them can be held back and predicted without having been seen.
+        var accuracy = IntelligenceEngine.Forecast(History(500, 510, 520, 530, 540, 551), 2).Accuracy;
+
+        Assert.NotNull(accuracy);
+        Assert.Equal(1, accuracy.Evaluations);
+
+        // A straight line is exactly what the trend fits, so here it wins.
+        Assert.True(accuracy.TrendError < accuracy.LastValueError);
+        Assert.Equal("la tendencia lineal", accuracy.Best);
+        Assert.False(accuracy.TrendIsBeaten);
+    }
+
+    [Fact]
+    public void Forecast_HasNoRetrospectiveErrorUntilThereIsHistoryToHoldBack()
+    {
+        Assert.Null(IntelligenceEngine.Forecast(History(500, 510, 520), 2).Accuracy);
+    }
+
+    [Fact]
+    public void Forecast_CountsAMissingPeriodAsAGapAndNotAsAStep()
+    {
+        // 2020 Ene-Abr, 2020 May-Ago and then — nothing in Sep-Dic — 2021 Ene-Abr.
+        var periods = new[] { ("2020 Ene-Abr", 500), ("2020 May-Ago", 510), ("2021 Ene-Abr", 530) }
+            .Select((p, i) => new PeriodStats(Guid.NewGuid(), p.Item1, new DateOnly(2020 + i, 1, 1),
+                p.Item2, 0, 0, 0, 800, 200))
+            .ToList();
+
+        var forecast = IntelligenceEngine.Forecast(new AcademicHistory(periods, []), 1);
+
+        // 30 students over three periods, not over two observations: +10 per period.
+        Assert.Equal(10, forecast.Slope);
+        Assert.Equal(540, forecast.NextValue);
     }
 
     // ── Anomalies ───────────────────────────────────────────────────────────

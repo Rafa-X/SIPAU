@@ -10,10 +10,12 @@
     <MudNavLink Href="/boardreport" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Article">Informe de Junta</MudNavLink>
     @* <MudNavLink Href="/minutes" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Gavel">Actas de Junta</MudNavLink> *@
 
-    <AuthorizeView Roles="Admin">
+    <AuthorizeView Policy="@AppPermissions.AnyAdministration">
         <span class="sipau-nav-section"><span class="sipau-nav-section-label">Administración</span></span>
         <MudNavLink Href="/settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Tune">Configuración</MudNavLink>
-        <MudNavLink Href="/users" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.People">Usuarios</MudNavLink>
+        <AuthorizeView Policy="@AppPermissions.ManageUsers" Context="administrator">
+            <MudNavLink Href="/users" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.People">Usuarios</MudNavLink>
+        </AuthorizeView>
     </AuthorizeView>
 
     <div class="sipau-rail-foot">
