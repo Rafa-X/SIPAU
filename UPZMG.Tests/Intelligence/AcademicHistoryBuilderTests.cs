@@ -47,7 +47,7 @@ public class AcademicHistoryBuilderTests
         Assert.Equal(1, second.NewEnrolled);
         Assert.Equal(1, second.Withdrawn);
         Assert.Equal(1, second.Graduated);
-        Assert.Equal(75, second.PassRate, precision: 9);
+        Assert.Equal(75, second.PassRate!.Value, precision: 9);
         Assert.Equal(25, second.WithdrawalRate, precision: 9);
     }
 
@@ -84,19 +84,38 @@ public class AcademicHistoryBuilderTests
     }
 
     [Fact]
-    public void CountFirstEnrolments_CountsEachStudentOnceInTheirEarliestPeriod()
+    public void CountEntrants_ReadsTheEntryPeriodOfEachStudentRecord()
     {
-        Guid p1 = Guid.NewGuid(), p2 = Guid.NewGuid(), p3 = Guid.NewGuid(), unknown = Guid.NewGuid();
-        Guid a = Guid.NewGuid(), b = Guid.NewGuid();
+        var f = new AcademicFixture();
+        var p = f.Periods(3);
+        var olderThanTheWindow = Guid.NewGuid();
 
-        var counts = AcademicHistoryBuilder.CountFirstEnrolments(
-            [(a, p3), (a, p2), (b, p3), (b, unknown), (a, p3)],
-            [p1, p2, p3]);
+        f.Student(p[1]);
+        f.Student(p[1]);
+        f.Student(olderThanTheWindow);
 
-        Assert.Equal(1, counts[p2]);
-        Assert.Equal(1, counts[p3]);
-        Assert.False(counts.ContainsKey(p1));
-        Assert.False(counts.ContainsKey(unknown));
+        var counts = AcademicHistoryBuilder.CountEntrants(f.Build().Students, p);
+
+        Assert.Equal(2, counts[p[1]]);
+        Assert.False(counts.ContainsKey(p[0]));
+        Assert.False(counts.ContainsKey(olderThanTheWindow));
+    }
+
+    [Fact]
+    public void NewEnrolled_DoesNotTurnTheStartOfTheWindowIntoAnIntake()
+    {
+        var f = new AcademicFixture();
+        var p = f.Periods(2);
+
+        // Already studying when the loaded data begins: they entered before this window.
+        var continuing = f.Student(p[0]);
+        f.Enrol(continuing, p[1]);
+
+        var period = Assert.Single(AcademicHistoryBuilder.Build(f.Build()).Periods);
+
+        Assert.Equal(p[1], period.PeriodId);
+        Assert.Equal(1, period.Enrolled);
+        Assert.Equal(0, period.NewEnrolled);
     }
 
     [Theory]

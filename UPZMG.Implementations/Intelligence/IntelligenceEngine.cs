@@ -22,6 +22,10 @@ public static class IntelligenceEngine
     private const int TopStudents = 10;
     private const int MaxAlerts = 6;
 
+    // Periods held back before the retrospective check can say anything. Fewer than this and
+    // the fit it is measuring has barely any history to fit.
+    public const int BacktestMinimumTrain = 5;
+
     private static readonly CultureInfo Mx = CultureInfo.GetCultureInfo("es-MX");
 
     public static string LevelFor(double riskPct) =>
@@ -48,7 +52,9 @@ public static class IntelligenceEngine
                 HasModel: false);
         }
 
-        var fit = Statistics.Fit(observed);
+        // x measured in periods, not in observations: see Positions below.
+        var positions = Positions(history);
+        var fit = Statistics.Fit(positions, observed);
         if (fit is null) return EnrollmentForecast.None;
 
         int n = observed.Count;
@@ -65,14 +71,18 @@ public static class IntelligenceEngine
 
         for (int i = 0; i < n + ahead; i++)
         {
-            trend[i] = Math.Round(fit.PredictAt(i), 1);
-            actual[i] = i < n ? observed[i] : Math.Max(0, Math.Round(fit.PredictAt(i)));
+            var x = i < n ? positions[i] : positions[n - 1] + (i - n + 1);
+
+            trend[i] = Math.Round(fit.PredictAt(x), 1);
+            actual[i] = i < n ? observed[i] : Math.Max(0, Math.Round(fit.PredictAt(x)));
 
             if (!hasBand) continue;
 
-            // ±2 standard errors, widening with each step past the data.
+            // ±2 standard errors, widening with each step past the data. Both edges are held at
+            // zero, like the projection: a steep enough decline sent the trend below zero, and
+            // clamping only the lower edge left an upper bound underneath it.
             double spread = 2 * fit.StdError!.Value * (i < n ? 1 : 1 + 0.35 * (i - n + 1));
-            upper[i] = Math.Round(trend[i] + spread, 1);
+            upper[i] = Math.Round(Math.Max(0, trend[i] + spread), 1);
             lower[i] = Math.Round(Math.Max(0, trend[i] - spread), 1);
         }
 
@@ -81,7 +91,72 @@ public static class IntelligenceEngine
             Math.Round(fit.Slope, 2), Math.Round(fit.Intercept, 1),
             fit.R2 is { } r2 ? Math.Round(r2, 4) : null,
             fit.StdError is { } error ? Math.Round(error, 2) : null,
-            HasModel: true);
+            HasModel: true,
+            Accuracy: Backtest(history));
+    }
+
+    /// <summary>
+    /// Where each observed period sits, counted in terms from the first one. Taken from the
+    /// label so a term the university did not run stays a gap: numbering the observations
+    /// 0, 1, 2… closes the gap up and turns a missing period into a regular step. Labels that
+    /// do not follow the "2025 Sep-Dic" shape fall back to the plain sequence.
+    /// </summary>
+    private static double[] Positions(AcademicHistory history)
+    {
+        var ordinals = history.Periods
+            .Select(p => AcademicHistoryBuilder.TermOrdinal(p.Label))
+            .ToList();
+
+        if (ordinals.Any(o => o is null))
+            return [.. Enumerable.Range(0, ordinals.Count).Select(i => (double)i)];
+
+        var first = ordinals[0]!.Value;
+        return [.. ordinals.Select(o => (double)(o!.Value - first))];
+    }
+
+    /// <summary>
+    /// What the projection would have got wrong on periods it had not seen. The cut moves
+    /// forward one period at a time; at each step the line is fitted only on what came before
+    /// and asked for the next period, and two references anybody can compute by hand get the
+    /// same treatment. R² measures how well the line describes the history it was fitted to,
+    /// which is a different question from how well it predicts the term after.
+    /// </summary>
+    public static ForecastAccuracy? Backtest(AcademicHistory history)
+    {
+        var periods = history.Periods;
+        if (periods.Count <= BacktestMinimumTrain) return null;
+
+        var observed = periods.Select(p => (double)p.Enrolled).ToArray();
+        var positions = Positions(history);
+
+        double trend = 0, lastValue = 0, drift = 0;
+        int evaluations = 0;
+
+        for (int cut = BacktestMinimumTrain; cut < observed.Length; cut++)
+        {
+            var trainY = observed[..cut];
+            var trainX = positions[..cut];
+            var fit = Statistics.Fit(trainX, trainY);
+            if (fit is null) continue;
+
+            var actual = observed[cut];
+            var span = trainX[^1] - trainX[0];
+            var growthPerPeriod = span <= 0 ? 0 : (trainY[^1] - trainY[0]) / span;
+            var step = positions[cut] - trainX[^1];
+
+            trend += Math.Abs(Math.Max(0, fit.PredictAt(positions[cut])) - actual);
+            lastValue += Math.Abs(trainY[^1] - actual);
+            drift += Math.Abs(Math.Max(0, trainY[^1] + growthPerPeriod * step) - actual);
+            evaluations++;
+        }
+
+        if (evaluations == 0) return null;
+
+        return new ForecastAccuracy(
+            evaluations,
+            Math.Round(trend / evaluations, 1),
+            Math.Round(lastValue / evaluations, 1),
+            Math.Round(drift / evaluations, 1));
     }
 
     // Known upcoming periods first, then the SEP sequence, then a generic label.
@@ -106,7 +181,10 @@ public static class IntelligenceEngine
     /// calling them "did not leave" would teach the model that everyone enrolled is safe.
     /// </summary>
     public static DropoutAnalysis AnalyseDropout(
-        IReadOnlyList<StudentObservation> observations, int unscoredActive, DateTime trainedAtUtc)
+        IReadOnlyList<StudentObservation> observations,
+        UnscoredReasons unscored,
+        string runId,
+        DateTime trainedAtUtc)
     {
         var finished = observations.Where(o => o.Outcome is not null).ToList();
         var active = observations.Where(o => o.Outcome is null).ToList();
@@ -121,9 +199,12 @@ public static class IntelligenceEngine
 
         if (refusal is not null)
         {
-            // Unscored because there is no model, not because they lack history.
+            // Unscored because there is no model, not because they lack history: the students
+            // that do have grades are added to the ones that do not.
             var report = DropoutModelReport.Unavailable(
-                refusal, trainedAtUtc, withdrawals, graduates, unscoredActive + active.Count);
+                refusal, runId, trainedAtUtc, withdrawals, graduates,
+                unscored with { NoGrades = unscored.NoGrades + active.Count });
+
             return new DropoutAnalysis(report, []);
         }
 
@@ -161,6 +242,7 @@ public static class IntelligenceEngine
 
         var full = new DropoutModelReport(
             HasModel: true,
+            RunId: runId,
             Status: status,
             TrainedAtUtc: trainedAtUtc,
             FinishedTrajectories: finished.Count,
@@ -176,7 +258,7 @@ public static class IntelligenceEngine
             ScoredStudents: scored.Count,
             AtRiskStudents: atRisk,
             HighRiskStudents: scored.Count(s => s.Level == "Alto"),
-            UnscoredActiveStudents: unscoredActive);
+            Unscored: unscored);
 
         return new DropoutAnalysis(full, scored);
     }
@@ -251,18 +333,19 @@ public static class IntelligenceEngine
         var last = periods[^1];
         var previous = periods.Take(periods.Count - 1).ToList();
 
-        // 3. Latest pass rate against the earlier ones.
-        var passRates = previous.Where(p => p.Passed + p.Failed > 0).Select(p => p.PassRate).ToList();
-        if (passRates.Count >= 3 && last.Passed + last.Failed > 0)
+        // 3. Latest pass rate against the earlier ones. A period with no grades has no rate,
+        // so it is neither compared nor used as a reference.
+        var passRates = previous.Where(p => p.HasGrades).Select(p => p.PassRate!.Value).ToList();
+        if (passRates.Count >= 3 && last.PassRate is { } latestPassRate)
         {
             var mean = passRates.Average();
-            if (last.PassRate < mean - 5)
+            if (latestPassRate < mean - 5)
             {
                 found.Add(new AnomalyAlert(
                     $"Aprobación por debajo de su historial en {last.Label}",
-                    $"{Format(last.PassRate, "0.0")} % de aprobación frente a un promedio previo de {Format(mean, "0.0")} %.",
+                    $"{Format(latestPassRate, "0.0")} % de aprobación frente a un promedio previo de {Format(mean, "0.0")} %.",
                     "warning",
-                    Math.Round(mean - last.PassRate, 1),
+                    Math.Round(mean - latestPassRate, 1),
                     last.Label));
             }
         }
@@ -284,8 +367,25 @@ public static class IntelligenceEngine
             }
         }
 
-        return [.. found.OrderByDescending(a => a.Magnitude).Take(MaxAlerts)];
+        // Ordered by how much it deserves attention, not by the bare number. The magnitudes
+        // come from different families — standard deviations, percentage points — and comparing
+        // them directly let a mild deviation of one family outrank a severe one of another.
+        return
+        [
+            .. found
+                .OrderByDescending(a => SeverityRank(a.Severity))
+                .ThenByDescending(a => a.Period == last.Label)
+                .ThenByDescending(a => a.Magnitude)
+                .Take(MaxAlerts)
+        ];
     }
+
+    private static int SeverityRank(string severity) => severity switch
+    {
+        "error" => 2,
+        "warning" => 1,
+        _ => 0,
+    };
 
     private static string Format(double value, string format) => value.ToString(format, Mx);
 }

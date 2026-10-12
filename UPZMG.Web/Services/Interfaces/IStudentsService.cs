@@ -13,5 +13,6 @@ public interface IStudentsService
 
     Task<Student?> UpdateStudent(UpdateStudent request);
     Task<StudentsListResponse> GetStudentsListAsync(StudentsListRequest request);
-    Task<List<StudentsAges>> GetStudentsAgesAsync(bool newOnly = false);
+    // Null when the request failed; an empty list means there is nothing to count.
+    Task<List<StudentsAges>?> GetStudentsAgesAsync(bool newOnly = false);
 }

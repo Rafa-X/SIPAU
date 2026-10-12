@@ -7,7 +7,7 @@ namespace UPZMG.Implementations.Intelligence;
 /// <param name="StdError">Residual standard error that sizes the uncertainty band; null with two points.</param>
 public sealed record LinearFit(double Slope, double Intercept, double? R2, double? StdError)
 {
-    public double PredictAt(int x) => Intercept + Slope * x;
+    public double PredictAt(double x) => Intercept + Slope * x;
 }
 
 /// <summary>Pure statistics over plain numbers: no database, no domain types.</summary>
@@ -18,18 +18,26 @@ public static class Statistics
     /// minimum trend required for an initial enrolment projection, but they fit
     /// any line exactly, so their quality is reported as unknown rather than perfect.
     /// </summary>
-    public static LinearFit? Fit(IReadOnlyList<double> y)
+    public static LinearFit? Fit(IReadOnlyList<double> y) =>
+        Fit([.. Enumerable.Range(0, y.Count).Select(i => (double)i)], y);
+
+    /// <summary>
+    /// The same fit over explicit x positions. The positions matter as soon as a point is
+    /// missing from the series: treating what is left as consecutive closes the gap up, and
+    /// the slope then means "per observation" instead of "per period".
+    /// </summary>
+    public static LinearFit? Fit(IReadOnlyList<double> x, IReadOnlyList<double> y)
     {
         int n = y.Count;
-        if (n < 2) return null;
+        if (n < 2 || x.Count != n) return null;
 
         double sumX = 0, sumY = 0, sumXy = 0, sumXx = 0;
         for (int i = 0; i < n; i++)
         {
-            sumX += i;
+            sumX += x[i];
             sumY += y[i];
-            sumXy += i * y[i];
-            sumXx += (double)i * i;
+            sumXy += x[i] * y[i];
+            sumXx += x[i] * x[i];
         }
 
         double denominator = n * sumXx - sumX * sumX;
@@ -42,7 +50,7 @@ public static class Statistics
         double ssTot = 0, ssRes = 0;
         for (int i = 0; i < n; i++)
         {
-            double residual = y[i] - (intercept + slope * i);
+            double residual = y[i] - (intercept + slope * x[i]);
             ssRes += residual * residual;
             ssTot += (y[i] - meanY) * (y[i] - meanY);
         }

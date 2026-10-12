@@ -181,8 +181,9 @@
 
     private IReadOnlyList<AnomalyAlert> _anomalies = Array.Empty<AnomalyAlert>();
 
-    // The service never throws: an unreachable API just leaves the bell empty.
-    protected override async Task OnInitializedAsync() => _anomalies = await Ai.GetAnomaliesAsync();
+    // The service never throws: an unreachable API leaves the bell empty rather than breaking
+    // every page. The dashboard card is where a failure is reported as a failure.
+    protected override async Task OnInitializedAsync() => _anomalies = await Ai.GetAnomaliesAsync() ?? [];
 
     private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
 

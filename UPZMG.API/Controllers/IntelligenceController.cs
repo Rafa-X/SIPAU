@@ -43,8 +43,8 @@ public class IntelligenceController(
 
     [HttpGet("dropout/students")]
     [RequirePermission(AppPermissions.ReadRisk)]
-    // Every scored active student, highest risk first
-    public async Task<ActionResult<IReadOnlyList<StudentRisk>>> GetStudentRisks() =>
+    // Every scored active student, highest risk first, with the run that produced them
+    public async Task<ActionResult<StudentRiskList>> GetStudentRisks() =>
         Ok(await intelligenceRepository.GetStudentRisksAsync());
 
     [HttpPost("dropout/retrain")]
