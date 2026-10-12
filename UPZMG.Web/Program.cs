@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
@@ -69,6 +70,10 @@ try
     builder.Services.AddScoped<IChartsService, ChartsService>();
 
     builder.Services.AddAuthorization();
+
+    // Screens are gated by permission, like the API endpoints, instead of by role name.
+    builder.Services.AddSingleton<IAuthorizationPolicyProvider, WebPermissionPolicyProvider>();
+    builder.Services.AddScoped<IAuthorizationHandler, WebPermissionHandler>();
 
     // Bridge the cookie principal into Blazor's auth state.
     builder.Services.AddHttpContextAccessor();
