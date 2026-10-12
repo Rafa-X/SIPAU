@@ -1,5 +1,5 @@
 @page "/settings"
-@attribute [Authorize(Roles = "Admin")]
+@attribute [Authorize(Policy = AppPermissions.AnyAdministration)]
 
 <PageTitle>Configuración — SIPAU</PageTitle>
 

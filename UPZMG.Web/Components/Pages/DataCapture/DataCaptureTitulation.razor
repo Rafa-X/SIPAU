@@ -1,5 +1,5 @@
 @page "/datacapture/titulation"
-@attribute [Authorize]
+@attribute [Authorize(Policy = AppPermissions.CaptureTitulation)]
 @using UPZMG.Implementations.DataCapture
 @using UPZMG.Shared.Enums
 @inject IDataCaptureService CaptureSvc

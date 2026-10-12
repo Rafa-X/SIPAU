@@ -1,6 +1,6 @@
 @page "/datacapture/class-groups"
 @page "/datacapture/class-groups/{Id:guid}/editar"
-@attribute [Authorize]
+@attribute [Authorize(Policy = AppPermissions.CaptureClassGroups)]
 @using System.Text.RegularExpressions
 @using UPZMG.Implementations.DataCapture
 @using UPZMG.Persistence.Models

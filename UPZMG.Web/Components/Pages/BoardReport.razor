@@ -1,5 +1,5 @@
 @page "/boardreport"
-@attribute [Authorize]
+@attribute [Authorize(Policy = AppPermissions.ReadBoardReport)]
 @using UPZMG.Implementations.BoardReport
 @inject IBoardReportService BoardSvc
 

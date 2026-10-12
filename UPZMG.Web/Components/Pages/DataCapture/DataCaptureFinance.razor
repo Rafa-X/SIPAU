@@ -1,5 +1,5 @@
 @page "/datacapture/finance"
-@attribute [Authorize(Roles = "Admin")]
+@attribute [Authorize(Policy = AppPermissions.CaptureFinance)]
 @using UPZMG.Implementations.DataCapture
 @inject IDataCaptureService CaptureSvc
 @inject ISecurityService SecuritySvc

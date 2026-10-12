@@ -1,5 +1,5 @@
 @page "/reports/{ReportId:guid}/impresion"
-@attribute [Authorize]
+@attribute [Authorize(Policy = AppPermissions.CaptureReports)]
 @layout DocumentLayout
 @using System.Text.Json
 @using UPZMG.Implementations.Reports

@@ -1,0 +1,14 @@
+@page "/sin-permiso"
+@attribute [Authorize]
+
+@*
+    Where the authorization middleware sends a full page load it refused. It only has to be
+    reachable by a signed-in account: somebody who is not signed in is sent to the login page.
+*@
+
+<PageTitle>Sin permiso — SIPAU</PageTitle>
+
+<PageHeader Eyebrow="Acceso" Title="Sin permiso para esta pantalla"
+            Subtitle="Los permisos se asignan por rol desde la administración del sistema" />
+
+<NoPermissionNotice />

@@ -1,12 +1,13 @@
 @*
-    Blazor router. Authenticated pages use MainLayout; unauthenticated
-    users are bounced to the MVC cookie-login endpoint.
+    Blazor router. Authenticated pages use MainLayout; a page the account may not open explains
+    itself, and an account that is not signed in goes to the MVC cookie-login endpoint.
 *@
 <Router AppAssembly="typeof(Program).Assembly">
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)">
             <NotAuthorized>
-                <RedirectToLogin />
+                @* Says so when the account is signed in; sends it to the login page when it is not. *@
+                <NotAuthorizedView />
             </NotAuthorized>
             <Authorizing>
                 <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-7" />

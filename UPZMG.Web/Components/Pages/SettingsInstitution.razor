@@ -1,5 +1,5 @@
 @page "/settings/institution"
-@attribute [Authorize(Roles = "Admin")]
+@attribute [Authorize(Policy = AppPermissions.AnyAdministration)]
 @using UPZMG.Implementations.Institution
 @inject IGeneralDataService GeneralDataSvc
 

@@ -1,0 +1,19 @@
+@*
+    Shown when the signed-in account may not open a screen.
+
+    Both routes end here: a full page load is stopped by the authorization middleware and
+    redirected to /sin-permiso, and an interactive navigation inside the app is stopped by the
+    router. Before this, both ended on the dashboard without a word, which reads like a broken
+    link instead of a decision somebody can change.
+*@
+
+<SectionCard FullHeight="false">
+    <EmptyState Icon="@Icons.Material.Filled.Lock"
+                Title="Esta pantalla no está disponible para tu área"
+                Description="Tu cuenta no tiene el permiso que esta pantalla requiere. Si lo necesitas para tu trabajo, pídelo a quien administra los usuarios: los permisos se asignan por rol y el cambio aplica de inmediato.">
+        <MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/dashboard"
+                   StartIcon="@Icons.Material.Filled.SpaceDashboard">
+            Ir al Tablero de Control
+        </MudButton>
+    </EmptyState>
+</SectionCard>

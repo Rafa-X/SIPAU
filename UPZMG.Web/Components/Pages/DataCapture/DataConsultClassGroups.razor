@@ -1,5 +1,5 @@
 @page "/datacapture/class-groups/consult"
-@attribute [Authorize]
+@attribute [Authorize(Policy = AppPermissions.CaptureClassGroups)]
 @using System.Globalization
 @using System.Text
 @using UPZMG.Implementations.DataCapture

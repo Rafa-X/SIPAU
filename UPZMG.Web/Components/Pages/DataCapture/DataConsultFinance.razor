@@ -1,5 +1,5 @@
 @page "/datacapture/finance/consult"
-@attribute [Authorize(Roles = "Admin")]
+@attribute [Authorize(Policy = AppPermissions.CaptureFinance)]
 @using UPZMG.Implementations.DataCapture
 @inject IDataCaptureService CaptureSvc
 @inject IJSRuntime JS
@@ -12,6 +12,14 @@
 @if (_loading)
 {
     <LoadingState Text="Leyendo los ejercicios registrados…" />
+}
+else if (_loadFailed)
+{
+    <SectionCard FullHeight="false">
+        <EmptyState Icon="@Icons.Material.Filled.CloudOff"
+                    Title="No pudimos leer el listado"
+                    Description="El servicio no respondió, así que esta pantalla no puede afirmar que no haya registros. Vuelve a cargar la página; si sigue así, avisa a Tecnologías." />
+    </SectionCard>
 }
 else if (_summaries.Count == 0)
 {
@@ -73,11 +81,15 @@ else
 
     private IReadOnlyList<FinanceListItem> _summaries = [];
     private bool _loading = true;
+    private bool _loadFailed;
     private string _search = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
-        _summaries = await CaptureSvc.GetFinanceListAsync();
+        var rows = await CaptureSvc.GetFinanceListAsync();
+        // Null is "the listing could not be read", which is not the same as having none.
+        _loadFailed = rows is null;
+        _summaries = rows ?? [];
         _loading = false;
     }
 

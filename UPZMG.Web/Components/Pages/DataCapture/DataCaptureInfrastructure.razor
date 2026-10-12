@@ -1,5 +1,5 @@
 @page "/datacapture/infrastructure"
-@attribute [Authorize]
+@attribute [Authorize(Policy = AppPermissions.CaptureFacilities)]
 @using UPZMG.Implementations.DataCapture
 @using UPZMG.Shared.Enums
 @inject IDataCaptureService CaptureSvc

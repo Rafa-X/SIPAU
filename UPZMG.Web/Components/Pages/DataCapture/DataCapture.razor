@@ -100,15 +100,16 @@ else
             _summary = await DashboardSvc.GetSummaryAsync();
             _facilities = (await GeneralDataSvc.GetFacilitiesAsync()).Count;
 
-            // Each listing returns empty when the area may not read it, so the card simply shows nothing.
-            var projects = await CaptureSvc.GetOutreachListAsync();
+            // A listing the area may not read answers null; its card then shows no figure,
+            // which is different from showing a zero the area cannot verify.
+            var projects = await CaptureSvc.GetOutreachListAsync() ?? [];
             _outreachProjects = projects.Count;
             _outreachHours = projects.Sum(p => p.AccreditedHours);
 
-            _scholarships = (await CaptureSvc.GetScholarshipsAsync()).Count;
-            _titulations = (await CaptureSvc.GetTitulationsAsync()).Count;
+            _scholarships = (await CaptureSvc.GetScholarshipsAsync())?.Count ?? 0;
+            _titulations = (await CaptureSvc.GetTitulationsAsync())?.Count ?? 0;
 
-            var finances = await CaptureSvc.GetFinanceListAsync();
+            var finances = await CaptureSvc.GetFinanceListAsync() ?? [];
             _fiscalYears = finances.Count;
             _lastFiscalYear = finances.Count == 0 ? null : finances.Max(f => f.FiscalYear);
         }
