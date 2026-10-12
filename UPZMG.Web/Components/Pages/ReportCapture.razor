@@ -1,6 +1,6 @@
 @page "/reports/new/{ReportType}/{Version}"
 @page "/reports/{ReportId:guid}"
-@attribute [Authorize]
+@attribute [Authorize(Policy = AppPermissions.CaptureReports)]
 @using System.Net
 @using System.Text.Json
 @using UPZMG.Implementations.Reports
@@ -160,6 +160,9 @@ else
     [Parameter] public string? Version { get; set; }
     [Parameter] public Guid? ReportId { get; set; }
 
+    // Version of the capture as this form read it; sent back on every save.
+    private string? _rowVersion;
+
     /// <summary>Section to open (from 1), set when a first save gives the capture its own address.</summary>
     [SupplyParameterFromQuery(Name = "seccion")]
     public int? Seccion { get; set; }
@@ -195,6 +198,7 @@ else
         _template = null;
         _form = null;
         _reportId = null;
+        _rowVersion = null;
         _status = null;
         _dirty = false;
         _readOnly = false;
@@ -221,6 +225,7 @@ else
                 _template = template;
                 _form = new ReportFormState(template, report.Answers);
                 _reportId = report.Id;
+                _rowVersion = report.RowVersion;
                 _status = report.Status;
                 _lastSaved = report.LastModified;
                 _readOnly = report.Status != ReportStatus.draft;
@@ -401,12 +406,16 @@ else
                 ReportType = _template.ReportType,
                 Version = _template.Version,
                 Status = status,
+                // Sent so the API can refuse a save decided against content somebody else
+                // has already replaced, instead of overwriting it.
+                RowVersion = _rowVersion,
                 Answers = _form.Answers,
             });
 
             if (response.Report is { } saved && (response.Status is HttpStatusCode.OK or HttpStatusCode.Created))
             {
                 _reportId = saved.Id;
+                _rowVersion = saved.RowVersion;
                 _status = saved.Status;
                 _lastSaved = saved.LastModified;
                 _dirty = false;
@@ -426,11 +435,15 @@ else
                 return;
             }
 
+            // A submitted format is closed for good; one that merely moved under us is not,
+            // so the form stays editable and asks for a reload.
             if (response.Status == HttpStatusCode.Conflict) _readOnly = true;
 
             Snackbar.Add(response.Status switch
             {
-                HttpStatusCode.Conflict => "Este formato ya se había enviado y no admite cambios.",
+                HttpStatusCode.Conflict => response.Message ?? "Este formato ya se había enviado y no admite cambios.",
+                HttpStatusCode.PreconditionFailed =>
+                    "Otra persona guardó esta captura mientras la tenías abierta. Recarga la página para partir de lo último guardado.",
                 HttpStatusCode.UnprocessableEntity => "El servidor rechazó el envío: el formato está incompleto o sus sumas no cuadran. Revisa las secciones marcadas.",
                 HttpStatusCode.NotFound => "No se encontró la plantilla o la captura. Recarga la página.",
                 HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => "Tu sesión ya no tiene permiso para guardar. Vuelve a iniciar sesión.",

@@ -233,31 +233,36 @@ public sealed class DataCaptureService(ISecurityService securityService): IDataC
         return [];
     }
 
-    // School spaces already registered; empty when the area cannot read them.
-    public Task<IReadOnlyList<FacilityListItem>> GetFacilitiesListAsync() =>
+    // School spaces already registered; null when the listing could not be read.
+    public Task<IReadOnlyList<FacilityListItem>?> GetFacilitiesListAsync() =>
         ListAsync<FacilityListItem>("data-capture/facilities/list");
 
-    // Linkage projects already registered; empty when the area cannot read them.
-    public Task<IReadOnlyList<OutreachListItem>> GetOutreachListAsync() =>
+    // Linkage projects already registered; null when the listing could not be read.
+    public Task<IReadOnlyList<OutreachListItem>?> GetOutreachListAsync() =>
         ListAsync<OutreachListItem>("data-capture/outreach/list");
 
-    // Annual financial summaries; empty when the area cannot read them.
-    public Task<IReadOnlyList<FinanceListItem>> GetFinanceListAsync() =>
+    // Annual financial summaries; null when the listing could not be read.
+    public Task<IReadOnlyList<FinanceListItem>?> GetFinanceListAsync() =>
         ListAsync<FinanceListItem>("data-capture/finance/list");
 
-    // Scholarships already granted; empty when the area cannot read them.
-    public Task<IReadOnlyList<ScholarshipListItem>> GetScholarshipsAsync() =>
+    // Scholarships already granted; null when the listing could not be read.
+    public Task<IReadOnlyList<ScholarshipListItem>?> GetScholarshipsAsync() =>
         ListAsync<ScholarshipListItem>("data-capture/scholarships/list");
 
-    // Titulation processes already registered; empty when the area cannot read them.
-    public Task<IReadOnlyList<TitulationListItem>> GetTitulationsAsync() =>
+    // Titulation processes already registered; null when the listing could not be read.
+    public Task<IReadOnlyList<TitulationListItem>?> GetTitulationsAsync() =>
         ListAsync<TitulationListItem>("data-capture/titulation/list");
 
-    // The scholarship programmes the area can choose from.
-    public Task<IReadOnlyList<LookupOption>> GetScholarshipProgramsAsync() =>
-        ListAsync<LookupOption>("data-capture/scholarships/programs");
+    // The scholarship programmes the area can choose from; empty when none could be read.
+    public async Task<IReadOnlyList<LookupOption>> GetScholarshipProgramsAsync() =>
+        await ListAsync<LookupOption>("data-capture/scholarships/programs") ?? [];
 
-    private async Task<IReadOnlyList<T>> ListAsync<T>(string path)
+    /// <summary>
+    /// One listing, or null when it could not be read. Returning an empty list for a refused
+    /// or unanswered request made every consultation screen say "sin registros", which is a
+    /// statement about the institution's data rather than about the request that failed.
+    /// </summary>
+    private async Task<IReadOnlyList<T>?> ListAsync<T>(string path)
     {
         var requesterKey = await securityService.GetRequesterKeyAsync();
         try
@@ -268,12 +273,13 @@ public sealed class DataCaptureService(ISecurityService securityService): IDataC
             {
                 return JsonSerializer.Deserialize<List<T>>(response.Result, ResponseOptions) ?? [];
             }
+
+            return null;
         }
-        catch (HttpRequestException)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
-            // Each listing is limited to the areas that own it.
+            return null;
         }
-        return [];
     }
 
 #endregion

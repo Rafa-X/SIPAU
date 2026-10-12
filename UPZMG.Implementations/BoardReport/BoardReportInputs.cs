@@ -6,13 +6,19 @@ using UPZMG.Implementations.Reports;
 namespace UPZMG.Implementations.BoardReport;
 
 /// <summary>One official format as the report reads it: its state and the answers that were sent.</summary>
+/// <param name="OtherCaptures">
+/// Captures of this same format that the report did not consolidate. Each area captures its own
+/// formats, so a second draft is ordinary; two <em>sent</em> captures of one format mean the
+/// institution sent the same format twice, and the report says which one it used.
+/// </param>
 public sealed record BoardReportCapture(
     string ReportType,
     string DisplayName,
     string Status,
     DateTime LastModified,
     string? CapturedBy,
-    ReportFormState State)
+    ReportFormState State,
+    int OtherCaptures = 0)
 {
     public bool IsSubmitted => Status == "submitted";
 }

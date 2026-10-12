@@ -30,7 +30,7 @@ public sealed class ReportsService(ISecurityService securityService) : IReportsS
             ? JsonSerializer.Deserialize<ReportSaved>(response.Result, ResponseOptions)
             : null;
 
-        return new ReportSaveResponse(response.StatusCode, saved);
+        return new ReportSaveResponse(response.StatusCode, saved, response.ErrorMessage);
     }
 
     public async Task<string?> GetTemplateSourceAsync(string reportType, string version)

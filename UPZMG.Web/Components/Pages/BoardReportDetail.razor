@@ -1,5 +1,5 @@
 @page "/boardreport/{Cycle}"
-@attribute [Authorize]
+@attribute [Authorize(Policy = AppPermissions.ReadBoardReport)]
 @using UPZMG.Implementations.BoardReport
 @inject IBoardReportService BoardSvc
 @inject ISnackbar Snackbar
@@ -39,7 +39,7 @@ else
                        StartIcon="@Icons.Material.Filled.Print" Href="@($"/boardreport/{Cycle}/documento")">
                 Documento
             </MudButton>
-            <AuthorizeView Roles="Admin">
+            <AuthorizeView Policy="@AppPermissions.WriteBoardReport">
                 @if (!_document.IsSubmitted)
                 {
                     <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary"
@@ -97,6 +97,12 @@ else
                                     @(source.IsSubmitted ? "Enviado" : source.Status == "draft" ? "Borrador" : "Sin captura")
                                 </span>
                             </div>
+                            @if (source.OtherCaptures > 0)
+                            {
+                                <div class="sipau-risk-sub">
+                                    Hay @source.OtherCaptures captura(s) más de este formato; el informe tomó la enviada más reciente.
+                                </div>
+                            }
                             @if (source.LastModified is { } modified && source.Status != "pending")
                             {
                                 <div class="sipau-risk-sub">@ReportUi.Local(modified) @(source.CapturedBy is null ? "" : "· " + source.CapturedBy)</div>
@@ -149,7 +155,7 @@ else
                                             <span class="sipau-doc-note">
                                                 @(block.IsSuggested ? "Redacción sugerida por el sistema" : "Redactado por la universidad")
                                             </span>
-                                            <AuthorizeView Roles="Admin">
+                                            <AuthorizeView Policy="@AppPermissions.WriteBoardReport">
                                                 @if (!_document.IsSubmitted)
                                                 {
                                                     <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary"

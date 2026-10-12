@@ -74,32 +74,49 @@ public class ScholarshipsRepository(AppDBContext db)
                 s.AssignedDate))
             .ToListAsync();
 
-    /// <summary>Grants of the active period by source; the chart the students page was missing.</summary>
+    /// <summary>
+    /// Grants by source, for the active period when it has any. The scope travels with the
+    /// figures: falling back to the whole history is better than an empty chart, but the screen
+    /// used to label that fallback as the current period, which is a different statement.
+    /// </summary>
     public async Task<ScholarshipsBySource> GetScholarshipsBySourceAsync()
     {
         var activePeriod = await db.Periods.AsNoTracking()
             .Where(p => p.IsActive)
             .OrderByDescending(p => p.StartDate)
-            .Select(p => (Guid?)p.Id)
+            .Select(p => new { p.Id, Label = p.SchoolCycle + " " + p.SEP_Period })
             .FirstOrDefaultAsync();
 
         var query = db.ScolarshipAssigneds.AsNoTracking();
+        string scope;
 
-        // With no active period the whole history is better than an empty chart.
-        if (activePeriod is { } period && await query.AnyAsync(s => s.PeriodId == period))
-            query = query.Where(s => s.PeriodId == period);
+        if (activePeriod is not null && await query.AnyAsync(s => s.PeriodId == activePeriod.Id))
+        {
+            query = query.Where(s => s.PeriodId == activePeriod.Id);
+            scope = activePeriod.Label;
+        }
+        else
+        {
+            scope = "todo el historial";
+        }
 
         var rows = await query
             .GroupBy(s => s.FinantialSource)
             .Select(g => new { Source = g.Key, Students = g.Select(s => s.StudentId).Distinct().Count(), Amount = g.Sum(s => s.Amount) })
             .ToListAsync();
 
-        var ordered = rows.OrderByDescending(r => r.Students).ToList();
+        // Counted over the whole scope, not added up per source: the same student can hold a
+        // federal and a state grant, and that is one beneficiary.
+        var beneficiaries = await query.Select(s => s.StudentId).Distinct().CountAsync();
+
+        var ordered = rows.OrderByDescending(r => r.Students).ThenBy(r => r.Source.ToString()).ToList();
 
         return new ScholarshipsBySource(
             [.. ordered.Select(r => r.Source.ToString())],
             [.. ordered.Select(r => r.Students)],
-            [.. ordered.Select(r => r.Amount)]);
+            [.. ordered.Select(r => r.Amount)],
+            scope,
+            beneficiaries);
     }
 
     // ── Titulation ──────────────────────────────────────────────────────────
@@ -167,7 +184,11 @@ public class ScholarshipsRepository(AppDBContext db)
                 t.ProfessionalLicenceNumber))
             .ToListAsync();
 
-    /// <summary>Titled students against graduates: the rate the SII asks for, computed.</summary>
+    /// <summary>
+    /// Titled students against graduates, over the whole record rather than one cohort: both
+    /// counts are cumulative, which is how the register reads today. A cohort rate needs the
+    /// entry period of each graduate, and the SII asks for it per cohort.
+    /// </summary>
     public async Task<TitulationSummary> GetTitulationSummaryAsync()
     {
         var graduates = await db.Students.CountAsync(s => s.Status == StudentStatus.Egresado);

@@ -10,13 +10,11 @@ namespace UPZMG.Persistence
         public AppDBContext CreateDbContext(string[] args)
         {
             var currentDirectory = Directory.GetCurrentDirectory();
-            var basePath = Directory.Exists(Path.Combine(currentDirectory, "UPZMG.API"))
-                ? Path.Combine(currentDirectory, "UPZMG.API")
-                : currentDirectory;
+            var basePath = FindSettingsFolder(currentDirectory) ?? currentDirectory;
 
             var configuration = new ConfigurationBuilder()
                 .SetBasePath(basePath)
-                .AddJsonFile("appsettings.json", optional: false)
+                .AddJsonFile("appsettings.json", optional: true)
                 .AddJsonFile("appsettings.Development.json", optional: true)
                 .AddUserSecrets<AppDBContextFactory>(optional: true)
                 .AddEnvironmentVariables()
@@ -30,6 +28,26 @@ namespace UPZMG.Persistence
             optionsBuilder.UseSqlServer(connectionString);
 
             return new AppDBContext(optionsBuilder.Options);
+        }
+
+        /// <summary>
+        /// The nearest folder with an appsettings.json, looking at the current directory and
+        /// then upwards for the API project. The design-time tools run from the directory of
+        /// whichever project starts them, which is not always the one holding the settings.
+        /// </summary>
+        private static string? FindSettingsFolder(string start)
+        {
+            for (var directory = new DirectoryInfo(start); directory is not null; directory = directory.Parent)
+            {
+                if (File.Exists(Path.Combine(directory.FullName, "appsettings.json")))
+                    return directory.FullName;
+
+                var api = Path.Combine(directory.FullName, "UPZMG.API");
+                if (File.Exists(Path.Combine(api, "appsettings.json")))
+                    return api;
+            }
+
+            return null;
         }
     }
 }

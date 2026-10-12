@@ -11,6 +11,8 @@ public sealed partial class ClassGroupsRepository(AppDBContext db)
 {
     public async Task<ClassGroups> CreateAsync(CreateClassGroup request)
     {
+        EnsureReadableSchedule(request.Schedule);
+
         var sameSpace = await db.ClassGroups
             .AsNoTracking()
             .Where(g => g.FacilityId == request.FacilityId && g.PeriodId == request.PeriodId)
@@ -72,6 +74,8 @@ public sealed partial class ClassGroupsRepository(AppDBContext db)
     /// </summary>
     public async Task<ClassGroups> UpdateAsync(UpdateClassGroup request)
     {
+        EnsureReadableSchedule(request.Schedule);
+
         var group = await db.ClassGroups.FirstOrDefaultAsync(g => g.Id == request.Id)
             ?? throw new InvalidOperationException("El grupo ya no existe.");
 
@@ -145,6 +149,35 @@ public sealed partial class ClassGroupsRepository(AppDBContext db)
         return await query.ToListAsync();
     }
 
+    /// <summary>
+    /// Refuses a schedule the overlap check cannot read. An entry whose day or time range does
+    /// not parse was skipped silently, so a group written as "Lunes 8 a 12" went into a room
+    /// that was already taken: the clash check had nothing to compare and let it through.
+    /// </summary>
+    private static void EnsureReadableSchedule(IReadOnlyList<Schedule> schedule)
+    {
+        if (schedule.Count == 0)
+            throw new InvalidOperationException("El grupo necesita al menos un día y horario.");
+
+        foreach (var entry in schedule)
+        {
+            // Checked token by token: "Lunes y lo que sea" used to pass because one of the two
+            // words was readable, and the unreadable half silently stopped being checked.
+            var days = SplitDays(entry.Day);
+            if (days.Count == 0 || days.Any(day => CanonicalDay(day) is null))
+            {
+                throw new InvalidOperationException(
+                    $"No se entiende el día «{entry.Day}». Escribe por ejemplo «Lunes» o «Lunes y miércoles».");
+            }
+
+            if (ParseTimeRange(entry.Time) is null)
+            {
+                throw new InvalidOperationException(
+                    $"No se entiende el horario «{entry.Time}» del {entry.Day}. Escríbelo como «08:00 - 12:00».");
+            }
+        }
+    }
+
     // Same days and same hours, in any order: the group did not move.
     private static bool SameSchedule(IReadOnlyList<Schedule> stored, IReadOnlyList<Schedule> incoming) =>
         stored.Count == incoming.Count &&
@@ -178,11 +211,26 @@ public sealed partial class ClassGroupsRepository(AppDBContext db)
         return null;
     }
 
+    // Compared by canonical day, not by the text as written: "Lun", "lunes" and "Miércoles"
+    // used to be three different days, so a group written in short form never collided with
+    // one written in full and both ended up in the same room at the same hour.
+    private static readonly string[] WeekDays =
+        ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
+
+    private static List<string> SplitDays(string day) =>
+        [.. DaySeparatorRegex().Split(day).Where(token => token.Trim().Length > 0)];
+
+    /// <summary>The week day a token names, or null when it names none.</summary>
+    private static string? CanonicalDay(string token)
+    {
+        var normalized = Normalize(token);
+        if (normalized.Length < 3) return null;
+
+        return WeekDays.FirstOrDefault(day => day.StartsWith(normalized) || normalized.StartsWith(day));
+    }
+
     private static HashSet<string> ParseDays(string day) =>
-        DaySeparatorRegex().Split(day)
-            .Select(Normalize)
-            .Where(token => token.Length > 0)
-            .ToHashSet();
+        [.. SplitDays(day).Select(CanonicalDay).OfType<string>()];
 
     private static (TimeOnly Start, TimeOnly End)? ParseTimeRange(string time)
     {

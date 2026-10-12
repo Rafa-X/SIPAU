@@ -39,12 +39,22 @@ public sealed record ScholarshipListItem(
     DateOnly? AssignedDate);
 
 /// <summary>Grants of the period grouped by where the money comes from; feeds the chart.</summary>
+/// <param name="Students">Students with a grant from each source; a student with two sources is in both.</param>
+/// <param name="Scope">Which period the figures belong to, or that they are the whole history.</param>
+/// <param name="Beneficiaries">
+/// Students with at least one grant in the scope, counted once. Adding the per-source numbers up
+/// counted a student with two sources twice, which read as more beneficiaries than there are.
+/// </param>
 public sealed record ScholarshipsBySource(
     IReadOnlyList<string> Sources,
     IReadOnlyList<int> Students,
-    IReadOnlyList<decimal> Amounts)
+    IReadOnlyList<decimal> Amounts,
+    string Scope,
+    int Beneficiaries)
 {
-    public int TotalStudents => Students.Sum();
+    /// <summary>Grants awarded, which is what the per-source numbers add up to.</summary>
+    public int Grants => Students.Sum();
+
     public decimal TotalAmount => Amounts.Sum();
 }
 

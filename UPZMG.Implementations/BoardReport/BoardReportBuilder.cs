@@ -46,7 +46,7 @@ public static class BoardReportBuilder
                 Outlook(input),
             ],
             Sources: [.. input.Captures.Select(c =>
-                new BoardReportSource(c.ReportType, c.DisplayName, c.Status, c.LastModified, c.CapturedBy))]);
+                new BoardReportSource(c.ReportType, c.DisplayName, c.Status, c.LastModified, c.CapturedBy, c.OtherCaptures))]);
     }
 
     // ── Chapters ────────────────────────────────────────────────────────────
@@ -166,17 +166,26 @@ public static class BoardReportBuilder
 
         if (periods.Count > 0)
         {
-            blocks.Add(new BoardReportBlock(
-                BoardReportBlockKinds.Chart,
-                Title: "Aprobación y reprobación por periodo",
-                Source: "Kardex registrado",
-                Chart: new BoardReportChart(
-                    "bar",
-                    [.. periods.Select(p => p.Label)],
-                    [
-                        new("Aprobación %", [.. periods.Select(p => Math.Round(p.PassRate, 1))], "teal"),
-                        new("Reprobación %", [.. periods.Select(p => Math.Round(100 - p.PassRate, 1))], "ochre"),
-                    ])));
+            // Only periods with a kardex. A period nobody has graded has no pass rate, and
+            // drawing its complement reported it as a period everybody failed.
+            var graded = periods.Where(p => p.HasGrades).ToList();
+            if (graded.Count > 0)
+            {
+                blocks.Add(new BoardReportBlock(
+                    BoardReportBlockKinds.Chart,
+                    Title: "Aprobación y reprobación por periodo",
+                    Source: "Kardex registrado",
+                    Note: graded.Count < periods.Count
+                        ? "Se muestran los periodos con kardex capturado."
+                        : null,
+                    Chart: new BoardReportChart(
+                        "bar",
+                        [.. graded.Select(p => p.Label)],
+                        [
+                            new("Aprobación %", [.. graded.Select(p => Math.Round(p.PassRate!.Value, 1))], "teal"),
+                            new("Reprobación %", [.. graded.Select(p => Math.Round(100 - p.PassRate!.Value, 1))], "ochre"),
+                        ])));
+            }
 
             var latest = periods[^1];
             blocks.Add(new BoardReportBlock(
@@ -185,10 +194,12 @@ public static class BoardReportBuilder
                 Source: "Kardex e inscripciones registradas",
                 Figures:
                 [
-                    new("Aprobación", Percent(latest.PassRate), $"{Count(latest.Passed)} de {Count(latest.Passed + latest.Failed)} materias"),
+                    new("Aprobación",
+                        latest.PassRate is { } rate ? Percent(rate) : "Sin calificaciones",
+                        $"{Count(latest.Passed)} de {Count(latest.Passed + latest.Failed)} oportunidades calificadas"),
                     new("Bajas", Percent(latest.WithdrawalRate), $"{Count(latest.Withdrawn)} alumnos"),
                     new("Egresados", Count(latest.Graduated), "en el periodo"),
-                    new("Nuevo ingreso", Count(latest.NewEnrolled), "primera inscripción"),
+                    new("Nuevo ingreso", Count(latest.NewEnrolled), "ingreso registrado"),
                 ]));
         }
 
@@ -284,7 +295,8 @@ public static class BoardReportBuilder
             blocks.Add(new BoardReportBlock(
                 BoardReportBlockKinds.Table,
                 Title: "Becas registradas por origen del financiamiento",
-                Source: "Registros del sistema · Servicios Estudiantiles",
+                Source: $"Registros del sistema · Servicios Estudiantiles · {scholarships.Scope}",
+                Note: "Un alumno con apoyos de dos orígenes se cuenta una vez en el total de becados.",
                 Table: new BoardReportTable(
                     ["Origen", "Alumnos becados", "Monto"],
                     [.. scholarships.Sources.Select((source, i) => new BoardReportRow(source,
@@ -292,7 +304,7 @@ public static class BoardReportBuilder
                         Count(scholarships.Students[i]),
                         Money((double)scholarships.Amounts[i]),
                     ]))],
-                    Total: [Count(scholarships.TotalStudents), Money((double)scholarships.TotalAmount)])));
+                    Total: [Count(scholarships.Beneficiaries), Money((double)scholarships.TotalAmount)])));
         }
 
         blocks.Add(MatrixTable(students, "becas", "Becas por programa", "Formato SII · Perfil del alumno", onlyWithValues: true));

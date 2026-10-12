@@ -13,6 +13,13 @@ public class Reports
     public string? TemplateVersion { get; set; }
     public string Status { get; set; } = ReportStatus.draft.ToString();
     public string AnswersJson { get; set; } = "{}";
+
+    /// <summary>
+    /// The consolidated document as it was submitted, for the board report only. Everything it
+    /// consolidates — enrolment, risk, scholarships, finance — goes on changing afterwards, so
+    /// without this the figures of a document that was already sent changed with them.
+    /// </summary>
+    public string? SnapshotJson { get; set; }
     public DateTime DateCreated { get; set; }
     public DateTime LastModified { get; set; }
 

@@ -37,7 +37,8 @@ public class ReportsRepository(AppDBContext db)
         return report is null
             ? null
             : new ReportDetail(report.Id, report.ReportType, report.TemplateVersion ?? string.Empty,
-                ParseStatus(report.Status), report.DateCreated, report.LastModified, ParseAnswers(report.AnswersJson));
+                ParseStatus(report.Status), report.DateCreated, report.LastModified, ParseAnswers(report.AnswersJson),
+                Version(report.RowVersion));
     }
 
     /// <summary>
@@ -75,6 +76,15 @@ public class ReportsRepository(AppDBContext db)
             // A submitted format was declared as official, so it is never edited in place.
             if (ParseStatus(existing.Status) != ReportStatus.draft) return new SaveReportResult(SaveReportOutcome.Locked);
 
+            // The row version the form was opened with. Reading the row again inside this
+            // request only catches a write in the microseconds between read and save; what has
+            // to be checked is whether anything changed since the person opened the capture.
+            if (!string.IsNullOrEmpty(request.RowVersion)
+                && request.RowVersion != Version(existing.RowVersion))
+            {
+                return new SaveReportResult(SaveReportOutcome.Stale);
+            }
+
             existing.Status = request.Status.ToString();
             existing.AnswersJson = answersJson;
             existing.LastModified = now;
@@ -109,8 +119,12 @@ public class ReportsRepository(AppDBContext db)
 
         return new SaveReportResult(
             request.ReportId is null ? SaveReportOutcome.Created : SaveReportOutcome.Updated,
-            new ReportSaved(report.Id, ParseStatus(report.Status), report.LastModified));
+            new ReportSaved(report.Id, ParseStatus(report.Status), report.LastModified, Version(report.RowVersion)));
     }
+
+    // The database stamps the row version as bytes; it travels as text.
+    private static string? Version(byte[]? rowVersion) =>
+        rowVersion is null ? null : Convert.ToBase64String(rowVersion);
 
     private static ReportStatus ParseStatus(string? status) =>
         Enum.TryParse<ReportStatus>(status, ignoreCase: true, out var parsed) ? parsed : ReportStatus.draft;

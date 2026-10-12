@@ -41,7 +41,15 @@ public class PeriodsController(
     // Make one period active and every other one inactive
     public async Task<IActionResult> ActivatePeriod([FromBody] ActivatePeriod request)
     {
-        var activated = await periodsRepository.ActivatePeriodAsync(request);
-        return activated ? Ok() : NotFound();
+        try
+        {
+            var activated = await periodsRepository.ActivatePeriodAsync(request);
+            return activated ? Ok() : NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Two administrators switching the active period at the same time.
+            return Conflict(new { message = ex.Message });
+        }
     }
 }

@@ -88,12 +88,14 @@ public sealed record BoardReportChart(
 public sealed record BoardReportSeries(string Name, IReadOnlyList<double> Values, string Colour, bool Dashed = false);
 
 /// <summary>An official format the report consolidates, and whether it has been sent.</summary>
+/// <param name="OtherCaptures">Captures of the same format this document did not read.</param>
 public sealed record BoardReportSource(
     string ReportType,
     string DisplayName,
     string Status,
     DateTime? LastModified,
-    string? CapturedBy)
+    string? CapturedBy,
+    int OtherCaptures = 0)
 {
     public bool IsSubmitted => Status == "submitted";
 }
