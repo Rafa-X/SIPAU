@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using UPZMG.Implementations.Security;
 using UPZMG.Implementations.Users;
 using UPZMG.Persistence.Models;
 
@@ -63,7 +64,8 @@ public class UsersRepository(AppDBContext db)
     {
         var employee = await db.Employees.AsNoTracking().Select(e => new { e.Id, e.Email })
             .FirstOrDefaultAsync(e => e.Email == request.Email)
-            ?? throw new Exception($"No employee found with email {request.Email}");
+            ?? throw new InvalidOperationException(
+                $"No hay ningún empleado con el correo '{request.Email}': el usuario se crea sobre su expediente.");
         
         var user = new SystemUser
         {
@@ -97,35 +99,93 @@ public class UsersRepository(AppDBContext db)
     /// </summary>
     public async Task<SystemUser> SetUserActiveAsync(Guid userId, bool isActive, Guid requestedBy)
     {
-        if (!isActive && userId == requestedBy)
-            throw new InvalidOperationException("No puedes darte de baja a ti mismo.");
-
         var user = await db.SystemUsers.FirstOrDefaultAsync(u => u.Id == userId)
             ?? throw new InvalidOperationException("El usuario ya no existe.");
 
-        if (!isActive && !await db.SystemUsers.AnyAsync(u => u.Id != userId && u.IsActive))
-            throw new InvalidOperationException("Es la única cuenta activa: dar de baja dejaría el sistema sin acceso.");
+        var roleId = await db.UserRoles.AsNoTracking()
+            .Where(ur => ur.UserId == userId)
+            .Select(ur => (Guid?)ur.RoleId)
+            .FirstOrDefaultAsync();
+
+        await EnsureAccessSurvivesAsync(userId, requestedBy, isActive, roleId);
 
         user.IsActive = isActive;
         await db.SaveChangesAsync();
         return user;
     }
 
-    public async Task<SystemUser> EditUserAsync(EditUser request)
+    /// <summary>
+    /// Corrects an account. It goes through the same guards as the suspension switch: the edit
+    /// dialog can also deactivate an account and change its role, which locks everyone out the
+    /// same way, only reached from another screen.
+    /// </summary>
+    public async Task<SystemUser> EditUserAsync(EditUser request, Guid requestedBy)
     {
-        var user = await db.SystemUsers.FirstOrDefaultAsync(u => u.Id == request.UserId) 
-            ?? throw new Exception($"No user found with ID {request.UserId}");
+        var user = await db.SystemUsers.FirstOrDefaultAsync(u => u.Id == request.UserId)
+            ?? throw new InvalidOperationException("El usuario ya no existe.");
         var userRole = await db.UserRoles.FirstOrDefaultAsync(ur => ur.UserId == request.UserId)
-            ?? throw new Exception($"No user role found for user ID {request.UserId}");
-        
+            ?? throw new InvalidOperationException("El usuario no tiene un rol asignado.");
+
+        // A missing or unparseable role used to be stored as an empty Guid, which left the
+        // account pointing at a role that does not exist: no permissions, and no way back.
+        var roleId = userRole.RoleId;
+        if (!string.IsNullOrWhiteSpace(request.RoleId))
+        {
+            if (!Guid.TryParse(request.RoleId, out roleId))
+                throw new InvalidOperationException("El rol indicado no es válido.");
+
+            if (!await db.Roles.AnyAsync(r => r.Id == roleId))
+                throw new InvalidOperationException("El rol indicado ya no existe.");
+        }
+
+        await EnsureAccessSurvivesAsync(request.UserId, requestedBy, request.IsActive, roleId);
+
         user.UserName = string.IsNullOrWhiteSpace(request.UserName) ? user.UserName : request.UserName;
         user.Password = string.IsNullOrWhiteSpace(request.Password) ? user.Password : PasswordHasher.HashPassword(user, request.Password);
         user.IsActive = request.IsActive;
-        userRole.RoleId = Guid.Parse(request.RoleId ?? Guid.Empty.ToString());
+        userRole.RoleId = roleId;
 
         await db.SaveChangesAsync();
 
         return user;
+    }
+
+    /// <summary>
+    /// Refuses a change that would leave nobody able to sign in, or nobody able to administer
+    /// users. The account being changed is judged by the state it is about to have; everybody
+    /// else by the state stored now, which this change does not touch.
+    /// </summary>
+    private async Task EnsureAccessSurvivesAsync(Guid userId, Guid requestedBy, bool isActive, Guid? roleId)
+    {
+        if (!isActive && userId == requestedBy)
+            throw new InvalidOperationException("No puedes darte de baja a ti mismo.");
+
+        if (!isActive && !await db.SystemUsers.AnyAsync(u => u.Id != userId && u.IsActive))
+            throw new InvalidOperationException("Es la única cuenta activa: dar de baja dejaría el sistema sin acceso.");
+
+        var keepsAdministering = isActive
+            && roleId is { } role
+            && await (
+                from rp in db.RolePermissions.AsNoTracking()
+                join p in db.Permissions.AsNoTracking() on rp.PermissionId equals p.Id
+                where rp.RoleId == role && p.Name == AppPermissions.ManageUsers
+                select rp.Id)
+                .AnyAsync();
+
+        if (keepsAdministering) return;
+
+        var othersAdminister = await (
+            from u in db.SystemUsers.AsNoTracking()
+            join ur in db.UserRoles.AsNoTracking() on u.Id equals ur.UserId
+            join rp in db.RolePermissions.AsNoTracking() on ur.RoleId equals rp.RoleId
+            join p in db.Permissions.AsNoTracking() on rp.PermissionId equals p.Id
+            where u.Id != userId && u.IsActive && p.Name == AppPermissions.ManageUsers
+            select u.Id)
+            .AnyAsync();
+
+        if (!othersAdminister)
+            throw new InvalidOperationException(
+                "Es la única cuenta activa que puede administrar usuarios: el cambio dejaría el sistema sin administración.");
     }
 
 

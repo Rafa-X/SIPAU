@@ -28,4 +28,7 @@ public interface ISecurityService
     Task<Permission> CreatePermission(CreatePermission request);
     Task<Permission> EditPermission(EditPermission request);
     Task<bool> DeletePermission(DeletePermission request);
+
+    // Adds the catalogue permissions the database is missing; never touches role assignments.
+    Task<CatalogueRestoreResult> RestorePermissionCatalogue(GetAllPermissions request);
 }

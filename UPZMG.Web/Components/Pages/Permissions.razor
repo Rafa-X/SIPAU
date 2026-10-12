@@ -1,5 +1,5 @@
 @page "/permissions"
-@attribute [Authorize(Roles = "Admin")]
+@attribute [Authorize(Policy = AppPermissions.ManageUsers)]
 @using UPZMG.Implementations
 @using UPZMG.Implementations.Roles
 @using UPZMG.Implementations.Permissions
@@ -66,11 +66,13 @@
     </MudItem>
 
     <MudItem xs="12" md="6">
-        <SectionCard Title="Permisos" Subtitle="Catálogo de permisos que pueden asignarse a los roles." Flush="true">
+        <SectionCard Title="Permisos"
+                     Subtitle="Los define el sistema: cada endpoint y cada pantalla comparan ese nombre exacto. Lo que se administra es qué roles los tienen."
+                     Flush="true">
             <Actions>
-                <MudButton Variant="Variant.Filled" Color="Color.Secondary"
-                           StartIcon="@Icons.Material.Filled.AddCircle" OnClick="OpenCreatePermission">
-                    Nuevo permiso
+                <MudButton Variant="Variant.Filled" Color="Color.Secondary" Disabled="_isRestoring"
+                           StartIcon="@Icons.Material.Filled.Sync" OnClick="RestoreCatalogueAsync">
+                    Restaurar catálogo
                 </MudButton>
             </Actions>
             <ChildContent>
@@ -98,15 +100,21 @@
                             </TemplateColumn>
                             <TemplateColumn Title="Acciones" CellClass="sipau-cell-end" HeaderClass="sipau-cell-end" Sortable="false">
                                 <CellTemplate>
-                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
-                                               StartIcon="@Icons.Material.Filled.Edit" OnClick="() => OpenEditPermission(context.Item)">
-                                        Editar
-                                    </MudButton>
-                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error"
-                                               StartIcon="@Icons.Material.Filled.Delete" Class="ml-2"
-                                               OnClick="() => DeletePermissionAsync(context.Item)">
-                                        Eliminar
-                                    </MudButton>
+                                    @if (IsSystemPermission(context.Item))
+                                    {
+                                        <MudTooltip Text="Renombrarlo o borrarlo dejaría sin efecto la autorización que lo revisa.">
+                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Default"
+                                                     Icon="@Icons.Material.Filled.Lock">Del sistema</MudChip>
+                                        </MudTooltip>
+                                    }
+                                    else
+                                    {
+                                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error"
+                                                   StartIcon="@Icons.Material.Filled.Delete"
+                                                   OnClick="() => DeletePermissionAsync(context.Item)">
+                                            Eliminar
+                                        </MudButton>
+                                    }
                                 </CellTemplate>
                             </TemplateColumn>
                         </Columns>
@@ -129,6 +137,12 @@
     private string _roleSearch = string.Empty;
     private string _permissionSearch = string.Empty;
     private bool _isLoading = true;
+    private bool _isRestoring;
+
+    // A row the code does not declare grants nothing; it can be removed. The declared ones
+    // cannot, because the name is what every authorisation check compares.
+    private static bool IsSystemPermission(Permission permission) =>
+        AppPermissions.All.Any(declared => declared.Name == permission.Name);
 
     private List<Role> RolesFiltered => string.IsNullOrWhiteSpace(_roleSearch)
         ? _roles.ToList()
@@ -277,52 +291,50 @@
     }
 
 /*///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
-    private Task OpenCreatePermission() => ShowPermissionDialog("Nuevo permiso", new PermissionFormViewModel());
-
-    private Task OpenEditPermission(Permission permission) => ShowPermissionDialog("Editar permiso", new PermissionFormViewModel
+    /// <summary>
+    /// Writes back the permissions the code declares and the database is missing. Useful after
+    /// an update that adds one: re-running the seed would rebuild the role assignments too and
+    /// undo whatever an administrator had customised.
+    /// </summary>
+    private async Task RestoreCatalogueAsync()
     {
-        Id = permission.Id,
-        Name = permission.Name,
-    });
-
-    private async Task ShowPermissionDialog(string title, PermissionFormViewModel model)
-    {
-        var parameters = new DialogParameters<PermissionDialog> { { x => x.Model, model } };
-        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
-
-        var dialog = await DialogService.ShowAsync<PermissionDialog>(title, parameters, options);
-        var result = await dialog.Result;
-
-        if (result is null || result.Canceled || result.Data is not PermissionFormViewModel saved) return;
-
         var requesterKey = await _securityService.GetRequesterKeyAsync();
         if (requesterKey == Guid.Empty) return;
 
+        _isRestoring = true;
         try
         {
-            if (saved.IsEditing)
-                await _securityService.EditPermission(new EditPermission { RequesterKey = requesterKey, PermissionId = saved.Id, Name = saved.Name });
-            else
-                await _securityService.CreatePermission(new CreatePermission { RequesterKey = requesterKey, Name = saved.Name });
-
+            var result = await _securityService.RestorePermissionCatalogue(new GetAllPermissions { RequesterKey = requesterKey });
             await ReloadAsync(requesterKey);
+
+            var message = result.Added == 0 && result.Updated == 0
+                ? "El catálogo ya estaba completo."
+                : $"Catálogo actualizado: {result.Added} permiso(s) agregado(s) y {result.Updated} redactado(s) de nuevo.";
+
+            Snackbar.Add(message, Severity.Success);
+
+            if (result.Unknown > 0)
+            {
+                Snackbar.Add(
+                    $"Hay {result.Unknown} permiso(s) que el sistema no revisa: no otorgan nada y pueden eliminarse.",
+                    Severity.Info);
+            }
         }
         catch (Exception ex)
         {
             Snackbar.Add(ex.Message, Severity.Error);
-            return;
         }
-
-        Snackbar.Add(saved.IsEditing
-            ? $"Permiso '{saved.Name}' actualizado correctamente."
-            : $"Permiso '{saved.Name}' creado correctamente.", Severity.Success);
+        finally
+        {
+            _isRestoring = false;
+        }
     }
 
     private async Task DeletePermissionAsync(Permission permission)
     {
         var confirmed = await DialogService.ShowMessageBoxAsync(
             "Eliminar permiso",
-            $"Se eliminará el permiso '{permission.Name}' de todos los roles que lo tengan asignado.",
+            $"Se eliminará el permiso '{permission.Name}', que el sistema no revisa, de todos los roles que lo tengan asignado.",
             yesText: "Eliminar", cancelText: "Conservar");
 
         if (confirmed != true) return;

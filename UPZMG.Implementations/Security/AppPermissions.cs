@@ -97,6 +97,14 @@ public static class AppPermissions
 
     /// <summary>Without this one nobody could ever grant permissions again.</summary>
     public const string Irrevocable = ManageUsers;
+
+    // Screens that serve more than one task accept any of a few permissions. A policy name is
+    // an attribute argument, so the combination has to be a constant; "|" means "any of these".
+    /// <summary>The configuration hub: it leads to periods, templates and users.</summary>
+    public const string AnyAdministration = ManageUsers + "|" + ManagePeriods + "|" + PublishReports;
+
+    /// <summary>Bulk import writes student or staff records, depending on the chosen file.</summary>
+    public const string CaptureStudentsOrStaff = CaptureStudents + "|" + CaptureStaff;
 }
 
 /// <param name="Name">Stored name; what the authorisation check compares.</param>
