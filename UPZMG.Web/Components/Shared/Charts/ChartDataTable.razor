@@ -28,7 +28,13 @@
                 {
                     var index = row;
                     <tr>
-                        <th scope="row">@Labels[index]</th>
+                        <th scope="row">
+                            @Labels[index]
+                            @if (ForecastFromIndex is { } from && index >= from)
+                            {
+                                <span class="sipau-chart-data-note">pronóstico</span>
+                            }
+                        </th>
                         @foreach (var series in Series)
                         {
                             <td>@Cell(series, index)</td>
@@ -52,10 +58,13 @@
 
     [Parameter] public string Caption { get; set; } = "Datos de la gráfica";
 
-    // A series can be shorter than the labels (a projection that does not cover every period):
-    // an empty cell says so, where a zero would be read as a measured zero.
+    /// <summary>Rows from this index on are modelled, and say so: a table has no dashed line.</summary>
+    [Parameter] public int? ForecastFromIndex { get; set; }
+
+    // A series can be shorter than the labels or have a gap (a projection that does not cover
+    // every period): an empty cell says so, where a zero would be read as a measured zero.
     private string Cell(ChartSeriesData series, int index) =>
-        index < series.Values.Count
+        index < series.Values.Count && double.IsFinite(series.Values[index])
             ? series.Values[index].ToString(ValueFormat, CultureInfo.CurrentCulture)
             : "—";
 }

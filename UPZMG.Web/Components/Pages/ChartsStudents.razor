@@ -12,18 +12,42 @@
 
 <PageTitle>Gráficas de Alumnos - SIPAU</PageTitle>
 
-<PageHeader Eyebrow="Analitica" Title="Graficas de Alumnos" BackHref="/charts" />
+<PageHeader Eyebrow="Analítica" Title="Gráficas de Alumnos" BackHref="/charts" />
 
+@if (_loading)
+{
+    @* Without this the cards drew their empty states first: "sin kardex", "sin alumnos
+       activos" and a total of zero, for the second it took the answers to arrive. *@
+    <LoadingState Text="Leyendo los datos de alumnos…" />
+}
+else
+{
 <MudGrid>
     <MudItem xs="12" lg="6">
         <SectionCard Title="Nuevo ingreso por edad"
+                     Subtitle="Alumnos que ingresaron en el periodo activo"
                      Icon="@Icons.Material.Filled.PersonAdd" Accent="teal">
             <ChildContent>
-                <BarChart Id="new-students-chart" Labels="_model.NewStudents.Labels" Series="_model.NewStudentsAges" Height="150"
-                          AriaLabel="Estudiantes de nuevo ingreso por edad" />
+                @if (_agesFailed)
+                {
+                    <EmptyState Icon="@Icons.Material.Filled.CloudOff"
+                                Title="No pudimos leer las edades"
+                                Description="El servicio de alumnos no respondió. Vuelve a cargar la página." />
+                }
+                else if (_model.NewStudents.Labels.Count == 0)
+                {
+                    <EmptyState Icon="@Icons.Material.Filled.PersonAdd"
+                                Title="Sin nuevo ingreso en el periodo activo"
+                                Description="La gráfica cuenta a quienes ingresaron en el periodo activo; aparecerán en cuanto se capturen." />
+                }
+                else
+                {
+                    <BarChart Id="new-students-chart" Labels="_model.NewStudents.Labels" Series="_model.NewStudentsAges" Height="150"
+                              CategoryHeader="Edad" AriaLabel="Estudiantes de nuevo ingreso por edad" />
+                }
             </ChildContent>
             <Footer>
-                Total de estudiantes: @_model.NewStudents.Values.Sum()
+                Nuevo ingreso: <b>@_model.NewStudents.Values.Sum().ToString("N0")</b> estudiantes
             </Footer>
             <Actions>
                 <MudTooltip Text="Descargar gráfica PNG" Placement="Placement.Top">
@@ -40,13 +64,29 @@
 
     <MudItem xs="12" lg="6">
         <SectionCard Title="Todos los estudiantes por edad"
+                     Subtitle="Todos los registrados, con su edad al día de hoy"
                      Icon="@Icons.Material.Filled.Groups" Accent="navy">
             <ChildContent>
-                <BarChart Id="all-students-chart" Labels="_model.AllStudents.Labels" Series="_model.AllStudentsAges" Height="150"
-                          AriaLabel="Todos los estudiantes por edad" />
+                @if (_agesFailed)
+                {
+                    <EmptyState Icon="@Icons.Material.Filled.CloudOff"
+                                Title="No pudimos leer las edades"
+                                Description="El servicio de alumnos no respondió. Vuelve a cargar la página." />
+                }
+                else if (_model.AllStudents.Labels.Count == 0)
+                {
+                    <EmptyState Icon="@Icons.Material.Filled.Groups"
+                                Title="Sin estudiantes registrados"
+                                Description="Captura alumnos en Captura de datos › Alumnos y aparecerán aquí por edad." />
+                }
+                else
+                {
+                    <BarChart Id="all-students-chart" Labels="_model.AllStudents.Labels" Series="_model.AllStudentsAges" Height="150"
+                              CategoryHeader="Edad" AriaLabel="Todos los estudiantes por edad" />
+                }
             </ChildContent>
             <Footer>
-                Total de estudiantes: @_model.AllStudents.Values.Sum()
+                Total de estudiantes: <b>@_model.AllStudents.Values.Sum().ToString("N0")</b>
             </Footer>
             <Actions>
                 <MudTooltip Text="Descargar gráfica PNG" Placement="Placement.Top">
@@ -61,7 +101,7 @@
         </SectionCard>
     </MudItem>
 
-    <MudItem xs="12" lg="7">
+    <MudItem xs="12">
         <SectionCard Title="Aprobación vs. reprobación"
                      Subtitle="Índices institucionales de aprovechamiento por periodo"
                      Icon="@Icons.Material.Filled.FactCheck" Accent="navy">
@@ -80,8 +120,9 @@
                 }
                 else
                 {
-                    <BarChart Id="aprobacion-reprobacion-chart" Labels="_achievementLabels" Series="_achievement" Height="160"
-                              ValueFormat="0.0" Unit="%" AriaLabel="Aprobación contra reprobación" />
+                    <BarChart Id="aprobacion-reprobacion-chart" Labels="_achievementLabels" Series="_achievement" Height="180"
+                              ValueFormat="0.#" Unit="%" Max="100" CategoryHeader="Periodo"
+                              AriaLabel="Aprobación contra reprobación" />
                 }
             </ChildContent>
             <Footer>
@@ -128,7 +169,7 @@
                 else
                 {
                     <BarChart Id="gender-chart" Labels="_gender.Careers" Series="_genderSeries" Height="200"
-                              AriaLabel="Alumnos activos por programa y sexo" />
+                              CategoryHeader="Programa" AriaLabel="Alumnos activos por programa y sexo" />
                 }
             </ChildContent>
             <Footer>
@@ -166,7 +207,7 @@
                 else
                 {
                     <BarChart Id="scholarships-chart" Labels="_scholarships.Sources" Series="_scholarshipSeries" Height="200"
-                              AriaLabel="Alumnos becados por fuente de financiamiento" />
+                              CategoryHeader="Fuente" AriaLabel="Alumnos becados por fuente de financiamiento" />
                 }
             </ChildContent>
             <Footer>
@@ -187,9 +228,11 @@
         </SectionCard>
     </MudItem>
 </MudGrid>
+}
 
 @code {
     private ChartsStudentsModel _model = new ChartsStudentsModel();
+    private bool _loading = true;
 
     private static readonly System.Globalization.CultureInfo Mx = new("es-MX");
 
@@ -209,7 +252,7 @@
 
     private List<ChartSeriesData> _genderSeries =>
     [
-        new ChartSeriesData("Mujeres", [.. (_gender?.Women ?? []).Select(v => (double)v)], ChartPalette.Teal),
+        new ChartSeriesData("Mujeres", [.. (_gender?.Women ?? []).Select(v => (double)v)], ChartPalette.Ochre),
         new ChartSeriesData("Hombres", [.. (_gender?.Men ?? []).Select(v => (double)v)], ChartPalette.Navy),
     ];
     
@@ -254,6 +297,7 @@
         _periods = history ?? [];
         _gender = await ChartsSvc.GetGenderDistributionAsync();
         _scholarships = await ChartsSvc.GetScholarshipsBySourceAsync();
+        _loading = false;
     }
 
     private static ChartStudentsAges MapAges(IReadOnlyList<StudentsAges> ages) => new()

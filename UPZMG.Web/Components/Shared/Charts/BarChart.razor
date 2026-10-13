@@ -14,7 +14,7 @@
         <div class="sipau-chart-legend">
             @foreach (var s in Series)
             {
-                <span class="sipau-chart-key"><i style="@($"background:{s.Color}")"></i>@s.Name</span>
+                <span class="sipau-chart-key"><i class="bar" style="@($"background-color:{s.Color}")"></i>@s.Name</span>
             }
         </div>
     }
@@ -37,7 +37,7 @@
                 {
                     <linearGradient id="@($"{_id}-bar-{i}")" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stop-color="@s.Color" stop-opacity="1" />
-                        <stop offset="100%" stop-color="@s.Color" stop-opacity="0.55" />
+                        <stop offset="100%" stop-color="@s.Color" stop-opacity="0.62" />
                     </linearGradient>
                 }
             </defs>
@@ -53,16 +53,17 @@
                 var category = c;
                 for (int s = 0; s < Series.Count; s++)
                 {
-                    if (category >= Series[s].Values.Count) { continue; }
+                    // A missing value is not a bar of height zero.
+                    if (category >= Series[s].Values.Count || !double.IsFinite(Series[s].Values[category])) { continue; }
 
                     var geom = BarGeometry(category, s);
                     var dimmed = _hover is { } h && h != category;
 
                     <rect class="@($"sipau-chart-bar{(dimmed ? " dim" : null)}")"
                           x="@ChartScale.N(geom.X)" y="@ChartScale.N(geom.Y)"
-                          width="@ChartScale.N(geom.W)" height="@ChartScale.N(geom.H)" rx="3"
+                          width="@ChartScale.N(geom.W)" height="@ChartScale.N(geom.H)"
                           fill="@($"url(#{_id}-bar-{s})")"
-                          style="@($"animation-delay:{ChartScale.N((category * Series.Count + s) * 0.05)}s")" />
+                          style="@($"animation-delay:{ChartScale.N(Math.Min(0.6, (category * Series.Count + s) * 0.04))}s")" />
                 }
             }
 
@@ -80,7 +81,7 @@
         {
             <div class="sipau-chart-tip" style="@Pct("left", Math.Clamp(_scale.BandCenter(hi, Labels.Count) / VbW * 100, 6, 94))">
                 <div class="sipau-chart-tip-head">@Labels[hi]</div>
-                @foreach (var s in Series.Where(s => hi < s.Values.Count))
+                @foreach (var s in Series.Where(s => hi < s.Values.Count && double.IsFinite(s.Values[hi])))
                 {
                     <div class="sipau-chart-tip-row">
                         <i style="@($"background:{s.Color}")"></i>
@@ -92,12 +93,11 @@
         }
     </div>
 
-    <div class="sipau-chart-xaxis">
-        @for (int c = 0; c < Labels.Count; c++)
+    <div class="@($"sipau-chart-xaxis {_axis.RowClass}")">
+        @for (int c = 0; c < _axis.Labels.Count; c++)
         {
-            <span class="@AxisLabelClass(c)" style="@Pct("left", _scale.BandCenter(c, Labels.Count) / VbW * 100)">
-                @Labels[c]
-            </span>
+            var label = _axis.Labels[c];
+            <span class="@(_hover == c ? $"{label.Class} on" : label.Class)" style="@label.Style">@label.Text</span>
         }
     </div>
 </div>
@@ -112,7 +112,12 @@
     [Parameter, EditorRequired] public IReadOnlyList<string> Labels { get; set; } = Array.Empty<string>();
     [Parameter, EditorRequired] public IReadOnlyList<ChartSeriesData> Series { get; set; } = Array.Empty<ChartSeriesData>();
 
+    /// <summary>Least height of the plot, in pixels; inside a card the chart grows to fill it.</summary>
     [Parameter] public int Height { get; set; } = 280;
+
+    /// <summary>Top of the axis when the measure has one, such as 100 for a percentage.</summary>
+    [Parameter] public double? Max { get; set; }
+
     [Parameter] public string ValueFormat { get; set; } = "N0";
     [Parameter] public string? Unit { get; set; }
     [Parameter] public bool ShowLegend { get; set; } = true;
@@ -131,15 +136,17 @@
     private int? _hover;
     private ChartScale _scale = null!;
     private IReadOnlyList<double> _ticks = Array.Empty<double>();
+    private ChartAxisLayout _axis = ChartAxisLayout.Empty;
 
     protected override void OnParametersSet()
     {
         _scale = new ChartScale(
             Series.SelectMany(s => s.Values),
             left: 0, right: VbW, top: 10, bottom: Height,
-            baselineAtZero: true);
+            baselineAtZero: true, fixedMax: Max);
 
         _ticks = _scale.Ticks();
+        _axis = ChartAxis.Layout(Labels, c => _scale.BandCenter(c, Labels.Count) / VbW, stagger: true);
         _hover = null;
     }
 
@@ -157,12 +164,6 @@
         var baseline = _scale.Y(Math.Max(0, _scale.Min));
 
         return new Bar(startX + slot * 0.08, Math.Min(y, baseline), slot * 0.84, Math.Abs(baseline - y));
-    }
-
-    private string AxisLabelClass(int index)
-    {
-        var edge = index == 0 ? "is-first" : index == Labels.Count - 1 ? "is-last" : null;
-        return _hover == index ? $"{edge} on".Trim() : edge ?? string.Empty;
     }
 
     private static string Pct(string property, double value) =>

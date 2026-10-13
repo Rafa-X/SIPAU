@@ -86,9 +86,9 @@ else
 
         <MudItem xs="12" lg="5">
             <SectionCard Title="Nuevo ingreso por periodo"
-                         Subtitle="Alumnos según el periodo en que ingresaron"
+                         Subtitle="Alumnos según el periodo en que ingresaron, hasta el periodo activo"
                          Icon="@Icons.Material.Filled.Timeline">
-                @if (_summary.IntakeByPeriod.Count < 2)
+                @if (_intakeLabels.Count < 2)
                 {
                     <EmptyState Title="Faltan periodos para trazar la serie"
                                 Description="La gráfica necesita al menos dos periodos registrados." />
@@ -379,7 +379,7 @@ else
             ?
             [
                 new ChartSeriesData("Matrícula", _forecast.Actual, ChartPalette.Teal, Filled: true),
-                new ChartSeriesData("Tendencia", _forecast.Trend, ChartPalette.Indigo, Dashed: true),
+                new ChartSeriesData("Tendencia", _forecast.Trend, ChartPalette.Neutral, Dashed: true),
             ]
             : [new ChartSeriesData("Matrícula", _forecast.Actual, ChartPalette.Teal, Filled: true)];
         _aiLoading = false;
@@ -407,16 +407,24 @@ else
             new ChartSeriesData("Alumnos activos", summary.StudentsByCareer.Select(c => (double)c.Students).ToList(), ChartPalette.Navy),
         ];
 
-        var intake = summary.IntakeByPeriod.Select(p => (double)p.Students).ToArray();
-        _intakeLabels = summary.IntakeByPeriod.Select(p => p.Period).ToList();
+        var activeIndex = summary.ActivePeriod is null
+            ? -1
+            : summary.IntakeByPeriod.ToList().FindIndex(p => p.PeriodId == summary.ActivePeriod.Id);
+
+        // The series stops at the active period. The calendar already holds the periods that
+        // follow, and with no intake yet they drew the line falling to zero: a collapse that
+        // has not happened.
+        var shown = activeIndex >= 0
+            ? summary.IntakeByPeriod.Take(activeIndex + 1).ToList()
+            : summary.IntakeByPeriod.ToList();
+
+        var intake = shown.Select(p => (double)p.Students).ToArray();
+        _intakeLabels = shown.Select(p => p.Period).ToList();
         _intakeSeries = [new ChartSeriesData("Nuevo ingreso", intake, ChartPalette.Teal, Filled: true)];
         _intakeSpark = intake.Length > 1 ? intake : null;
 
         // Compare against the period right before the active one, only if it had intake.
         _intakeDelta = null;
-        var activeIndex = summary.ActivePeriod is null
-            ? -1
-            : summary.IntakeByPeriod.ToList().FindIndex(p => p.PeriodId == summary.ActivePeriod.Id);
 
         if (activeIndex > 0 && intake[activeIndex - 1] > 0)
             _intakeDelta = Math.Round((intake[activeIndex] - intake[activeIndex - 1]) / intake[activeIndex - 1] * 100, 1);
