@@ -10,7 +10,7 @@ namespace UPZMG.Web.Services;
 public sealed record UserSaveResult(bool Success, SystemUser? User, string? Error);
 
 public sealed class UsersService(
-    ISecurityService securityService, 
+    ISecurityService securityService,
     ILogger<UsersService> logger)
 {
     // API serializes responses using camelCase; match it here so property names bind correctly.
@@ -18,69 +18,52 @@ public sealed class UsersService(
 
     public async Task<List<SystemUser>> GetAllUsers(GetAllUsers request)
     {
-        var response = await securityService.SendPostRequestAsync<GetAllUsers, List<SystemUser>>(
+        var response = await securityService.SendPostRequestAsync<GetAllUsers, List<UserView>>(
             $"users/get-all", JsonSerializer.Serialize(request), request.RequesterKey);
 
         if(response.StatusCode == HttpStatusCode.OK && response.Result is not null)
         {
-            return JsonSerializer.Deserialize<List<SystemUser>>(response.Result, ResponseOptions) ?? [];
+            var users = JsonSerializer.Deserialize<List<UserView>>(response.Result, ResponseOptions) ?? [];
+            return [.. users.Select(ToUser)];
         }
         return [];
     }
 
     public async Task<SystemUser> GetUserById(GetUserById request)
     {
-        var response = await securityService.SendPostRequestAsync<GetUserById, SystemUser>(
+        var response = await securityService.SendPostRequestAsync<GetUserById, UserView>(
             $"users/get", JsonSerializer.Serialize(request), request.RequesterKey);
 
-        if(response.StatusCode == HttpStatusCode.OK && response.Result is not null)
-        {
-            return JsonSerializer.Deserialize<SystemUser>(response.Result, ResponseOptions) ?? new SystemUser();
-        }
-        return new SystemUser();
+        return Read(response) ?? new SystemUser();
     }
 
-    public async Task<SystemUser> CreateUser(CreateUser request)
+    public async Task<UserSaveResult> CreateUser(CreateUser request)
     {
-        var response = await securityService.SendPostRequestAsync<CreateUser, SystemUser>(
+        var response = await securityService.SendPostRequestAsync<CreateUser, UserView>(
             $"users/create", JsonSerializer.Serialize(request), request.RequesterKey);
 
-        if ((response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.Created)
-            && response.Result is not null)
-        {
-            return JsonSerializer.Deserialize<SystemUser>(response.Result, ResponseOptions) ?? new SystemUser();
-        }
-        return new SystemUser();
+        return Outcome(response, "No fue posible crear el usuario.");
     }
 
-    public async Task<SystemUser> EditUser(EditUser request)
+    public async Task<UserSaveResult> EditUser(EditUser request)
     {
-        var response = await securityService.SendPostRequestAsync<EditUser, SystemUser>(
+        var response = await securityService.SendPostRequestAsync<EditUser, UserView>(
             $"users/edit", JsonSerializer.Serialize(request), request.RequesterKey);
 
-        if(response.StatusCode == HttpStatusCode.OK && response.Result is not null)
-        {
-            return JsonSerializer.Deserialize<SystemUser>(response.Result, ResponseOptions) ?? new SystemUser();
-        }
-        return new SystemUser();
+        return Outcome(response, "No fue posible actualizar el usuario.");
     }
 
     /// <summary>Suspends or restores an account; the message explains a refusal.</summary>
     public async Task<UserSaveResult> SetActiveAsync(Guid requesterKey, Guid userId, bool isActive)
     {
         var request = new SetUserActive { RequesterKey = requesterKey, UserId = userId, IsActive = isActive };
-        var response = await securityService.SendPostRequestAsync<SetUserActive, SystemUser>(
+        var response = await securityService.SendPostRequestAsync<SetUserActive, UserView>(
             "users/set-active", JsonSerializer.Serialize(request), requesterKey);
 
-        if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
-        {
-            return new UserSaveResult(true, JsonSerializer.Deserialize<SystemUser>(response.Result, ResponseOptions), null);
-        }
-
-        logger.LogWarning("Changing the active flag of {UserId} failed with {Status}", userId, response.StatusCode);
-        return new UserSaveResult(false, null, response.ErrorMessage ?? "No fue posible cambiar el estatus del usuario.");
+        return Outcome(response, "No fue posible cambiar el estatus del usuario.");
     }
 
+    /// <summary>Creates or corrects an account, and says why when the API refuses.</summary>
     public async Task<UserSaveResult> SaveAsync(Guid requesterKey, UserFormViewModel model)
     {
         var email = (model.Email ?? string.Empty).Trim();
@@ -97,46 +80,69 @@ public sealed class UsersService(
         if (!model.IsEditing && string.IsNullOrWhiteSpace(model.Password))
             return new UserSaveResult(false, null, "La contraseña es obligatoria para crear un usuario.");
 
-        try
+        if (model.IsEditing)
         {
-            if (model.IsEditing)
-            {
-                var edited = await EditUser(new EditUser
-                {
-                    RequesterKey = requesterKey,
-                    UserId = model.Id,
-                    UserName = model.UserName,
-                    Password = string.IsNullOrWhiteSpace(model.Password) ? null : model.Password,
-                    IsActive = model.IsActive,
-                    RoleId = model.RoleId,
-                });
-
-                return edited.Id == Guid.Empty
-                    ? new UserSaveResult(false, null, "La API no pudo actualizar el usuario.")
-                    : new UserSaveResult(true, edited, null);
-            }
-
-            var created = await CreateUser(new CreateUser
+            return await EditUser(new EditUser
             {
                 RequesterKey = requesterKey,
+                UserId = model.Id,
                 UserName = model.UserName,
-                Email = email,
-                RoleId = model.RoleId,
+                Password = string.IsNullOrWhiteSpace(model.Password) ? null : model.Password,
                 IsActive = model.IsActive,
-                Password = model.Password,
+                RoleId = model.RoleId,
             });
+        }
 
-            // The API creates a system user *for an existing employee*, matched
-            // by email. Saying so beats surfacing a raw 500.
-            return created is null
-                ? new UserSaveResult(false, null,
-                    $"No se pudo crear el usuario. Verifica que exista un empleado registrado con el correo '{email}'.")
-                : new UserSaveResult(true, created, null);
-        }
-        catch (Exception ex)
+        return await CreateUser(new CreateUser
         {
-            logger.LogWarning(ex, "Fallo al guardar el usuario contra la API.");
-            return new UserSaveResult(false, null, "No se pudo contactar al servicio de usuarios.");
-        }
+            RequesterKey = requesterKey,
+            UserName = model.UserName,
+            Email = email,
+            RoleId = model.RoleId,
+            IsActive = model.IsActive,
+            Password = model.Password,
+        });
     }
+
+    /// <summary>
+    /// A refusal used to come back as an empty user, which every caller took for a stored one:
+    /// the screen announced "actualizado correctamente" over a change the API had rejected.
+    /// </summary>
+    private UserSaveResult Outcome(SecurityService.DataResponse response, string fallback)
+    {
+        if (response.Sucess && Read(response) is { } user && user.Id != Guid.Empty)
+            return new UserSaveResult(true, user, null);
+
+        logger.LogWarning("A user change was refused with {Status}", response.StatusCode);
+
+        // The API explains its own refusals; anything else is a transport failure, and its raw
+        // text ("Request failed with status code…") is no use to the person reading it.
+        var explained = response.StatusCode is HttpStatusCode.Conflict or HttpStatusCode.BadRequest;
+        return new UserSaveResult(false, null,
+            explained && !string.IsNullOrWhiteSpace(response.ErrorMessage) ? response.ErrorMessage : fallback);
+    }
+
+    private static SystemUser? Read(SecurityService.DataResponse response)
+    {
+        if (!response.Sucess || string.IsNullOrWhiteSpace(response.Result)) return null;
+
+        var view = JsonSerializer.Deserialize<UserView>(response.Result, ResponseOptions);
+        return view is null ? null : ToUser(view);
+    }
+
+    // The API answers with the flat view (role id and name beside the user); the screens work
+    // with the user and its role. Reading the view straight into the entity left the role
+    // empty, which is why the list showed no role and the edit dialog opened without one.
+    private static SystemUser ToUser(UserView view) => new()
+    {
+        Id = view.Id,
+        EmployeeId = view.EmployeeId,
+        UserName = view.UserName,
+        Email = view.Email,
+        IsActive = view.IsActive,
+        LastLogin = view.LastLogin,
+        Role = view.RoleId is { } roleId
+            ? new Role { Id = roleId, Name = view.RoleName ?? string.Empty }
+            : null,
+    };
 }

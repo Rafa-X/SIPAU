@@ -190,6 +190,15 @@ public class UsersRepository(AppDBContext db)
 
 
     // Authentication methods
+    /// <summary>
+    /// Stamps a successful sign-in. The column existed and the user list showed it, but nothing
+    /// wrote it: every account carried the date it was seeded with.
+    /// </summary>
+    public Task RegisterSignInAsync(Guid userId) =>
+        db.SystemUsers
+            .Where(u => u.Id == userId)
+            .ExecuteUpdateAsync(set => set.SetProperty(u => u.LastLogin, DateTime.UtcNow));
+
     /// <summary>The user as the API returns it: everything except the hash.</summary>
     public static UserView ToResponse(SystemUser user) =>
         new(user.Id, user.EmployeeId, user.UserName, user.Email, user.IsActive, user.LastLogin,
