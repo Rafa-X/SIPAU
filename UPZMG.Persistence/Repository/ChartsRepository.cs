@@ -112,20 +112,13 @@ public class ChartsRepository(AppDBContext db)
             .ToListAsync();
 
         var today = DateOnly.FromDateTime(DateTime.Today);
-        var levels = new (string Label, EducationLevel Level)[]
-        {
-            ("Licenciatura", EducationLevel.Licenciatura),
-            ("Ingeniería", EducationLevel.Ingenieria),
-            ("Especialidad", EducationLevel.Especialidad),
-            ("Posgrado", EducationLevel.Posgrado),
-            ("Maestría", EducationLevel.Maestria),
-            ("Doctorado", EducationLevel.Doctorado),
-        };
-
-        var byLevel = levels
+        // Every level on record, in the order of the catalogue. The list used to name six of
+        // the eleven, so a teacher registered with any other was left out and the bars did not
+        // add up to the number of teachers.
+        var byLevel = Enum.GetValues<EducationLevel>()
             .Select(level => new ChartCategory(
-                level.Label,
-                teachers.Count(teacher => teacher.HighestEducationLevel == level.Level)))
+                level.Label(),
+                teachers.Count(teacher => teacher.HighestEducationLevel == level)))
             .Where(category => category.Value > 0)
             .ToList();
 

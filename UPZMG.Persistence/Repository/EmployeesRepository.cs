@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using UPZMG.Implementations.DataCapture;
 using UPZMG.Persistence.Models;
+using UPZMG.Shared.Enums;
 
 namespace UPZMG.Persistence.Repository;
 
@@ -9,19 +10,26 @@ public class EmployeesRepository(AppDBContext db)
     
     // Teaching staff as captured, newest hires first
     public async Task<List<TeacherListItem>> GetTeachersListAsync() =>
-        await db.Employees
+        (await db.Employees
             .AsNoTracking()
             .Where(employee => employee.IsTeacher)
             .OrderByDescending(employee => employee.FirstHiredDate)
+            .Select(employee => new
+            {
+                employee.Id, employee.EmployeeNumber, employee.FullName, employee.Email,
+                employee.HighestEducationLevel, employee.FirstHiredDate, employee.HasDisability,
+            })
+            .ToListAsync())
+            // The label is built in memory: it is wording, not something to ask SQL for.
             .Select(employee => new TeacherListItem(
                 employee.Id,
                 employee.EmployeeNumber,
                 employee.FullName,
                 employee.Email,
-                employee.HighestEducationLevel.ToString(),
+                employee.HighestEducationLevel.Label(),
                 employee.FirstHiredDate,
                 employee.HasDisability))
-            .ToListAsync();
+            .ToList();
 
     /// <summary>The whole employee, to fill the correction form.</summary>
     public async Task<UpdateEmployee?> GetEmployeeAsync(Guid id)

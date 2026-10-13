@@ -220,9 +220,19 @@ public class StudentsRepository(AppDBContext db)
 
     private async Task<List<StudentsAges>> GetStudentsAgesAsync(bool newOnly)
     {
+        // "New" is who entered in the active period. Filtering by inscription type alone
+        // returned every student ever registered, since that is how all of them came in, and
+        // the two charts were the same picture.
+        var activePeriodId = newOnly
+            ? await db.Periods.AsNoTracking().Where(p => p.IsActive).Select(p => (Guid?)p.Id).FirstOrDefaultAsync()
+            : null;
+
+        if (newOnly && activePeriodId is null) return [];
+
         var students = await db.Students
             .AsNoTracking()
-            .Where(s => !newOnly || s.InscriptionType == UPZMG.Shared.Enums.InscriptionType.NuevoIngreso)
+            .Where(s => !newOnly
+                || (s.InscriptionType == UPZMG.Shared.Enums.InscriptionType.NuevoIngreso && s.PeriodIdStart == activePeriodId))
             .Select(s => s.BirthDate)
             .ToListAsync();
 
