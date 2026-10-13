@@ -110,6 +110,39 @@ try
     }
 
     app.UseHttpsRedirection();
+
+    // Three headers that need no tuning against the deployment, and a cache rule for the
+    // documents that carry student data. A Content-Security-Policy is deliberately NOT set
+    // here: Blazor Server needs its WebSocket and MudBlazor injects styles at runtime, so a
+    // policy written blind breaks the product. It has to be measured in report-only mode on
+    // the real deployment first.
+    app.Use(async (context, next) =>
+    {
+        var headers = context.Response.Headers;
+        headers["X-Content-Type-Options"] = "nosniff";
+        headers["Referrer-Policy"] = "same-origin";
+        headers["X-Frame-Options"] = "SAMEORIGIN";
+
+        // Decided when the response starts, because authentication has run by then: an
+        // authenticated page or document is personal and must not be served from the back
+        // button after a sign-out. Static assets and the Blazor transport keep their caching.
+        context.Response.OnStarting(() =>
+        {
+            if (context.User.Identity?.IsAuthenticated == true
+                && !context.Request.Path.StartsWithSegments("/_framework")
+                && !context.Request.Path.StartsWithSegments("/_blazor")
+                && !context.Request.Path.StartsWithSegments("/BulkImportTemplates"))
+            {
+                context.Response.Headers["Cache-Control"] = "no-store, no-cache, must-revalidate";
+                context.Response.Headers["Pragma"] = "no-cache";
+            }
+
+            return Task.CompletedTask;
+        });
+
+        await next();
+    });
+
     app.UseStaticFiles();
     app.UseStaticFiles(new StaticFileOptions
     {

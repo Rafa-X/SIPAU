@@ -3,6 +3,7 @@
 @using UPZMG.Implementations.BoardReport
 @inject IBoardReportService BoardSvc
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 @inject NavigationManager Nav
 
 @*
@@ -42,9 +43,12 @@ else
             <AuthorizeView Policy="@AppPermissions.WriteBoardReport">
                 @if (!_document.IsSubmitted)
                 {
+                    @* "Cerrar" and not "Enviar": what this does is freeze the document inside the
+                       system. There is no mail or transport behind it, and saying "enviado a la
+                       Junta" promised a delivery the system does not perform. *@
                     <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.Send" Disabled="_working" OnClick="SubmitAsync">
-                        Enviar a la Junta
+                               StartIcon="@Icons.Material.Filled.LockClock" Disabled="_working" OnClick="ConfirmAndSubmitAsync">
+                        Cerrar informe
                     </MudButton>
                 }
             </AuthorizeView>
@@ -160,7 +164,7 @@ else
                                                 {
                                                     <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary"
                                                                StartIcon="@Icons.Material.Filled.Edit"
-                                                               OnClick="@(() => Edit(key, block.Text))">
+                                                               OnClick="@(() => EditAsync(key, block.Text))">
                                                         Redactar
                                                     </MudButton>
                                                 }
@@ -190,6 +194,9 @@ else
     private string? _editing;
     private string _draft = string.Empty;
 
+    // What the open block said when it was opened, to tell an edited draft from an untouched one.
+    private string? _editingOriginal;
+
     protected override Task OnParametersSetAsync() => LoadAsync();
 
     private async Task LoadAsync()
@@ -199,10 +206,25 @@ else
         _loading = false;
     }
 
-    private void Edit(string key, string? text)
+    /// <summary>
+    /// Opens one narrative block for writing. Switching blocks with unsaved text used to
+    /// replace the draft without asking, so the paragraph somebody had just written was gone.
+    /// </summary>
+    private async Task EditAsync(string key, string? text)
     {
+        if (_editing is not null && _editing != key && _draft != (_editingOriginal ?? string.Empty))
+        {
+            var keep = await DialogService.ShowMessageBoxAsync(
+                "Hay texto sin guardar",
+                $"El bloque «{_editing}» tiene cambios que no se han guardado. Si cambias de bloque se descartan.",
+                yesText: "Descartar y continuar", cancelText: "Seguir redactando");
+
+            if (keep != true) return;
+        }
+
         _editing = key;
         _draft = text ?? string.Empty;
+        _editingOriginal = _draft;
     }
 
     private async Task SaveAsync(string key, string? text)
@@ -218,24 +240,52 @@ else
         }
 
         _editing = null;
+        _editingOriginal = null;
         await LoadAsync();
         Snackbar.Add(string.IsNullOrWhiteSpace(text) ? "Se restauró la redacción sugerida." : "Texto guardado.", Severity.Success);
     }
 
-    private async Task SubmitAsync()
+    /// <summary>
+    /// Closing the report freezes it: the narrative stops being editable and the figures it
+    /// consolidates are stored as they are now. One click used to do all of that with no
+    /// confirmation and no way back.
+    /// </summary>
+    private async Task ConfirmAndSubmitAsync()
     {
+        if (_document is null) return;
+
+        if (_editing is not null && _draft != (_editingOriginal ?? string.Empty))
+        {
+            Snackbar.Add("Guarda o descarta el bloque que estás redactando antes de cerrar el informe.", Severity.Warning);
+            return;
+        }
+
+        var pending = _document.PendingNarratives;
+        var detail = pending > 0
+            ? $"Quedan {pending} bloque(s) con la redacción sugerida por el sistema. "
+            : string.Empty;
+
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            $"Cerrar el informe del ciclo {Cycle}",
+            $"{detail}Al cerrarlo, las cifras quedan congeladas tal como están hoy y la redacción ya no se "
+            + "podrá cambiar. Para corregir algo habría que generar el informe del ciclo siguiente. "
+            + "El documento no se envía por correo: se entrega desde la vista imprimible.",
+            yesText: "Cerrar informe", cancelText: "Seguir editando");
+
+        if (confirmed != true) return;
+
         _working = true;
         var result = await BoardSvc.SubmitAsync(Cycle);
         _working = false;
 
         if (!result.Saved)
         {
-            Snackbar.Add(result.Message ?? "No se pudo enviar el informe.", Severity.Warning);
+            Snackbar.Add(result.Message ?? "No se pudo cerrar el informe.", Severity.Warning);
             return;
         }
 
         await LoadAsync();
-        Snackbar.Add("Informe enviado a la Junta Directiva.", Severity.Success);
+        Snackbar.Add("Informe cerrado: sus cifras quedaron congeladas y ya puede entregarse.", Severity.Success);
     }
 
     private static string Pending(BoardReportChapter chapter)

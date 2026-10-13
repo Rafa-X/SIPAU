@@ -212,6 +212,7 @@ public class UsersRepository(AppDBContext db)
             {
                 Id = su.Id,
                 EmployeeId = su.EmployeeId,
+                UserName = su.UserName,
                 Email = su.Email,
                 Password = su.Password,
                 IsActive = su.IsActive,

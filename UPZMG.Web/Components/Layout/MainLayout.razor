@@ -1,5 +1,7 @@
 @inherits LayoutComponentBase
 @inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject IAuthorizationService Authorization
 @using UPZMG.Implementations.Intelligence
 @inject IIntelligenceService Ai
 
@@ -50,41 +52,79 @@
             </ItemTemplate>
         </MudAutocomplete>
 
-        @* Anomalies detected by the intelligent layer, surfaced globally. *@
+        @* Statistical alerts over the institutional series. Not a notification centre: there
+           is no per-user read state, so the badge counts alerts detected, not unread ones. *@
         <MudMenu @bind-Open="_alertsOpen" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
             <ActivatorContent>
                 @* A plain div, not a MudIconButton: a real <button> swallows the
-                   click and the menu never opens. *@
-                <div class="sipau-appbar-trigger" role="button" tabindex="0" title="Alertas del modelo"
-                     aria-label="Alertas del modelo"
-                     @onclick="@(() => _alertsOpen = !_alertsOpen)" @onclick:stopPropagation="true">
+                   click and the menu never opens. Enter and Space are handled here,
+                   because a div with role="button" does not get them for free. *@
+                <div class="sipau-appbar-trigger" role="button" tabindex="0" title="@AlertsLabel"
+                     aria-label="@AlertsLabel" aria-haspopup="menu"
+                     aria-expanded="@(_alertsOpen ? "true" : "false")"
+                     @onclick="ToggleAlerts" @onclick:stopPropagation="true"
+                     @onkeydown="OnAlertsKeyDown" @onkeydown:stopPropagation="true">
                     <MudBadge Content="@_anomalies.Count" Color="Color.Warning" Overlap="true" Bordered="true"
                               Visible="@(_anomalies.Count > 0)">
-                        <MudIcon Icon="@Icons.Material.Filled.NotificationsNone" />
+                        <MudIcon Icon="@(_alertsFailed ? Icons.Material.Filled.NotificationsOff : Icons.Material.Filled.NotificationsNone)" />
                     </MudBadge>
                 </div>
             </ActivatorContent>
             <ChildContent>
-                <div class="px-4 pt-3 pb-2" style="min-width:330px;max-width:390px">
-                    <MudText Typo="Typo.subtitle2" Style="font-weight:700">Detección automática</MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">Desviaciones encontradas por el modelo estadístico</MudText>
+                <div class="px-4 pt-3 pb-2 sipau-alert-panel">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Spacing="2">
+                        <MudText Typo="Typo.subtitle2" Style="font-weight:700">Alertas de indicadores</MudText>
+                        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Secondary"
+                                       Disabled="_alertsLoading" aria-label="Actualizar alertas"
+                                       OnClick="RefreshAlertsAsync" />
+                    </MudStack>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@AlertsState</MudText>
                 </div>
                 <MudDivider />
-                @if (_anomalies.Count == 0)
+                @if (_alertsLoading)
                 {
-                    <div class="px-4 py-3" style="max-width:390px">
+                    <div class="px-4 py-3 sipau-alert-panel">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Consultando las series…</MudText>
+                    </div>
+                }
+                else if (_alertsFailed)
+                {
+                    @* Never "sin desviaciones" on a failed read: that would be a statement about
+                       the institution made on the strength of a request that did not happen. *@
+                    <div class="px-4 py-3 sipau-alert-panel">
+                        <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="3">
+                            <MudIcon Icon="@Icons.Material.Filled.CloudOff" Size="Size.Small" Color="Color.Error" />
+                            <div>
+                                <MudText Typo="Typo.body2" Style="font-weight:650;line-height:1.3">
+                                    No se pudieron consultar las alertas
+                                </MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    El servicio de indicadores no respondió, así que esta lista no dice nada sobre
+                                    la matrícula, la aprobación ni las bajas.
+                                </MudText>
+                            </div>
+                        </MudStack>
+                    </div>
+                }
+                else if (_anomalies.Count == 0)
+                {
+                    <div class="px-4 py-3 sipau-alert-panel">
                         <MudText Typo="Typo.caption" Color="Color.Secondary">
-                            Sin desviaciones en la matrícula, la aprobación ni las bajas registradas.
+                            No se detectaron alertas en el corte consultado.
                         </MudText>
                     </div>
                 }
                 @foreach (var a in _anomalies)
                 {
-                    <div class="px-4 py-3" style="max-width:390px">
+                    <div class="px-4 py-3 sipau-alert-panel">
                         <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="3">
                             <MudIcon Icon="@SeverityIcon(a.Severity)" Size="Size.Small" Color="@SeverityColor(a.Severity)" />
                             <div>
                                 <MudText Typo="Typo.body2" Style="font-weight:650;line-height:1.3">@a.Title</MudText>
+                                @if (!string.IsNullOrWhiteSpace(a.Period))
+                                {
+                                    <MudText Typo="Typo.caption" Style="font-weight:600">@a.Period</MudText>
+                                }
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">@a.Detail</MudText>
                             </div>
                         </MudStack>
@@ -102,14 +142,20 @@
         <MudTooltip Text="@(_isDarkMode ? "Modo claro" : "Modo oscuro")" Placement="Placement.Bottom">
             <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
                            Color="Color.Inherit" Class="sipau-appbar-btn sipau-theme-btn"
-                           OnClick="@(() => _isDarkMode = !_isDarkMode)" aria-label="Cambiar tema" />
+                           OnClick="ToggleThemeAsync" aria-label="Cambiar tema" />
         </MudTooltip>
 
         <AuthorizeView Context="auth">
             <Authorized>
                 <MudMenu @bind-Open="_userMenuOpen" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="true">
                     <ActivatorContent>
-                        <div class="sipau-user-trigger ml-2" @onclick="@(() => _userMenuOpen = !_userMenuOpen)" @onclick:stopPropagation="true">
+                        @* Same reason as the bell: a div activator, so it carries its own
+                           button semantics and its own keyboard handling. *@
+                        <div class="sipau-user-trigger ml-2" role="button" tabindex="0"
+                             aria-label="Cuenta y sesión" aria-haspopup="menu"
+                             aria-expanded="@(_userMenuOpen ? "true" : "false")"
+                             @onclick="@(() => _userMenuOpen = !_userMenuOpen)" @onclick:stopPropagation="true"
+                             @onkeydown="OnUserMenuKeyDown" @onkeydown:stopPropagation="true">
                             <MudAvatar Size="Size.Small" Style="background:var(--sipau-plano);color:#fff;font-weight:700">
                                 @Initials(auth.User)
                             </MudAvatar>
@@ -180,43 +226,185 @@
     private bool _alertsOpen;
 
     private IReadOnlyList<AnomalyAlert> _anomalies = Array.Empty<AnomalyAlert>();
+    private bool _alertsLoading = true;
+    private bool _alertsFailed;
+    private DateTime? _alertsReadAtUtc;
 
-    // The service never throws: an unreachable API leaves the bell empty rather than breaking
-    // every page. The dashboard card is where a failure is reported as a failure.
-    protected override async Task OnInitializedAsync() => _anomalies = await Ai.GetAnomaliesAsync() ?? [];
+    private const string ThemeKey = "sipau.theme";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAlertsAsync();
+        await LoadNavTargetsAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        // Light / dark / system: nothing stored means "follow the operating system", which is
+        // also what a reload used to lose because the choice lived only in this field.
+        var stored = await ReadThemeAsync();
+        var dark = stored switch
+        {
+            "dark" => true,
+            "light" => false,
+            _ => await _themeProvider.GetSystemDarkModeAsync(),
+        };
+
+        if (dark != _isDarkMode)
+        {
+            _isDarkMode = dark;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Reads the alerts and remembers whether the read succeeded. The service answers null when
+    /// it could not ask, and the panel must not turn that into "no deviations".
+    /// </summary>
+    private async Task RefreshAlertsAsync()
+    {
+        _alertsLoading = true;
+        var alerts = await Ai.GetAnomaliesAsync();
+        _alertsLoading = false;
+
+        _alertsFailed = alerts is null;
+        if (alerts is not null)
+        {
+            // A failed refresh keeps the previous list, marked as such by the state line.
+            _anomalies = alerts;
+            _alertsReadAtUtc = DateTime.UtcNow;
+        }
+    }
+
+    private string AlertsLabel => _alertsFailed
+        ? "Alertas de indicadores: no disponibles"
+        : $"Alertas de indicadores: {_anomalies.Count} detectada(s)";
+
+    private string AlertsState
+    {
+        get
+        {
+            if (_alertsLoading) return "Consultando…";
+            if (_alertsFailed)
+            {
+                return _alertsReadAtUtc is { } stale
+                    ? $"No disponible · se muestra la consulta de las {stale.ToLocalTime():HH:mm}"
+                    : "No disponible";
+            }
+
+            var when = _alertsReadAtUtc?.ToLocalTime();
+            return when is null
+                ? "Desviaciones detectadas por el modelo estadístico"
+                : $"{_anomalies.Count} alerta(s) detectada(s) · actualizado {when:HH:mm}";
+        }
+    }
+
+    private void ToggleAlerts() => _alertsOpen = !_alertsOpen;
+
+    private void OnAlertsKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter" or " " or "Spacebar") _alertsOpen = !_alertsOpen;
+        else if (e.Key == "Escape") _alertsOpen = false;
+    }
+
+    private void OnUserMenuKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter" or " " or "Spacebar") _userMenuOpen = !_userMenuOpen;
+        else if (e.Key == "Escape") _userMenuOpen = false;
+    }
+
+    private async Task ToggleThemeAsync()
+    {
+        _isDarkMode = !_isDarkMode;
+        await WriteThemeAsync(_isDarkMode ? "dark" : "light");
+    }
+
+    // Browser storage can be unavailable (private window, blocked site data); the preference is
+    // a convenience, so failing to read or write it must not break the layout.
+    private async Task<string?> ReadThemeAsync()
+    {
+        try
+        {
+            return await JS.InvokeAsync<string?>("localStorage.getItem", ThemeKey);
+        }
+        catch (Exception ex) when (ex is JSException or InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
+    private async Task WriteThemeAsync(string value)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", ThemeKey, value);
+        }
+        catch (Exception ex) when (ex is JSException or InvalidOperationException)
+        {
+            // Not stored this time; the toggle still works for this session.
+        }
+    }
 
     private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
 
     // ── Quick navigation ────────────────────────────────────────────────────
-    /// <summary>A searchable destination in the header's quick-nav field.</summary>
-    public sealed record NavTarget(string Label, string Href, string Icon);
+    /// <summary>
+    /// A searchable destination in the header's quick-nav field.
+    /// </summary>
+    /// <param name="Policy">
+    /// The permission the destination's screen requires, so the search offers the same places
+    /// the menu does. It used to be a fixed list: everyone was offered usuarios, configuración,
+    /// riesgo and finanzas, and the screen then refused them.
+    /// </param>
+    public sealed record NavTarget(string Label, string Href, string Icon, string? Policy = null);
 
     private NavTarget? _quickNav;
     private MudAutocomplete<NavTarget>? _quickNavRef;
+    private IReadOnlyList<NavTarget> _navTargets = Array.Empty<NavTarget>();
 
-    private static readonly NavTarget[] NavTargets =
+    private static readonly NavTarget[] AllNavTargets =
     {
         new("Tablero de Control", "/dashboard", Icons.Material.Filled.SpaceDashboard),
         new("Captura de Datos", "/datacapture", Icons.Material.Filled.EditNote),
-        new("Captura · Alumnos", "/datacapture/students", Icons.Material.Filled.School),
-        new("Captura · Docentes", "/datacapture/teachers", Icons.Material.Filled.Groups),
-        new("Captura · Infraestructura", "/datacapture/infrastructure", Icons.Material.Filled.Domain),
-        new("Captura · Finanzas", "/datacapture/finance", Icons.Material.Filled.Payments),
-        new("Captura · Extensión", "/datacapture/extension", Icons.Material.Filled.Diversity3),
-        new("Captura · Importación masiva", "/datacapture/bulk", Icons.Material.Filled.UploadFile),
-        new("Gráficas", "/charts", Icons.Material.Filled.BarChart),
-        new("Gráficas · Riesgo de deserción", "/charts/dropout", Icons.Material.Filled.PsychologyAlt),
-        new("Reportes 911 / SII", "/reports", Icons.Material.Filled.Description),
-        new("Informe de Junta", "/boardreport", Icons.Material.Filled.Article),
-        new("Configuración", "/settings", Icons.Material.Filled.Settings),
-        new("Usuarios", "/users", Icons.Material.Filled.People),
+        new("Captura · Alumnos", "/datacapture/students", Icons.Material.Filled.School, AppPermissions.CaptureStudents),
+        new("Captura · Docentes", "/datacapture/teachers", Icons.Material.Filled.Groups, AppPermissions.CaptureStaff),
+        new("Captura · Infraestructura", "/datacapture/infrastructure", Icons.Material.Filled.Domain, AppPermissions.CaptureFacilities),
+        new("Captura · Finanzas", "/datacapture/finance", Icons.Material.Filled.Payments, AppPermissions.CaptureFinance),
+        new("Captura · Extensión", "/datacapture/extension", Icons.Material.Filled.Diversity3, AppPermissions.CaptureOutreach),
+        new("Captura · Importación masiva", "/datacapture/bulk", Icons.Material.Filled.UploadFile, AppPermissions.CaptureStudentsOrStaff),
+        new("Gráficas", "/charts", Icons.Material.Filled.BarChart, AppPermissions.ReadIndicators),
+        new("Gráficas · Riesgo de deserción", "/charts/dropout", Icons.Material.Filled.PsychologyAlt, AppPermissions.ReadRisk),
+        new("Reportes 911 / SII", "/reports", Icons.Material.Filled.Description, AppPermissions.CaptureReports),
+        new("Informe de Junta", "/boardreport", Icons.Material.Filled.Article, AppPermissions.ReadBoardReport),
+        new("Configuración", "/settings", Icons.Material.Filled.Settings, AppPermissions.AnyAdministration),
+        new("Usuarios", "/users", Icons.Material.Filled.People, AppPermissions.ManageUsers),
     };
+
+    /// <summary>Keeps only the destinations this account may open, asked once per circuit.</summary>
+    private async Task LoadNavTargetsAsync()
+    {
+        var user = (await AuthState).User;
+        var allowed = new List<NavTarget>(AllNavTargets.Length);
+
+        foreach (var target in AllNavTargets)
+        {
+            if (target.Policy is null
+                || (await Authorization.AuthorizeAsync(user, target.Policy)).Succeeded)
+            {
+                allowed.Add(target);
+            }
+        }
+
+        _navTargets = allowed;
+    }
 
     private Task<IEnumerable<NavTarget>> SearchNavAsync(string? value, CancellationToken token)
     {
         var matches = string.IsNullOrWhiteSpace(value)
-            ? NavTargets.AsEnumerable()
-            : NavTargets.Where(t => t.Label.Contains(value, StringComparison.OrdinalIgnoreCase));
+            ? _navTargets.AsEnumerable()
+            : _navTargets.Where(t => t.Label.Contains(value, StringComparison.OrdinalIgnoreCase));
         return Task.FromResult(matches);
     }
 
@@ -250,19 +438,27 @@
     private static string Email(ClaimsPrincipal u) => u.FindFirst(ClaimTypes.Email)?.Value ?? string.Empty;
     private static string Role(ClaimsPrincipal u) => u.FindFirst(ClaimTypes.Role)?.Value ?? "—";
 
+    /// <summary>
+    /// The name on the account, or the address when there is none. It used to be invented from
+    /// the local part of the email, so "control.escolar@…" was shown a person called
+    /// "Control Escolar" — a name the university never recorded.
+    /// </summary>
     private static string DisplayName(ClaimsPrincipal u)
     {
+        var name = u.FindFirst(ClaimTypes.Name)?.Value;
+        if (!string.IsNullOrWhiteSpace(name)) return name;
+
         var email = Email(u);
-        if (string.IsNullOrWhiteSpace(email)) return "Usuario";
-        var parts = email.Split('@')[0].Split('.', StringSplitOptions.RemoveEmptyEntries);
-        return string.Join(" ", parts.Select(p => char.ToUpperInvariant(p[0]) + p[1..]));
+        return string.IsNullOrWhiteSpace(email) ? "Usuario" : email;
     }
 
     private static string Initials(ClaimsPrincipal u)
     {
         var name = DisplayName(u);
-        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var parts = name.Split([' ', '.', '@'], StringSplitOptions.RemoveEmptyEntries);
         var ini = string.Concat(parts.Take(2).Select(p => char.ToUpperInvariant(p[0])));
         return string.IsNullOrEmpty(ini) ? "U" : ini;
     }
+
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = null!;
 }

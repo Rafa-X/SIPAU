@@ -23,7 +23,9 @@ public class AuthController(
 {
     public record TokenExchangeRequest(Guid UserId, string SharedSecret);
     public record WebLoginRequest(string Email, string Password, string SharedSecret);
-    public record WebLoginResponse(Guid UserId, string Email, string RoleName);
+    /// <param name="UserName">The name on the account; the web shell shows it instead of
+    /// guessing one from the address.</param>
+    public record WebLoginResponse(Guid UserId, string Email, string RoleName, string? UserName);
 
     [AllowAnonymous]
     [HttpPost("web-login")]
@@ -79,7 +81,7 @@ public class AuthController(
         }
 
         loginThrottle.RegisterSuccess(email);
-        return Ok(new WebLoginResponse(user.Id, responseEmail, responseRole));
+        return Ok(new WebLoginResponse(user.Id, responseEmail, responseRole, user.UserName));
     }
 
     [HttpPost("token")]

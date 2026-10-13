@@ -91,6 +91,11 @@ public class AccountController(
             claims.Add(new Claim(ClaimTypes.Email, claimEmail));
             claims.Add(new Claim(ClaimTypes.Role, claimRole));
 
+            // Only when the account really has a name: the shell falls back to the address
+            // rather than inventing one from it.
+            if (!string.IsNullOrWhiteSpace(authenticatedUser.UserName))
+                claims.Add(new Claim(ClaimTypes.Name, authenticatedUser.UserName.Trim()));
+
             identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             await HttpContext.SignInAsync(
                     CookieAuthenticationDefaults.AuthenticationScheme,

@@ -78,15 +78,32 @@
         {
             <MudAlert Severity="@(_errors.Count == 0 ? Severity.Success : Severity.Warning)" Class="mt-4">
                 Filas creadas: @_createdRows. Filas con error: @_errors.Count. Filas procesadas: @_processedRows.
+                @if (_errors.Count > 0)
+                {
+                    <text>
+                        Las filas creadas ya quedaron guardadas: corrige en el archivo únicamente las
+                        que fallaron y vuelve a procesarlas, o las duplicarás.
+                    </text>
+                }
             </MudAlert>
         }
+
+        @* Each row is written as it is read, so there is no transaction to roll back and no
+           cancellation: saying "Cancelar" next to the import button promised one. *@
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mt-4">
+            Cada fila se guarda en cuanto se lee. Si el archivo trae errores a la mitad, lo anterior
+            queda registrado: no hay cómo deshacer el lote completo.
+        </MudAlert>
 
         <MudStack Row="true" Justify="Justify.Center" Spacing="2" Class="mt-6">
             <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.CloudUpload"
                        Disabled="@(_isProcessing || _file is null || string.IsNullOrWhiteSpace(_areaKey))" OnClick="ProcessAsync">
                 @(_isProcessing ? "Procesando..." : "Procesar archivo")
             </MudButton>
-            <MudButton Variant="Variant.Outlined" OnClick="@(() => Nav.NavigateTo("/datacapture"))">Cancelar</MudButton>
+            <MudButton Variant="Variant.Outlined" Disabled="_isProcessing"
+                       OnClick="@(() => Nav.NavigateTo("/datacapture"))">
+                Volver a Captura
+            </MudButton>
         </MudStack>
     </MudForm>
 </MudPaper>

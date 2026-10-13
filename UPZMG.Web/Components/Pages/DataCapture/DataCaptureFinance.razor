@@ -22,7 +22,19 @@
     </Actions>
 </PageHeader>
 
-@if (_existing is not null)
+@if (_existingUnknown)
+{
+    @* Saving here UPDATES the year when it already has figures, so the form cannot offer a
+       save without knowing whether it would overwrite the institution's only set of them. *@
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mb-4">
+        No pudimos leer los ejercicios ya capturados, así que no sabemos si <b>@_fiscalYear</b> ya tiene
+        cifras. Guardar a ciegas podría sobrescribirlas: el guardado queda deshabilitado hasta poder consultarlas.
+        <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Inherit" OnClick="LoadExistingAsync">
+            Reintentar
+        </MudButton>
+    </MudAlert>
+}
+else if (_existing is not null)
 {
     <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-4">
         El ejercicio <b>@_fiscalYear</b> ya tiene un resumen capturado
@@ -81,7 +93,7 @@
 
         <MudStack Row="true" Spacing="2" Class="mt-6">
             <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Save"
-                       Disabled="_saving" OnClick="Submit">Guardar resumen</MudButton>
+                       Disabled="@(_saving || _existingUnknown)" OnClick="Submit">Guardar resumen</MudButton>
             <MudButton Variant="Variant.Outlined" OnClick="@(() => Nav.NavigateTo("/datacapture"))">Cancelar</MudButton>
         </MudStack>
     </MudForm>
@@ -105,9 +117,18 @@
     private decimal TotalExpense => _payroll + _materials + _servicesExpense + _investment;
     private decimal Balance => TotalIncome - TotalExpense;
 
-    protected override async Task OnInitializedAsync()
+    // True while the captured exercises could not be read. A null listing used to be assigned
+    // straight to the field, which crashed the page on its next line; treating it as an empty
+    // list instead would have been worse, opening a blank form over a year that has figures.
+    private bool _existingUnknown;
+
+    protected override Task OnInitializedAsync() => LoadExistingAsync();
+
+    private async Task LoadExistingAsync()
     {
-        _summaries = await CaptureSvc.GetFinanceListAsync();
+        var summaries = await CaptureSvc.GetFinanceListAsync();
+        _existingUnknown = summaries is null;
+        _summaries = summaries ?? [];
         LoadYear(_fiscalYear);
     }
 

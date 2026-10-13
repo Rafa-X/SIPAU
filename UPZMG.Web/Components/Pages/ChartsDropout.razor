@@ -369,9 +369,37 @@ else
             || s.EnrollmentNumber.Contains(q, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>What this listing is currently showing, in words, for the exported file.</summary>
+    private string ScopeLabel
+    {
+        get
+        {
+            var level = _level switch
+            {
+                AtRiskFilter => "riesgo medio y alto",
+                "Alto" => "sólo riesgo alto",
+                _ => "todos los evaluados",
+            };
+
+            var career = string.IsNullOrWhiteSpace(_career) ? "todas las carreras" : _career;
+            var search = string.IsNullOrWhiteSpace(_search) ? null : $", búsqueda «{_search}»";
+            return $"{level}, {career}{search}";
+        }
+    }
+
+    /// <summary>
+    /// Exports what is on screen, with the run and the filter written into every row. This file
+    /// carries names, enrolment numbers and model reasons: without its scope, a fragment of it
+    /// reads as a list of students at risk with no indication of which cut produced it.
+    /// </summary>
     private async Task ExportAsync()
     {
-        var csv = CsvExport.Build(Filtered,
+        var rows = Filtered;
+        var run = _list?.RunId ?? _report?.RunId ?? "sin corrida";
+        var trained = (_list?.TrainedAtUtc ?? _report?.TrainedAtUtc)?.ToLocalTime();
+        var scope = ScopeLabel;
+
+        var csv = CsvExport.Build(rows,
             ("Matrícula", s => s.EnrollmentNumber),
             ("Alumno", s => s.FullName),
             ("Carrera", s => s.Career),
@@ -383,9 +411,17 @@ else
             ("Edad al ingreso", s => s.EntryAge),
             ("Trabaja", s => s.Works),
             ("Periodos evaluados", s => s.PeriodsObserved),
-            ("Por qué", s => string.Join(" → ", s.Reasons)));
+            ("Por qué", s => string.Join(" → ", s.Reasons)),
+            ("Corrida del modelo", _ => run),
+            ("Entrenado", _ => trained?.ToString("yyyy-MM-dd HH:mm") ?? "desconocido"),
+            ("Alcance exportado", _ => scope));
 
         await JS.InvokeVoidAsync("sigieDownload", CsvExport.FileName("riesgo-desercion"), csv);
+
+        Snackbar.Add(
+            $"Se exportaron {rows.Count:N0} alumno(s) ({scope}) de la corrida {run}. "
+            + "El archivo contiene datos personales: compártelo sólo con quien da el acompañamiento.",
+            Severity.Info);
     }
 
     /// <summary>
