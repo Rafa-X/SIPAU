@@ -8,6 +8,9 @@
     Axis labels are HTML positioned over the plot (a CSS grid keeps them in
     register). That keeps text crisp at every size instead of scaling with the
     viewBox — and sidesteps Razor reserving the <text> tag.
+
+    Height is the least the plot takes: inside a card the chart grows to use the
+    room the card has, so everything here is positioned in percentages.
 *@
 @using System.Globalization
 @using UPZMG.Web.Components.Shared.Charts
@@ -20,7 +23,13 @@
             @foreach (var s in Series)
             {
                 <span class="sipau-chart-key">
-                    <i class="@(s.Dashed ? "dash" : null)" style="@($"background:{s.Color}")"></i>@s.Name
+                    <i class="@(s.Dashed ? "dash" : null)" style="@($"color:{s.Color};background-color:{s.Color}")"></i>@s.Name
+                </span>
+            }
+            @if (HasBand)
+            {
+                <span class="sipau-chart-key">
+                    <i class="band" style="@($"background-color:color-mix(in srgb, {BandColor} 26%, transparent)")"></i>@BandName
                 </span>
             }
         </div>
@@ -43,7 +52,7 @@
                 @foreach (var (s, i) in Series.Select((s, i) => (s, i)).Where(t => t.s.Filled))
                 {
                     <linearGradient id="@($"{_id}-fill-{i}")" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="@s.Color" stop-opacity="0.32" />
+                        <stop offset="0%" stop-color="@s.Color" stop-opacity="0.28" />
                         <stop offset="100%" stop-color="@s.Color" stop-opacity="0" />
                     </linearGradient>
                 }
@@ -65,19 +74,36 @@
                       y1="0" y2="@Height" vector-effect="non-scaling-stroke" />
             }
 
-            @* ---- areas first, then strokes ---- *@
+            @* ---- band, then areas, then strokes: what was measured ends on top ---- *@
+            @if (HasBand)
+            {
+                <path class="sipau-chart-range" d="@BandPath()" fill="@BandColor" fill-opacity="0.13" />
+            }
+
             @foreach (var (s, i) in Series.Select((s, i) => (s, i)).Where(t => t.s.Filled))
             {
                 <path class="sipau-chart-area" d="@AreaPath(s)" fill="@($"url(#{_id}-fill-{i})")" />
             }
 
-            @foreach (var s in Series)
+            @foreach (var s in Series.Where(s => s.Dashed))
             {
-                <path class="@($"sipau-chart-line{(s.Dashed ? " dashed" : null)}")" d="@LinePath(s)"
+                <path class="sipau-chart-line dashed" d="@LinePath(s, 0, Labels.Count - 1)"
                       stroke="@s.Color" fill="none" vector-effect="non-scaling-stroke" />
             }
 
-            @* ---- hover guide + points ---- *@
+            @foreach (var s in Series.Where(s => !s.Dashed))
+            {
+                <path class="sipau-chart-line" d="@LinePath(s, 0, LastObserved)"
+                      stroke="@s.Color" fill="none" vector-effect="non-scaling-stroke" />
+
+                @if (LastObserved < Labels.Count - 1)
+                {
+                    <path class="sipau-chart-line projected" d="@LinePath(s, LastObserved, Labels.Count - 1)"
+                          stroke="@s.Color" fill="none" vector-effect="non-scaling-stroke" />
+                }
+            }
+
+            @* ---- hover guide ---- *@
             @if (_hover is { } h)
             {
                 var hx = ChartScale.N(_scale.X(h, Labels.Count));
@@ -98,15 +124,15 @@
         @* Hover dots are HTML so they stay round despite the stretched viewBox. *@
         @if (_hover is { } hd)
         {
-            @foreach (var s in Series.Where(s => hd < s.Values.Count))
+            @foreach (var s in Series.Where(s => Has(s, hd)))
             {
                 <span class="sipau-chart-dot"
                       style="@($"{Pct("left", _scale.X(hd, Labels.Count) / VbW * 100)};{Pct("top", _scale.Y(s.Values[hd]) / Height * 100)};background:{s.Color}")"></span>
             }
 
             <div class="sipau-chart-tip" style="@Pct("left", Math.Clamp(_scale.X(hd, Labels.Count) / VbW * 100, 6, 94))">
-                <div class="sipau-chart-tip-head">@Labels[hd]</div>
-                @foreach (var s in Series.Where(s => hd < s.Values.Count))
+                <div class="sipau-chart-tip-head">@Labels[hd]@(IsProjected(hd) ? " · pronóstico" : null)</div>
+                @foreach (var s in Series.Where(s => Has(s, hd)))
                 {
                     <div class="sipau-chart-tip-row">
                         <i style="@($"background:{s.Color}")"></i>
@@ -114,44 +140,69 @@
                         <b>@s.Values[hd].ToString(ValueFormat, CultureInfo.CurrentCulture)@Unit</b>
                     </div>
                 }
+                @if (HasBand && double.IsFinite(BandLower![hd]) && double.IsFinite(BandUpper![hd]))
+                {
+                    <div class="sipau-chart-tip-row">
+                        <i style="@($"background:{BandColor};opacity:0.45")"></i>
+                        <span>@BandName</span>
+                        <b>@BandLower[hd].ToString(ValueFormat, CultureInfo.CurrentCulture) a @BandUpper[hd].ToString(ValueFormat, CultureInfo.CurrentCulture)@Unit</b>
+                    </div>
+                }
             </div>
         }
 
         @if (ForecastX is { } tagX)
         {
-            <span class="@(tagX / VbW > 0.7 ? "sipau-chart-tag is-end" : "sipau-chart-tag")"
-                  style="@Pct("left", tagX / VbW * 100)">Pronóstico</span>
+            @* Near the right edge the tag hangs from that edge, so it never leaves the plot. *@
+            var atEnd = tagX / VbW > 0.6;
+            <span class="@(atEnd ? "sipau-chart-tag is-end" : "sipau-chart-tag")"
+                  style="@(atEnd ? null : Pct("left", tagX / VbW * 100))">Pronóstico</span>
         }
     </div>
 
-    <div class="sipau-chart-xaxis">
-        @for (int i = 0; i < Labels.Count; i++)
+    <div class="@($"sipau-chart-xaxis {_axis.RowClass}")">
+        @for (int i = 0; i < _axis.Labels.Count; i++)
         {
-            <span class="@AxisLabelClass(i)" style="@Pct("left", _scale.X(i, Labels.Count) / VbW * 100)">
-                @Labels[i]
-            </span>
+            var label = _axis.Labels[i];
+            <span class="@(_hover == i ? $"{label.Class} on" : label.Class)" style="@label.Style">@label.Text</span>
         }
     </div>
 </div>
 
 @if (ShowData && Labels.Count > 0)
 {
-    <ChartDataTable Labels="Labels" Series="Series" ValueFormat="@ValueFormat" Unit="@Unit"
-                    CategoryHeader="@CategoryHeader" Caption="@AriaLabel" />
+    <ChartDataTable Labels="Labels" Series="_tableSeries" ValueFormat="@ValueFormat" Unit="@Unit"
+                    CategoryHeader="@CategoryHeader" Caption="@AriaLabel"
+                    ForecastFromIndex="@(ForecastX is null ? null : ForecastFromIndex)" />
 }
 
 @code {
     /// <summary>Category labels along the X axis.</summary>
     [Parameter, EditorRequired] public IReadOnlyList<string> Labels { get; set; } = Array.Empty<string>();
 
-    /// <summary>Series to plot. Values are matched to <see cref="Labels"/> by index.</summary>
+    /// <summary>
+    /// Series to plot. Values are matched to <see cref="Labels"/> by index; a series may be
+    /// shorter than the labels, and NaN leaves a gap in the line.
+    /// </summary>
     [Parameter, EditorRequired] public IReadOnlyList<ChartSeriesData> Series { get; set; } = Array.Empty<ChartSeriesData>();
 
-    /// <summary>Plot height in SVG units.</summary>
+    /// <summary>Least height of the plot, in pixels.</summary>
     [Parameter] public int Height { get; set; } = 280;
 
-    /// <summary>Index from which the data stops being observed and becomes modelled.</summary>
+    /// <summary>
+    /// Index from which the data stops being observed and becomes modelled. From there on
+    /// every line is drawn dashed and without its fill: a projection must not look measured.
+    /// </summary>
     [Parameter] public int? ForecastFromIndex { get; set; }
+
+    /// <summary>Edges of an uncertainty band, one value per label; drawn as a tinted area.</summary>
+    [Parameter] public IReadOnlyList<double>? BandUpper { get; set; }
+    [Parameter] public IReadOnlyList<double>? BandLower { get; set; }
+    [Parameter] public string BandName { get; set; } = "Intervalo";
+    [Parameter] public string BandColor { get; set; } = ChartPalette.Indigo;
+
+    /// <summary>Top of the axis when the measure has one, such as 100 for a percentage.</summary>
+    [Parameter] public double? Max { get; set; }
 
     [Parameter] public string ValueFormat { get; set; } = "N0";
     [Parameter] public string? Unit { get; set; }
@@ -171,55 +222,103 @@
     private int? _hover;
     private ChartScale _scale = null!;
     private IReadOnlyList<double> _ticks = Array.Empty<double>();
+    private ChartAxisLayout _axis = ChartAxisLayout.Empty;
+    private IReadOnlyList<ChartSeriesData> _tableSeries = Array.Empty<ChartSeriesData>();
 
     protected override void OnParametersSet()
     {
         // The plot fills the whole viewBox; axis labels live outside it in HTML.
-        _scale = new ChartScale(
-            Series.SelectMany(s => s.Values),
-            left: 4, right: VbW - 4, top: 10, bottom: Height - 10);
+        var values = Series.SelectMany(s => s.Values);
+        if (HasBand) values = values.Concat(BandUpper!).Concat(BandLower!);
 
+        _scale = new ChartScale(values, left: 4, right: VbW - 4, top: 10, bottom: Height - 10, fixedMax: Max);
         _ticks = _scale.Ticks();
+        _axis = ChartAxis.Layout(Labels, i => _scale.X(i, Labels.Count) / VbW, stagger: false);
+
+        // The table carries the same figures as the drawing, band included.
+        _tableSeries = HasBand
+            ?
+            [
+                .. Series,
+                new ChartSeriesData($"{BandName}: mínimo", BandLower!, BandColor),
+                new ChartSeriesData($"{BandName}: máximo", BandUpper!, BandColor),
+            ]
+            : Series;
+
         _hover = null;
     }
 
-    // Labels come in nested tiers: about four always, eight from a medium width, the rest
-    // (up to fourteen) on wide charts. CSS container queries decide which tiers fit.
-    private string? LabelClass(int i)
-    {
-        var fine = Math.Max(1, (int)Math.Ceiling(Labels.Count / 14.0));
-        var tier = i % (fine * 4) == 0 ? null
-                 : i % (fine * 2) == 0 ? "is-mid"
-                 : i % fine == 0 ? "is-fine"
-                 : "is-hidden";
-        return _hover == i ? $"{tier} on".Trim() : tier;
-    }
+    private bool HasBand =>
+        BandUpper is { Count: > 0 } && BandLower is { Count: > 0 }
+        && BandUpper.Count == Labels.Count && BandLower.Count == Labels.Count;
 
-    private string AxisLabelClass(int i)
-    {
-        var edge = i == 0 ? "is-first" : i == Labels.Count - 1 ? "is-last" : null;
-        return string.Join(' ', new[] { LabelClass(i), edge }.Where(value => !string.IsNullOrWhiteSpace(value)));
-    }
-
+    // The modelled region opens at the last observed point: everything to its right, the
+    // stretch that joins it to the first projected period included, is not measured.
     private double? ForecastX =>
         ForecastFromIndex is { } fi && fi > 0 && fi < Labels.Count
-            ? _scale.X(fi, Labels.Count)
+            ? _scale.X(fi - 1, Labels.Count)
             : null;
 
-    private string LinePath(ChartSeriesData s)
+    // Index of the last observed point: the projection starts from it, so the two join.
+    private int LastObserved => ForecastX is null ? Labels.Count - 1 : ForecastFromIndex!.Value - 1;
+
+    private bool IsProjected(int index) => ForecastX is not null && index >= ForecastFromIndex;
+
+    private static bool Has(ChartSeriesData s, int index) =>
+        index < s.Values.Count && double.IsFinite(s.Values[index]);
+
+    private string Point(int index, double value) =>
+        $"{ChartScale.N(_scale.X(index, Labels.Count))},{ChartScale.N(_scale.Y(value))}";
+
+    // A gap (NaN, or a series shorter than the labels) lifts the pen instead of drawing through it.
+    private string LinePath(ChartSeriesData s, int from, int to)
     {
-        if (s.Values.Count == 0) return string.Empty;
-        return string.Concat(s.Values.Select((v, i) =>
-            $"{(i == 0 ? "M" : "L")}{ChartScale.N(_scale.X(i, s.Values.Count))},{ChartScale.N(_scale.Y(v))}"));
+        var path = new System.Text.StringBuilder();
+        bool pen = false;
+
+        for (int i = Math.Max(0, from); i <= to; i++)
+        {
+            if (!Has(s, i)) { pen = false; continue; }
+            path.Append(pen ? 'L' : 'M').Append(Point(i, s.Values[i]));
+            pen = true;
+        }
+
+        return path.ToString();
     }
 
+    // Only under what was observed, and one closed shape per unbroken run.
     private string AreaPath(ChartSeriesData s)
     {
-        if (s.Values.Count == 0) return string.Empty;
+        var path = new System.Text.StringBuilder();
         var baseline = ChartScale.N(Height);
-        var first = ChartScale.N(_scale.X(0, s.Values.Count));
-        var last = ChartScale.N(_scale.X(s.Values.Count - 1, s.Values.Count));
-        return $"{LinePath(s)}L{last},{baseline}L{first},{baseline}Z";
+        int start = -1;
+
+        for (int i = 0; i <= LastObserved + 1; i++)
+        {
+            bool has = i <= LastObserved && Has(s, i);
+            if (has && start < 0) start = i;
+            if (has || start < 0) continue;
+
+            path.Append(LinePath(s, start, i - 1))
+                .Append($"L{ChartScale.N(_scale.X(i - 1, Labels.Count))},{baseline}")
+                .Append($"L{ChartScale.N(_scale.X(start, Labels.Count))},{baseline}Z");
+            start = -1;
+        }
+
+        return path.ToString();
+    }
+
+    // Upper edge left to right, then the lower edge back.
+    private string BandPath()
+    {
+        var indexes = Enumerable.Range(0, Labels.Count)
+            .Where(i => double.IsFinite(BandUpper![i]) && double.IsFinite(BandLower![i]))
+            .ToList();
+        if (indexes.Count < 2) return string.Empty;
+
+        var upper = indexes.Select((i, n) => $"{(n == 0 ? 'M' : 'L')}{Point(i, BandUpper![i])}");
+        var lower = indexes.AsEnumerable().Reverse().Select(i => $"L{Point(i, BandLower![i])}");
+        return string.Concat(upper) + string.Concat(lower) + "Z";
     }
 
     /// <summary>Culture-invariant percentage declaration for inline positioning.</summary>

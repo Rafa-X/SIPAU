@@ -51,7 +51,8 @@ else
         <DataToolbar @bind-Search="_search" Placeholder="Buscar por alumno, matrícula o programa…"
                      Count="Filtered.Count" Total="_scholarships.Count" OnExport="ExportAsync" />
 
-        <MudDataGrid T="ScholarshipListItem" Items="Filtered" Hover="true" Dense="true" Elevation="0" SortMode="SortMode.Single">
+        <MudDataGrid T="ScholarshipListItem" Items="Filtered" Hover="true" Dense="true" Elevation="0"
+                     RowsPerPage="25" SortMode="SortMode.Single">
             <Columns>
                 <PropertyColumn Property="x => x.StudentEnrollmentNumber" Title="Matrícula" />
                 <PropertyColumn Property="x => x.StudentName" Title="Alumno" />
@@ -67,6 +68,11 @@ else
                 <EmptyState Icon="@Icons.Material.Filled.SearchOff" Title="Sin coincidencias"
                             Description="Ninguna beca coincide con la búsqueda." />
             </NoRecordsContent>
+            <PagerContent>
+                <MudDataGridPager T="ScholarshipListItem" PageSizeOptions="@(new[] { 25, 50, 100 })"
+                                  RowsPerPageString="Filas por página"
+                                  InfoFormat="{first_item}–{last_item} de {all_items}" />
+            </PagerContent>
         </MudDataGrid>
     </SectionCard>
 }

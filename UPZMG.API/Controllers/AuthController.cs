@@ -81,6 +81,7 @@ public class AuthController(
         }
 
         loginThrottle.RegisterSuccess(email);
+        await usersRepository.RegisterSignInAsync(user.Id);
         return Ok(new WebLoginResponse(user.Id, responseEmail, responseRole, user.UserName));
     }
 

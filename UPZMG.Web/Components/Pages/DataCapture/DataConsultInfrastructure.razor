@@ -39,7 +39,8 @@ else
         <DataToolbar @bind-Search="_search" Placeholder="Buscar por nombre o tipo…"
                      Count="Filtered.Count" Total="_facilities.Count" OnExport="ExportAsync" />
 
-        <MudDataGrid T="FacilityListItem" Items="Filtered" Hover="true" Dense="true" Elevation="0" SortMode="SortMode.Single">
+        <MudDataGrid T="FacilityListItem" Items="Filtered" Hover="true" Dense="true" Elevation="0"
+                     RowsPerPage="25" SortMode="SortMode.Single">
             <Columns>
                 <PropertyColumn Property="x => x.Name" Title="Espacio" />
                 <PropertyColumn Property="x => x.Type" Title="Tipo" />
@@ -81,6 +82,11 @@ else
                 <EmptyState Icon="@Icons.Material.Filled.SearchOff" Title="Sin coincidencias"
                             Description="Ningún espacio coincide con la búsqueda." />
             </NoRecordsContent>
+            <PagerContent>
+                <MudDataGridPager T="FacilityListItem" PageSizeOptions="@(new[] { 25, 50, 100 })"
+                                  RowsPerPageString="Filas por página"
+                                  InfoFormat="{first_item}–{last_item} de {all_items}" />
+            </PagerContent>
         </MudDataGrid>
     </SectionCard>
 }

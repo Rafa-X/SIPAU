@@ -15,6 +15,14 @@ public interface IIntelligenceService
     // Null when the API could not answer; empty when nothing stands out.
     Task<IReadOnlyList<AnomalyAlert>?> GetAnomaliesAsync();
 
+    // The alerts as the signed-in user left them. Null when the API could not answer.
+    Task<AlertInbox?> GetAlertInboxAsync();
+
+    // Each one answers with the list as it stands afterwards, or null when it was not saved.
+    Task<AlertInbox?> MarkAlertsSeenAsync(IReadOnlyCollection<string> keys);
+    Task<AlertInbox?> DismissAlertsAsync(IReadOnlyCollection<string> keys);
+    Task<AlertInbox?> RestoreAlertsAsync();
+
     // Null when the API could not answer; empty when there is no history yet.
     Task<IReadOnlyList<PeriodStats>?> GetHistoryAsync();
 

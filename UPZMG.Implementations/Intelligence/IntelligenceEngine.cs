@@ -301,13 +301,15 @@ public static class IntelligenceEngine
             if (Math.Abs(score) < 1.8) continue;
 
             var direction = changes[i] < 0 ? "Caída" : "Alza";
+            var severity = Math.Abs(score) >= 2.5 ? "error" : "warning";
             found.Add(new AnomalyAlert(
                 $"{direction} atípica de matrícula en {periods[i].Label}",
                 $"{Format(changes[i], "+0.0;-0.0")} % respecto al periodo anterior, "
                 + $"{Format(Math.Abs(score), "0.0")} desviaciones estándar fuera del cambio habitual.",
-                Math.Abs(score) >= 2.5 ? "error" : "warning",
+                severity,
                 Math.Round(Math.Abs(score), 1),
-                periods[i].Label));
+                periods[i].Label,
+                AlertKey("enrolment-change", periods[i].Label, severity)));
         }
 
         // 2. Off the institution's own trend.
@@ -326,7 +328,8 @@ public static class IntelligenceEngine
                     + $"{Format(fit.PredictAt(i), "N0")} ({Format(residual, "+0;-0")}).",
                     "info",
                     Math.Round(Math.Abs(sigmas), 1),
-                    periods[i].Label));
+                    periods[i].Label,
+                    AlertKey("enrolment-trend", periods[i].Label, "info")));
             }
         }
 
@@ -346,7 +349,8 @@ public static class IntelligenceEngine
                     $"{Format(latestPassRate, "0.0")} % de aprobación frente a un promedio previo de {Format(mean, "0.0")} %.",
                     "warning",
                     Math.Round(mean - latestPassRate, 1),
-                    last.Label));
+                    last.Label,
+                    AlertKey("pass-rate", last.Label, "warning")));
             }
         }
 
@@ -363,7 +367,8 @@ public static class IntelligenceEngine
                     $"{Format(last.WithdrawalRate, "0.0")} % de los inscritos se dio de baja; el promedio previo es {Format(mean, "0.0")} %.",
                     "warning",
                     Math.Round(last.WithdrawalRate - mean, 1),
-                    last.Label));
+                    last.Label,
+                    AlertKey("withdrawals", last.Label, "warning")));
             }
         }
 
@@ -379,6 +384,9 @@ public static class IntelligenceEngine
                 .Take(MaxAlerts)
         ];
     }
+
+    // Test, period and severity: enough to recognise the same deviation on the next read.
+    private static string AlertKey(string test, string period, string severity) => $"{test}|{period}|{severity}";
 
     private static int SeverityRank(string severity) => severity switch
     {

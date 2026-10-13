@@ -277,11 +277,15 @@ else
                 return $"Antes de enviar corrige {ReportUi.Plural(_form.Violations.Count, "regla que no cuadra", "reglas que no cuadran")}; las secciones en rojo te llevan a ellas.";
 
             if (_form.Missing.Count > 0)
-                return $"Faltan {ReportUi.Plural(_form.Missing.Count, "respuesta obligatoria", "respuestas obligatorias")}. Puedes guardar el borrador y terminar después.";
+                return $"{Missing(_form.Missing.Count)}. Puedes guardar el borrador y terminar después.";
 
             return "Todo está capturado y las sumas cuadran. Al enviarlo queda registrado a tu nombre y ya no admite cambios.";
         }
     }
+
+    // "Falta 1 respuesta obligatoria" / "Faltan 3 respuestas obligatorias".
+    private static string Missing(int count) =>
+        $"{(count == 1 ? "Falta" : "Faltan")} {ReportUi.Plural(count, "respuesta obligatoria", "respuestas obligatorias")}";
 
     private string StepClass(int index)
     {
@@ -358,7 +362,7 @@ else
             var first = _form.Missing[0];
             await GoToAsync(first.SectionIndex);
             Snackbar.Add(
-                $"Faltan {ReportUi.Plural(_form.Missing.Count, "respuesta obligatoria", "respuestas obligatorias")}. Empieza por «{first.QuestionText}» ({first.SectionTitle}).",
+                $"{Missing(_form.Missing.Count)}. Empieza por «{first.QuestionText}» ({first.SectionTitle}).",
                 Severity.Warning);
             return;
         }

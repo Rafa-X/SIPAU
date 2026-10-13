@@ -15,6 +15,7 @@ public class AppDBContext(DbContextOptions<AppDBContext> options) : DbContext(op
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<RoleReportPermission> RoleReportsPermissions => Set<RoleReportPermission>();
     public DbSet<UserRole> UserRoles => Set<UserRole>();
+    public DbSet<AlertReceipt> AlertReceipts => Set<AlertReceipt>();
 
     // Academic
     public DbSet<Careers> Careers => Set<Careers>();
@@ -157,6 +158,15 @@ public class AppDBContext(DbContextOptions<AppDBContext> options) : DbContext(op
             entity.HasOne<Role>()
                 .WithMany()
                 .HasForeignKey(x => x.RoleId);
+        });
+        modelBuilder.Entity<AlertReceipt>(entity => {
+            entity.ToTable("alertReceipts");
+            entity.HasKey(x => x.Id);
+            entity.HasOne<SystemUser>()
+                .WithMany()
+                .HasForeignKey(x => x.UserId);
+            // One row per user and alert: marking it again updates the row instead of adding one.
+            entity.HasIndex(x => new { x.UserId, x.AlertKey }).IsUnique();
         });
 
         // Academic

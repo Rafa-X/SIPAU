@@ -27,11 +27,8 @@
     else
     {
     <DataToolbar @bind-Search="_search" Placeholder="Buscar usuario, correo o rol…"
-                 Count="_users.Count" Total="_users.Count">
+                 Count="UsersFiltered.Count" Total="_users.Count">
         <Filters>
-            @* The API's users/get-all filters `where su.IsActive`, so an
-               "inactive" option here could never match anything. Filtering by
-               role is what actually helps on this screen. *@
             <MudSelect T="string" Value="_roleFilter" ValueChanged="@(v => _roleFilter = v)" Dense="true"
                        Variant="Variant.Outlined" Margin="Margin.Dense" Class="sipau-toolbar-filter mt-0"
                        Placeholder="Rol" Clearable="true">
@@ -44,7 +41,9 @@
         </Filters>
     </DataToolbar>
 
-    <MudDataGrid T="SystemUser" Items="_users" Hover="true" Dense="true" Elevation="0"
+    @* Bound to the filtered list: bound to the full one, the search box and the role filter
+       were there and did nothing. *@
+    <MudDataGrid T="SystemUser" Items="UsersFiltered" Hover="true" Dense="true" Elevation="0"
                  Filterable="false" SortMode="SortMode.Multiple">
         <Columns>
             <TemplateColumn Title="Usuario" SortBy="x => x.UserName">
@@ -55,9 +54,16 @@
                     </div>
                 </CellTemplate>
             </TemplateColumn>
-            <TemplateColumn Title="Rol" SortBy="x => x.Role!.Name">
+            <TemplateColumn Title="Rol" SortBy="@(x => x.Role?.Name ?? string.Empty)">
                 <CellTemplate>
-                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">@context.Item.Role?.Name</MudChip>
+                    @if (!string.IsNullOrWhiteSpace(context.Item.Role?.Name))
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">@context.Item.Role.Name</MudChip>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Sin rol</MudText>
+                    }
                 </CellTemplate>
             </TemplateColumn>
             <TemplateColumn Title="Estado" SortBy="x => x.IsActive">
@@ -78,7 +84,8 @@
                 <CellTemplate>
                     @if (context.Item.LastLogin is { } seen)
                     {
-                        @seen.ToString("dd/MM/yyyy HH:mm")
+                        @* Stored in UTC; shown in the reader's hour. *@
+                        @DateTime.SpecifyKind(seen, DateTimeKind.Utc).ToLocalTime().ToString("dd/MM/yyyy HH:mm")
                     }
                     else
                     {
@@ -258,41 +265,17 @@
             var requesterKey = await _securityService.GetRequesterKeyAsync();
             if (requesterKey == Guid.Empty) return;
 
-            try
-            {
-                if (created)
-                {
-                    await _userService.CreateUser(new CreateUser
-                    {
-                        RequesterKey = requesterKey,
-                        UserName = saved.UserName,
-                        Email = saved.Email,
-                        RoleId = saved.RoleId,
-                        IsActive = saved.IsActive,
-                        Password = saved.Password,
-                    });
-                }
-                else
-                {
-                    await _userService.EditUser(new EditUser
-                    {
-                        RequesterKey = requesterKey,
-                        UserId = saved.Id,
-                        UserName = saved.UserName,
-                        RoleId = saved.RoleId,
-                        IsActive = saved.IsActive,
-                        Password = string.IsNullOrWhiteSpace(saved.Password) ? null : saved.Password,
-                    });
-                }
-
-                await ReloadAsync(requesterKey);
-            }
-            catch (Exception ex)
+            // The service answers with the reason instead of throwing. This loop used to wait
+            // for an exception that never came, so a refused change was announced as saved.
+            var outcome = await _userService.SaveAsync(requesterKey, saved);
+            if (!outcome.Success)
             {
                 pending = saved;
-                error = ex.Message;
+                error = outcome.Error;
                 continue;
             }
+
+            await ReloadAsync(requesterKey);
 
             Snackbar.Add(created
                 ? $"Usuario '{saved.Email}' creado correctamente."

@@ -139,7 +139,57 @@ public sealed record DropoutModelReport(
 /// <summary>A statistically detected deviation in the institutional series.</summary>
 /// <param name="Severity">info, warning or error.</param>
 /// <param name="Magnitude">How far out it sits (standard deviations or points), used to rank alerts.</param>
-public sealed record AnomalyAlert(string Title, string Detail, string Severity, double Magnitude, string? Period);
+/// <param name="Key">
+/// What the alert is about — the test that raised it and the period — so the same deviation is
+/// recognised the next time the series are read. The figures in the detail are left out on
+/// purpose: a corrected grade must not bring back an alert somebody already dealt with. The
+/// severity is part of it, because an alert that got worse deserves to be seen again.
+/// </param>
+public sealed record AnomalyAlert(
+    string Title, string Detail, string Severity, double Magnitude, string? Period, string Key = "");
+
+/// <summary>An alert as one person has it: the deviation, and whether they already saw it.</summary>
+public sealed record UserAlert(AnomalyAlert Alert, bool Seen);
+
+/// <summary>
+/// The alerts of one user. The deviations are institutional and the same for everybody; what
+/// each person saw or dismissed is theirs.
+/// </summary>
+/// <param name="Alerts">Current alerts the user has not dismissed, most urgent first.</param>
+/// <param name="Dismissed">Current alerts the user dismissed, which a restore would bring back.</param>
+public sealed record AlertInbox(IReadOnlyList<UserAlert> Alerts, int Dismissed)
+{
+    public static readonly AlertInbox Empty = new([], 0);
+
+    public int Unseen => Alerts.Count(alert => !alert.Seen);
+}
+
+/// <summary>What a user did with one alert, as stored.</summary>
+public sealed record AlertReceiptState(string Key, bool Seen, bool Dismissed);
+
+public static class AlertInboxBuilder
+{
+    /// <summary>Applies one user's receipts to the alerts detected now.</summary>
+    public static AlertInbox Build(IReadOnlyList<AnomalyAlert> alerts, IEnumerable<AlertReceiptState> receipts)
+    {
+        var byKey = new Dictionary<string, AlertReceiptState>(StringComparer.Ordinal);
+        foreach (var receipt in receipts) byKey[receipt.Key] = receipt;
+
+        var shown = new List<UserAlert>(alerts.Count);
+        var dismissed = 0;
+
+        foreach (var alert in alerts)
+        {
+            byKey.TryGetValue(alert.Key, out var receipt);
+
+            // A receipt for a deviation that is no longer detected simply matches nothing.
+            if (receipt is { Dismissed: true }) { dismissed++; continue; }
+            shown.Add(new UserAlert(alert, receipt is { Seen: true }));
+        }
+
+        return new AlertInbox(shown, dismissed);
+    }
+}
 
 /// <summary>Result of training: the public report plus every scored student.</summary>
 public sealed record DropoutAnalysis(DropoutModelReport Report, IReadOnlyList<StudentRisk> Students);
@@ -165,6 +215,23 @@ public sealed record UnscoredReasons(int NoRegistrations, int NoGrades)
 public sealed record StudentRiskList(string RunId, DateTime TrainedAtUtc, IReadOnlyList<StudentRisk> Students);
 
 public class RetrainDropoutModel
+{
+    public required Guid RequesterKey { get; set; }
+}
+
+public class MarkAlertsSeen
+{
+    public required Guid RequesterKey { get; set; }
+    public List<string> Keys { get; set; } = [];
+}
+
+public class DismissAlerts
+{
+    public required Guid RequesterKey { get; set; }
+    public List<string> Keys { get; set; } = [];
+}
+
+public class RestoreAlerts
 {
     public required Guid RequesterKey { get; set; }
 }

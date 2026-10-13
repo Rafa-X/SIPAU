@@ -51,12 +51,16 @@ else
                 <MudTextField @bind-Value="_model.FirstName" Label="Nombre(s)"
                               Required="true" RequiredError="El nombre es obligatorio." />
             </MudItem>
+            @* The record keeps a second given name and the surnames, and every listing prints
+               them in that order. Labelled "apellido paterno / materno", what was typed as the
+               mother's surname came out in front of the father's. *@
             <MudItem md="4">
-                <MudTextField @bind-Value="_model.LastName" Label="Apellido paterno"
-                              Required="true" RequiredError="El apellido es obligatorio." />
+                <MudTextField @bind-Value="_model.MiddleName" Label="Segundo nombre" />
             </MudItem>
             <MudItem md="4">
-                <MudTextField @bind-Value="_model.MiddleName" Label="Apellido materno" />
+                <MudTextField @bind-Value="_model.LastName" Label="Apellidos"
+                              Required="true" RequiredError="Los apellidos son obligatorios."
+                              HelperText="Paterno y materno, en ese orden." />
             </MudItem>
         </MudGrid>
 
@@ -120,11 +124,13 @@ else
 
         <MudGrid Class="mt-2">
             <MudItem md="4">
-                <MudSelect T="Guid" @bind-Value="_model.CareerId" Label="Carrera"
-                           Required="true" RequiredError="Selecciona una carrera.">
+                @* Nullable on screen: a Guid has no "nothing chosen", so the empty form showed
+                   00000000-0000-… as if it were a career, and "required" let it through. *@
+                <MudSelect T="Guid?" Value="@Chosen(_model.CareerId)" ValueChanged="@(id => _model.CareerId = id ?? Guid.Empty)"
+                           Label="Carrera" Required="true" RequiredError="Selecciona una carrera.">
                     @foreach (var c in _careers)
                     {
-                        <MudSelectItem T="Guid" Value="@c.Id">@c.Value</MudSelectItem>
+                        <MudSelectItem T="Guid?" Value="@c.Id">@c.Value</MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
@@ -148,11 +154,11 @@ else
                 </MudSelect>
             </MudItem>
             <MudItem md="4">
-                <MudSelect T="Guid" @bind-Value="_model.PeriodIdStart" Label="Periodo de Inicio"
-                           Required="true" RequiredError="Selecciona un periodo.">
+                <MudSelect T="Guid?" Value="@Chosen(_model.PeriodIdStart)" ValueChanged="@(id => _model.PeriodIdStart = id ?? Guid.Empty)"
+                           Label="Periodo de inicio" Required="true" RequiredError="Selecciona un periodo.">
                     @foreach (var p in _periods)
                     {
-                        <MudSelectItem T="Guid" Value="@p.Id">@p.Value</MudSelectItem>
+                        <MudSelectItem T="Guid?" Value="@p.Id">@p.Value</MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
@@ -237,6 +243,8 @@ else
             Address = student.Address,
         };
     }
+
+    private static Guid? Chosen(Guid id) => id == Guid.Empty ? null : id;
 
     private static string? ValidateCurp(string? curp)
     {

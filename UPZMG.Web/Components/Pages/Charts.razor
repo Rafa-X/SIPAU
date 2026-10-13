@@ -12,7 +12,7 @@
 </PageHeader>
 
 <MudGrid>
-    <MudItem xs="12" lg="7">
+    <MudItem xs="12">
         <SectionCard Title="Matrícula histórica y proyección"
                      Icon="@Icons.Material.Filled.Timeline" Accent="violet">
             <Actions>
@@ -36,6 +36,8 @@
                 {
                     <TrendChart Id="enrollment-chart" Labels="_model.Enrollment.Labels" Series="_model.Enrollment.Series" Height="200"
                                 ForecastFromIndex="@(_model.Enrollment.HasModel ? _model.Enrollment.ForecastFromIndex : null)"
+                                BandUpper="_model.Enrollment.Upper" BandLower="_model.Enrollment.Lower"
+                                BandName="Intervalo ±2σ"
                                 AriaLabel="Matrícula histórica, su proyección y la banda de incertidumbre" />
                 }
                 else
@@ -93,7 +95,8 @@
     </MudItem>
 
     <MudItem xs="12" lg="5">
-        <SectionCard Title="Distribución de Alumnos por carrera"
+        <SectionCard Title="Distribución de alumnos por carrera"
+                     Subtitle="Alumnos con estatus activo"
                      Icon="@Icons.Material.Filled.School" Accent="teal">
             <Actions>
                 <MudTooltip Text="Descargar gráfica PNG" Placement="Placement.Top">
@@ -114,9 +117,8 @@
             </Footer>
         </SectionCard>
     </MudItem>
-</MudGrid>
 
-<MudGrid Class="mt-1">
+    @* Same row as the programme distribution: on its own it left half the row empty. *@
     <MudItem xs="12" lg="7">
         <SectionCard Title="Distribución de grupos"
                      Subtitle="Grupos y alumnos inscritos por carrera en el periodo activo"
@@ -251,16 +253,19 @@
             new("Matrícula", forecast.Actual, ChartPalette.Teal, Filled: true),
         };
 
+        _model.Enrollment.Upper = null;
+        _model.Enrollment.Lower = null;
+
         if (forecast.HasModel)
         {
-            series.Add(new ChartSeriesData("Tendencia del modelo", forecast.Trend, ChartPalette.Indigo, Dashed: true));
+            series.Add(new ChartSeriesData("Tendencia del modelo", forecast.Trend, ChartPalette.Neutral, Dashed: true));
 
-            // The band was only a number in the footer, so the width of the projection was
-            // invisible next to the line it belongs to.
+            // The band is one area around the line, not two more lines: drawn as dashed
+            // series it read as three separate trends and a five-entry legend.
             if (forecast.Upper.Count == forecast.Labels.Count && forecast.Lower.Count == forecast.Labels.Count)
             {
-                series.Add(new ChartSeriesData("Banda superior (±2σ)", forecast.Upper, ChartPalette.Clay, Dashed: true));
-                series.Add(new ChartSeriesData("Banda inferior (±2σ)", forecast.Lower, ChartPalette.Clay, Dashed: true));
+                _model.Enrollment.Upper = forecast.Upper;
+                _model.Enrollment.Lower = forecast.Lower;
             }
         }
 

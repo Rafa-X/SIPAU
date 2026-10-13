@@ -296,12 +296,24 @@
             context.drawImage(image, svgRect.left - chartRect.left, titleHeight + svgRect.top - chartRect.top,
                 svgRect.width, svgRect.height);
 
+            // The "font" shorthand comes back empty when an element sets something it cannot
+            // express, such as tabular figures on the axes; the canvas then kept the title's
+            // font and drew every axis label in bold 18 px.
+            function fontOf(styles) {
+                return styles.fontStyle + ' ' + styles.fontWeight + ' ' + styles.fontSize + ' ' + styles.fontFamily;
+            }
+
             function drawText(element, align) {
                 var elementRect = element.getBoundingClientRect();
+                // Labels the chart is not showing at this width have no box to copy.
+                if (elementRect.width === 0) return;
                 var styles = getComputedStyle(element);
-                var x = (align === 'right' ? elementRect.right : elementRect.left) - chartRect.left;
+                var anchor = align === 'right' ? elementRect.right
+                    : align === 'center' ? elementRect.left + elementRect.width / 2
+                    : elementRect.left;
+                var x = anchor - chartRect.left;
                 var y = titleHeight + elementRect.top - chartRect.top + elementRect.height / 2;
-                context.font = styles.font;
+                context.font = fontOf(styles);
                 context.fillStyle = styles.color;
                 context.textAlign = align;
                 context.textBaseline = 'middle';
@@ -322,13 +334,24 @@
                 var y = titleHeight + elementRect.top - chartRect.top + elementRect.height / 2;
                 var swatch = element.querySelector('i');
                 var swatchStyles = swatch ? getComputedStyle(swatch) : styles;
-                context.fillStyle = swatchStyles.backgroundColor;
-                context.fillRect(x, y - 1.5, 14, 3);
-                context.font = styles.font;
+                var swatchRect = swatch ? swatch.getBoundingClientRect() : { width: 14, height: 3 };
+                var swatchWidth = swatchRect.width || 14;
+                var swatchHeight = swatchRect.height || 3;
+                if (swatch && swatch.classList.contains('dash')) {
+                    // A dashed key has no background: its dashes are painted in the text colour.
+                    context.fillStyle = swatchStyles.color;
+                    for (var dash = 0; dash < swatchWidth; dash += 6) {
+                        context.fillRect(x + dash, y - swatchHeight / 2, 3.3, swatchHeight);
+                    }
+                } else {
+                    context.fillStyle = swatchStyles.backgroundColor;
+                    context.fillRect(x, y - swatchHeight / 2, swatchWidth, swatchHeight);
+                }
+                context.font = fontOf(styles);
                 context.fillStyle = styles.color;
                 context.textAlign = 'left';
                 context.textBaseline = 'middle';
-                context.fillText(element.textContent.trim(), x + 20, y);
+                context.fillText(element.textContent.trim(), x + swatchWidth + 7, y);
             });
 
             if (footer) {
@@ -338,7 +361,7 @@
                 var footerText = footer.textContent.trim().replace(/\s+/g, ' ');
                 context.fillStyle = footerStyles.borderTopColor;
                 context.fillRect(0, footerY, width, 1);
-                context.font = footerStyles.font;
+                context.font = fontOf(footerStyles);
                 context.fillStyle = footerStyles.color;
                 context.textAlign = 'left';
                 context.textBaseline = 'middle';

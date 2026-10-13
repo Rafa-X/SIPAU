@@ -180,7 +180,7 @@ else
     <SectionCard Title="Alumnos que conviene atender" Flush="true" FullHeight="false" Class="mt-4"
                  Subtitle="Alumnos activos ordenados por probabilidad de baja; «Por qué» es la ruta que siguió el árbol"
                  Icon="@Icons.Material.Filled.PersonSearch">
-        <DataToolbar @bind-Search="_search" Placeholder="Buscar nombre o matrícula…"
+        <DataToolbar @bind-Search="_search" Placeholder="Nombre o matrícula…"
                      Count="Filtered.Count" Total="_students.Count" OnExport="ExportAsync">
             <Filters>
                 <MudSelect T="string" @bind-Value="_level" Dense="true"

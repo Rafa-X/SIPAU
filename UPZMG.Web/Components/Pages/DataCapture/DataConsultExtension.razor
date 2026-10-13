@@ -51,7 +51,8 @@ else
         <DataToolbar @bind-Search="_search" Placeholder="Buscar por organización, proyecto o alumno…"
                      Count="Filtered.Count" Total="_projects.Count" OnExport="ExportAsync" />
 
-        <MudDataGrid T="OutreachListItem" Items="Filtered" Hover="true" Dense="true" Elevation="0" SortMode="SortMode.Single">
+        <MudDataGrid T="OutreachListItem" Items="Filtered" Hover="true" Dense="true" Elevation="0"
+                     RowsPerPage="25" SortMode="SortMode.Single">
             <Columns>
                 <PropertyColumn Property="x => x.OrganizationName" Title="Organización" />
                 <PropertyColumn Property="x => x.ProjectName" Title="Proyecto" />
@@ -77,6 +78,11 @@ else
                 <EmptyState Icon="@Icons.Material.Filled.SearchOff" Title="Sin coincidencias"
                             Description="Ningún proyecto coincide con la búsqueda." />
             </NoRecordsContent>
+            <PagerContent>
+                <MudDataGridPager T="OutreachListItem" PageSizeOptions="@(new[] { 25, 50, 100 })"
+                                  RowsPerPageString="Filas por página"
+                                  InfoFormat="{first_item}–{last_item} de {all_items}" />
+            </PagerContent>
         </MudDataGrid>
     </SectionCard>
 }

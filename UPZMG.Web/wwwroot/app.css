@@ -68,6 +68,13 @@
 
     --sipau-wash: rgba(7, 59, 104, 0.05);
     --sipau-wash-strong: rgba(7, 59, 104, 0.09);
+
+    /* Chart inks. Their own tokens because the theme gives primary and secondary the same
+       blue: two series drawn with those came out as one colour. a = the measure,
+       b = what is modelled from it, c = the other category of a pair. */
+    --sipau-chart-a: var(--sipau-anil);
+    --sipau-chart-b: var(--sipau-anil-up);
+    --sipau-chart-c: var(--sipau-cempasuchil);
 }
 
 .sipau-dark {
@@ -76,6 +83,10 @@
     --sipau-wash: rgba(244, 248, 252, 0.06);
     --sipau-wash-strong: rgba(244, 248, 252, 0.11);
     --sipau-plano: var(--sipau-anil-up);
+
+    --sipau-chart-a: #67B9F4;
+    --sipau-chart-b: #B5DCFA;
+    --sipau-chart-c: #F2B95D;
 }
 
 html { -webkit-text-size-adjust: 100%; }
@@ -126,6 +137,32 @@ body,
 
 /* The alerts panel follows the viewport. A fixed 330 px minimum overflowed a 320 px screen. */
 .sipau-alert-panel { min-width: min(330px, calc(100vw - 32px)); max-width: min(390px, calc(100vw - 32px)); }
+/* One alert of the bell: icon, text, and the two things a person can do with it. A seen
+   alert steps back instead of leaving, so the list still says what the series look like. */
+.sipau-alert-row {
+    display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 12px;
+    align-items: start;
+    padding: 12px 8px 12px 16px;
+}
+.sipau-alert-row + .sipau-alert-row { border-top: 1px solid var(--sipau-hairline); }
+.sipau-alert-row-title { font-size: 0.875rem; font-weight: 700; line-height: 1.3; }
+.sipau-alert-row-detail {
+    margin-top: 3px;
+    font-size: 0.78125rem; line-height: 1.45;
+    color: var(--mud-palette-text-secondary);
+}
+.sipau-alert-row.is-seen .sipau-alert-row-title { font-weight: 500; }
+.sipau-alert-row.is-seen > .mud-icon-root { opacity: 0.55; }
+.sipau-alert-new {
+    display: inline-block; margin-left: 6px; padding: 1px 6px;
+    border-radius: 999px;
+    background: var(--sipau-wash-strong);
+    font-family: var(--sipau-font-narrow);
+    font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.04em;
+    vertical-align: 1px;
+}
+.sipau-alert-row-actions { display: flex; gap: 2px; margin-top: -4px; }
+.sipau-alert-tools { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 8px; }
 .bulk-import-grid { margin: 0; }
 
 .mud-input-root { caret-color: var(--mud-palette-primary); }
@@ -442,6 +479,9 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
 
 .sipau-cell-end { text-align: right; white-space: nowrap; }
 .sipau-cell-end > * { display: inline-flex; align-items: center; }
+/* The data grid lays its header out as a full-width flex row that starts at the left, so the
+   title of a right-aligned column sat at the opposite end from its buttons. */
+.mud-table-head .sipau-cell-end .column-header { display: flex; justify-content: flex-end; width: 100%; }
 .sipau-card .mud-table-container,
 .sipau-card .mud-datagrid { max-width: 100%; }
 .sipau-card .mud-table-container { overflow-x: auto; }
@@ -983,11 +1023,17 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
 .sipau-chart {
     display: grid;
     grid-template-columns: 54px minmax(0, 1fr);
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto minmax(var(--sipau-chart-h, 280px), 1fr) auto;
     column-gap: 10px;
     width: 100%;
 }
-.sipau-chart-svg { display: block; width: 100%; height: var(--sipau-chart-h, 280px); overflow: visible; }
+/* A chart takes the height its card has left. Cards in a row are stretched to the tallest
+   one, and a plot of fixed height left the difference as a blank band above the footer.
+   Capped, so a neighbour that opens its data table cannot stretch this one out of shape. */
+.sipau-card-body:has(> .sipau-chart) { display: flex; flex-direction: column; }
+.sipau-card-body > .sipau-chart { flex: 1 1 auto; max-height: calc(var(--sipau-chart-h, 280px) * 2 + 80px); }
+.sipau-card-body > .sipau-chart-data { flex: 0 0 auto; }
+.sipau-chart-svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; overflow: visible; }
 .sipau-chart-yaxis { grid-column: 1; grid-row: 2; position: relative; }
 .sipau-chart-yaxis span {
     position: absolute; right: 0; transform: translateY(-50%);
@@ -998,23 +1044,58 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
 .sipau-chart-plot { grid-column: 2; grid-row: 2; position: relative; }
 .sipau-chart-xaxis { grid-column: 2; grid-row: 3; position: relative; height: 26px; }
 .sipau-chart-xaxis span {
+    display: none;
     position: absolute; top: 7px; transform: translateX(-50%);
     font-family: var(--sipau-font-narrow);
     font-size: 0.78rem; font-weight: 600; white-space: nowrap;
     color: var(--mud-palette-text-secondary);
     transition: color var(--sipau-fast) var(--sipau-ease);
 }
-.sipau-chart-xaxis span.is-first { transform: translateX(0); }
-.sipau-chart-xaxis span.is-last { transform: translateX(-100%); }
-.sipau-chart-xaxis span.on { color: var(--mud-palette-text-primary); font-weight: 700; }
-/* Axis labels appear by tier as the chart gets wider, so long period names never collide. */
+.sipau-chart-xaxis span.on { color: var(--mud-palette-text-primary); }
+/* Which labels fit is worked out in ChartAxis for each of these widths: sN shows a label at
+   step N, lN drops it to a second row, rN makes room for that row. Nothing measures text at
+   run time, so the steps here and the plot widths in ChartAxis have to stay in line. */
 .sipau-chart { container-type: inline-size; }
-.sipau-chart-xaxis span.is-mid,
-.sipau-chart-xaxis span.is-fine,
-.sipau-chart-xaxis span.is-hidden { display: none; }
-.sipau-chart-xaxis span.on { display: block; }
-@container (min-width: 520px) { .sipau-chart-xaxis span.is-mid { display: block; } }
-@container (min-width: 900px) { .sipau-chart-xaxis span.is-fine { display: block; } }
+@container (max-width: 299.98px) {
+    .sipau-chart-xaxis .s0 { display: block; }
+    .sipau-chart-xaxis .l0 { top: 25px; }
+    .sipau-chart-xaxis.r0 { height: 44px; }
+}
+@container (min-width: 300px) and (max-width: 359.98px) {
+    .sipau-chart-xaxis .s1 { display: block; }
+    .sipau-chart-xaxis .l1 { top: 25px; }
+    .sipau-chart-xaxis.r1 { height: 44px; }
+}
+@container (min-width: 360px) and (max-width: 439.98px) {
+    .sipau-chart-xaxis .s2 { display: block; }
+    .sipau-chart-xaxis .l2 { top: 25px; }
+    .sipau-chart-xaxis.r2 { height: 44px; }
+}
+@container (min-width: 440px) and (max-width: 519.98px) {
+    .sipau-chart-xaxis .s3 { display: block; }
+    .sipau-chart-xaxis .l3 { top: 25px; }
+    .sipau-chart-xaxis.r3 { height: 44px; }
+}
+@container (min-width: 520px) and (max-width: 679.98px) {
+    .sipau-chart-xaxis .s4 { display: block; }
+    .sipau-chart-xaxis .l4 { top: 25px; }
+    .sipau-chart-xaxis.r4 { height: 44px; }
+}
+@container (min-width: 680px) and (max-width: 899.98px) {
+    .sipau-chart-xaxis .s5 { display: block; }
+    .sipau-chart-xaxis .l5 { top: 25px; }
+    .sipau-chart-xaxis.r5 { height: 44px; }
+}
+@container (min-width: 900px) and (max-width: 1199.98px) {
+    .sipau-chart-xaxis .s6 { display: block; }
+    .sipau-chart-xaxis .l6 { top: 25px; }
+    .sipau-chart-xaxis.r6 { height: 44px; }
+}
+@container (min-width: 1200px) {
+    .sipau-chart-xaxis .s7 { display: block; }
+    .sipau-chart-xaxis .l7 { top: 25px; }
+    .sipau-chart-xaxis.r7 { height: 44px; }
+}
 .sipau-chart-legend {
     grid-column: 1 / -1; grid-row: 1;
     display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 10px;
@@ -1027,9 +1108,12 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
 }
 .sipau-chart-key i { width: 14px; height: 3px; }
 .sipau-chart-key i.dash {
+    background-color: transparent !important;
     background-image: linear-gradient(90deg, currentColor 55%, transparent 0);
     background-size: 6px 3px;
 }
+.sipau-chart-key i.bar { width: 9px; height: 9px; }
+.sipau-chart-key i.band { height: 9px; }
 .sipau-chart-grid {
     stroke: var(--sipau-hairline);
     stroke-width: 1;
@@ -1040,16 +1124,18 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
     stroke: var(--sipau-hairline-strong);
     stroke-width: 1; stroke-dasharray: 4 4;
 }
-.sipau-chart-tag.is-end { display: none; }
-@container (min-width: 520px) { .sipau-chart-tag.is-end { display: block; } }
 .sipau-chart-tag {
     position: absolute; top: 8px; margin-left: 8px;
     font-family: var(--sipau-font-narrow);
     font-size: 0.7rem; font-weight: 700;
-    letter-spacing: 0.14em; text-transform: uppercase;
+    letter-spacing: 0.1em; text-transform: uppercase;
     color: var(--mud-palette-text-secondary);
     pointer-events: none;
 }
+/* A forecast that starts near the right edge leaves the tag no room after the divider:
+   it hangs from the edge instead, and only where the modelled region is wide enough for it. */
+.sipau-chart-tag.is-end { display: none; right: 6px; margin-left: 0; }
+@container (min-width: 520px) { .sipau-chart-tag.is-end { display: block; } }
 .sipau-chart-line {
     stroke-width: 2.25;
     stroke-linecap: butt; stroke-linejoin: miter;
@@ -1057,9 +1143,16 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
     animation: sipau-draw 1.1s var(--sipau-ease) forwards;
 }
 .sipau-chart-line.dashed {
-    stroke-width: 1.6; opacity: 0.8;
-    animation: none; stroke-dasharray: 5 5; stroke-dashoffset: 0;
+    stroke-width: 1.4; opacity: 0.85;
+    animation: none; stroke-dasharray: 2 4; stroke-dashoffset: 0;
 }
+/* The modelled continuation of a measured line: same ink, dashed, and it arrives once the
+   measured part has been drawn. */
+.sipau-chart-line.projected {
+    stroke-dasharray: 6 5; stroke-dashoffset: 0;
+    animation: sipau-fade-in 0.4s var(--sipau-ease) 0.8s both;
+}
+.sipau-chart-range { animation: sipau-fade-in 0.6s var(--sipau-ease) 0.3s both; }
 .sipau-chart-area { animation: sipau-fade-in 0.9s var(--sipau-ease) 0.2s both; }
 .sipau-chart-bar {
     transform-box: fill-box; transform-origin: 50% 100%;
@@ -1575,7 +1668,7 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
     font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
     color: var(--mud-palette-text-secondary);
 }
-.sipau-metrics dd { margin: 0; font-weight: 800; font-variant-numeric: tabular-nums; }
+.sipau-metrics dd { margin: 0; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .sipau-method .mud-expand-panel { border-color: var(--sipau-hairline); border-radius: var(--sipau-radius); }
 .sipau-method-body { max-width: 88ch; font-size: 0.9375rem; line-height: 1.6; }
@@ -1729,7 +1822,14 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
 
 .sipau-chart-data > summary:hover { color: var(--mud-palette-text-primary); }
 
-.sipau-chart-data-scroll { overflow-x: auto; margin-top: 10px; }
+/* Bounded: a long series scrolls inside the card instead of pushing the row's height. */
+.sipau-chart-data-scroll { overflow: auto; max-height: 296px; margin-top: 10px; }
+.sipau-chart-data thead th { position: sticky; top: 0; background: var(--mud-palette-surface); }
+.sipau-chart-data-note {
+    margin-left: 6px;
+    font-size: 0.6875rem; font-weight: 600;
+    color: var(--mud-palette-text-secondary);
+}
 
 .sipau-chart-data table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
 
