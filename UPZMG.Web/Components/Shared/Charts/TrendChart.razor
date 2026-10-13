@@ -134,6 +134,12 @@
     </div>
 </div>
 
+@if (ShowData && Labels.Count > 0)
+{
+    <ChartDataTable Labels="Labels" Series="Series" ValueFormat="@ValueFormat" Unit="@Unit"
+                    CategoryHeader="@CategoryHeader" Caption="@AriaLabel" />
+}
+
 @code {
     /// <summary>Category labels along the X axis.</summary>
     [Parameter, EditorRequired] public IReadOnlyList<string> Labels { get; set; } = Array.Empty<string>();
@@ -152,6 +158,12 @@
     [Parameter] public bool ShowLegend { get; set; } = true;
     [Parameter] public string AriaLabel { get; set; } = "Gráfica de tendencia";
     [Parameter] public string? Id { get; set; }
+
+    /// <summary>The figures as a table under the drawing; the tooltip needs a mouse.</summary>
+    [Parameter] public bool ShowData { get; set; } = true;
+
+    /// <summary>What the categories are, for the table's first column.</summary>
+    [Parameter] public string CategoryHeader { get; set; } = "Periodo";
 
     private const int VbW = 1000;
 

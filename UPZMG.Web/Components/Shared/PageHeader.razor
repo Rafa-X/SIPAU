@@ -7,7 +7,10 @@
                        OnClick="@(() => Nav.NavigateTo(BackHref))">Volver</MudButton>
         }
 
-        <MudText Typo="Typo.h4" Class="sipau-title">@Title</MudText>
+        @* h1 by semantics, h4 by size. The router focuses "h1" after every navigation and
+           every page was emitting an h4, so the focus target did not exist and no page had a
+           level-one heading for a screen reader to announce. *@
+        <MudText Typo="Typo.h4" HtmlTag="h1" Class="sipau-title">@Title</MudText>
 
         @if (!string.IsNullOrEmpty(Subtitle))
         {

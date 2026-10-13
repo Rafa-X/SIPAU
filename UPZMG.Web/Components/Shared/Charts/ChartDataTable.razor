@@ -1,0 +1,61 @@
+@*
+    The figures behind a chart, as a table.
+
+    The charts are SVG with a hover tooltip, which leaves their numbers out of reach for anyone
+    using a keyboard, a screen reader or a touch screen. A native <details> is operable by all
+    three without any script, and the table is the same data the drawing is made of — not a
+    summary of it.
+*@
+@using System.Globalization
+
+<details class="sipau-chart-data">
+    <summary>Ver datos</summary>
+
+    <div class="sipau-chart-data-scroll">
+        <table>
+            <caption>@Caption</caption>
+            <thead>
+                <tr>
+                    <th scope="col">@CategoryHeader</th>
+                    @foreach (var series in Series)
+                    {
+                        <th scope="col">@series.Name@(string.IsNullOrEmpty(Unit) ? null : $" ({Unit})")</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @for (var row = 0; row < Labels.Count; row++)
+                {
+                    var index = row;
+                    <tr>
+                        <th scope="row">@Labels[index]</th>
+                        @foreach (var series in Series)
+                        {
+                            <td>@Cell(series, index)</td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</details>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<string> Labels { get; set; } = Array.Empty<string>();
+    [Parameter, EditorRequired] public IReadOnlyList<ChartSeriesData> Series { get; set; } = Array.Empty<ChartSeriesData>();
+
+    [Parameter] public string ValueFormat { get; set; } = "N0";
+    [Parameter] public string? Unit { get; set; }
+
+    /// <summary>What the rows are: periods, programmes, ages…</summary>
+    [Parameter] public string CategoryHeader { get; set; } = "Categoría";
+
+    [Parameter] public string Caption { get; set; } = "Datos de la gráfica";
+
+    // A series can be shorter than the labels (a projection that does not cover every period):
+    // an empty cell says so, where a zero would be read as a measured zero.
+    private string Cell(ChartSeriesData series, int index) =>
+        index < series.Values.Count
+            ? series.Values[index].ToString(ValueFormat, CultureInfo.CurrentCulture)
+            : "—";
+}
