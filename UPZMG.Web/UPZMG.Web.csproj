@@ -14,6 +14,8 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <!-- Shown in the navigation rail; bump it here and the screen follows. -->
+    <Version>0.7.0</Version>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>upzmg-web-2fec4be8-3523-4fcb-8738-ac67811b7d78</UserSecretsId>
