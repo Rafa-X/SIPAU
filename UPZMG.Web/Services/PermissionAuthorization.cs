@@ -58,6 +58,13 @@ public sealed class WebPermissionHandler(
 {
     private static readonly TimeSpan CacheFor = TimeSpan.FromSeconds(30);
 
+    // A failure is remembered too, but only for seconds. One page evaluates the permission many
+    // times — every AuthorizeView and every entry of the quick-navigation catalogue — and with
+    // the API unreachable each of those checks was opening its own doomed connection, which took
+    // the page from a quick refusal to tens of seconds. Short enough that a recovering API is
+    // picked up almost at once.
+    private static readonly TimeSpan CacheFailureFor = TimeSpan.FromSeconds(5);
+
     protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context, WebPermissionRequirement requirement)
     {
@@ -86,10 +93,12 @@ public sealed class WebPermissionHandler(
         }
         catch (Exception ex)
         {
-            // An API that cannot answer is not an authorisation: the screen stays closed. Not
-            // cached either, so the next attempt tries again instead of denying for 30 seconds.
+            // An API that cannot answer is not an authorisation: the screen stays closed.
             logger.LogWarning("Could not read the permissions of {User}: {Message}", userId, ex.Message);
-            return [];
+
+            var empty = new HashSet<string>(StringComparer.Ordinal);
+            cache.Set(key, empty, CacheFailureFor);
+            return empty;
         }
     }
 }

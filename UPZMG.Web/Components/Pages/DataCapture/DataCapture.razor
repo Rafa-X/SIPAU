@@ -80,13 +80,15 @@ else
 
 @code {
     private DashboardSummary? _summary;
-    private int _facilities;
-    private int _outreachProjects;
+    // Nullable on purpose: null is "this listing could not be read", and the card already
+    // knows how to show no figure. A zero is a claim that the area has captured nothing.
+    private int? _facilities;
+    private int? _outreachProjects;
     private int _outreachHours;
-    private int _fiscalYears;
+    private int? _fiscalYears;
     private int? _lastFiscalYear;
-    private int _scholarships;
-    private int _titulations;
+    private int? _scholarships;
+    private int? _titulations;
     private bool _loading = true;
 
     private sealed record CaptureArea(
@@ -100,18 +102,18 @@ else
             _summary = await DashboardSvc.GetSummaryAsync();
             _facilities = (await GeneralDataSvc.GetFacilitiesAsync()).Count;
 
-            // A listing the area may not read answers null; its card then shows no figure,
-            // which is different from showing a zero the area cannot verify.
-            var projects = await CaptureSvc.GetOutreachListAsync() ?? [];
-            _outreachProjects = projects.Count;
-            _outreachHours = projects.Sum(p => p.AccreditedHours);
+            // Each listing keeps its own result. One area failing used to leave the others
+            // showing zeros, because every count had already been set to zero by default.
+            var projects = await CaptureSvc.GetOutreachListAsync();
+            _outreachProjects = projects?.Count;
+            _outreachHours = projects?.Sum(p => p.AccreditedHours) ?? 0;
 
-            _scholarships = (await CaptureSvc.GetScholarshipsAsync())?.Count ?? 0;
-            _titulations = (await CaptureSvc.GetTitulationsAsync())?.Count ?? 0;
+            _scholarships = (await CaptureSvc.GetScholarshipsAsync())?.Count;
+            _titulations = (await CaptureSvc.GetTitulationsAsync())?.Count;
 
-            var finances = await CaptureSvc.GetFinanceListAsync() ?? [];
-            _fiscalYears = finances.Count;
-            _lastFiscalYear = finances.Count == 0 ? null : finances.Max(f => f.FiscalYear);
+            var finances = await CaptureSvc.GetFinanceListAsync();
+            _fiscalYears = finances?.Count;
+            _lastFiscalYear = finances is null or { Count: 0 } ? null : finances.Max(f => f.FiscalYear);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
@@ -145,30 +147,42 @@ else
 
         new("Becas", "Servicios Estudiantiles", Icons.Material.Filled.Savings,
             _scholarships, "becas asignadas",
-            _scholarships == 0
-                ? "Sin becas capturadas todavía."
-                : "Alimentan la gráfica por fuente y el capítulo de becas del informe.",
+            _scholarships switch
+            {
+                null => "No se pudo leer el padrón de becas.",
+                0 => "Sin becas capturadas todavía.",
+                _ => "Alimentan la gráfica por fuente y el capítulo de becas del informe.",
+            },
             "/datacapture/scholarships", "/datacapture/scholarships/consult"),
 
         new("Titulación", "Control Escolar", Icons.Material.Filled.WorkspacePremium,
             _titulations, "procesos registrados",
-            _titulations == 0
-                ? "Sin titulaciones capturadas todavía."
-                : "Sólo de alumnos egresados: así la eficiencia de titulación es real.",
+            _titulations switch
+            {
+                null => "No se pudo leer el registro de titulación.",
+                0 => "Sin titulaciones capturadas todavía.",
+                _ => "Sólo de alumnos egresados: así la eficiencia de titulación es real.",
+            },
             "/datacapture/titulation", "/datacapture/titulation/consult"),
 
         new("Extensión y vinculación", "Vinculación", Icons.Material.Filled.Diversity3,
             _outreachProjects, "proyectos registrados",
-            _outreachProjects == 0
-                ? "Sin proyectos capturados todavía."
-                : $"{_outreachHours:N0} horas acreditadas en total",
+            _outreachProjects switch
+            {
+                null => "No se pudo leer los proyectos de vinculación.",
+                0 => "Sin proyectos capturados todavía.",
+                _ => $"{_outreachHours:N0} horas acreditadas en total",
+            },
             "/datacapture/extension", "/datacapture/extension/consult"),
 
         new("Finanzas", "Administración y Finanzas", Icons.Material.Filled.Payments,
             _fiscalYears, "ejercicios capturados",
-            _lastFiscalYear is { } year
-                ? $"El más reciente es el ejercicio {year}"
-                : "Sin ejercicios capturados todavía.",
+            (_fiscalYears, _lastFiscalYear) switch
+            {
+                (null, _) => "No se pudo leer el resumen financiero.",
+                (_, { } year) => $"El más reciente es el ejercicio {year}",
+                _ => "Sin ejercicios capturados todavía.",
+            },
             "/datacapture/finance", "/datacapture/finance/consult"),
     ];
 }

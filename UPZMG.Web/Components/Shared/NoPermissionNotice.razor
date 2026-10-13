@@ -1,3 +1,6 @@
+@using System.Security.Claims
+@inject ApiClient Api
+
 @*
     Shown when the signed-in account may not open a screen.
 
@@ -5,15 +8,64 @@
     redirected to /sin-permiso, and an interactive navigation inside the app is stopped by the
     router. Before this, both ended on the dashboard without a word, which reads like a broken
     link instead of a decision somebody can change.
+
+    It also has to tell apart "you do not have this permission" from "we could not check": the
+    permissions come from the API, so an API that does not answer looks exactly like a refusal
+    from inside the authorisation handler. Saying "your area does not have access" to somebody
+    who does have it is the same kind of false statement this screen exists to avoid, so the
+    notice asks once whether the session can be read at all.
 *@
 
 <SectionCard FullHeight="false">
-    <EmptyState Icon="@Icons.Material.Filled.Lock"
-                Title="Esta pantalla no está disponible para tu área"
-                Description="Tu cuenta no tiene el permiso que esta pantalla requiere. Si lo necesitas para tu trabajo, pídelo a quien administra los usuarios: los permisos se asignan por rol y el cambio aplica de inmediato.">
-        <MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/dashboard"
-                   StartIcon="@Icons.Material.Filled.SpaceDashboard">
-            Ir al Tablero de Control
-        </MudButton>
-    </EmptyState>
+    @if (_unverified)
+    {
+        <EmptyState Icon="@Icons.Material.Filled.CloudOff"
+                    Title="No pudimos verificar tus permisos"
+                    Description="El servicio que resuelve los permisos no respondió, así que esta pantalla no puede decir si tu cuenta tiene acceso o no. Vuelve a intentarlo en un momento; si sigue así, avisa a Tecnologías.">
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="CheckAsync"
+                       StartIcon="@Icons.Material.Filled.Refresh">
+                Volver a intentar
+            </MudButton>
+        </EmptyState>
+    }
+    else
+    {
+        <EmptyState Icon="@Icons.Material.Filled.Lock"
+                    Title="Esta pantalla no está disponible para tu área"
+                    Description="Tu cuenta no tiene el permiso que esta pantalla requiere. Si lo necesitas para tu trabajo, pídelo a quien administra los usuarios: los permisos se asignan por rol y el cambio aplica de inmediato.">
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/dashboard"
+                       StartIcon="@Icons.Material.Filled.SpaceDashboard">
+                Ir al Tablero de Control
+            </MudButton>
+        </EmptyState>
+    }
 </SectionCard>
+
+@code {
+    private bool _unverified;
+
+    protected override Task OnInitializedAsync() => CheckAsync();
+
+    private async Task CheckAsync()
+    {
+        var user = (await AuthState).User;
+        if (!Guid.TryParse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId))
+        {
+            _unverified = false;
+            return;
+        }
+
+        try
+        {
+            await Api.GetPermissionsSnapshotAsync(userId);
+            _unverified = false;
+        }
+        catch
+        {
+            // The same unreachable service the authorisation handler just failed against.
+            _unverified = true;
+        }
+    }
+
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = null!;
+}
