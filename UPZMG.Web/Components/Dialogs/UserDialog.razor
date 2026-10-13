@@ -4,6 +4,14 @@
 *@
 <MudDialog>
     <DialogContent>
+        @* Why the previous attempt was refused, above the fields it refers to. *@
+        @if (!string.IsNullOrWhiteSpace(Error))
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true" Class="mb-4">
+                @Error
+            </MudAlert>
+        }
+
         <MudForm @ref="_form">
             <MudTextField @bind-Value="_model.UserName" Label="Nombre completo"
                           Required="true" RequiredError="El nombre es obligatorio."
@@ -56,6 +64,9 @@
     [Parameter] public UserFormViewModel Model { get; set; } = new();
     [Parameter] public IReadOnlyList<Role> Roles { get; set; } = Array.Empty<Role>();
 
+    /// <summary>Why the previous attempt was refused, shown above the actions.</summary>
+    [Parameter] public string? Error { get; set; }
+
     private MudForm _form = null!;
     private UserFormViewModel _model = new();
 
@@ -69,8 +80,9 @@
             Email = Model.Email,
             RoleId = Model.RoleId,
             IsActive = Model.IsActive,
-            // Never round-trip the stored password into the form.
-            Password = string.Empty,
+            // Carried over when the dialog reopens after a refused save, so nothing typed is
+            // lost; it is still never read back from the database.
+            Password = Model.Password,
         };
     }
 

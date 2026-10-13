@@ -234,18 +234,27 @@
             return;
         }
 
-        var parameters = new DialogParameters<UserDialog>
-        {
-            { x => x.Model, model },
-            { x => x.Roles, _roles },
-        };
         var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true };
+        var pending = model;
+        string? error = null;
 
-        var dialog = await DialogService.ShowAsync<UserDialog>(title, parameters, options);
-        var result = await dialog.Result;
-
-        if (result is not null && !result.Canceled && result.Data is UserFormViewModel saved)
+        // The dialog closes before the save is attempted, so a refusal used to leave the
+        // administrator with a snackbar and an empty form: everything typed, password included,
+        // had to be entered again. It is reopened with the same values and the reason instead.
+        while (true)
         {
+            var parameters = new DialogParameters<UserDialog>
+            {
+                { x => x.Model, pending },
+                { x => x.Roles, _roles },
+                { x => x.Error, error },
+            };
+
+            var dialog = await DialogService.ShowAsync<UserDialog>(title, parameters, options);
+            var result = await dialog.Result;
+
+            if (result is null || result.Canceled || result.Data is not UserFormViewModel saved) return;
+
             var requesterKey = await _securityService.GetRequesterKeyAsync();
             if (requesterKey == Guid.Empty) return;
 
@@ -280,13 +289,15 @@
             }
             catch (Exception ex)
             {
-                Snackbar.Add(ex.Message, Severity.Error);
-                return;
+                pending = saved;
+                error = ex.Message;
+                continue;
             }
 
             Snackbar.Add(created
                 ? $"Usuario '{saved.Email}' creado correctamente."
                 : $"Usuario '{saved.Email}' actualizado correctamente.", Severity.Success);
+            return;
         }
     }
 }
