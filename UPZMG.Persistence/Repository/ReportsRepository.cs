@@ -12,9 +12,11 @@ public class ReportsRepository(AppDBContext db)
     {
         if (userId == Guid.Empty) return [];
 
+        // The board narrative lives in the same table but is not a format: listed here it showed
+        // up among the captures as "InformeJunta", with a button that opened it in the wrong editor.
         var rows = await db.Reports
             .AsNoTracking()
-            .Where(r => r.CreatedBy == userId)
+            .Where(r => r.CreatedBy == userId && r.ReportType != BoardReportRepository.NarrativeReportType)
             .OrderByDescending(r => r.LastModified)
             .Select(r => new { r.Id, r.ReportType, r.TemplateVersion, r.Status, r.DateCreated, r.LastModified })
             .ToListAsync();
@@ -32,7 +34,8 @@ public class ReportsRepository(AppDBContext db)
 
         var report = await db.Reports
             .AsNoTracking()
-            .FirstOrDefaultAsync(r => r.Id == reportId && r.CreatedBy == userId);
+            .FirstOrDefaultAsync(r => r.Id == reportId && r.CreatedBy == userId
+                && r.ReportType != BoardReportRepository.NarrativeReportType);
 
         return report is null
             ? null

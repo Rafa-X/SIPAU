@@ -78,7 +78,8 @@ else
             </Filters>
         </DataToolbar>
 
-        <MudDataGrid T="ClassGroupListItem" Items="Filtered" Hover="true" Dense="true" Elevation="0" SortMode="SortMode.Single">
+        <MudDataGrid T="ClassGroupListItem" Items="Filtered" Hover="true" Dense="true" Elevation="0"
+                     RowsPerPage="25" SortMode="SortMode.Single">
             <Columns>
                 <PropertyColumn Property="x => x.Course" Title="Materia" />
                 <PropertyColumn Property="x => x.Career" Title="Carrera" />
@@ -93,6 +94,9 @@ else
                         }
                     </CellTemplate>
                 </TemplateColumn>
+                <TemplateColumn Title="Inscritos" SortBy="x => x.Enrolled">
+                    <CellTemplate>@context.Item.Enrolled / @context.Item.Capacity</CellTemplate>
+                </TemplateColumn>
                 <TemplateColumn Title="" Sortable="false" CellClass="sipau-cell-end">
                     <CellTemplate>
                         <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
@@ -100,14 +104,16 @@ else
                                    Href="@($"/datacapture/class-groups/{context.Item.Id}/editar")">Corregir</MudButton>
                     </CellTemplate>
                 </TemplateColumn>
-                <TemplateColumn Title="Inscritos" SortBy="x => x.Enrolled">
-                    <CellTemplate>@context.Item.Enrolled / @context.Item.Capacity</CellTemplate>
-                </TemplateColumn>
             </Columns>
             <NoRecordsContent>
                 <EmptyState Icon="@Icons.Material.Filled.SearchOff" Title="Sin coincidencias"
                             Description="Ningún grupo coincide con la búsqueda o los filtros aplicados." />
             </NoRecordsContent>
+            <PagerContent>
+                <MudDataGridPager T="ClassGroupListItem" PageSizeOptions="@(new[] { 25, 50, 100 })"
+                                  RowsPerPageString="Filas por página"
+                                  InfoFormat="{first_item}–{last_item} de {all_items}" />
+            </PagerContent>
         </MudDataGrid>
     </SectionCard>
 }

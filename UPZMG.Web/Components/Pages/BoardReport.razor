@@ -52,7 +52,8 @@ else
                         <div class="sipau-risk-sub mt-2">
                             @if (cycle.SubmittedFormats < cycle.TotalFormats)
                             {
-                                <text>Faltan @(cycle.TotalFormats - cycle.SubmittedFormats) por enviar; esos capítulos saldrán marcados como pendientes.</text>
+                                var pending = cycle.TotalFormats - cycle.SubmittedFormats;
+                                <text>@(pending == 1 ? "Falta 1 por enviar; ese capítulo saldrá marcado como pendiente." : $"Faltan {pending} por enviar; esos capítulos saldrán marcados como pendientes.")</text>
                             }
                             else
                             {

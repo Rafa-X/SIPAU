@@ -31,7 +31,8 @@ else
         <DataToolbar @bind-Search="_search" Placeholder="Buscar por nombre o número de empleado…"
                      Count="Filtered.Count" Total="_teachers.Count" OnExport="ExportAsync" />
 
-        <MudDataGrid T="TeacherListItem" Items="Filtered" Hover="true" Dense="true" Elevation="0" SortMode="SortMode.Single">
+        <MudDataGrid T="TeacherListItem" Items="Filtered" Hover="true" Dense="true" Elevation="0"
+                     RowsPerPage="25" SortMode="SortMode.Single">
             <Columns>
                 <PropertyColumn Property="x => x.EmployeeNumber" Title="Número" />
                 <PropertyColumn Property="x => x.FullName" Title="Nombre" />
@@ -52,6 +53,11 @@ else
                 <EmptyState Icon="@Icons.Material.Filled.SearchOff" Title="Sin coincidencias"
                             Description="Ningún docente coincide con la búsqueda." />
             </NoRecordsContent>
+            <PagerContent>
+                <MudDataGridPager T="TeacherListItem" PageSizeOptions="@(new[] { 25, 50, 100 })"
+                                  RowsPerPageString="Filas por página"
+                                  InfoFormat="{first_item}–{last_item} de {all_items}" />
+            </PagerContent>
         </MudDataGrid>
     </SectionCard>
 }
