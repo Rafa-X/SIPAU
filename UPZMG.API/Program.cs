@@ -39,6 +39,7 @@ try
     builder.Services.AddSingleton(new ReportTemplateStore(
         Path.Combine(builder.Environment.ContentRootPath, "ReportTemplates")));
     builder.Services.AddScoped<IntelligenceRepository>();
+    builder.Services.AddScoped<AlertsRepository>();
     builder.Services.AddScoped<BoardReportRepository>();
     builder.Services.AddScoped<InstitutionRepository>();
     builder.Services.AddScoped<InfraestructureRepository>();

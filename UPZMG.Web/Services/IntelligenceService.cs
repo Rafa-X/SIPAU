@@ -23,6 +23,18 @@ public sealed class IntelligenceService(
     public async Task<IReadOnlyList<AnomalyAlert>?> GetAnomaliesAsync() =>
         await GetOrDefaultAsync<List<AnomalyAlert>>("intelligence/anomalies");
 
+    public Task<AlertInbox?> GetAlertInboxAsync() =>
+        GetOrDefaultAsync<AlertInbox>("intelligence/alerts");
+
+    public Task<AlertInbox?> MarkAlertsSeenAsync(IReadOnlyCollection<string> keys) =>
+        PostAlertsAsync("intelligence/alerts/seen", key => new MarkAlertsSeen { RequesterKey = key, Keys = [.. keys] });
+
+    public Task<AlertInbox?> DismissAlertsAsync(IReadOnlyCollection<string> keys) =>
+        PostAlertsAsync("intelligence/alerts/dismiss", key => new DismissAlerts { RequesterKey = key, Keys = [.. keys] });
+
+    public Task<AlertInbox?> RestoreAlertsAsync() =>
+        PostAlertsAsync("intelligence/alerts/restore", key => new RestoreAlerts { RequesterKey = key });
+
     public async Task<IReadOnlyList<PeriodStats>?> GetHistoryAsync() =>
         await GetOrDefaultAsync<List<PeriodStats>>("intelligence/history");
 
@@ -46,6 +58,22 @@ public sealed class IntelligenceService(
         }
 
         logger.LogWarning("Retraining the dropout model failed with {Status}", response.StatusCode);
+        return null;
+    }
+
+    private async Task<AlertInbox?> PostAlertsAsync<TRequest>(string path, Func<Guid, TRequest> build)
+    {
+        var requesterKey = await securityService.GetRequesterKeyAsync();
+
+        var response = await securityService.SendPostRequestAsync<TRequest, AlertInbox>(
+            path, JsonSerializer.Serialize(build(requesterKey)), requesterKey);
+
+        if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
+        {
+            return JsonSerializer.Deserialize<AlertInbox>(response.Result, ResponseOptions);
+        }
+
+        logger.LogWarning("Alert request {Path} failed with {Status}", path, response.StatusCode);
         return null;
     }
 

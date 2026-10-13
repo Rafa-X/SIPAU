@@ -22,6 +22,34 @@ namespace UPZMG.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("UPZMG.Persistence.Models.AlertReceipt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AlertKey")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTime?>("DismissedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("SeenAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "AlertKey")
+                        .IsUnique();
+
+                    b.ToTable("alertReceipts", (string)null);
+                });
+
             modelBuilder.Entity("UPZMG.Persistence.Models.AnnualFinance", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1189,6 +1217,15 @@ namespace UPZMG.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("WithdrawReason");
+                });
+
+            modelBuilder.Entity("UPZMG.Persistence.Models.AlertReceipt", b =>
+                {
+                    b.HasOne("UPZMG.Persistence.Models.SystemUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("UPZMG.Persistence.Models.ClassGroups", b =>

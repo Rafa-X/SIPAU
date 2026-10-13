@@ -320,6 +320,33 @@ public class IntelligenceEngineTests
     }
 
     [Fact]
+    public void Anomalies_CarryAKeyThatSurvivesACorrectionOfTheFigures()
+    {
+        var first = IntelligenceEngine.DetectAnomalies(History([(500, 85, 5), (505, 84, 5), (510, 86, 5), (515, 70, 5)]));
+        var corrected = IntelligenceEngine.DetectAnomalies(History([(500, 85, 5), (505, 84, 5), (510, 86, 5), (515, 71, 5)]));
+
+        var before = Assert.Single(first, a => a.Title.StartsWith("Aprobación"));
+        var after = Assert.Single(corrected, a => a.Title.StartsWith("Aprobación"));
+
+        // The detail changed with the figure; what the alert is about did not. A mark a person
+        // left on it has to hold.
+        Assert.NotEqual(before.Detail, after.Detail);
+        Assert.Equal(before.Key, after.Key);
+        Assert.Contains("2021 Ene-Abr", before.Key);
+    }
+
+    [Fact]
+    public void Anomalies_HaveDistinctKeys()
+    {
+        var alerts = IntelligenceEngine.DetectAnomalies(History(
+            [(500, 85, 5), (900, 85, 5), (500, 85, 5), (900, 85, 5), (100, 85, 5), (900, 85, 5), (500, 60, 90)]));
+
+        Assert.NotEmpty(alerts);
+        Assert.All(alerts, a => Assert.False(string.IsNullOrWhiteSpace(a.Key)));
+        Assert.Equal(alerts.Count, alerts.Select(a => a.Key).Distinct().Count());
+    }
+
+    [Fact]
     public void Anomalies_AreRankedAndCapped()
     {
         var alerts = IntelligenceEngine.DetectAnomalies(History(

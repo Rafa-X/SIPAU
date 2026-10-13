@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using UPZMG.Persistence.Repository;
@@ -12,8 +13,15 @@ namespace UPZMG.Api.Controllers;
 [Route("intelligence")]
 [RequirePermission(AppPermissions.ReadIndicators)]
 public class IntelligenceController(
-    IntelligenceRepository intelligenceRepository) : ControllerBase
+    IntelligenceRepository intelligenceRepository,
+    AlertsRepository alertsRepository) : ControllerBase
 {
+    // Whose alerts they are always comes from the token, never from the request body.
+    private Guid CurrentUserId =>
+        Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub"), out var id)
+            ? id
+            : Guid.Empty;
+
     // Institutional series are shown on the dashboard, which every area sees.
 
     // Per-student risk is personal data: only the areas that follow up on students.
@@ -34,6 +42,26 @@ public class IntelligenceController(
     // Statistical alerts over the enrolment, pass and withdrawal series
     public async Task<ActionResult<IReadOnlyList<AnomalyAlert>>> GetAnomalies() =>
         Ok(await intelligenceRepository.GetAnomaliesAsync());
+
+    [HttpGet("alerts")]
+    // The same alerts as the signed-in user left them: dismissed ones out, seen ones marked
+    public async Task<ActionResult<AlertInbox>> GetAlerts() =>
+        CurrentUserId == Guid.Empty ? Unauthorized() : Ok(await alertsRepository.GetInboxAsync(CurrentUserId));
+
+    [HttpPost("alerts/seen")]
+    // Marks alerts as seen for the signed-in user
+    public async Task<ActionResult<AlertInbox>> MarkAlertsSeen([FromBody] MarkAlertsSeen request) =>
+        CurrentUserId == Guid.Empty ? Unauthorized() : Ok(await alertsRepository.MarkSeenAsync(CurrentUserId, request.Keys));
+
+    [HttpPost("alerts/dismiss")]
+    // Takes alerts out of the signed-in user's list; everybody else keeps them
+    public async Task<ActionResult<AlertInbox>> DismissAlerts([FromBody] DismissAlerts request) =>
+        CurrentUserId == Guid.Empty ? Unauthorized() : Ok(await alertsRepository.DismissAsync(CurrentUserId, request.Keys));
+
+    [HttpPost("alerts/restore")]
+    // Brings back what the signed-in user dismissed
+    public async Task<ActionResult<AlertInbox>> RestoreAlerts([FromBody] RestoreAlerts request) =>
+        CurrentUserId == Guid.Empty ? Unauthorized() : Ok(await alertsRepository.RestoreAsync(CurrentUserId));
 
     [HttpGet("dropout")]
     [RequirePermission(AppPermissions.ReadRisk)]
