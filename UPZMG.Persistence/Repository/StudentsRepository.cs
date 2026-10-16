@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using UPZMG.Implementations.Charts;
 using UPZMG.Implementations.DataCapture;
@@ -8,8 +7,6 @@ namespace UPZMG.Persistence.Repository;
 
 public class StudentsRepository(AppDBContext db)
 {
-    private static readonly PasswordHasher<SystemUser> PasswordHasher = new();
-
     public async Task<Student> CreateStudentAsync(CreateStudent request)
     {
         var existEnrollment = await db.Students.AnyAsync(s => s.EnrollmentNumber == request.EnrollmentNumber);
@@ -24,9 +21,7 @@ public class StudentsRepository(AppDBContext db)
             throw new InvalidOperationException($"Ya existe un alumno con la CURP '{request.CURP}'.");
         }
 
-        var matchedLanguageIds = await db.IndigenousLanguages
-            .Where(l => l.Language != null && request.IndigenousLanguages.Contains(l.Language))
-            .Select(l => l.Id).Distinct().ToListAsync();
+        var matchedLanguageIds = await LanguageCatalogue.ResolveAsync(db, request.IndigenousLanguages);
         
         var student = new Student
         {
@@ -123,7 +118,11 @@ public class StudentsRepository(AppDBContext db)
         if (await db.Students.AnyAsync(s => s.Id != request.Id && s.EnrollmentNumber == request.EnrollmentNumber))
             throw new InvalidOperationException($"Ya existe otro alumno con la matrícula '{request.EnrollmentNumber}'.");
 
-        if (await db.Students.AnyAsync(s => s.Id != request.Id && s.CURP == request.CURP))
+        // Only a CURP that was given has to be unique: a blank one is allowed for many students,
+        // as on capture. Checking the blank too refused every correction once two students
+        // had no CURP.
+        if (!string.IsNullOrWhiteSpace(request.CURP)
+            && await db.Students.AnyAsync(s => s.Id != request.Id && s.CURP == request.CURP))
             throw new InvalidOperationException($"Ya existe otro alumno con la CURP '{request.CURP}'.");
 
         student.EnrollmentNumber = request.EnrollmentNumber;
@@ -150,9 +149,7 @@ public class StudentsRepository(AppDBContext db)
         var previous = db.IndigenousLanguagesSpeakers.Where(s => s.SpeakerId == request.Id);
         db.IndigenousLanguagesSpeakers.RemoveRange(previous);
 
-        var languageIds = await db.IndigenousLanguages
-            .Where(l => l.Language != null && request.IndigenousLanguages.Contains(l.Language))
-            .Select(l => l.Id).Distinct().ToListAsync();
+        var languageIds = await LanguageCatalogue.ResolveAsync(db, request.IndigenousLanguages);
 
         foreach (var languageId in languageIds)
         {

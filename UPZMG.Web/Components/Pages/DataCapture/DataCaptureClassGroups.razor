@@ -14,7 +14,7 @@
 
 <PageTitle>@(IsEditing ? "Corregir grupo" : "Captura de Grupos de Clase") — SIPAU</PageTitle>
 
-<PageHeader Eyebrow="Captura de datos"
+<PageHeader
             Title="@(IsEditing ? "Corregir grupo de clase" : "Grupos de Clase")"
             Subtitle="@(IsEditing ? "Al guardar se revisa otra vez que el espacio no se empalme" : "Registra los grupos, responsables, espacios y horarios del periodo activo")"
             BackHref="@(IsEditing ? "/datacapture/class-groups/consult" : "/datacapture")" />
@@ -99,10 +99,11 @@ else
             var item = _model.Schedules[idx];
             <MudGrid Class="align-center mb-1">
                 <MudItem xs="12" sm="4" md="3">
-                    <MudSelect T="Days?" @bind-Value="item.Day" Label="Día" Required="true" RequiredError="Selecciona un día.">
+                    <MudSelect T="Days?" @bind-Value="item.Day" Label="Día" Required="true" RequiredError="Selecciona un día."
+                               ToStringFunc="@(day => day?.Label() ?? string.Empty)">
                         @foreach (var day in Enum.GetValues<Days>())
                         {
-                            <MudSelectItem T="Days?" Value="@day">@day</MudSelectItem>
+                            <MudSelectItem T="Days?" Value="@day">@day.Label()</MudSelectItem>
                         }
                     </MudSelect>
                 </MudItem>
@@ -222,7 +223,7 @@ else
     {
         var row = new ScheduleItemViewModel
         {
-            Day = Enum.TryParse<Days>(schedule.Day, ignoreCase: true, out var day) ? day : null,
+            Day = DayLabels.Parse(schedule.Day),
         };
         var match = Regex.Match(schedule.Time ?? string.Empty, @"(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})");
         if (!match.Success) return row;
@@ -240,7 +241,6 @@ else
         _model.CareerId = careerId;
         _model.CourseId = null;
         _courses = careerId.HasValue && careerId.Value != Guid.Empty ? await GeneralDataSvc.GetCoursesAsync(careerId.Value) : [];
-        var test = _courses;
     }
 
     private void AddSchedule() => _model.Schedules.Add(new ScheduleItemViewModel());
@@ -269,7 +269,7 @@ else
             }
             if (s.EndTime <= s.StartTime)
             {
-                Snackbar.Add($"En el día {s.Day}, la hora de fin ({FormatTime(s.EndTime)}) debe ser posterior a la hora de inicio ({FormatTime(s.StartTime)}).", Severity.Warning);
+                Snackbar.Add($"En el día {s.Day?.Label()}, la hora de fin ({FormatTime(s.EndTime)}) debe ser posterior a la hora de inicio ({FormatTime(s.StartTime)}).", Severity.Warning);
                 return;
             }
         }
@@ -296,7 +296,8 @@ else
                 Weekhours = weekHours,
                 Schedule = _model.Schedules.Select(s => new Schedule
                 {
-                    Day = s.Day?.ToString() ?? string.Empty,
+                    // Written as the seeded schedules are, "Miércoles", not the member name.
+                    Day = s.Day?.Label() ?? string.Empty,
                     Time = $"{FormatTime(s.StartTime)}-{FormatTime(s.EndTime)} hrs"
                 }).ToList(),
         };

@@ -11,7 +11,7 @@
 
 <PageTitle>@(IsEditing ? "Corregir docente" : "Captura de Docentes") — SIPAU</PageTitle>
 
-<PageHeader Eyebrow="Captura de datos"
+<PageHeader
             Title="@(IsEditing ? "Corregir docente o empleado" : "Captura de Docentes / RRHH")"
             Subtitle="@(IsEditing ? "Los cambios sustituyen lo capturado antes" : "Registro de personal docente y administrativo")"
             BackHref="@(IsEditing ? "/datacapture/teachers/consult" : "/datacapture")" />
@@ -67,8 +67,8 @@ else
         </MudGrid>
         <MudGrid>
             <MudItem md="4">
-                <MudSelect T="Gender" @bind-Value="_model.Gender" Label="Sexo">
-                    @foreach (var g in Enum.GetValues(typeof(Gender)).Cast<Gender>()) { <MudSelectItem T="Gender" Value="@g">@g</MudSelectItem> }
+                <MudSelect T="Gender" @bind-Value="_model.Gender" Label="Sexo" ToStringFunc="@(g => g.Label())">
+                    @foreach (var g in Enum.GetValues(typeof(Gender)).Cast<Gender>()) { <MudSelectItem T="Gender" Value="@g">@g.Label()</MudSelectItem> }
                 </MudSelect>
             </MudItem>
             <MudItem md="4">
@@ -136,9 +136,9 @@ else
                            MultiSelection="true"
                            @bind-SelectedValues="_model.IndigenousLanguages"
                            Placeholder="Selecciona una o varias lenguas">
-                    @foreach (var language in Enum.GetValues(typeof(IndigenousLanguage)).Cast<IndigenousLanguage>())
+                    @foreach (var language in _languages)
                     {
-                        <MudSelectItem T="string" Value="@language.ToString()">@language</MudSelectItem>
+                        <MudSelectItem T="string" Value="@language.Value">@language.Value</MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
@@ -181,17 +181,20 @@ else
     private IReadOnlyList<LookupOption> _maxDegrees = [];
     private IReadOnlyList<LookupOption> _contractTypes = [];
     private IReadOnlyList<LookupOption> _internalAreas = [];
+    private IReadOnlyList<LookupOption> _languages = [];
         
     protected override async Task OnInitializedAsync()
     {
         var maxDegreesTask = _generalService.GetMaxDegreesAsync();
         var contractTypesTask = _generalService.GetContractTypesAsync();
         var internalAreasTask = _generalService.GetInternalAreasAsync();
-        await Task.WhenAll(maxDegreesTask, contractTypesTask, internalAreasTask);
+        var languagesTask = _generalService.GetIndigenousLanguagesAsync();
+        await Task.WhenAll(maxDegreesTask, contractTypesTask, internalAreasTask, languagesTask);
 
         _maxDegrees = await maxDegreesTask;
         _contractTypes = await contractTypesTask;
         _internalAreas = await internalAreasTask;
+        _languages = await languagesTask;
 
         if (Id is { } id) await LoadAsync(id);
     }

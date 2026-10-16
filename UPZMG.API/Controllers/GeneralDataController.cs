@@ -59,4 +59,8 @@ public class GeneralDataController(
     public async Task<ActionResult<List<LookupOption>>> GetFacilities() =>
         Ok(await generalDataRepository.GetFacilitiesAsync());
 
+    [HttpGet("lookups/indigenous-languages")]
+    public async Task<ActionResult<List<LookupOption>>> GetIndigenousLanguages() =>
+        Ok(await generalDataRepository.GetIndigenousLanguagesAsync());
+
 }

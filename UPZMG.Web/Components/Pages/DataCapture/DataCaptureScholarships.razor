@@ -15,7 +15,7 @@
 
 <PageTitle>Captura de Becas — SIPAU</PageTitle>
 
-<PageHeader Eyebrow="Captura de datos" Title="Captura de Becas"
+<PageHeader Title="Captura de Becas"
             Subtitle="Becas asignadas por alumno y periodo" BackHref="/datacapture">
     <Actions>
         <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/datacapture/scholarships/consult"
@@ -105,7 +105,8 @@
         _periods = await periodsTask;
 
         // Periods arrive oldest first; grants are almost always captured for the newest.
-        _periodId = _periods.LastOrDefault()?.Id ?? Guid.Empty;
+        // The active period, not the last one on the calendar, which lies in the future.
+        _periodId = (_periods.FirstOrDefault(p => p.IsActive) ?? _periods.LastOrDefault())?.Id ?? Guid.Empty;
         _programId = _programs.FirstOrDefault()?.Id ?? Guid.Empty;
     }
 

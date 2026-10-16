@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using UPZMG.Shared.Enums;
 using UPZMG.Implementations.DataCapture;
 using UPZMG.Persistence.Models;
 
@@ -62,7 +63,7 @@ public class InfraestructureRepository(AppDBContext db)
         return [.. facilities.Select(f => new FacilityListItem(
             f.Id,
             f.Name,
-            f.Type.ToString(),
+            f.Type.Label(),
             f.SquareMeters,
             f.Capacity,
             f.ComputersInOperation,

@@ -102,9 +102,7 @@ public class EmployeesRepository(AppDBContext db)
         var previous = db.IndigenousLanguagesSpeakers.Where(s => s.SpeakerId == request.Id);
         db.IndigenousLanguagesSpeakers.RemoveRange(previous);
 
-        var languageIds = await db.IndigenousLanguages
-            .Where(l => l.Language != null && request.IndigenousLanguages.Contains(l.Language))
-            .Select(l => l.Id).Distinct().ToListAsync();
+        var languageIds = await LanguageCatalogue.ResolveAsync(db, request.IndigenousLanguages);
 
         foreach (var languageId in languageIds)
         {
@@ -138,9 +136,7 @@ public class EmployeesRepository(AppDBContext db)
         if (existCurp)
             throw new InvalidOperationException($"Ya existe un empleado con la CURP '{request.Curp}'.");
 
-        var matchedLanguageIds = await db.IndigenousLanguages
-            .Where(l => l.Language != null && request.IndigenousLanguages.Contains(l.Language))
-            .Select(l => l.Id).Distinct().ToListAsync();
+        var matchedLanguageIds = await LanguageCatalogue.ResolveAsync(db, request.IndigenousLanguages);
 
         var employee = new Employee
         {
