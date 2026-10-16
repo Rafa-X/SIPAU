@@ -1,0 +1,27 @@
+@page "/no-encontrada"
+@attribute [Authorize]
+@* Rendered by the router as its not-found page, outside the route view that applies the
+   default layout, so it names its own. *@
+@layout MainLayout
+
+@*
+    What an address that leads nowhere shows. A full page load of an unknown address used to end
+    in the browser's own empty 404, because the router's NotFound fragment only applies while
+    navigating inside the running app; the status-code middleware now renders this page instead.
+*@
+
+<PageTitle>Página no encontrada — SIPAU</PageTitle>
+
+<PageHeader Title="Página no encontrada"
+            Subtitle="La dirección no corresponde a ninguna pantalla del sistema" />
+
+<SectionCard FullHeight="false">
+    <EmptyState Icon="@Icons.Material.Filled.SearchOff"
+                Title="No hay nada en esta dirección"
+                Description="Puede que el enlace sea antiguo o que la dirección tenga un error. Las pantallas a las que tienes acceso están en el menú.">
+        <MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/dashboard"
+                   StartIcon="@Icons.Material.Filled.SpaceDashboard">
+            Ir al Tablero de Control
+        </MudButton>
+    </EmptyState>
+</SectionCard>

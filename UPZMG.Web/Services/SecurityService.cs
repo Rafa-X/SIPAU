@@ -11,9 +11,10 @@ using UPZMG.Persistence.Models;
 namespace UPZMG.Web.Services;
 
 public sealed class SecurityService(
-    IHttpClientFactory httpClientFactory, 
-    ApiTokenService apiTokenService, 
-    AuthenticationStateProvider authState) : ISecurityService
+    IHttpClientFactory httpClientFactory,
+    ApiTokenService apiTokenService,
+    AuthenticationStateProvider authState,
+    PermissionCacheEpoch permissionCache) : ISecurityService
 {
     private static readonly JsonSerializerOptions ResponseOptions = new(JsonSerializerDefaults.Web);
 
@@ -221,7 +222,10 @@ public sealed class SecurityService(
         var response = await SendPostRequestAsync<DeleteRole, object>(
             "roles/delete", JsonSerializer.Serialize(request), request.RequesterKey);
 
-        return response.StatusCode == HttpStatusCode.OK;
+        if (response.StatusCode != HttpStatusCode.OK) return false;
+
+        permissionCache.Invalidate();
+        return true;
     }
 
     public async Task<List<Guid>> GetRolePermissions(GetRolePermissions request)
@@ -241,7 +245,12 @@ public sealed class SecurityService(
         var response = await SendPostRequestAsync<SetRolePermissions, object>(
             $"roles/set-permissions", JsonSerializer.Serialize(request), request.RequesterKey);
 
-        if (response.StatusCode == HttpStatusCode.OK) return true;
+        if (response.StatusCode == HttpStatusCode.OK)
+        {
+            // The people of this role are let in, or kept out, on their next page.
+            permissionCache.Invalidate();
+            return true;
+        }
 
         // The API refuses, for instance, withdrawing the last grant of "administrar usuarios";
         // swallowing that would announce a change the system did not make.
@@ -296,6 +305,7 @@ public sealed class SecurityService(
 
         if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
         {
+            permissionCache.Invalidate();
             return JsonSerializer.Deserialize<CatalogueRestoreResult>(response.Result, ResponseOptions)
                 ?? new CatalogueRestoreResult(0, 0, 0);
         }
@@ -308,7 +318,10 @@ public sealed class SecurityService(
         var response = await SendPostRequestAsync<DeletePermission, object>(
             "permissions/delete", JsonSerializer.Serialize(request), request.RequesterKey);
 
-        return response.StatusCode == HttpStatusCode.OK;
+        if (response.StatusCode != HttpStatusCode.OK) return false;
+
+        permissionCache.Invalidate();
+        return true;
     }
 #endregion
 }

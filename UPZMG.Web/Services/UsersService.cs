@@ -11,6 +11,7 @@ public sealed record UserSaveResult(bool Success, SystemUser? User, string? Erro
 
 public sealed class UsersService(
     ISecurityService securityService,
+    PermissionCacheEpoch permissionCache,
     ILogger<UsersService> logger)
 {
     // API serializes responses using camelCase; match it here so property names bind correctly.
@@ -111,7 +112,11 @@ public sealed class UsersService(
     private UserSaveResult Outcome(SecurityService.DataResponse response, string fallback)
     {
         if (response.Sucess && Read(response) is { } user && user.Id != Guid.Empty)
+        {
+            // A new role or a suspension applies on the person's next page.
+            permissionCache.Invalidate();
             return new UserSaveResult(true, user, null);
+        }
 
         logger.LogWarning("A user change was refused with {Status}", response.StatusCode);
 

@@ -74,6 +74,7 @@ try
     // Screens are gated by permission, like the API endpoints, instead of by role name.
     builder.Services.AddSingleton<IAuthorizationPolicyProvider, WebPermissionPolicyProvider>();
     builder.Services.AddScoped<IAuthorizationHandler, WebPermissionHandler>();
+    builder.Services.AddSingleton<PermissionCacheEpoch>();
 
     // Bridge the cookie principal into Blazor's auth state.
     builder.Services.AddHttpContextAccessor();
@@ -110,6 +111,10 @@ try
     }
 
     app.UseHttpsRedirection();
+
+    // An address that matches nothing renders the app's own "no encontrada" page with its 404
+    // status, instead of the browser's empty error page.
+    app.UseStatusCodePagesWithReExecute("/no-encontrada", createScopeForStatusCodePages: true);
 
     // Three headers that need no tuning against the deployment, and a cache rule for the
     // documents that carry student data. A Content-Security-Policy is deliberately NOT set
