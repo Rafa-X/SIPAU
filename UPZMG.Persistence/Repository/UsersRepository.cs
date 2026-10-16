@@ -204,12 +204,6 @@ public class UsersRepository(AppDBContext db)
         new(user.Id, user.EmployeeId, user.UserName, user.Email, user.IsActive, user.LastLogin,
             user.Role?.Id, user.Role?.Name);
 
-    public async Task<UserView> GetResponseAsync(Guid userId)
-    {
-        var user = await GetSystemUserByIdAsync(userId);
-        return ToResponse(user);
-    }
-
     public async Task<SystemUser> GetSystemUserByEmailAsync(string email)
     {
         return await (

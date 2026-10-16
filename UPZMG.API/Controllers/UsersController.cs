@@ -12,18 +12,8 @@ namespace UPZMG.Api.Controllers;
 [ApiController]
 [Route("users")]
 [RequirePermission(AppPermissions.ManageUsers)]
-public class UsersController(SecurityRepository securityRepository, UsersRepository usersRepository) : ControllerBase
+public class UsersController(UsersRepository usersRepository) : ControllerBase
 {
-    private async Task<bool> ValidatePermissions<T>(T request)
-    {
-        var requester_key = typeof(T).GetProperty("RequesterKey")?.GetValue(request) as Guid? 
-            ?? throw new UnauthorizedAccessException("RequesterKey is missing or invalid.");
-        var required = new List<string> { typeof(T).Name, "FullAccess", "ServiceAccess" };
-        var authenticate = await securityRepository.CheckPermissions(requester_key, required);
-        return authenticate.Success;
-    }
-
-
     // The account acting always comes from the token, never from the request body.
     private Guid CurrentUserId =>
         Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub"), out var id)
@@ -49,7 +39,6 @@ public class UsersController(SecurityRepository securityRepository, UsersReposit
     // Every user, suspended ones included, so an administrator can restore them
     public async Task<IActionResult> GetAllUsers([FromBody] GetAllUsers request)
     {
-        //if (!await ValidatePermissions(request)) return Unauthorized();
         var users = await usersRepository.GetAllUsersAsync();
 
         return Ok(users.Select(UsersRepository.ToResponse));

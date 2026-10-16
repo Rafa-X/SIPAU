@@ -20,7 +20,6 @@ public sealed record TeachersDistribution(
     int Teachers,
     IReadOnlyList<ChartCategory> ByDegree,
     IReadOnlyList<ChartCategory> BySeniority);
-public sealed record GroupDistributionCategory(string Label, int Groups, int Enrolled, int Capacity);
 /// <summary>Active students by programme, split by sex, as the 911 and SII formats require.</summary>
 public sealed record GenderDistribution(
     IReadOnlyList<string> Careers,

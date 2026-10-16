@@ -24,13 +24,3 @@ public class SystemUser
     [NotMapped] // Not mapped to database, but usable during runtime.
     public Role? Role { get; set; }
 }
-
-public class UserResponse
-{
-    public SystemUser User { get; set; } = null!;
-    public Guid RoleId { get; set; }
-    public List<string> Permissions { get; set; } = [];
-    public List<string> ReportsPermissions { get; set; } = [];
-    public string StatusMessage { get; set; } = string.Empty;
-    public bool Success { get; set; }
-}

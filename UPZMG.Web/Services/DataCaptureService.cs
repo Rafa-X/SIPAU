@@ -14,9 +14,7 @@ public sealed class DataCaptureService(ISecurityService securityService): IDataC
     private static readonly JsonSerializerOptions ResponseOptions = new(JsonSerializerDefaults.Web);
 
   
-    public IReadOnlyList<string> ContractTypes { get; } = new[] { "Tiempo completo", "Medio tiempo", "Asignatura / Honorarios" };
 
-    public IReadOnlyList<string> SpaceUseTypes { get; } = new[] { "Aula", "Laboratorio", "Taller", "Oficina", "Biblioteca", "Área común" };
 
     public IReadOnlyList<string> Sectors { get; } = new[] { "Público", "Privado", "Social" };
 

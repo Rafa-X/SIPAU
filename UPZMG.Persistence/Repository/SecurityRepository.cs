@@ -38,24 +38,6 @@ public class SecurityRepository(AppDBContext db)
         return [.. names];
     }
 
-    public async Task<UserResponse> CheckPermissions(Guid? requesterKey, List<string> required)
-    {
-        if (requesterKey == null || requesterKey == Guid.Empty)
-            throw new ArgumentException("Requester key cannot be null or empty.", nameof(requesterKey));
-
-        var permissions = await GetEffectivePermissionsAsync(requesterKey.Value);
-        var response = new UserResponse();
-
-        if (!permissions.Overlaps(required))
-        {
-            response.StatusMessage = "Access Denied: User does not have the required permissions.";
-            return response;
-        }
-
-        response.Success = true;
-        return response;
-    }
-
     /// <summary>
     /// Everything a user may do, for the permissions snapshot. The two collections are queried
     /// separately on purpose: joining them dropped every ordinary permission of a role that had

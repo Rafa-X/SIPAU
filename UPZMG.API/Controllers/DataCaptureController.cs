@@ -12,8 +12,7 @@ namespace UPZMG.Api.Controllers;
 [Route("data-capture")]
 [Authorize]
 public class DataCaptureController(
-    SecurityRepository securityRepository, 
-    EmployeesRepository employeesRepository, 
+    EmployeesRepository employeesRepository,  
     StudentsRepository studentsRepository,
     ClassGroupsRepository classGroupsRepository,
     InfraestructureRepository infraestructureRepository,
@@ -28,22 +27,11 @@ public class DataCaptureController(
             ? id
             : Guid.Empty;
 
-    private async Task<bool> ValidatePermissions<T>(T request)
-    {
-        var requester_key = typeof(T).GetProperty("RequesterKey")?.GetValue(request) as Guid? 
-            ?? throw new UnauthorizedAccessException("RequesterKey is missing or invalid.");
-        var required = new List<string> { typeof(T).Name, "FullAccess", "ServiceAccess" };
-        var authenticate = await securityRepository.CheckPermissions(requester_key, required);
-        return authenticate.Success;
-    }
-
-
     [HttpPost("students/create")]
     [RequirePermission(AppPermissions.CaptureStudents)]
     // Create a new student
     public async Task<IActionResult> CreateStudent([FromBody] CreateStudent request)
     {
-        //if (!await ValidatePermissions(request)) return Unauthorized();
         try
         {
             var student = await studentsRepository.CreateStudentAsync(request);
@@ -75,7 +63,6 @@ public class DataCaptureController(
     // Create a new employee
     public async Task<IActionResult> CreateEmployee([FromBody] CreateEmployee request)
     {
-        //if (!await ValidatePermissions(request)) return Unauthorized();
         try
         {
             var employee = await employeesRepository.CreateEmployeeAsync(request);
