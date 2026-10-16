@@ -111,6 +111,12 @@ FROM @Defaults d
 JOIN roles r ON r.Name = d.RoleName
 JOIN permissions p ON p.Name = d.PermissionName;
 
+-- The first seed's FullAccess and ServiceAccess grant nothing: no code reads them. Once the
+-- rebuild above has unassigned them they only add two meaningless boxes to the screen.
+DELETE FROM permissions
+WHERE Name IN (N'FullAccess', N'ServiceAccess')
+  AND NOT EXISTS (SELECT 1 FROM rolePermissions rp WHERE rp.PermissionId = permissions.Id);
+
 -- Nobody may be left able to grant permissions.
 IF NOT EXISTS (
     SELECT 1 FROM rolePermissions rp
