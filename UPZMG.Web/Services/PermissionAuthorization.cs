@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
 using UPZMG.Implementations.Security;
 
 namespace UPZMG.Web.Services;
@@ -47,6 +48,25 @@ public sealed class WebPermissionPolicyProvider(IOptions<AuthorizationOptions> o
 }
 
 /// <summary>
+/// Ends every cached permission snapshot at once. The administration screens call it after a
+/// change of role, permissions or account state, so the change applies on the next page instead
+/// of when the cached copy happens to expire — the "sin permiso" screen promises exactly that.
+/// </summary>
+public sealed class PermissionCacheEpoch
+{
+    private CancellationTokenSource _epoch = new();
+
+    public IChangeToken Token => new CancellationChangeToken(_epoch.Token);
+
+    public void Invalidate()
+    {
+        var previous = Interlocked.Exchange(ref _epoch, new CancellationTokenSource());
+        previous.Cancel();
+        previous.Dispose();
+    }
+}
+
+/// <summary>
 /// Answers the requirement with the permissions the API reports for the signed-in account, which
 /// is the same database the endpoints read. Cached for a few seconds: one page asks several times
 /// while it renders, and a change still takes effect while the person is looking at the screen.
@@ -54,6 +74,7 @@ public sealed class WebPermissionPolicyProvider(IOptions<AuthorizationOptions> o
 public sealed class WebPermissionHandler(
     ApiClient apiClient,
     IMemoryCache cache,
+    PermissionCacheEpoch epoch,
     ILogger<WebPermissionHandler> logger) : AuthorizationHandler<WebPermissionRequirement>
 {
     private static readonly TimeSpan CacheFor = TimeSpan.FromSeconds(30);
@@ -88,7 +109,9 @@ public sealed class WebPermissionHandler(
                 .Where(name => !string.IsNullOrWhiteSpace(name))
                 .ToHashSet(StringComparer.Ordinal);
 
-            cache.Set(key, names, CacheFor);
+            cache.Set(key, names, new MemoryCacheEntryOptions()
+                .SetAbsoluteExpiration(CacheFor)
+                .AddExpirationToken(epoch.Token));
             return names;
         }
         catch (Exception ex)

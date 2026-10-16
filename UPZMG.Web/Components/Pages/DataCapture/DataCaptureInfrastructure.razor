@@ -14,7 +14,7 @@
 
 <PageTitle>Captura de Infraestructura — SIPAU</PageTitle>
 
-<PageHeader Eyebrow="Captura de datos" Title="Captura de Infraestructura"
+<PageHeader Title="Captura de Infraestructura"
             Subtitle="Espacios físicos de la universidad" BackHref="/datacapture">
     <Actions>
         <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/datacapture/infrastructure/consult"
@@ -31,10 +31,10 @@
                               Required="true" RequiredError="Indica el nombre del espacio." MaxLength="50" />
             </MudItem>
             <MudItem md="6">
-                <MudSelect T="SchoolFacilityType" @bind-Value="_type" Label="Tipo de espacio">
+                <MudSelect T="SchoolFacilityType" @bind-Value="_type" Label="Tipo de espacio" ToStringFunc="@(t => t.Label())">
                     @foreach (var type in Enum.GetValues<SchoolFacilityType>())
                     {
-                        <MudSelectItem T="SchoolFacilityType" Value="@type">@Readable(type)</MudSelectItem>
+                        <MudSelectItem T="SchoolFacilityType" Value="@type">@type.Label()</MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
@@ -91,10 +91,6 @@
     private bool _hasComputers;
     private bool _supportDisabilities;
     private string _problems = string.Empty;
-
-    // The enum is written without spaces; the screen shows it the way the area reads it.
-    private static string Readable(SchoolFacilityType type) =>
-        System.Text.RegularExpressions.Regex.Replace(type.ToString(), "(?<!^)([A-Z])", " $1");
 
     private async Task Submit()
     {

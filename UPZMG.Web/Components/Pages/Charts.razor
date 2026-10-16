@@ -8,13 +8,13 @@
 
 <PageTitle>Gráficas — SIPAU</PageTitle>
 
-<PageHeader Eyebrow="Analítica" Title="Gráficas">
+<PageHeader Title="Gráficas">
 </PageHeader>
 
 <MudGrid>
     <MudItem xs="12">
         <SectionCard Title="Matrícula histórica y proyección"
-                     Icon="@Icons.Material.Filled.Timeline" Accent="violet">
+                     Icon="@Icons.Material.Filled.Timeline">
             <Actions>
                 <MudTooltip Text="Descargar gráfica PNG" Placement="Placement.Top">
                     <MudIconButton Icon="@Icons.Material.Filled.FileDownload"
@@ -97,7 +97,7 @@
     <MudItem xs="12" lg="5">
         <SectionCard Title="Distribución de alumnos por carrera"
                      Subtitle="Alumnos con estatus activo"
-                     Icon="@Icons.Material.Filled.School" Accent="teal">
+                     Icon="@Icons.Material.Filled.School">
             <Actions>
                 <MudTooltip Text="Descargar gráfica PNG" Placement="Placement.Top">
                     <MudIconButton Icon="@Icons.Material.Filled.FileDownload"
@@ -122,7 +122,7 @@
     <MudItem xs="12" lg="7">
         <SectionCard Title="Distribución de grupos"
                      Subtitle="Grupos y alumnos inscritos por carrera en el periodo activo"
-                     Icon="@Icons.Material.Filled.Groups" Accent="navy">
+                     Icon="@Icons.Material.Filled.Groups">
             <ChildContent>
                 <BarChart Id="groups-chart" Labels="_model.GroupDistributionByCareer.Labels" Series="_model.GroupDistributionByCareer.Series" Height="160"
                           AriaLabel="Grupos y alumnos inscritos por carrera" />
@@ -137,10 +137,6 @@
                                    data-sipau-chart-filename="Distribucion-de-grupos.png" />
                 </MudTooltip>
             </Actions>
-            @* <Footer>
-                Carrera con más inscritos: <b>@_model.GroupDistributionByCareer.TopLabel</b> ·
-                ocupación <b>@GroupOccupancy.ToString("0.0")%</b>
-            </Footer> *@
         </SectionCard>
     </MudItem>
 </MudGrid>

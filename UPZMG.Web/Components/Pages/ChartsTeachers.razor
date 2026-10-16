@@ -30,7 +30,7 @@ else
         <MudItem xs="12" lg="6">
             <SectionCard Title="Docentes por nivel de estudios"
                          Subtitle="Nivel máximo registrado en su expediente"
-                         Icon="@Icons.Material.Filled.School" Accent="navy">
+                         Icon="@Icons.Material.Filled.School">
                 <ChildContent>
                     <BarChart Labels="@Labels(_model.ByDegree)" Series="@Series(_model.ByDegree, ChartPalette.Navy)"
                               Height="290" AriaLabel="Docentes por nivel de estudios" />
@@ -44,7 +44,7 @@ else
         <MudItem xs="12" lg="6">
             <SectionCard Title="Docentes por antigüedad"
                          Subtitle="Años desde su primera contratación en la universidad"
-                         Icon="@Icons.Material.Filled.WorkHistory" Accent="teal">
+                         Icon="@Icons.Material.Filled.WorkHistory">
                 <ChildContent>
                     <BarChart Labels="@Labels(_model.BySeniority)" Series="@Series(_model.BySeniority, ChartPalette.Teal)"
                               Height="290" AriaLabel="Docentes por antigüedad" />

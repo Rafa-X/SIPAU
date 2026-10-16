@@ -6,8 +6,6 @@ namespace UPZMG.Web.Services;
 
 public interface IDataCaptureService
 {
-    IReadOnlyList<string> ContractTypes { get; }
-    IReadOnlyList<string> SpaceUseTypes { get; }
     IReadOnlyList<string> Sectors { get; }
     IReadOnlyList<string> CompanySizes { get; }
     IReadOnlyList<string> ActivityTypes { get; }

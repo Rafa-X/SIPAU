@@ -1,13 +1,14 @@
 @page "/datacapture/students/consult"
 @attribute [Authorize(Policy = AppPermissions.CaptureStudents)]
 @using UPZMG.Implementations.DataCapture
+@using UPZMG.Shared.Enums
 @inject IGeneralDataService GeneralDataSvc
 @inject IStudentsService StudentsSvc
 @inject ISecurityService SecuritySvc
 
 <PageTitle>Consultar Alumnos — SIPAU</PageTitle>
 
-<PageHeader Eyebrow="Captura de datos" Title="Consultar Alumnos" Subtitle="Alumnos ya capturados en el periodo activo" BackHref="/datacapture" />
+<PageHeader Title="Consultar Alumnos" Subtitle="Alumnos ya capturados en el periodo activo" BackHref="/datacapture" />
 
 <MudPaper Elevation="1" Class="pa-2">
     <DataToolbar Search="@_name" SearchChanged="OnNameChanged"
@@ -45,7 +46,9 @@
             <PropertyColumn Property="x => x.Name" Title="Nombre" />
             <PropertyColumn Property="x => x.Career" Title="Carrera" />
             <PropertyColumn Property="x => x.Period" Title="Periodo" />
-            <PropertyColumn Property="x => x.Status" Title="Estatus" />
+            <TemplateColumn Title="Estatus" Sortable="false">
+                <CellTemplate>@context.Item.Status.Label()</CellTemplate>
+            </TemplateColumn>
             <TemplateColumn Title="" Sortable="false" CellClass="sipau-cell-end">
                 <CellTemplate>
                     <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"

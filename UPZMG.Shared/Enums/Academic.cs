@@ -91,6 +91,19 @@ public enum Days
     Sabado
 }
 
+public static class DayLabels
+{
+    /// <summary>Reads a stored day back, with or without its accent.</summary>
+    public static Days? Parse(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        var plain = text.Trim().Normalize(System.Text.NormalizationForm.FormD);
+        plain = new string([.. plain.Where(c => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c)
+            != System.Globalization.UnicodeCategory.NonSpacingMark)]);
+        return Enum.TryParse<Days>(plain, ignoreCase: true, out var day) ? day : null;
+    }
+}
+
 public enum ScheduleTime
 {
     _07_00,

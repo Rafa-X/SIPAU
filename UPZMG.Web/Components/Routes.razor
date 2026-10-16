@@ -2,7 +2,7 @@
     Blazor router. Authenticated pages use MainLayout; a page the account may not open explains
     itself, and an account that is not signed in goes to the MVC cookie-login endpoint.
 *@
-<Router AppAssembly="typeof(Program).Assembly">
+<Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(UPZMG.Web.Components.Pages.NotFound)">
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)">
             <NotAuthorized>
@@ -15,12 +15,4 @@
         </AuthorizeRouteView>
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
-    <NotFound>
-        <LayoutView Layout="typeof(MainLayout)">
-            <MudContainer Class="mt-16">
-                <MudText Typo="Typo.h4">404 — Página no encontrada</MudText>
-                <MudButton Href="/dashboard" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">Ir al tablero</MudButton>
-            </MudContainer>
-        </LayoutView>
-    </NotFound>
 </Router>

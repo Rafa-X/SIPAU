@@ -15,7 +15,7 @@
 
 <PageTitle>Captura de Titulación — SIPAU</PageTitle>
 
-<PageHeader Eyebrow="Captura de datos" Title="Captura de Titulación"
+<PageHeader Title="Captura de Titulación"
             Subtitle="Procesos de titulación de alumnos egresados" BackHref="/datacapture">
     <Actions>
         <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/datacapture/titulation/consult"
@@ -33,10 +33,10 @@
                               HelperText="El alumno debe tener estatus de egresado." />
             </MudItem>
             <MudItem md="4">
-                <MudSelect T="TitulationModality" @bind-Value="_modality" Label="Modalidad">
+                <MudSelect T="TitulationModality" @bind-Value="_modality" Label="Modalidad" ToStringFunc="@(m => m.Label())">
                     @foreach (var modality in Enum.GetValues<TitulationModality>())
                     {
-                        <MudSelectItem T="TitulationModality" Value="@modality">@modality</MudSelectItem>
+                        <MudSelectItem T="TitulationModality" Value="@modality">@modality.Label()</MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>

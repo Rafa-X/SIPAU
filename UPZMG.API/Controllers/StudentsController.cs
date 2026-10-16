@@ -15,8 +15,6 @@ namespace UPZMG.Api.Controllers;
 public class StudentsController(
     StudentsRepository studentsRepository) : ControllerBase
 {
-    private const string ClassGroupRoles = "Admin,Direccion Academica";
-
     // Both histograms are counts per age, with no name or record attached, and they feed the
     // students chart every area can open. Asking for the capture permission locked three roles
     // out of a page they are allowed to see, and the page failed instead of saying so.

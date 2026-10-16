@@ -165,24 +165,33 @@ public class ScholarshipsRepository(AppDBContext db)
     }
 
     public async Task<List<TitulationListItem>> GetTitulationsAsync() =>
-        await (
+        (await (
             from t in db.TitulationProcesses.AsNoTracking()
             join student in db.Students.AsNoTracking() on t.StudentId equals student.Id
             join career in db.Careers.AsNoTracking() on t.CareerId equals career.Id
             join assessor in db.Employees.AsNoTracking() on t.TitulationAssessorId equals assessor.Id
             orderby t.TitleExpeditionDate descending
-            select new TitulationListItem(
+            select new
+            {
                 t.Id,
-                student.Name + " " + student.MiddleName + " " + student.LastName,
+                StudentName = student.Name + " " + student.MiddleName + " " + student.LastName,
                 student.EnrollmentNumber,
-                career.Name ?? "Sin nombre",
-                t.Modality.ToString(),
+                Career = career.Name ?? "Sin nombre",
+                t.Modality,
                 assessor.FullName,
                 t.CreditsEgressDate,
                 t.TitleExpeditionDate,
                 t.HasProfessionalLicence,
-                t.ProfessionalLicenceNumber))
-            .ToListAsync();
+                t.ProfessionalLicenceNumber,
+            })
+            .ToListAsync())
+            .Select(t => new TitulationListItem(
+                t.Id, t.StudentName, t.EnrollmentNumber, t.Career,
+                // Built here rather than in SQL: "Experiencia profesional", not the member name.
+                t.Modality.Label(),
+                t.FullName, t.CreditsEgressDate, t.TitleExpeditionDate,
+                t.HasProfessionalLicence, t.ProfessionalLicenceNumber))
+            .ToList();
 
     /// <summary>
     /// Titled students against graduates, over the whole record rather than one cohort: both
@@ -202,7 +211,7 @@ public class ScholarshipsRepository(AppDBContext db)
         return new TitulationSummary(
             graduates,
             titled,
-            [.. byModality.OrderByDescending(m => m.Count).Select(m => new TitulationByModality(m.Modality.ToString(), m.Count))]);
+            [.. byModality.OrderByDescending(m => m.Count).Select(m => new TitulationByModality(m.Modality.Label(), m.Count))]);
     }
 
     /// <summary>The scholarship programmes an area can choose from.</summary>

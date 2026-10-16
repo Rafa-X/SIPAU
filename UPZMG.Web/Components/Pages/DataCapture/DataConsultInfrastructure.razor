@@ -45,7 +45,7 @@ else
                 <PropertyColumn Property="x => x.Name" Title="Espacio" />
                 <PropertyColumn Property="x => x.Type" Title="Tipo" />
                 <TemplateColumn Title="Superficie" SortBy="x => x.SquareMeters">
-                    <CellTemplate>@(context.Item.SquareMeters > 0 ? $"{context.Item.SquareMeters:N0} m²" : "—")</CellTemplate>
+                    <CellTemplate>@(context.Item.SquareMeters > 0 ? $"{context.Item.SquareMeters:#,##0.#} m²" : "—")</CellTemplate>
                 </TemplateColumn>
                 <PropertyColumn Property="x => x.Capacity" Title="Capacidad" />
                 <PropertyColumn Property="x => x.ComputersInOperation" Title="Equipos" />

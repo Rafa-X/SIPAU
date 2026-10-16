@@ -8,14 +8,14 @@
 
 <PageTitle>Periodos escolares — SIPAU</PageTitle>
 
-<PageHeader Eyebrow="Administración" Title="Periodos escolares"
+<PageHeader Title="Periodos escolares"
             Subtitle="Ciclos y cuatrimestres del sistema. El periodo activo determina a qué ciclo se asocian las capturas y los reportes."
             BackHref="/settings" />
 
 <MudGrid>
     <MudItem xs="12" md="5">
         <SectionCard Title="Agregar periodo" Subtitle="El código identifica el ciclo en capturas y reportes"
-                     Icon="@Icons.Material.Filled.EventRepeat" Accent="navy">
+                     Icon="@Icons.Material.Filled.EventRepeat">
             <ChildContent>
                 <MudTextField @bind-Value="_newCode" Label="Código" Placeholder="2026-MA" MaxLength="20"
                               Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-3" />
@@ -38,7 +38,7 @@
     <MudItem xs="12" md="7">
         <SectionCard Title="Periodos registrados"
                      Subtitle="@ActiveSummary"
-                     Icon="@Icons.Material.Filled.CalendarMonth" Accent="teal" Flush="true">
+                     Icon="@Icons.Material.Filled.CalendarMonth" Flush="true">
             @if (_loading)
             {
                 <LoadingState Text="Cargando periodos…" />

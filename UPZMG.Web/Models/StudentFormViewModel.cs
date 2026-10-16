@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Mvc.Rendering;
 using UPZMG.Shared.Enums;
 
 namespace UPZMG.Web.Models;
@@ -28,11 +27,4 @@ public class StudentFormViewModel
     public string BirthCountry { get; set; } = string.Empty;
     public string BirthState { get; set; } = string.Empty;
     public string Address { get; set; } = string.Empty;
-
-    // Dropdown options, filled from the catalogues the API serves.
-    public List<SelectListItem> Careers { get; set; } = [];
-    public List<SelectListItem> Periods { get; set; } = [];
 }
-
-
-public sealed record IndigenousLanguageOption(Guid Id, string Name);

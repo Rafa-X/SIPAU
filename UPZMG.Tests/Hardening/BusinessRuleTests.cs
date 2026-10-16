@@ -61,6 +61,60 @@ public class BusinessRuleTests
     }
 
     [Fact]
+    public async Task AStudentWithoutCurpCanBeCorrectedWhenOthersHaveNoneEither()
+    {
+        using var db = Memory();
+        var repository = new StudentsRepository(db);
+        await repository.CreateStudentAsync(Student("UPH0001", string.Empty));
+        var second = await repository.CreateStudentAsync(Student("UPH0002", string.Empty));
+
+        // The correction compared the blank CURP with the other student's blank one and
+        // refused with "ya existe otro alumno con la CURP ''".
+        var source = Student("UPH0002", string.Empty);
+        var corrected = await repository.UpdateStudentAsync(new UpdateStudent
+        {
+            Id = second.Id, RequesterKey = source.RequesterKey, EnrollmentNumber = source.EnrollmentNumber,
+            CURP = source.CURP, Name = source.Name, MiddleName = source.MiddleName, LastName = source.LastName,
+            BirthDate = source.BirthDate, Gender = source.Gender, PostalCode = source.PostalCode,
+            MaritalStatus = source.MaritalStatus, BirthCountry = source.BirthCountry, BirthState = source.BirthState,
+            Address = source.Address, CareerId = source.CareerId, PeriodIdStart = source.PeriodIdStart,
+            InscriptionType = source.InscriptionType, Status = StudentStatus.BajaTemporal,
+            IndigenousLanguages = [],
+        });
+
+        Assert.Equal(StudentStatus.BajaTemporal, corrected.Status);
+    }
+
+    [Fact]
+    public async Task ALanguageOutsideTheCatalogueIsRefusedInsteadOfDropped()
+    {
+        using var db = Memory();
+        db.IndigenousLanguages.Add(new IndigenousLanguages { Id = Guid.NewGuid(), Language = "Maya Yucateco" });
+        await db.SaveChangesAsync();
+
+        // The form used to offer "Maya"; the catalogue says "Maya Yucateco", and the language
+        // vanished from the record without anyone being told.
+        var refusal = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => new StudentsRepository(db).CreateStudentAsync(Student("UPH0001", string.Empty, "Maya")));
+
+        Assert.Contains("Maya Yucateco", refusal.Message);
+        Assert.Empty(await db.Students.ToListAsync());
+    }
+
+    [Fact]
+    public async Task ALanguageMatchesTheCatalogueWithOrWithoutItsAccent()
+    {
+        using var db = Memory();
+        var language = new IndigenousLanguages { Id = Guid.NewGuid(), Language = "Nahuatl" };
+        db.IndigenousLanguages.Add(language);
+        await db.SaveChangesAsync();
+
+        await new StudentsRepository(db).CreateStudentAsync(Student("UPH0001", string.Empty, "Náhuatl"));
+
+        Assert.Equal(language.Id, Assert.Single(await db.IndigenousLanguagesSpeakers.ToListAsync()).LanguageId);
+    }
+
+    [Fact]
     public async Task ADuplicatedCurpIsStillRefused()
     {
         using var db = Memory();

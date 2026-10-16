@@ -177,9 +177,7 @@ body,
 .sipau-vano-figure,
 .sipau-delta,
 .sipau-chart-yaxis span,
-.sipau-chart-xaxis span,
-.sipau-ring-value,
-.sipau-area-pct {
+.sipau-chart-xaxis span {
     font-variant-numeric: tabular-nums;
 }
 
@@ -379,8 +377,6 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
     border: 0 !important;
 }
 
-.sipau-lift { cursor: pointer; }
-.sipau-lift:hover { border-color: var(--mud-palette-primary) !important; }
 .mud-popover.mud-popover-open { animation: sipau-fade-in 0.16s var(--sipau-ease-soft) both; }
 
 .mud-popover {
@@ -527,14 +523,6 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
 }
 .sipau-pagehead-back { border-radius: 6px; }
 
-.sipau-pagehead .sipau-live {
-    background: var(--sipau-anil);
-    border-color: var(--sipau-anil);
-}
-
-.sipau-eyebrow,
-.sipau-card-eyebrow { display: none !important; }
-
 /* ---------------------------------------------------- 10. SectionCard */
 .sipau-card { display: flex; flex-direction: column; }
 .sipau-card-fill { height: 100%; }
@@ -597,21 +585,6 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
 .sipau-delta.flat { color: var(--mud-palette-text-secondary); }
 .sipau-dark .sipau-delta.up { color: #7FB48C; }
 
-.sipau-live {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 4px 10px;
-    font-family: var(--sipau-font-narrow);
-    font-size: 0.75rem; font-weight: 700;
-    letter-spacing: 0.08em; text-transform: uppercase;
-    color: #F2F4F0;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-}
-.sipau-live::before {
-    content: '';
-    width: 7px; height: 7px;
-    background: #F2F4F0;
-}
-
 /* ------------------------------------------------- 12. States and Empties */
 .sipau-empty { position: relative; padding: 52px 24px; text-align: center; overflow: hidden; }
 .sipau-empty::before {
@@ -654,17 +627,6 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
     100% { transform: translateX(268%); }
 }
 .sipau-loading-text { max-width: 46ch; }
-
-.sipau-demo {
-    display: inline-flex; align-items: center;
-    padding: 3px 9px;
-    font-family: var(--sipau-font-narrow);
-    font-size: 0.7rem; font-weight: 700;
-    letter-spacing: 0.1em; text-transform: uppercase;
-    white-space: nowrap;
-    color: #4A3300;
-    background: var(--sipau-cempasuchil);
-}
 
 .mud-button-root:disabled,
 .mud-button-root.mud-disabled {
@@ -710,10 +672,6 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
 .sipau-logout-btn:hover { background: var(--sipau-wash); }
 
 /* ------------------------------------------- 13. Form Capture */
-.sipau-form-table { overflow-x: auto; max-width: 100%; padding-bottom: 4px; }
-.sipau-form-table table { min-width: max-content; }
-.sipau-form-table .mud-input-control { margin: 0; }
-
 .sipau-check-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -997,21 +955,6 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
 .sipau-format-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 @media (min-width: 960px) { .sipau-format-actions { justify-content: flex-end; } }
 
-.sipau-capture-format {
-    display: flex; align-items: center; gap: 12px;
-    padding: 9px 10px; margin: 0 -10px;
-    cursor: pointer;
-    transition: background-color var(--sipau-fast) var(--sipau-ease);
-}
-.sipau-capture-format:hover { background: var(--sipau-wash); }
-.sipau-capture-format-main { flex: 1 1 auto; min-width: 0; }
-.sipau-capture-format-pct {
-    flex: 0 0 auto; font-weight: 800; font-size: 0.9375rem;
-    font-variant-numeric: tabular-nums;
-    color: var(--mud-palette-text-secondary);
-}
-.sipau-area-pct { font-weight: 800; }
-
 /* ----------------------------------------------------------- 14. Charts */
 @keyframes sipau-draw { to { stroke-dashoffset: 0; } }
 @keyframes sipau-fade-in { from { opacity: 0; } to { opacity: 1; } }
@@ -1193,37 +1136,6 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
 .sipau-chart-tip-row span { color: rgba(242, 244, 240, 0.76); }
 .sipau-chart-tip-row b { margin-left: auto; font-weight: 700; }
 
-/* Anillo de porcentaje: arco de tinta plana, extremo recto. */
-.sipau-ring { position: relative; width: 100%; margin: 0 auto; }
-.sipau-ring svg { display: block; width: 100%; height: auto; }
-.sipau-ring-track { stroke: var(--sipau-hairline); }
-.sipau-ring-arc {
-    stroke-dashoffset: var(--sipau-ring-offset);
-    animation: sipau-ring-sweep 1s var(--sipau-ease) both;
-}
-@keyframes sipau-ring-sweep {
-    from { stroke-dashoffset: 340; }
-    to   { stroke-dashoffset: var(--sipau-ring-offset); }
-}
-.sipau-ring-center {
-    position: absolute; inset: 0;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    text-align: center; pointer-events: none;
-}
-.sipau-ring-value {
-    font-size: clamp(1.6rem, 4.6vw, 2.2rem); font-weight: 800;
-    line-height: 1; letter-spacing: -0.03em;
-    color: var(--mud-palette-text-primary);
-}
-.sipau-ring-label {
-    margin-top: 6px;
-    font-family: var(--sipau-font-narrow);
-    font-size: 0.75rem; font-weight: 700;
-    letter-spacing: 0.12em; text-transform: uppercase;
-    color: var(--mud-palette-text-secondary);
-}
-
 .sipau-spark { display: block; width: 100%; height: 30px; overflow: visible; }
 .sipau-spark polyline {
     fill: none; stroke: var(--sipau-anil); stroke-width: 1.75;
@@ -1323,19 +1235,6 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
     max-width: none;
 }
 
-.sipau-login-lineage {
-    position: relative;
-    font-family: var(--sipau-font-narrow);
-    font-size: 0.8125rem; font-weight: 700;
-    letter-spacing: 0.14em; text-transform: uppercase;
-    color: rgba(248, 251, 255, 0.72);
-    margin: 0;
-}
-.sipau-login-institution {
-    font-size: clamp(2.3rem, 4.3vw, 3.9rem);
-    font-weight: 800; letter-spacing: 0; line-height: 1.05;
-    margin: 0; text-wrap: balance;
-}
 .sipau-login-identity {
     display: flex;
     align-items: center;
@@ -1353,27 +1252,6 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
     height: auto;
     border-radius: 15px;
 }
-.sipau-login-identity-text {
-    display: flex;
-    flex: 1 1 0;
-    flex-direction: column;
-    gap: 8px;
-}
-.sipau-login-system-title {
-    margin: 0;
-    font-size: clamp(1.4rem, 2.6vw, 2.25rem);
-    font-weight: 600;
-    letter-spacing: 0;
-    line-height: 1.2;
-}
-.sipau-login-rule {
-    width: 84px; height: 4px; margin: 28px 0 24px;
-    border: 0; background: #F8FBFF;
-}
-.sipau-login-system { font-size: 1.4rem; line-height: 1.55; color: rgba(248, 251, 255, 0.9); margin: 0; }
-.sipau-login-system b { font-weight: 800; letter-spacing: 0.01em; }
-.sipau-login-dept { font-size: 0.9375rem; color: rgba(248, 251, 255, 0.66); margin: 6px 0 0; }
-
 .sipau-login-card {
     display: flex; flex-direction: column; justify-content: center;
     padding: 40px 40px;
@@ -1384,23 +1262,6 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
    is not a length, so the browser dropped the rule and the border never appeared. */
 @media (min-width: 1024px) { .sipau-login-card { border-left: 1px solid var(--sipau-hairline-strong); } }
 .sipau-login-inner { width: 100%; max-width: 100%; margin: 0 auto; }
-
-.sipau-login-seal {
-    display: inline-grid; place-items: center;
-    flex: 0 0 auto;
-    width: 18%;
-    aspect-ratio: 132 / 134;
-    margin: 0;
-    background: #FFFFFF;
-    border-radius: 6px;
-}
-.sipau-login-seal img {
-    display: block;
-    width: 90%;
-    height: auto;
-    max-height: 90%;
-    object-fit: contain;
-}
 
 .sipau-login-brand { display: flex; align-items: center; gap: 14px; margin-bottom: 28px; }
 @media (min-width: 1024px) { .sipau-login-brand { display: none; } }
@@ -1519,9 +1380,8 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
     }
     .sipau-spark polyline,
     .sipau-chart-line { stroke-dashoffset: 0 !important; }
-    .sipau-chart-bar, .sipau-ring-arc { animation: none !important; }
+    .sipau-chart-bar { animation: none !important; }
     .sipau-loading-track::after { animation: none !important; width: 100%; }
-    .sipau-ring-arc { stroke-dashoffset: var(--sipau-ring-offset); }
     .sipau-login-wall::before,
     .sipau-login-ambient { animation: none !important; }
 }

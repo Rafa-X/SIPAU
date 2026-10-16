@@ -28,29 +28,6 @@ public enum EducationLevel
     SubespecialidadMedica,
 }
 
-public static class EducationLevelLabels
-{
-    /// <summary>
-    /// The level as a person reads it. The member names carry no accents or spaces, and
-    /// printing them as they are put "MediaSuperiorOMenor" on the screens.
-    /// </summary>
-    public static string Label(this EducationLevel level) => level switch
-    {
-        EducationLevel.MediaSuperiorOMenor => "Media superior o menor",
-        EducationLevel.Bachillerato => "Bachillerato",
-        EducationLevel.TecnicoSuperior => "Técnico superior",
-        EducationLevel.Licenciatura => "Licenciatura",
-        EducationLevel.Ingenieria => "Ingeniería",
-        EducationLevel.Posgrado => "Posgrado",
-        EducationLevel.Especialidad => "Especialidad",
-        EducationLevel.Maestria => "Maestría",
-        EducationLevel.EspecialidadMedica => "Especialidad médica",
-        EducationLevel.Doctorado => "Doctorado",
-        EducationLevel.SubespecialidadMedica => "Subespecialidad médica",
-        _ => level.ToString(),
-    };
-}
-
 /// <summary>
 /// Represents the degree/title process status for a student or academic.
 /// </summary>
@@ -148,17 +125,4 @@ public enum StatusAS
     EnFormacion,
     EnConsolidacion,
     Consolidado
-}
-
-public enum IndigenousLanguage
-{
-    Nahuatl,
-    Maya,
-    Zapoteco,
-    Mixteco,
-    Otomi,
-    Tzotzil,
-    Tzeltal,
-    Huichol,
-    Otro
 }

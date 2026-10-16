@@ -14,7 +14,7 @@
 
 <PageTitle>Captura de Extensión — SIPAU</PageTitle>
 
-<PageHeader Eyebrow="Captura de datos" Title="Captura de Extensión y Vinculación"
+<PageHeader Title="Captura de Extensión y Vinculación"
             Subtitle="Convenios y proyectos de vinculación por periodo" BackHref="/datacapture">
     <Actions>
         <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/datacapture/extension/consult"
@@ -106,7 +106,8 @@
         _periods = await GeneralDataSvc.GetPeriodsAsync();
 
         // Periods arrive oldest first, so the newest one is the default the area captures.
-        _periodId = _periods.LastOrDefault()?.Id ?? Guid.Empty;
+        // The active period, not the last one on the calendar, which lies in the future.
+        _periodId = (_periods.FirstOrDefault(p => p.IsActive) ?? _periods.LastOrDefault())?.Id ?? Guid.Empty;
     }
 
     private async Task Submit()

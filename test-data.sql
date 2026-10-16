@@ -41,9 +41,6 @@ DECLARE @ServiciosEstudiantilesUserId UNIQUEIDENTIFIER;
 DECLARE @RecursosHumanosUserId      UNIQUEIDENTIFIER;
 DECLARE @RecursosMaterialesUserId   UNIQUEIDENTIFIER;
 
-DECLARE @FullAccessPermissionId    UNIQUEIDENTIFIER;
-DECLARE @ServiceAccessPermissionId UNIQUEIDENTIFIER;
-
 -- 1) Roles (Admin kept as-is; the rest mirror the real organizational areas)
 BEGIN
     INSERT INTO roles (Id, Name)
@@ -213,39 +210,8 @@ BEGIN
         (NEWID(), @RecursosMaterialesUserId, @RecursosMaterialesRoleId);
 END;
 
--- 5) Permissions
-BEGIN
-    SET @FullAccessPermissionId = NEWID();
-
-    INSERT INTO permissions (Id, Name)
-    VALUES (@FullAccessPermissionId, 'FullAccess');
-END;
-
-BEGIN
-    SET @ServiceAccessPermissionId = NEWID();
-
-    INSERT INTO permissions (Id, Name)
-    VALUES (@ServiceAccessPermissionId, 'ServiceAccess');
-END;
-
-SELECT @FullAccessPermissionId = Id    FROM permissions WHERE Name = 'FullAccess';
-SELECT @ServiceAccessPermissionId = Id FROM permissions WHERE Name = 'ServiceAccess';
-
--- 6) RolePermission relations
-BEGIN
-    INSERT INTO rolePermissions (Id, RoleId, PermissionId)
-    VALUES (NEWID(), @AdminRoleId, @FullAccessPermissionId);
-END;
-
-BEGIN
-    INSERT INTO rolePermissions (Id, RoleId, PermissionId)
-    VALUES
-        (NEWID(), @ControlEscolarRoleId, @ServiceAccessPermissionId),
-        (NEWID(), @ServiciosEstudiantilesRoleId, @ServiceAccessPermissionId),
-        (NEWID(), @RecursosHumanosRoleId, @ServiceAccessPermissionId),
-        (NEWID(), @DireccionAcademicaRoleId, @ServiceAccessPermissionId),
-        (NEWID(), @RecursosMaterialesRoleId, @ServiceAccessPermissionId);
-END;
+-- 5-6) Permissions and what each role may do come from seed-permissions.sql, which is
+--      generated from the catalogue in UPZMG.Implementations/Security/AppPermissions.cs.
 
 -- 7) Indigenous Languages
 DECLARE @Language1 UNIQUEIDENTIFIER; SET @Language1 = NEWID();

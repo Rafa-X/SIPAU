@@ -12,7 +12,7 @@
 
 <PageTitle>Gráficas de Alumnos - SIPAU</PageTitle>
 
-<PageHeader Eyebrow="Analítica" Title="Gráficas de Alumnos" BackHref="/charts" />
+<PageHeader Title="Gráficas de Alumnos" BackHref="/charts" />
 
 @if (_loading)
 {
@@ -26,7 +26,7 @@ else
     <MudItem xs="12" lg="6">
         <SectionCard Title="Nuevo ingreso por edad"
                      Subtitle="Alumnos que ingresaron en el periodo activo"
-                     Icon="@Icons.Material.Filled.PersonAdd" Accent="teal">
+                     Icon="@Icons.Material.Filled.PersonAdd">
             <ChildContent>
                 @if (_agesFailed)
                 {
@@ -65,7 +65,7 @@ else
     <MudItem xs="12" lg="6">
         <SectionCard Title="Todos los estudiantes por edad"
                      Subtitle="Todos los registrados, con su edad al día de hoy"
-                     Icon="@Icons.Material.Filled.Groups" Accent="navy">
+                     Icon="@Icons.Material.Filled.Groups">
             <ChildContent>
                 @if (_agesFailed)
                 {
@@ -104,7 +104,7 @@ else
     <MudItem xs="12">
         <SectionCard Title="Aprobación vs. reprobación"
                      Subtitle="Índices institucionales de aprovechamiento por periodo"
-                     Icon="@Icons.Material.Filled.FactCheck" Accent="navy">
+                     Icon="@Icons.Material.Filled.FactCheck">
             <ChildContent>
                 @if (_historyFailed)
                 {
@@ -158,7 +158,7 @@ else
     <MudItem xs="12" lg="7">
         <SectionCard Title="Matrícula por programa y sexo"
                      Subtitle="Alumnos activos, el desglose que piden el 911 y el SII"
-                     Icon="@Icons.Material.Filled.Wc" Accent="teal">
+                     Icon="@Icons.Material.Filled.Wc">
             <ChildContent>
                 @if (_gender is null || _gender.Careers.Count == 0)
                 {
@@ -192,7 +192,7 @@ else
     <MudItem xs="12" lg="5">
         <SectionCard Title="Becas por fuente"
                      Subtitle="@ScholarshipsSubtitle"
-                     Icon="@Icons.Material.Filled.Savings" Accent="gold">
+                     Icon="@Icons.Material.Filled.Savings">
             <ChildContent>
                 @if (_scholarships is null || _scholarships.Sources.Count == 0)
                 {

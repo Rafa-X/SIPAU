@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Mvc.Rendering;
-
 namespace UPZMG.Web.Models.Users;
 
 /// <summary>
@@ -13,7 +11,6 @@ public class UserFormViewModel
     public string Email { get; set; } = string.Empty;
     public string RoleId { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
-    public List<SelectListItem> Roles { get; set; } = [];
     public bool IsEditing => Id != Guid.Empty;
     public string Password { get; set; } = string.Empty;
 }

@@ -114,6 +114,9 @@ public sealed class GeneralDataService(ISecurityService securityService): IGener
     public async Task<IReadOnlyList<LookupOption>> GetFacilitiesAsync() =>
         await GetLookupAsync("general-data/lookups/facilities");
 
+    public async Task<IReadOnlyList<LookupOption>> GetIndigenousLanguagesAsync() =>
+        await GetLookupAsync("general-data/lookups/indigenous-languages");
+
     private async Task<IReadOnlyList<LookupOption>> GetLookupAsync(string path)
     {
         var requesterKey = await securityService.GetRequesterKeyAsync();

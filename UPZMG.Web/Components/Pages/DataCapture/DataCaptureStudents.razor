@@ -12,7 +12,7 @@
 
 <PageTitle>@(IsEditing ? "Corregir alumno" : "Captura de Alumnos") — SIPAU</PageTitle>
 
-<PageHeader Eyebrow="Captura de datos"
+<PageHeader
             Title="@(IsEditing ? "Corregir alumno" : "Captura de Alumnos")"
             Subtitle="@(IsEditing ? "Los cambios sustituyen lo capturado antes" : "Registro individual de alumnos del periodo activo")"
             BackHref="@(IsEditing ? "/datacapture/students/consult" : "/datacapture")" />
@@ -77,10 +77,10 @@ else
                                MaxDate="DateTime.Today" Required="true" RequiredError="La fecha de nacimiento es obligatoria." />
             </MudItem>
             <MudItem md="4">
-                <MudSelect T="Gender" @bind-Value="_model.Gender" Label="Sexo">
+                <MudSelect T="Gender" @bind-Value="_model.Gender" Label="Sexo" ToStringFunc="@(g => g.Label())">
                     @foreach (var g in Enum.GetValues(typeof(Gender)).Cast<Gender>())
                     {
-                        <MudSelectItem T="Gender" Value="@g">@g</MudSelectItem>
+                        <MudSelectItem T="Gender" Value="@g">@g.Label()</MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
@@ -88,10 +88,10 @@ else
 
         <MudGrid Class="mt-2">
             <MudItem md="4">
-                <MudSelect T="MaritalStatus" @bind-Value="_model.MaritalStatus" Label="Estado civil">
+                <MudSelect T="MaritalStatus" @bind-Value="_model.MaritalStatus" Label="Estado civil" ToStringFunc="@(m => m.Label())">
                     @foreach (var m in Enum.GetValues(typeof(MaritalStatus)).Cast<MaritalStatus>())
                     {
-                        <MudSelectItem T="MaritalStatus" Value="@m">@m</MudSelectItem>
+                        <MudSelectItem T="MaritalStatus" Value="@m">@m.Label()</MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
@@ -114,9 +114,11 @@ else
                            MultiSelection="true"
                            @bind-SelectedValues="_model.IndigenousLanguages"
                            Placeholder="Selecciona una o varias lenguas">
-                    @foreach (var language in Enum.GetValues(typeof(IndigenousLanguage)).Cast<IndigenousLanguage>())
+                    @* The catalogue the database matches against. The form had its own list, and
+                       "Maya" or "Otomí" — not in the catalogue — were dropped on saving. *@
+                    @foreach (var language in _languages)
                     {
-                        <MudSelectItem T="string" Value="@language.ToString()">@language</MudSelectItem>
+                        <MudSelectItem T="string" Value="@language.Value">@language.Value</MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
@@ -197,17 +199,21 @@ else
     private StudentFormViewModel _model = new();
     private IReadOnlyList<LookupOption> _careers = [];
     private IReadOnlyList<PeriodLookupOption> _periods = [];
+    private IReadOnlyList<LookupOption> _languages = [];
 
     protected override async Task OnInitializedAsync()
     {
         var careersTask = _generalService.GetCareersSelectableAsync();
         var periodsTask = _generalService.GetPeriodsAsync();
-        await Task.WhenAll(careersTask, periodsTask);
+        var languagesTask = _generalService.GetIndigenousLanguagesAsync();
+        await Task.WhenAll(careersTask, periodsTask, languagesTask);
 
         _careers = await careersTask;
         _periods = await periodsTask;
+        _languages = await languagesTask;
 
         if (Id is { } id) await LoadAsync(id);
+        else _model.PeriodIdStart = _periods.FirstOrDefault(p => p.IsActive)?.Id ?? Guid.Empty;
     }
 
     // Editing starts from what is stored, so an untouched field is saved exactly as it was.

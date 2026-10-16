@@ -30,7 +30,8 @@ public class GeneralDataRepository(AppDBContext db)
                     p.Id,
                     p.SEP_Period,
                     p.SchoolCycle,
-                    p.IdCode))
+                    p.IdCode,
+                    p.IsActive))
                 .ToListAsync();
 
     public async Task<List<LookupOption>> GetMaxDegreesAsync() =>
@@ -60,6 +61,14 @@ public class GeneralDataRepository(AppDBContext db)
             .Where(e => e.IsTeacher)
             .OrderBy(e => e.FullName)
             .Select(e => new LookupOption(e.Id, e.FullName))
+            .ToListAsync();
+
+    // The languages a person can be registered as speaking: the forms offer these and no others.
+    public async Task<List<LookupOption>> GetIndigenousLanguagesAsync() =>
+        await db.IndigenousLanguages
+            .AsNoTracking()
+            .OrderBy(l => l.Language)
+            .Select(l => new LookupOption(l.Id, l.Language))
             .ToListAsync();
 
     public async Task<List<LookupOption>> GetFacilitiesAsync() =>
