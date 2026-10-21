@@ -4,6 +4,7 @@
 @inject IDashboardService DashboardSvc
 @inject IGeneralDataService GeneralDataSvc
 @inject IDataCaptureService CaptureSvc
+@inject IAuthorizationService Authorization
 
 @*
     What each area has stored today. Areas without a table of their own say so instead of
@@ -91,12 +92,26 @@ else
     private int? _titulations;
     private bool _loading = true;
 
+    // Whether this account may read each area's own listing. The API refuses the others, and
+    // their cards said "No se pudo leer…" as if something had failed.
+    private bool _readsOutreach, _readsScholarships, _readsTitulations, _readsFinance;
+    private const string NotYourArea = "Tu rol no consulta esta área.";
+
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = null!;
+
     private sealed record CaptureArea(
         string Name, string Responsible, string Icon, int? Stored, string Unit, string Detail,
         string? CaptureHref, string? ConsultHref);
 
     protected override async Task OnInitializedAsync()
     {
+        var user = (await AuthState).User;
+        async Task<bool> May(string permission) => (await Authorization.AuthorizeAsync(user, permission)).Succeeded;
+        _readsOutreach = await May(AppPermissions.CaptureOutreach);
+        _readsScholarships = await May(AppPermissions.CaptureScholarships);
+        _readsTitulations = await May(AppPermissions.CaptureTitulation);
+        _readsFinance = await May(AppPermissions.CaptureFinance);
+
         try
         {
             _summary = await DashboardSvc.GetSummaryAsync();
@@ -104,16 +119,22 @@ else
 
             // Each listing keeps its own result. One area failing used to leave the others
             // showing zeros, because every count had already been set to zero by default.
-            var projects = await CaptureSvc.GetOutreachListAsync();
-            _outreachProjects = projects?.Count;
-            _outreachHours = projects?.Sum(p => p.AccreditedHours) ?? 0;
+            if (_readsOutreach)
+            {
+                var projects = await CaptureSvc.GetOutreachListAsync();
+                _outreachProjects = projects?.Count;
+                _outreachHours = projects?.Sum(p => p.AccreditedHours) ?? 0;
+            }
 
-            _scholarships = (await CaptureSvc.GetScholarshipsAsync())?.Count;
-            _titulations = (await CaptureSvc.GetTitulationsAsync())?.Count;
+            if (_readsScholarships) _scholarships = (await CaptureSvc.GetScholarshipsAsync())?.Count;
+            if (_readsTitulations) _titulations = (await CaptureSvc.GetTitulationsAsync())?.Count;
 
-            var finances = await CaptureSvc.GetFinanceListAsync();
-            _fiscalYears = finances?.Count;
-            _lastFiscalYear = finances is null or { Count: 0 } ? null : finances.Max(f => f.FiscalYear);
+            if (_readsFinance)
+            {
+                var finances = await CaptureSvc.GetFinanceListAsync();
+                _fiscalYears = finances?.Count;
+                _lastFiscalYear = finances is null or { Count: 0 } ? null : finances.Max(f => f.FiscalYear);
+            }
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
@@ -149,6 +170,7 @@ else
             _scholarships, "becas asignadas",
             _scholarships switch
             {
+                null when !_readsScholarships => NotYourArea,
                 null => "No se pudo leer el padrón de becas.",
                 0 => "Sin becas capturadas todavía.",
                 _ => "Alimentan la gráfica por fuente y el capítulo de becas del informe.",
@@ -159,6 +181,7 @@ else
             _titulations, "procesos registrados",
             _titulations switch
             {
+                null when !_readsTitulations => NotYourArea,
                 null => "No se pudo leer el registro de titulación.",
                 0 => "Sin titulaciones capturadas todavía.",
                 _ => "Sólo de alumnos egresados: así la eficiencia de titulación es real.",
@@ -169,6 +192,7 @@ else
             _outreachProjects, "proyectos registrados",
             _outreachProjects switch
             {
+                null when !_readsOutreach => NotYourArea,
                 null => "No se pudo leer los proyectos de vinculación.",
                 0 => "Sin proyectos capturados todavía.",
                 _ => $"{_outreachHours:N0} horas acreditadas en total",
@@ -179,6 +203,7 @@ else
             _fiscalYears, "ejercicios capturados",
             (_fiscalYears, _lastFiscalYear) switch
             {
+                (null, _) when !_readsFinance => NotYourArea,
                 (null, _) => "No se pudo leer el resumen financiero.",
                 (_, { } year) => $"El más reciente es el ejercicio {year}",
                 _ => "Sin ejercicios capturados todavía.",
