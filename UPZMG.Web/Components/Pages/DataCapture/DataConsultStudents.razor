@@ -5,15 +5,16 @@
 @inject IGeneralDataService GeneralDataSvc
 @inject IStudentsService StudentsSvc
 @inject ISecurityService SecuritySvc
+@inject IJSRuntime JS
 
 <PageTitle>Consultar Alumnos — SIPAU</PageTitle>
 
-<PageHeader Title="Consultar Alumnos" Subtitle="Alumnos ya capturados en el periodo activo" BackHref="/datacapture" />
+<PageHeader Title="Consultar Alumnos" Subtitle="Alumnos capturados de todos los periodos; filtra por carrera o por periodo de ingreso" BackHref="/datacapture" />
 
 <MudPaper Elevation="1" Class="pa-2">
     <DataToolbar Search="@_name" SearchChanged="OnNameChanged"
                  Placeholder="Buscar por nombre…"
-                 Count="_totalCount" Total="_totalCount">
+                 Count="_totalCount" Total="_totalCount" OnExport="ExportAsync">
         <Filters>
             <MudTextField T="string" Value="@_enrollmentNumber" ValueChanged="OnEnrollmentNumberChanged"
                           Placeholder="Matrícula" Immediate="true" Clearable="true"
@@ -29,7 +30,7 @@
             </MudSelect>
             <MudSelect T="string" Value="@_periodId" ValueChanged="OnPeriodChanged" Dense="true"
                        Variant="Variant.Outlined" Margin="Margin.Dense" Class="sipau-toolbar-filter-wide mt-0"
-                       Placeholder="Periodo" Clearable="true">
+                       Placeholder="Periodo de ingreso" Clearable="true">
                 <MudSelectItem T="string" Value="@(null!)">Todos los periodos</MudSelectItem>
                 @foreach (var period in _periods)
                 {
@@ -45,7 +46,7 @@
             <PropertyColumn Property="x => x.EnrollmentNumber" Title="Matrícula" />
             <PropertyColumn Property="x => x.Name" Title="Nombre" />
             <PropertyColumn Property="x => x.Career" Title="Carrera" />
-            <PropertyColumn Property="x => x.Period" Title="Periodo" />
+            <PropertyColumn Property="x => x.Period" Title="Periodo de ingreso" />
             <TemplateColumn Title="Estatus" Sortable="false">
                 <CellTemplate>@context.Item.Status.Label()</CellTemplate>
             </TemplateColumn>
@@ -89,23 +90,54 @@
 
     private async Task<GridData<StudentListItem>> LoadServerDataAsync(GridState<StudentListItem> state, CancellationToken cancellationToken)
     {
-        var careerId = Guid.TryParse(_careerId, out var cid) ? cid : (Guid?)null;
-        var periodId = Guid.TryParse(_periodId, out var pid) ? pid : (Guid?)null;
-        var request = new StudentsListRequest
+        var result = await StudentsSvc.GetStudentsListAsync(await RequestAsync(state.Page + 1, state.PageSize));
+        if (_totalCount != result.TotalCount)
         {
-            RequesterKey = await SecuritySvc.GetRequesterKeyAsync(),
-            Name = _name.Trim(),
-            EnrollmentNumber = _enrollmentNumber.Trim(),
-            CareerId = careerId,
-            PeriodId = periodId,
-            Page = state.Page + 1,
-            PageSize = state.PageSize
-        };
-
-        var result = await StudentsSvc.GetStudentsListAsync(request);
-        _totalCount = result.TotalCount;
+            // The grid asked for the data, so only the grid re-rendered: the toolbar above it kept
+            // saying "0 registros" and its export button stayed disabled.
+            _totalCount = result.TotalCount;
+            StateHasChanged();
+        }
 
         return new GridData<StudentListItem> { TotalItems = result.TotalCount, Items = result.Items };
+    }
+
+    // The filters on screen, for one page of the listing.
+    private async Task<StudentsListRequest> RequestAsync(int page, int pageSize) => new()
+    {
+        RequesterKey = await SecuritySvc.GetRequesterKeyAsync(),
+        Name = _name.Trim(),
+        EnrollmentNumber = _enrollmentNumber.Trim(),
+        CareerId = Guid.TryParse(_careerId, out var careerId) ? careerId : null,
+        PeriodId = Guid.TryParse(_periodId, out var periodId) ? periodId : null,
+        Page = page,
+        PageSize = pageSize,
+    };
+
+    /// <summary>
+    /// Every student that matches the filters, not only the page on screen. The API hands the
+    /// listing out a hundred at a time, so the export walks the pages.
+    /// </summary>
+    private async Task ExportAsync()
+    {
+        const int pageSize = 100;
+        var rows = new List<StudentListItem>();
+
+        for (var page = 1; ; page++)
+        {
+            var result = await StudentsSvc.GetStudentsListAsync(await RequestAsync(page, pageSize));
+            rows.AddRange(result.Items);
+            if (result.Items.Count < pageSize || rows.Count >= result.TotalCount) break;
+        }
+
+        var csv = CsvExport.Build(rows,
+            ("Matrícula", s => s.EnrollmentNumber),
+            ("Nombre", s => s.Name),
+            ("Carrera", s => s.Career),
+            ("Periodo de ingreso", s => s.Period),
+            ("Estatus", s => s.Status.Label()));
+
+        await JS.InvokeVoidAsync("sigieDownload", CsvExport.FileName("alumnos"), csv);
     }
 
     // Debounce keystrokes so we don't hit the API on every character typed.
