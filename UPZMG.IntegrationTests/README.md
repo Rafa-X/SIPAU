@@ -1,0 +1,63 @@
+# Pruebas de integración y distribuidas
+
+SIPAU tiene tres niveles de prueba, separados a propósito:
+
+| Nivel | Proyecto y filtro | Qué ejecuta | Qué necesita |
+|---|---|---|---|
+| Unitarias | `UPZMG.Tests` | Lógica pura: árbol de decisión, validación cruzada, regresión, reglas de captura e importación, caché del modelo con datos falsos. EF en memoria donde hace falta un contexto. | Nada |
+| Integración | `UPZMG.IntegrationTests`, `Category=Integration` | La API real (controladores, autenticación JWT, permisos, repositorios) dentro del proceso de prueba, contra una base SQL Server **propia de la corrida**. | Un SQL Server |
+| Distribuidas | `UPZMG.IntegrationTests`, `Category=Distributed` | La API y la Web como **dos procesos del sistema operativo**, cada uno en su puerto, comunicándose sólo por HTTP, como en producción. | Un SQL Server y la API y la Web compiladas |
+
+Las pruebas de integración y las distribuidas crean una base `upzmg_it_<fecha>_<n>`, le aplican las migraciones y las mismas semillas que la base de desarrollo (`test-data.sql`, `seed-official-catalogs.sql`, `seed-permissions.sql`, `seed-academic-history.sql`) y la borran al terminar. No tocan la base del equipo.
+
+## Cómo correrlas
+
+Con el contenedor `upzmg_db` levantado, desde la raíz del repositorio.
+
+PowerShell:
+
+```powershell
+$env:UPZMG_IT_SQL = "Server=localhost,1433;User ID=sa;Password=$(docker exec upzmg_db printenv MSSQL_SA_PASSWORD);TrustServerCertificate=True;Encrypt=False"
+
+dotnet test UPZMG.Tests
+dotnet test UPZMG.IntegrationTests --filter Category=Integration
+
+# Las distribuidas arrancan UPZMG.API.dll y UPZMG.Web.dll desde su carpeta bin; compílalas antes.
+dotnet build UPZMG.sln
+dotnet test UPZMG.IntegrationTests --filter Category=Distributed
+```
+
+Git Bash:
+
+```bash
+export UPZMG_IT_SQL="Server=localhost,1433;User ID=sa;Password=$(docker exec upzmg_db printenv MSSQL_SA_PASSWORD);TrustServerCertificate=True;Encrypt=False"
+dotnet test UPZMG.IntegrationTests
+```
+
+Sin `UPZMG_IT_SQL`, las pruebas que necesitan base aparecen como **omitidas** con el motivo, no como fallidas.
+
+Variables opcionales:
+
+- `UPZMG_IT_API_DIR` y `UPZMG_IT_WEB_DIR`: carpetas de una publicación (`dotnet publish`) de la API y de la Web, para no usar las de `bin`.
+- `UPZMG_IT_KEEP_DB=1`: conserva la base al terminar, para revisar lo que dejaron las pruebas.
+
+La Web de las pruebas distribuidas sirve HTTPS con el certificado de desarrollo de .NET (`dotnet dev-certs https --trust` si la máquina no lo tiene).
+
+## Qué demuestra cada prueba
+
+| Prueba | Evidencia |
+|---|---|
+| `AccessControlTests.EachAreaReachesWhatItsRoleGrantsAndNothingElse` | Matriz de acceso por área: cada cuenta sembrada contra diez endpoints, 200 o 403 según el permiso de su rol. |
+| `AccessControlTests.AnAreaCannotWriteIntoAnotherAreasRecords` | Recursos Humanos no puede registrar ni importar alumnos; Control Escolar no puede registrar empleados. Nada queda guardado. |
+| `AccessControlTests.AWithdrawnPermissionAppliesOnTheVeryNextRequest` | Un permiso retirado aplica en la siguiente petición, con el mismo token: la API consulta la base en cada petición. |
+| `AccessControlTests.ASuspendedAccountLosesAccessAndCannotGetANewToken` | Una cuenta suspendida pierde el acceso y la API ya no le emite tokens. |
+| `AccessControlTests.OnlyAProcessThatKnowsTheSharedSecretCanSignSomebodyIn` | Sólo un proceso con el secreto compartido puede autenticar a alguien en la API. |
+| `ConcurrencyTests.TwelveSimultaneousCapturesOfOneStudentStoreItOnce` | Doce capturas simultáneas de la misma matrícula: una se guarda y once reciben 409. Ninguna termina en 500. |
+| `ConcurrencyTests.ColdRequestsForTheModelShareOneTraining` | Ocho peticiones simultáneas con el modelo sin entrenar comparten un solo entrenamiento. |
+| `ConcurrencyTests.RetrainingsWhileOthersReadLeaveOneConsistentModel` | Reentrenamientos concurrentes con lectores: todo responde 200 y el resumen coincide con el listado. |
+| `BulkImportTests.TheCheckWritesNothingAndGivesEveryRowItsReason` | La revisión de un CSV no escribe nada y explica cada fila rechazada: dato faltante, duplicado en el archivo, duplicado en la base, lengua desconocida, CURP corta. |
+| `BulkImportTests.ConfirmedRowsAreStoredTogetherAndListedBack` | Las filas confirmadas se guardan juntas y se devuelven como confirmación. Repetir el archivo no duplica nada. |
+| `BulkImportTests.AFailureHalfwayThroughTheWriteLeavesNothingBehind` | Si la base rechaza una fila a mitad de la escritura, se revierte el lote completo. |
+| `ReportLifecycleTests.ADraftChangesUntilItIsSubmittedAndThenNever` | Ciclo de un formato oficial: borrador editable, protección contra sobrescritura (412), envío incompleto rechazado (422), envío, bloqueo (409) y lectura sólo por su autor. |
+| `WebApiProcessTests.ASessionOpenedInTheWebReadsTheDatabaseThroughTheApi` | Con la Web y la API en procesos separados, el inicio de sesión de la Web pasa por la API y la página muestra cifras calculadas por la API. |
+| `WebApiProcessTests.WhenTheApiStopsTheWebSaysSoAndRecoversWhenItReturns` | Se detiene la API: la Web sigue arriba, conserva la sesión y dice que no pudo consultar. Al volver la API, la misma sesión se recupera sola. |
