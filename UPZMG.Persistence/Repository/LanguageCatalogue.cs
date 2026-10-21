@@ -44,6 +44,17 @@ internal static class LanguageCatalogue
         return [.. ids.Distinct()];
     }
 
+    /// <summary>The names in <paramref name="names"/> that the catalogue does not have, matched as <see cref="ResolveAsync"/> matches them.</summary>
+    public static List<string> Unknown(IReadOnlyCollection<string> catalogue, IEnumerable<string>? names)
+    {
+        var known = catalogue.Select(Plain).ToHashSet();
+        return [.. (names ?? [])
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Select(name => name.Trim())
+            .Where(name => !known.Contains(Plain(name)))
+            .Distinct(StringComparer.OrdinalIgnoreCase)];
+    }
+
     private static string Plain(string value)
     {
         var decomposed = value.Trim().Normalize(NormalizationForm.FormD);

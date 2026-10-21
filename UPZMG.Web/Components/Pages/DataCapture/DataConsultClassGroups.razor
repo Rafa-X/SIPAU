@@ -6,6 +6,7 @@
 @using UPZMG.Shared.Enums
 @inject IDataCaptureService CaptureSvc
 @inject IGeneralDataService GeneralDataSvc
+@inject IJSRuntime JS
 
 <PageTitle>Consultar grupos de clase — SIPAU</PageTitle>
 
@@ -32,7 +33,7 @@ else
 {
     <SectionCard Flush="true" FullHeight="false">
         <DataToolbar @bind-Search="_search" Placeholder="Buscar por docente o materia…"
-                     Count="Filtered.Count" Total="_groups.Count">
+                     Count="Filtered.Count" Total="_groups.Count" OnExport="ExportAsync">
             <Filters>
                 <div style="flex-basis:100%; height:0"></div>
                 <MudSelect T="string" Value="@_careerId" ValueChanged="OnCareerChanged" Dense="true"
@@ -167,6 +168,23 @@ else
     }
 
     private List<ClassGroupListItem> Filtered => _groups.Where(Matches).ToList();
+
+    // The groups the filters leave, as the listing shows them.
+    private async Task ExportAsync()
+    {
+        var csv = CsvExport.Build(Filtered,
+            ("Materia", g => g.Course),
+            ("Carrera", g => g.Career),
+            ("Docente", g => g.Teacher),
+            ("Espacio", g => g.Facility),
+            ("Periodo", g => g.Period),
+            ("Horario", g => string.Join("; ", g.Schedule.Select(slot => $"{slot.Day} {slot.Time}"))),
+            ("Tipo", g => g.IsTheory ? "Teórico" : "Práctico"),
+            ("Inscritos", g => g.Enrolled),
+            ("Capacidad", g => g.Capacity));
+
+        await JS.InvokeVoidAsync("sigieDownload", CsvExport.FileName("grupos"), csv);
+    }
 
     private bool Matches(ClassGroupListItem group)
     {

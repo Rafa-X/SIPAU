@@ -58,6 +58,31 @@ public sealed class DataCaptureService(ISecurityService securityService): IDataC
         throw new InvalidOperationException(response.ErrorMessage ?? "No fue posible guardar al empleado.");
     }
 
+    public async Task<ImportResult> ImportStudentsAsync(ImportStudents request) =>
+        ImportOutcome(await securityService.SendPostRequestAsync<ImportStudents, ImportResult>(
+            "data-capture/students/import", JsonSerializer.Serialize(request), request.RequesterKey));
+
+    public async Task<ImportResult> ImportEmployeesAsync(ImportEmployees request) =>
+        ImportOutcome(await securityService.SendPostRequestAsync<ImportEmployees, ImportResult>(
+            "data-capture/employees/import", JsonSerializer.Serialize(request), request.RequesterKey));
+
+    // A batch the API refused still comes back as a result; anything else stored nothing and says why.
+    private static ImportResult ImportOutcome(SecurityService.DataResponse response)
+    {
+        if (response.StatusCode == HttpStatusCode.OK && response.Result is not null
+            && JsonSerializer.Deserialize<ImportResult>(response.Result, ResponseOptions) is { } result)
+        {
+            return result;
+        }
+
+        return new ImportResult(false, [], response.StatusCode switch
+        {
+            HttpStatusCode.Forbidden => "Tu área no puede importar esta información.",
+            HttpStatusCode.Unauthorized => "La sesión expiró. Vuelve a iniciar sesión.",
+            _ => "El API no respondió; no se guardó nada. Intenta de nuevo en unos minutos.",
+        });
+    }
+
     public async Task<ClassGroups?> CreateClassGroup(CreateClassGroup request)
     {
         var response = await securityService.SendPostRequestAsync<CreateClassGroup, ClassGroups>(

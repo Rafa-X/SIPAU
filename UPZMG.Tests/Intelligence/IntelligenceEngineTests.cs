@@ -29,6 +29,23 @@ public class IntelligenceEngineTests
         return list;
     }
 
+    // Lower averages leave more often, but not always: every cell of the matrix gets something.
+    private static List<StudentObservation> NoisyCohort()
+    {
+        var rng = new Random(3);
+        var list = new List<StudentObservation>();
+
+        for (int n = 0; n < 400; n++)
+        {
+            var average = rng.Next(50, 100) / 10.0;
+            var failure = Math.Clamp((8.5 - average) * 15 + rng.Next(-10, 10), 0, 100);
+            bool? outcome = n < 300 ? rng.NextDouble() < (average < 7 ? 0.5 : 0.08) : null;
+            list.Add(Observation(average, failure, rng.Next(0, 3) == 0, outcome, n));
+        }
+
+        return list;
+    }
+
     private static AcademicHistory History(params int[] enrolled) =>
         History(enrolled.Select(e => (e, 80.0, 0)).ToArray());
 
@@ -55,7 +72,15 @@ public class IntelligenceEngineTests
     [InlineData(100, "Alto")]
     public void LevelFor_UsesTheDecisionThresholdAndTheHighMark(double risk, string expected)
     {
-        Assert.Equal(expected, IntelligenceEngine.LevelFor(risk));
+        Assert.Equal(expected, IntelligenceEngine.LevelFor(risk, threshold: 0.35));
+    }
+
+    [Theory]
+    [InlineData(55, "Bajo")]
+    [InlineData(60, "Alto")]
+    public void LevelFor_NeverCallsHighAScoreBelowTheThreshold(double risk, string expected)
+    {
+        Assert.Equal(expected, IntelligenceEngine.LevelFor(risk, threshold: 0.6));
     }
 
     [Theory]
@@ -129,6 +154,77 @@ public class IntelligenceEngineTests
     }
 
     [Fact]
+    public void ChooseThreshold_TakesTheCheapestCutAndTheLowestOnATie()
+    {
+        // Two withdrawals scored 0.6 and 0.3; three graduates scored 0.3, 0.1 and 0.1.
+        OutOfFoldScore[] scores =
+        [
+            new(0, 0, 0.6, true), new(0, 1, 0.3, true), new(0, 2, 0.3, false), new(0, 3, 0.1, false), new(0, 4, 0.1, false),
+        ];
+
+        // From 0.15 to 0.3 one extra alert and nothing missed: cost 1, the cheapest, and 0.15 the lowest.
+        // From 0.35 on one withdrawal is missed (3); at 0.1 or below three extra alerts (3).
+        Assert.Equal(0.15, IntelligenceEngine.ChooseThreshold(scores));
+
+        // Were a missed withdrawal worth half an interview, missing it would be the cheaper error.
+        Assert.Equal(0.35, IntelligenceEngine.ChooseThreshold(scores, falseNegativeCost: 0.5));
+    }
+
+    [Fact]
+    public void AnalyseDropout_ReportsHowItWasMeasured()
+    {
+        var report = IntelligenceEngine.AnalyseDropout(NoisyCohort(), UnscoredReasons.None, Run, TrainedAt).Report;
+        var evaluation = report.Evaluation!;
+        var quality = report.Quality;
+
+        Assert.Equal(IntelligenceEngine.Seed, evaluation.Seed);
+
+        // The folds add up to the pooled matrix, and each was graded by a tree that learnt from the rest.
+        Assert.Equal(IntelligenceEngine.Folds, evaluation.Folds.Count);
+        Assert.Equal(quality.TruePositives, evaluation.Folds.Sum(f => f.Quality.TruePositives));
+        Assert.Equal(quality.FalsePositives, evaluation.Folds.Sum(f => f.Quality.FalsePositives));
+        Assert.Equal(quality.TrueNegatives, evaluation.Folds.Sum(f => f.Quality.TrueNegatives));
+        Assert.Equal(quality.FalseNegatives, evaluation.Folds.Sum(f => f.Quality.FalseNegatives));
+        Assert.All(evaluation.Folds, f => Assert.Equal(report.FinishedTrajectories, f.TrainingSize + f.Quality.Evaluated));
+
+        // Every candidate is graded, and the published threshold is the lowest of the cheapest.
+        Assert.Equal(IntelligenceEngine.CandidateThresholds, evaluation.Thresholds.Select(t => t.Threshold));
+        var cheapest = evaluation.Thresholds.Min(t => t.Cost);
+        Assert.Equal(evaluation.Thresholds.Where(t => t.Cost == cheapest).Min(t => t.Threshold), report.Threshold);
+        Assert.Equal(quality, evaluation.Thresholds.Single(t => t.Threshold == report.Threshold).Quality);
+        Assert.Contains(evaluation.Sensitivity, c => c.FalseNegativeCost == IntelligenceEngine.FalseNegativeCost && c.Threshold == report.Threshold);
+
+        // The nested estimate grades every trajectory once, with the threshold its fold chose blind.
+        Assert.Equal(report.FinishedTrajectories, evaluation.Nested.Evaluated);
+        Assert.Equal(IntelligenceEngine.Folds, evaluation.NestedThresholds.Count);
+        Assert.All(evaluation.NestedThresholds, t => Assert.Contains(t, IntelligenceEngine.CandidateThresholds));
+
+        // The four cells of the matrix, in order, cover every trajectory.
+        Assert.Equal(["Bajas detectadas", "Bajas no detectadas", "Alertas de más", "Bien descartados"], evaluation.Errors.Select(e => e.Group));
+        Assert.Equal(
+            [quality.TruePositives, quality.FalseNegatives, quality.FalsePositives, quality.TrueNegatives],
+            evaluation.Errors.Select(e => e.Count));
+    }
+
+    [Fact]
+    public void AnalyseDropout_MarksAsUncertainTheScoresWhoseIntervalCrossesTheThreshold()
+    {
+        var analysis = IntelligenceEngine.AnalyseDropout(NoisyCohort(), UnscoredReasons.None, Run, TrainedAt);
+        var threshold = analysis.Report.Threshold;
+
+        Assert.All(analysis.Students, s =>
+        {
+            var (lower, upper) = Statistics.Wilson(s.RuleWithdrawals, s.RuleSupport);
+            Assert.Equal(lower < threshold && threshold <= upper, s.Uncertain);
+            Assert.Equal(Math.Round((double)s.RuleWithdrawals / s.RuleSupport * 100, 1), s.RiskPct);
+            Assert.InRange(s.RiskPct, s.LowerPct, s.UpperPct);
+        });
+
+        Assert.Contains(analysis.Students, s => s.Uncertain);
+        Assert.Equal(analysis.Students.Count(s => s.Uncertain), analysis.Report.UncertainStudents);
+    }
+
+    [Fact]
     public void AnalyseDropout_SummarisesEachCareer()
     {
         var analysis = IntelligenceEngine.AnalyseDropout(Cohort(), UnscoredReasons.None, Run, TrainedAt);
@@ -178,6 +274,13 @@ public class IntelligenceEngineTests
         Assert.Equal(report.Quality, copy.Quality);
         Assert.Equal(report.Rules, copy.Rules);
         Assert.Equal(report.ByCareer, copy.ByCareer);
+        Assert.Equal(report.UncertainStudents, copy.UncertainStudents);
+        Assert.Equal(report.Evaluation!.Folds, copy.Evaluation!.Folds);
+        Assert.Equal(report.Evaluation.Thresholds, copy.Evaluation.Thresholds);
+        Assert.Equal(report.Evaluation.Sensitivity, copy.Evaluation.Sensitivity);
+        Assert.Equal(report.Evaluation.Nested, copy.Evaluation.Nested);
+        Assert.Equal(report.Evaluation.NestedThresholds, copy.Evaluation.NestedThresholds);
+        Assert.Equal(report.Evaluation.Errors, copy.Evaluation.Errors);
         Assert.Equal(report.Tree!.Feature, copy.Tree!.Feature);
         Assert.Equal(report.Tree.Left!.SampleCount, copy.Tree.Left!.SampleCount);
         Assert.Equal(report.TopStudents.Select(s => s.Reasons.Count), copy.TopStudents.Select(s => s.Reasons.Count));
@@ -217,16 +320,36 @@ public class IntelligenceEngineTests
     }
 
     [Fact]
-    public void Forecast_BandWidensAfterTheLastObservation()
+    public void Forecast_BandIsThePredictionIntervalAndWidensAwayFromTheData()
     {
         var forecast = IntelligenceEngine.Forecast(History(500, 530, 505, 540, 520), 2);
 
         var width = forecast.Upper.Zip(forecast.Lower, (u, l) => u - l).ToList();
         Assert.All(Enumerable.Range(0, forecast.Labels.Count),
             i => Assert.True(forecast.Lower[i] <= forecast.Trend[i] && forecast.Trend[i] <= forecast.Upper[i]));
+
+        // Narrowest at the centre of the history, wider at its ends and wider still past them.
+        Assert.True(width[2] < width[0] && width[2] < width[4]);
         Assert.True(width[5] > width[4]);
         Assert.True(width[6] > width[5]);
-        Assert.True(Math.Abs(width[0] - width[4]) <= 0.2, "the band is constant over observed periods");
+
+        // Each edge is the projection plus t(0.975, n − 2) · s · √(1 + 1/n + (x − x̄)² / Sxx).
+        var fit = Statistics.Fit([500, 530, 505, 540, 520])!;
+        Assert.Equal(Math.Round(Math.Round(fit.PredictAt(5), 1) + fit.PredictionMargin(5)!.Value, 1), forecast.Upper[5]);
+    }
+
+    [Fact]
+    public void Forecast_ChecksItsIntervalOnThePeriodsItDidNotSee()
+    {
+        // Steady growth with some noise: every held-out period lands inside the interval drawn before it.
+        var steady = IntelligenceEngine.Forecast(History(500, 512, 519, 533, 538, 552, 559, 571), 1).Accuracy!;
+        Assert.Equal(3, steady.Evaluations);
+        Assert.Equal(3, steady.InsideInterval);
+
+        // A collapse no line could foresee falls outside it.
+        var shock = IntelligenceEngine.Forecast(History(500, 510, 521, 529, 541, 300), 1).Accuracy!;
+        Assert.Equal(1, shock.Evaluations);
+        Assert.Equal(0, shock.InsideInterval);
     }
 
     [Fact]

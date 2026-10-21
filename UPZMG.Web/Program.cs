@@ -1,13 +1,11 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using MudBlazor.Services;
 using UPZMG.Web.Components;
 using UPZMG.Web.Security;
 using UPZMG.Web.Services;
-using UPZMG.Persistence;
 
 Console.Title = "UPZMG.Web";
 var builder = WebApplication.CreateBuilder(args);
@@ -34,8 +32,9 @@ try
         .AddInteractiveServerComponents();
     builder.Services.AddMudServices();
 
-    builder.Services.AddDbContext<AppDBContext>(opt =>
-        opt.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
+    // No database context here, on purpose: the Web holds no database credentials and every
+    // read and write goes through the API. A context registered "just in case" was the only
+    // reason a deployed Web would have needed a connection string.
 
     // Cookie Auth
     builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

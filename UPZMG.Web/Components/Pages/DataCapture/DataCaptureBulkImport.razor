@@ -15,12 +15,14 @@
 @inject IDataCaptureService CaptureSvc
 @inject IGeneralDataService GeneralDataSvc
 @inject ISecurityService SecuritySvc
+@inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
 
 <PageTitle>Importación masiva — SIPAU</PageTitle>
 
-<PageHeader Title="Importación masiva" Subtitle="Carga un CSV con una fila por entidad" BackHref="/datacapture" />
+<PageHeader Title="Importación masiva" BackHref="/datacapture"
+            Subtitle="Carga un CSV con una fila por registro, revisa qué filas se aceptan y confirma la importación" />
 
 <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4">
     Para campos <b>ID</b> se acepta el alias/nombre del parametro, por ejemplo <b>INCO</b> para una carrera y <b>2026-EA</b> para un periodo.
@@ -31,7 +33,8 @@
     <MudForm @ref="_form">
         <MudGrid Class="bulk-import-grid" Spacing="3">
             <MudItem xs="12" md="6" Class="d-flex justify-center">
-                <MudSelect T="string" @bind-Value="_areaKey" Label="Área destino" Required="true" RequiredError="Selecciona un área.">
+                <MudSelect T="string" @bind-Value="_areaKey" @bind-Value:after="Reset" Label="Área destino"
+                           Required="true" RequiredError="Selecciona un área.">
                     @foreach (var area in CaptureSvc.BulkAreas)
                     {
                         <MudSelectItem T="string" Value="@area.Value">@area.Text</MudSelectItem>
@@ -47,7 +50,7 @@
                 </MudButton>
             </MudItem>
             <MudItem xs="12" Class="d-flex justify-center mt-2">
-                <MudFileUpload T="IBrowserFile" @bind-Files="_file" Accept=".csv,text/csv" Hidden="true">
+                <MudFileUpload T="IBrowserFile" @bind-Files="_file" @bind-Files:after="Reset" Accept=".csv,text/csv" Hidden="true">
                     <CustomContent Context="upload">
                         <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AttachFile"
                                    OnClick="@(() => upload.OpenFilePickerAsync())">
@@ -56,51 +59,24 @@
                     </CustomContent>
                 </MudFileUpload>
             </MudItem>
-            @if (_file is not null)
-            {
-                <MudItem xs="12" Class="d-flex justify-center">
-                    <MudChip T="string" Icon="@Icons.Material.Filled.Description" Color="Color.Default">@_file.Name</MudChip>
-                </MudItem>
-            }
         </MudGrid>
 
-        @if (_errors.Count > 0)
-        {
-            <MudAlert Severity="Severity.Error" Class="mt-4">
-                @foreach (var error in _errors)
-                {
-                    <div>@error</div>
-                }
-            </MudAlert>
-        }
-
-        @if (_processedRows > 0)
-        {
-            <MudAlert Severity="@(_errors.Count == 0 ? Severity.Success : Severity.Warning)" Class="mt-4">
-                Filas creadas: @_createdRows. Filas con error: @_errors.Count. Filas procesadas: @_processedRows.
-                @if (_errors.Count > 0)
-                {
-                    <text>
-                        Las filas creadas ya quedaron guardadas: corrige en el archivo únicamente las
-                        que fallaron y vuelve a procesarlas, o las duplicarás.
-                    </text>
-                }
-            </MudAlert>
-        }
-
-        @* Each row is written as it is read, so there is no transaction to roll back and no
-           cancellation: saying "Cancelar" next to the import button promised one. *@
         <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mt-4">
-            Cada fila se guarda en cuanto se lee. Si el archivo trae errores a la mitad, lo anterior
-            queda registrado: no hay cómo deshacer el lote completo.
+            Primero se revisa el archivo completo y no se guarda nada. Después confirmas: las filas aceptadas se
+            guardan juntas, en una sola operación, y si alguna falla al guardarse no se guarda ninguna.
         </MudAlert>
 
+        @if (_message is not null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-4">@_message</MudAlert>
+        }
+
         <MudStack Row="true" Justify="Justify.Center" Spacing="2" Class="mt-6">
-            <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.CloudUpload"
-                       Disabled="@(_isProcessing || _file is null || string.IsNullOrWhiteSpace(_areaKey))" OnClick="ProcessAsync">
-                @(_isProcessing ? "Procesando..." : "Procesar archivo")
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.FactCheck"
+                       Disabled="@(_busy || _file is null || string.IsNullOrWhiteSpace(_areaKey))" OnClick="ReviewAsync">
+                @(_busy && _review.Count == 0 ? "Revisando…" : "Revisar archivo")
             </MudButton>
-            <MudButton Variant="Variant.Outlined" Disabled="_isProcessing"
+            <MudButton Variant="Variant.Outlined" Disabled="_busy"
                        OnClick="@(() => Nav.NavigateTo("/datacapture"))">
                 Volver a Captura
             </MudButton>
@@ -108,16 +84,115 @@
     </MudForm>
 </MudPaper>
 
+@if (_review.Count > 0)
+{
+    <SectionCard Title="Revisión del archivo" Flush="true" FullHeight="false" Class="mt-4"
+                 Subtitle="@($"{Accepted} fila(s) aceptadas y {Refused} rechazadas. Todavía no se ha guardado nada.")"
+                 Icon="@Icons.Material.Filled.FactCheck">
+        <Actions>
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.CloudUpload"
+                       Disabled="@(_busy || Accepted == 0)" OnClick="ImportAsync">
+                @(_busy ? "Importando…" : $"Importar {Accepted} fila(s) aceptadas")
+            </MudButton>
+        </Actions>
+        <ChildContent>
+            <MudDataGrid T="ImportRowResult" Items="_review" Dense="true" Hover="true" Elevation="0"
+                         RowsPerPage="15" SortMode="SortMode.None">
+                <Columns>
+                    <PropertyColumn Property="x => x.Line" Title="Fila" HeaderClass="sipau-cell-end" CellClass="sipau-cell-end" />
+                    <PropertyColumn Property="x => x.Key" Title="@KeyTitle" />
+                    <PropertyColumn Property="x => x.Name" Title="Nombre" />
+                    <TemplateColumn Title="Resultado">
+                        <CellTemplate>
+                            @if (context.Item.Accepted)
+                            {
+                                <span class="sipau-report-status is-compact is-sent">Aceptada</span>
+                            }
+                            else
+                            {
+                                <span class="sipau-report-status is-compact is-rejected">Rechazada</span>
+                                <ul class="sipau-import-problems">
+                                    @foreach (var problem in context.Item.Problems)
+                                    {
+                                        <li>@problem</li>
+                                    }
+                                </ul>
+                            }
+                        </CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+                <PagerContent>
+                    <MudDataGridPager T="ImportRowResult" PageSizeOptions="@(new[] { 15, 50, 200 })"
+                                      RowsPerPageString="Filas por página"
+                                      InfoFormat="{first_item}–{last_item} de {all_items}" />
+                </PagerContent>
+            </MudDataGrid>
+        </ChildContent>
+        <Footer>
+            @if (Refused > 0)
+            {
+                <span>
+                    Las filas rechazadas no se importan. Corrígelas en el archivo y vuelve a subir sólo esas: las aceptadas
+                    ya estarán guardadas y se rechazarían como repetidas.
+                </span>
+            }
+            else
+            {
+                <span>Todas las filas pasaron la revisión.</span>
+            }
+        </Footer>
+    </SectionCard>
+}
+
+@if (_imported is { Committed: true } imported)
+{
+    <SectionCard Title="Importación confirmada" Flush="true" FullHeight="false" Class="mt-4"
+                 Subtitle="@($"Se guardaron {imported.Accepted} registro(s) en una sola operación.")"
+                 Icon="@Icons.Material.Filled.TaskAlt">
+        <Actions>
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="@ConsultUrl"
+                       StartIcon="@Icons.Material.Filled.ManageSearch">
+                Ver en la consulta
+            </MudButton>
+        </Actions>
+        <ChildContent>
+            <MudDataGrid T="ImportRowResult" Items="imported.Rows" Dense="true" Elevation="0" RowsPerPage="15"
+                         SortMode="SortMode.None">
+                <Columns>
+                    <PropertyColumn Property="x => x.Line" Title="Fila" HeaderClass="sipau-cell-end" CellClass="sipau-cell-end" />
+                    <PropertyColumn Property="x => x.Key" Title="@KeyTitle" />
+                    <PropertyColumn Property="x => x.Name" Title="Nombre" />
+                </Columns>
+                <PagerContent>
+                    <MudDataGridPager T="ImportRowResult" PageSizeOptions="@(new[] { 15, 50, 200 })"
+                                      RowsPerPageString="Filas por página"
+                                      InfoFormat="{first_item}–{last_item} de {all_items}" />
+                </PagerContent>
+            </MudDataGrid>
+        </ChildContent>
+    </SectionCard>
+}
+
 @code {
     private const long MaxFileSize = 10 * 1024 * 1024;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private MudForm _form = null!;
     private IBrowserFile? _file;
     private string _areaKey = string.Empty;
-    private bool _isProcessing;
-    private int _createdRows;
-    private int _processedRows;
-    private readonly List<string> _errors = [];
+    private bool _busy;
+    private string? _message;
+
+    // What the last review found, and the converted requests of the rows it could read.
+    private List<ImportRowResult> _review = [];
+    private List<(int Line, object Request)> _pending = [];
+    private ImportResult? _imported;
+
+    // Catalogues read once per review instead of once per row.
+    private List<LookupOption>? _careers;
+    private List<PeriodLookupOption>? _periods;
+
+    private int Accepted => _review.Count(r => r.Accepted);
+    private int Refused => _review.Count - Accepted;
 
     private static readonly IReadOnlyDictionary<string, string> StudentHeaders = new Dictionary<string, string>(StringComparer.Ordinal)
     {
@@ -184,7 +259,25 @@
 
     private string TemplateUrl => $"/BulkImportTemplates/{TemplateFileName}";
 
-    private async Task ProcessAsync()
+    private string KeyTitle => _areaKey == "teachers" ? "Número de empleado" : "Matrícula";
+
+    private string ConsultUrl => _areaKey == "teachers" ? "/datacapture/teachers/consult" : "/datacapture/students/consult";
+
+    // Another area or another file makes the last review meaningless.
+    private void Reset()
+    {
+        _review = [];
+        _pending = [];
+        _imported = null;
+        _message = null;
+    }
+
+    /// <summary>
+    /// Reads the whole file and asks the API to check it. Nothing is written: rows the screen
+    /// cannot read are refused here, the rest are checked by the API against its rules and what
+    /// is already stored.
+    /// </summary>
+    private async Task ReviewAsync()
     {
         await _form.ValidateAsync();
         if (!_form.IsValid || _file is null || string.IsNullOrWhiteSpace(_areaKey)) return;
@@ -194,32 +287,112 @@
             return;
         }
 
-        _isProcessing = true;
-        _createdRows = 0;
-        _processedRows = 0;
-        _errors.Clear();
+        Reset();
+        _busy = true;
+        _careers = null;
+        _periods = null;
         try
         {
             var requesterKey = await SecuritySvc.GetRequesterKeyAsync();
             if (requesterKey == Guid.Empty)
             {
-                _errors.Add("No se pudo identificar al usuario actual.");
+                _message = "No se pudo identificar al usuario actual.";
                 return;
             }
 
-            await ImportCsvAsync(requesterKey);
+            var (readable, unreadable) = await ReadFileAsync(requesterKey);
+            if (readable.Count + unreadable.Count == 0)
+            {
+                _message = "El archivo no tiene filas debajo de los encabezados.";
+                return;
+            }
+
+            var checkedRows = readable.Count == 0 ? new ImportResult(false, []) : await SendAsync(requesterKey, readable, commit: false);
+            if (readable.Count > 0 && checkedRows.Rows.Count == 0)
+            {
+                _message = checkedRows.Message ?? "No se pudo revisar el archivo.";
+                return;
+            }
+
+            _pending = readable;
+            _review = [.. checkedRows.Rows.Concat(unreadable).OrderBy(r => r.Line)];
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _errors.Add($"No se pudo leer el archivo: {ex.Message}");
+            _message = ex.Message;
+        }
+        catch (Exception ex) when (ex is IOException or CsvHelperException)
+        {
+            _message = $"No se pudo leer el archivo: {ex.Message}";
         }
         finally
         {
-            _isProcessing = false;
+            _busy = false;
         }
     }
 
-    private async Task ImportCsvAsync(Guid requesterKey)
+    /// <summary>Stores the accepted rows, all of them or none, after the person confirms.</summary>
+    private async Task ImportAsync()
+    {
+        var accepted = _review.Where(r => r.Accepted).Select(r => r.Line).ToHashSet();
+        var rows = _pending.Where(p => accepted.Contains(p.Line)).ToList();
+        if (rows.Count == 0) return;
+
+        var left = _review.Count - rows.Count;
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            $"Importar {rows.Count} registro(s)",
+            $"Se guardarán las {rows.Count} filas aceptadas en una sola operación; si alguna falla al guardarse, no se guarda ninguna."
+            + (left > 0 ? $" Las {left} filas rechazadas no se importan." : string.Empty),
+            yesText: "Importar", cancelText: "Cancelar");
+        if (confirmed != true) return;
+
+        _busy = true;
+        _message = null;
+        try
+        {
+            var requesterKey = await SecuritySvc.GetRequesterKeyAsync();
+            var result = await SendAsync(requesterKey, rows, commit: true);
+
+            if (result.Committed)
+            {
+                _imported = result;
+                _review = [];
+                _pending = [];
+                Snackbar.Add($"Se importaron {result.Accepted} registro(s).", Severity.Success);
+                return;
+            }
+
+            // Nothing was stored. The rows the API refused at this point carry its reason, and
+            // the rest stay accepted for another attempt.
+            _message = result.Message ?? "No se guardó ninguna fila. Revisa los motivos y vuelve a intentarlo.";
+            var byLine = result.Rows.ToDictionary(r => r.Line);
+            _review = [.. _review.Select(r => byLine.TryGetValue(r.Line, out var updated) ? updated : r)];
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private Task<ImportResult> SendAsync(Guid requesterKey, IEnumerable<(int Line, object Request)> rows, bool commit) => _areaKey switch
+    {
+        "students" => CaptureSvc.ImportStudentsAsync(new ImportStudents
+        {
+            RequesterKey = requesterKey,
+            Commit = commit,
+            Rows = [.. rows.Select(r => new ImportRow<CreateStudent> { Line = r.Line, Request = (CreateStudent)r.Request })],
+        }),
+        "teachers" => CaptureSvc.ImportEmployeesAsync(new ImportEmployees
+        {
+            RequesterKey = requesterKey,
+            Commit = commit,
+            Rows = [.. rows.Select(r => new ImportRow<CreateEmployee> { Line = r.Line, Request = (CreateEmployee)r.Request })],
+        }),
+        _ => Task.FromResult(new ImportResult(false, [], "Esta área todavía no se importa por archivo.")),
+    };
+
+    /// <summary>Every row of the file: converted into a request, or refused with the reason it could not be read.</summary>
+    private async Task<(List<(int Line, object Request)> Readable, List<ImportRowResult> Unreadable)> ReadFileAsync(Guid requesterKey)
     {
         var requestType = RequestTypeFor(_areaKey);
         var properties = requestType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
@@ -248,23 +421,36 @@
         if (missing.Count > 0)
             throw new InvalidOperationException($"Faltan columnas requeridas: {string.Join(", ", missing)}.");
 
+        var readable = new List<(int Line, object Request)>();
+        var unreadable = new List<ImportRowResult>();
+
         while (await csv.ReadAsync())
         {
-            var rowNumber = csv.Context.Parser?.Row ?? 0;
-            _processedRows++;
+            // The row as a spreadsheet numbers it: the header is row 1.
+            var line = csv.Context.Parser?.Row ?? readable.Count + unreadable.Count + 2;
+            var values = properties.ToDictionary(p => p.Name, p => csv.GetField(headerMap[p.Name]!) ?? string.Empty, StringComparer.OrdinalIgnoreCase);
+
             try
             {
-                var values = properties.ToDictionary(p => p.Name, p => csv.GetField(headerMap[p.Name]!) ?? string.Empty, StringComparer.OrdinalIgnoreCase);
-                var request = await BuildRequestAsync(requestType, properties, values, requesterKey);
-                await CreateAsync(request);
-                _createdRows++;
+                readable.Add((line, await BuildRequestAsync(requestType, properties, values, requesterKey)));
             }
-            catch (Exception ex)
+            catch (FormatException ex)
             {
-                _errors.Add($"Fila {rowNumber-1}: {ex.Message}");
+                unreadable.Add(new ImportRowResult(line, KeyOf(values), NameOf(values), [ex.Message]));
             }
         }
+
+        return (readable, unreadable);
     }
+
+    private string KeyOf(IReadOnlyDictionary<string, string> values) =>
+        values.GetValueOrDefault(_areaKey == "teachers" ? nameof(CreateEmployee.EmployeeNumber) : nameof(CreateStudent.EnrollmentNumber), "").Trim();
+
+    private string NameOf(IReadOnlyDictionary<string, string> values) => _areaKey == "teachers"
+        ? values.GetValueOrDefault(nameof(CreateEmployee.FullName), "").Trim()
+        : string.Join(' ', new[] { nameof(CreateStudent.Name), nameof(CreateStudent.MiddleName), nameof(CreateStudent.LastName) }
+            .Select(key => values.GetValueOrDefault(key, "").Trim())
+            .Where(part => part.Length > 0));
 
     private static string? FindHeader(Type requestType, string propertyName, IReadOnlyList<string> headers)
     {
@@ -292,40 +478,99 @@
         requestType.GetProperty(nameof(CreateStudent.RequesterKey))!.SetValue(request, requesterKey);
         foreach (var property in properties)
         {
-            var value = await ConvertValueAsync(property.Name, property.PropertyType, values[property.Name], values);
+            var value = await ConvertValueAsync(requestType, property.Name, property.PropertyType, values[property.Name], values);
             property.SetValue(request, value);
         }
         return request;
     }
 
-    private async Task<object?> ConvertValueAsync(string propertyName, Type targetType, string rawValue, IReadOnlyDictionary<string, string> rowValues)
+    /// <summary>
+    /// One cell into the type its field expects. Every failure is a <see cref="FormatException"/>
+    /// in Spanish naming the column, so the review can show it next to its row.
+    /// </summary>
+    private async Task<object?> ConvertValueAsync(Type requestType, string propertyName, Type targetType, string rawValue, IReadOnlyDictionary<string, string> rowValues)
     {
         var value = rawValue.Trim();
-        var nullableType = Nullable.GetUnderlyingType(targetType);
-        var actualType = nullableType ?? targetType;
+        var column = CsvHeaderFor(requestType, propertyName);
+        var actualType = Nullable.GetUnderlyingType(targetType) ?? targetType;
+
         if (actualType == typeof(string)) return value;
         if (actualType == typeof(Guid)) return await ResolveGuidAsync(propertyName, value, rowValues);
-        if (actualType == typeof(DateOnly)) return DateOnly.Parse(value, CultureInfo.InvariantCulture);
-        if (actualType == typeof(bool)) return bool.Parse(value);
-        if (actualType == typeof(int)) return int.Parse(value, CultureInfo.InvariantCulture);
-        if (actualType == typeof(double)) return double.Parse(value, CultureInfo.InvariantCulture);
+        if (actualType == typeof(DateOnly))
+        {
+            if (value.Length == 0) return default(DateOnly);
+            return DateOnly.TryParse(value, CultureInfo.InvariantCulture, out var date)
+                ? date
+                : throw new FormatException($"La fecha '{value}' de la columna «{column}» no es válida; usa AAAA-MM-DD.");
+        }
+        if (actualType == typeof(bool))
+        {
+            return Plain(value) switch
+            {
+                "true" or "si" or "1" => true,
+                "false" or "no" or "0" or "" => false,
+                _ => throw new FormatException($"La columna «{column}» debe decir Sí o No; dice '{value}'."),
+            };
+        }
+        if (actualType == typeof(int))
+        {
+            if (value.Length == 0) return 0;
+            return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var number)
+                ? number
+                : throw new FormatException($"La columna «{column}» debe ser un número entero; dice '{value}'.");
+        }
+        if (actualType == typeof(double))
+        {
+            return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)
+                ? number
+                : throw new FormatException($"La columna «{column}» debe ser un número; dice '{value}'.");
+        }
         if (actualType == typeof(Gender)) return ParseGender(value);
-        if (actualType.IsEnum) return Enum.Parse(actualType, value, true);
+        if (actualType.IsEnum) return ParseEnum(actualType, column, value);
         if (actualType == typeof(List<string>))
             return string.IsNullOrWhiteSpace(value)
                 ? []
                 : value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).ToList();
         if (actualType == typeof(List<Schedule>))
-            return JsonSerializer.Deserialize<List<Schedule>>(value, JsonOptions)
-                ?? throw new FormatException($"'{propertyName}' debe ser un JSON de horarios.");
-        throw new NotSupportedException($"El tipo de la columna '{propertyName}' no está soportado.");
+        {
+            try
+            {
+                return JsonSerializer.Deserialize<List<Schedule>>(value, JsonOptions)
+                    ?? throw new FormatException($"La columna «{column}» debe ser un JSON de horarios.");
+            }
+            catch (JsonException)
+            {
+                throw new FormatException($"La columna «{column}» debe ser un JSON de horarios.");
+            }
+        }
+        throw new FormatException($"La columna «{column}» no se puede importar.");
+    }
+
+    // The enum's own name ("UnionLibre") or the label the screens show ("Unión libre").
+    private static object ParseEnum(Type enumType, string column, string value)
+    {
+        var wanted = Plain(value).Replace(" ", "");
+        foreach (Enum option in Enum.GetValues(enumType))
+        {
+            if (Plain(option.ToString()) == wanted || Plain(option.Label()).Replace(" ", "") == wanted) return option;
+        }
+
+        var valid = string.Join(", ", Enum.GetValues(enumType).Cast<Enum>().Select(option => option.Label()));
+        throw new FormatException($"'{value}' no es un valor de «{column}». Los válidos son: {valid}.");
+    }
+
+    private static string Plain(string value)
+    {
+        var decomposed = value.Trim().Normalize(NormalizationForm.FormD);
+        return new string([.. decomposed.Where(c => CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)])
+            .ToLowerInvariant();
     }
 
     private static Gender ParseGender(string value) => value.Trim().ToLowerInvariant() switch
     {
         "hombre" or "h" => Gender.H,
         "mujer" or "m" => Gender.M,
-        _ => throw new FormatException($"El género '{value}' no es válido. Usa 'Hombre' o 'Mujer'.")
+        _ => throw new FormatException($"El sexo '{value}' no es válido. Usa 'Hombre' o 'Mujer'.")
     };
 
     private async Task<Guid> ResolveGuidAsync(string propertyName, string value, IReadOnlyDictionary<string, string> rowValues)
@@ -333,13 +578,13 @@
         if (Guid.TryParse(value, out var id)) return id;
         if (propertyName == nameof(CreateStudent.CareerId))
         {
-            var career = (await GeneralDataSvc.GetCareersSelectableAsync()).FirstOrDefault(x =>
+            var career = (await CareersAsync()).FirstOrDefault(x =>
                 string.Equals(x.Value, value, StringComparison.OrdinalIgnoreCase) || string.Equals(x.Alias, value, StringComparison.OrdinalIgnoreCase));
             return career?.Id ?? throw new FormatException($"No se encontró la carrera '{value}'.");
         }
         if (propertyName is nameof(CreateStudent.PeriodIdStart) or nameof(CreateClassGroup.PeriodId))
         {
-            var period = (await GeneralDataSvc.GetPeriodsAsync()).FirstOrDefault(x =>
+            var period = (await PeriodsAsync()).FirstOrDefault(x =>
                 string.Equals(x.IdCode, value, StringComparison.OrdinalIgnoreCase) || string.Equals(x.Value, value, StringComparison.OrdinalIgnoreCase));
             return period?.Id ?? throw new FormatException($"No se encontró el periodo '{value}'.");
         }
@@ -348,7 +593,7 @@
             if (!rowValues.TryGetValue(nameof(CreateClassGroup.CareerId), out var careerValue))
                 throw new FormatException("La columna Carrera es necesaria para resolver la asignatura.");
 
-            var career = (await GeneralDataSvc.GetCareersSelectableAsync()).FirstOrDefault(x =>
+            var career = (await CareersAsync()).FirstOrDefault(x =>
                 string.Equals(x.Value, careerValue.Trim(), StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(x.Alias, careerValue.Trim(), StringComparison.OrdinalIgnoreCase));
             if (career is null)
@@ -368,29 +613,11 @@
         return option?.Id ?? throw new FormatException($"No se encontró '{value}' para {propertyName}.");
     }
 
-    private async Task CreateAsync(object request)
-    {
-        object? result;
-        if (request is CreateStudent student)
-        {
-            result = await CaptureSvc.CreateStudent(student);
-        }
-        else if (request is CreateEmployee employee)
-        {
-            result = await CaptureSvc.CreateTeacher(employee);
-        }
-        else if (request is CreateClassGroup group)
-        {
-            result = await CaptureSvc.CreateClassGroup(group);
-        }
-        else
-        {
-            throw new NotSupportedException($"Área de captura no soportada: {_areaKey}.");
-        }
+    private async Task<List<LookupOption>> CareersAsync() =>
+        _careers ??= [.. await GeneralDataSvc.GetCareersSelectableAsync()];
 
-        if (result is null)
-            throw new InvalidOperationException("El API rechazó la creación de la entidad.");
-    }
+    private async Task<List<PeriodLookupOption>> PeriodsAsync() =>
+        _periods ??= [.. await GeneralDataSvc.GetPeriodsAsync()];
 
     private static Type RequestTypeFor(string areaKey) => areaKey switch
     {

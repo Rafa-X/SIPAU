@@ -9,6 +9,8 @@ public class StudentsRepository(AppDBContext db)
 {
     public async Task<Student> CreateStudentAsync(CreateStudent request)
     {
+        await RequireCatalogueAsync(request);
+
         var existEnrollment = await db.Students.AnyAsync(s => s.EnrollmentNumber == request.EnrollmentNumber);
         if (existEnrollment)
             throw new InvalidOperationException($"Ya existe un alumno con la matrícula '{request.EnrollmentNumber}'.");
@@ -67,6 +69,19 @@ public class StudentsRepository(AppDBContext db)
         return student;
     }
 
+    /// <summary>
+    /// The career and the entry period must exist. The database refuses them too, but as a
+    /// foreign-key violation the person would see a server error instead of the reason.
+    /// </summary>
+    private async Task RequireCatalogueAsync(CreateStudent request)
+    {
+        if (!await db.Careers.AnyAsync(c => c.Id == request.CareerId))
+            throw new InvalidOperationException("La carrera seleccionada no existe en el catálogo.");
+
+        if (!await db.Periods.AnyAsync(p => p.Id == request.PeriodIdStart))
+            throw new InvalidOperationException("El periodo de inicio seleccionado no existe en el catálogo.");
+    }
+
     /// <summary>The whole student, to fill the correction form.</summary>
     public async Task<UpdateStudent?> GetStudentAsync(Guid id)
     {
@@ -114,6 +129,8 @@ public class StudentsRepository(AppDBContext db)
     {
         var student = await db.Students.FirstOrDefaultAsync(s => s.Id == request.Id)
             ?? throw new InvalidOperationException("El alumno ya no existe.");
+
+        await RequireCatalogueAsync(request);
 
         if (await db.Students.AnyAsync(s => s.Id != request.Id && s.EnrollmentNumber == request.EnrollmentNumber))
             throw new InvalidOperationException($"Ya existe otro alumno con la matrícula '{request.EnrollmentNumber}'.");
@@ -202,9 +219,13 @@ public class StudentsRepository(AppDBContext db)
             {
                 Id = x.Student.Id,
                 EnrollmentNumber = x.Student.EnrollmentNumber,
-                Name = $"{x.Student.Name} {x.Student.MiddleName} {x.Student.LastName}",
+                // Without a second given name the plain concatenation left a double space.
+                Name = string.IsNullOrEmpty(x.Student.MiddleName)
+                    ? x.Student.Name + " " + x.Student.LastName
+                    : x.Student.Name + " " + x.Student.MiddleName + " " + x.Student.LastName,
                 Career = x.Career.Name,
-                Period = x.Period.SEP_Period,
+                // With the year: every cycle has an "Ene-Abr", and alone it named nine periods.
+                Period = x.Period.SchoolCycle + " " + x.Period.SEP_Period,
                 Status = x.Student.Status,
             }).ToListAsync();
 

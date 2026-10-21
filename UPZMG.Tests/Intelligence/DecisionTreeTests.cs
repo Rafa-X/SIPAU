@@ -198,6 +198,100 @@ public class DecisionTreeTests
     }
 
     [Fact]
+    public void Decide_GivesTheRuleOfTheLeafThatProducedTheNumber()
+    {
+        // Whatever explanation a screen shows next to a score must be the rule of the very leaf
+        // that produced the score, with the same probability and the same trajectories behind it.
+        var samples = Noisy(300, seed: 11);
+        var tree = DecisionTree.Train(samples, maxDepth: 4, minSamplesLeaf: 10);
+        var rules = tree.Rules();
+
+        foreach (var sample in samples)
+        {
+            var decision = tree.Decide(sample.Features);
+
+            var rule = Assert.Single(rules, r => r.Condition == string.Join(" y ", decision.Conditions));
+            Assert.Equal(tree.Predict(sample.Features), decision.Probability);
+            Assert.Equal(rule.Probability, decision.Probability);
+            Assert.Equal(rule.SampleCount, decision.Support);
+            Assert.Equal(decision.Conditions, tree.Explain(sample.Features));
+        }
+
+        // The k / n behind each percentage are the training samples that reach that leaf.
+        foreach (var leaf in samples.GroupBy(s => string.Join(" y ", tree.Decide(s.Features).Conditions)))
+        {
+            var decision = tree.Decide(leaf.First().Features);
+            Assert.Equal(leaf.Count(), decision.Support);
+            Assert.Equal(leaf.Count(s => s.Label), decision.Positives);
+        }
+    }
+
+    [Fact]
+    public void CrossValidateScores_ScoresEachSampleOnceWithATreeThatNeverSawIt()
+    {
+        var samples = Noisy(200, seed: 5);
+
+        var run = DecisionTree.CrossValidateScores(samples, folds: 5, maxDepth: 3, minSamplesLeaf: 5)!;
+
+        // Once each, in the order of the samples.
+        Assert.Equal(Enumerable.Range(0, samples.Count), run.Scores.Select(s => s.Index));
+        Assert.All(run.Scores, s => Assert.Equal(samples[s.Index].Label, s.Label));
+
+        for (int fold = 0; fold < run.Folds; fold++)
+        {
+            var heldOut = run.Scores.Where(s => s.Fold == fold).ToList();
+            var training = run.Scores.Where(s => s.Fold != fold).Select(s => samples[s.Index]).ToList();
+
+            // The fold and its training set split the samples between them...
+            Assert.NotEmpty(heldOut);
+            Assert.Equal(samples.Count, training.Count + heldOut.Count);
+            Assert.Equal(training.Count, run.TrainingSizes[fold]);
+
+            // ...and a tree grown on the training set alone reproduces every held-out score.
+            var tree = DecisionTree.Train(training, maxDepth: 3, minSamplesLeaf: 5);
+            Assert.All(heldOut, s => Assert.Equal(tree.Predict(samples[s.Index].Features), s.Probability));
+        }
+    }
+
+    [Fact]
+    public void CrossValidateScores_KeepsTheClassRatioInEveryFold()
+    {
+        // 60 who finished and 23 who left: four or five of them in each of the five folds.
+        var samples = Separable(60).Where(s => !s.Label).Concat(Separable(23).Where(s => s.Label)).ToList();
+
+        var run = DecisionTree.CrossValidateScores(samples, folds: 5)!;
+
+        var perFold = run.Scores.Where(s => s.Label).GroupBy(s => s.Fold).Select(g => g.Count()).ToList();
+        Assert.Equal(5, perFold.Count);
+        Assert.InRange(perFold.Max() - perFold.Min(), 0, 1);
+    }
+
+    [Fact]
+    public void CrossValidate_IsTheMatrixOfTheScoresAtTheThreshold()
+    {
+        var samples = Noisy(200, seed: 9);
+
+        var run = DecisionTree.CrossValidateScores(samples, folds: 5, maxDepth: 3, minSamplesLeaf: 5)!;
+
+        Assert.Equal(
+            DecisionTree.CrossValidate(samples, folds: 5, decisionThreshold: 0.3, maxDepth: 3, minSamplesLeaf: 5),
+            DecisionTree.Confusion(run.Scores, 0.3, samples.Count, 5));
+    }
+
+    [Fact]
+    public void Confusion_FlagsAScoreThatReachesTheThreshold()
+    {
+        OutOfFoldScore[] scores =
+        [
+            new(0, 0, 0.9, true), new(0, 1, 0.4, true), new(1, 2, 0.4, false), new(1, 3, 0.1, false),
+        ];
+
+        var q = DecisionTree.Confusion(scores, 0.4, trainingSize: 4, folds: 2);
+
+        Assert.Equal((2, 1, 1, 0), (q.TruePositives, q.FalsePositives, q.TrueNegatives, q.FalseNegatives));
+    }
+
+    [Fact]
     public void CrossValidate_RefusesWhenAClassCannotFillEveryFold()
     {
         var samples = Separable(30).Where(s => !s.Label).Concat(Separable(2).Where(s => s.Label)).ToList();
@@ -219,6 +313,10 @@ public class DecisionTreeTests
         Assert.Equal(13 / 20.0, q.Prevalence, precision: 6);
         Assert.Equal(0.8 / (13 / 20.0), q.Lift, precision: 6);
         Assert.Equal(13 / 20.0, q.BaselineAccuracy, precision: 6);
+        Assert.Equal(10 / 20.0, q.FlaggedShare, precision: 6);
+
+        // Two extra alerts at 1 each, five missed at 3 each.
+        Assert.Equal(2 + 3 * 5, q.Cost(3), precision: 9);
     }
 
     [Fact]
@@ -232,6 +330,19 @@ public class DecisionTreeTests
         Assert.Equal(0, q.F1);
         Assert.Equal(0, q.Lift);
         Assert.Equal(0, q.BaselineAccuracy);
+    }
+
+    // Lower averages leave more often, but not always: a signal with noise, like the real one.
+    private static List<Sample> Noisy(int count, int seed)
+    {
+        var rng = new Random(seed);
+        return Enumerable.Range(0, count)
+            .Select(_ =>
+            {
+                var average = rng.Next(40, 100) / 10.0;
+                return Make(rng.Next(0, 80), average, rng.NextDouble() < (average < 6.5 ? 0.6 : 0.1));
+            })
+            .ToList();
     }
 
     private static int Depth(TreeNode node) =>

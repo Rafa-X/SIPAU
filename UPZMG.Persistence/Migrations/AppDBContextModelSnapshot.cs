@@ -1043,8 +1043,12 @@ namespace UPZMG.Persistence.Migrations
                         .IsUnique()
                         .HasFilter("[CURP] <> ''");
 
+                    b.HasIndex("CareerId");
+
                     b.HasIndex("EnrollmentNumber")
                         .IsUnique();
+
+                    b.HasIndex("PeriodIdStart");
 
                     b.ToTable("students", (string)null);
                 });
@@ -1395,6 +1399,21 @@ namespace UPZMG.Persistence.Migrations
                     b.HasOne("UPZMG.Persistence.Models.Student", null)
                         .WithMany()
                         .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("UPZMG.Persistence.Models.Student", b =>
+                {
+                    b.HasOne("UPZMG.Persistence.Models.Careers", null)
+                        .WithMany()
+                        .HasForeignKey("CareerId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("UPZMG.Persistence.Models.Periods", null)
+                        .WithMany()
+                        .HasForeignKey("PeriodIdStart")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
                 });

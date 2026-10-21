@@ -369,6 +369,13 @@ DECLARE @StudentEightId UNIQUEIDENTIFIER; SET @StudentEightId = NEWID();
 DECLARE @StudentNineId UNIQUEIDENTIFIER; SET @StudentNineId = NEWID();
 DECLARE @StudentTenId UNIQUEIDENTIFIER; SET @StudentTenId = NEWID();
 
+-- A student's languages are stored as a JSON list of language ids, the way EF keeps a List<Guid>.
+-- A bare id here made every one of these students fail to open for correction.
+DECLARE @LanguageList1 NVARCHAR(50); SET @LanguageList1 = CONCAT('["', LOWER(CONVERT(NVARCHAR(36), @Language1)), '"]');
+DECLARE @LanguageList2 NVARCHAR(50); SET @LanguageList2 = CONCAT('["', LOWER(CONVERT(NVARCHAR(36), @Language2)), '"]');
+DECLARE @LanguageList3 NVARCHAR(50); SET @LanguageList3 = CONCAT('["', LOWER(CONVERT(NVARCHAR(36), @Language3)), '"]');
+DECLARE @LanguageList4 NVARCHAR(50); SET @LanguageList4 = CONCAT('["', LOWER(CONVERT(NVARCHAR(36), @Language4)), '"]');
+
 BEGIN
     INSERT INTO students
         (Id, EnrollmentNumber, CURP, Name, MiddleName, LastName, BirthDate, Gender, CareerId, PeriodIdStart,
@@ -377,16 +384,16 @@ BEGIN
          MaritalStatus, NumberOfChildren, Works, BirthCountry, BirthState,
          Address)
     VALUES
-        (@StudentOneId, '20250001', 'ALOC950101HDFLRA09', 'Andrea', 'Lucia', 'Lopez', '1995-01-01', 'M', @CareerComputing, @Period2025A, 0, 0, @Language1, '97000', 0, 0, 0, 0, 'México', 'Chiapas', 'Calle 60 #123, Mérida, Yucatán'),
-        (@StudentTwoId, '20250002', 'ROGC960202HDFNTA10', 'Roberto', 'Carlos', 'García', '1996-02-02', 'H', @CareerIndustrial, @Period2025B, 0, 0, @Language2, '97010', 0, 0, 0, 1, 'México', 'Yucatán', 'Calle 20 #45, Valladolid, Yucatán'),
-        (@StudentThreeId, '20250003', 'ANRM970303MDFLRA11', 'Ana', 'Rosa', 'Martinez', '1997-03-03', 'M', @CareerBiomedic, @Period2025A, 0, 0, @Language3, '97020', 1, 0, 0, 0, 'Mexico', 'Jalisco', 'Calle 10 #12, Guadalajara'),
-        (@StudentFourId, '20250004', 'JPLM980404HDFNTA12', 'Juan', 'Pablo', 'Lopez', '1998-04-04', 'H', @CareerComputing, @Period2025A, 0, 0, @Language4, '97030', 2, 0, 0, 1, 'Mexico', 'Jalisco', 'Calle 11 #13, Zapopan'),
-        (@StudentFiveId, '20250005', 'MCRS990505MDFLRA13', 'Maria', 'Cristina', 'Ramos', '1999-05-05', 'M', @CareerIndustrial, @Period2025A, 0, 0, @Language1, '97040', 0, 0, 0, 0, 'Mexico', 'Puebla', 'Calle 12 #14, Puebla'),
-        (@StudentSixId, '20250006', 'DAGS000606HDFNTA14', 'Diego', 'Alberto', 'Gomez', '2000-06-06', 'H', @CareerBiomedic, @Period2025A, 0, 0, @Language2, '97050', 1, 0, 0, 1, 'Mexico', 'Puebla', 'Calle 13 #15, Puebla'),
-        (@StudentSevenId, '20250007', 'LFHS010707MDFLRA15', 'Laura', 'Fernanda', 'Hernandez', '2001-07-07', 'M', @CareerComputing, @Period2025A, 0, 0, @Language3, '97060', 2, 0, 0, 0, 'Mexico', 'Oaxaca', 'Calle 14 #16, Oaxaca'),
-        (@StudentEightId, '20250008', 'MTRJ020808HDFNTA16', 'Mateo', 'Rafael', 'Torres', '2002-08-08', 'H', @CareerIndustrial, @Period2025A, 0, 0, @Language4, '97070', 0, 0, 0, 0, 'Mexico', 'Oaxaca', 'Calle 15 #17, Oaxaca'),
-        (@StudentNineId, '20250009', 'SVPM030909MDFLRA17', 'Sofia', 'Valeria', 'Perez', '2003-09-09', 'M', @CareerBiomedic, @Period2025A, 0, 0, @Language1, '97080', 1, 0, 0, 1, 'Mexico', 'Sonora', 'Calle 16 #18, Hermosillo'),
-        (@StudentTenId, '20250010', 'EMCL040410HDFNTA18', 'Emilio', 'Manuel', 'Castillo', '2004-10-10', 'H', @CareerComputing, @Period2025A, 0, 0, @Language2, '97090', 2, 0, 0, 0, 'Mexico', 'Sonora', 'Calle 17 #19, Hermosillo');
+        (@StudentOneId, '20250001', 'ALOC950101HDFLRA09', 'Andrea', 'Lucia', 'Lopez', '1995-01-01', 'M', @CareerComputing, @Period2025A, 0, 0, @LanguageList1, '97000', 0, 0, 0, 0, 'México', 'Chiapas', 'Calle 60 #123, Mérida, Yucatán'),
+        (@StudentTwoId, '20250002', 'ROGC960202HDFNTA10', 'Roberto', 'Carlos', 'García', '1996-02-02', 'H', @CareerIndustrial, @Period2025B, 0, 0, @LanguageList2, '97010', 0, 0, 0, 1, 'México', 'Yucatán', 'Calle 20 #45, Valladolid, Yucatán'),
+        (@StudentThreeId, '20250003', 'ANRM970303MDFLRA11', 'Ana', 'Rosa', 'Martinez', '1997-03-03', 'M', @CareerBiomedic, @Period2025A, 0, 0, @LanguageList3, '97020', 1, 0, 0, 0, 'Mexico', 'Jalisco', 'Calle 10 #12, Guadalajara'),
+        (@StudentFourId, '20250004', 'JPLM980404HDFNTA12', 'Juan', 'Pablo', 'Lopez', '1998-04-04', 'H', @CareerComputing, @Period2025A, 0, 0, @LanguageList4, '97030', 2, 0, 0, 1, 'Mexico', 'Jalisco', 'Calle 11 #13, Zapopan'),
+        (@StudentFiveId, '20250005', 'MCRS990505MDFLRA13', 'Maria', 'Cristina', 'Ramos', '1999-05-05', 'M', @CareerIndustrial, @Period2025A, 0, 0, @LanguageList1, '97040', 0, 0, 0, 0, 'Mexico', 'Puebla', 'Calle 12 #14, Puebla'),
+        (@StudentSixId, '20250006', 'DAGS000606HDFNTA14', 'Diego', 'Alberto', 'Gomez', '2000-06-06', 'H', @CareerBiomedic, @Period2025A, 0, 0, @LanguageList2, '97050', 1, 0, 0, 1, 'Mexico', 'Puebla', 'Calle 13 #15, Puebla'),
+        (@StudentSevenId, '20250007', 'LFHS010707MDFLRA15', 'Laura', 'Fernanda', 'Hernandez', '2001-07-07', 'M', @CareerComputing, @Period2025A, 0, 0, @LanguageList3, '97060', 2, 0, 0, 0, 'Mexico', 'Oaxaca', 'Calle 14 #16, Oaxaca'),
+        (@StudentEightId, '20250008', 'MTRJ020808HDFNTA16', 'Mateo', 'Rafael', 'Torres', '2002-08-08', 'H', @CareerIndustrial, @Period2025A, 0, 0, @LanguageList4, '97070', 0, 0, 0, 0, 'Mexico', 'Oaxaca', 'Calle 15 #17, Oaxaca'),
+        (@StudentNineId, '20250009', 'SVPM030909MDFLRA17', 'Sofia', 'Valeria', 'Perez', '2003-09-09', 'M', @CareerBiomedic, @Period2025A, 0, 0, @LanguageList1, '97080', 1, 0, 0, 1, 'Mexico', 'Sonora', 'Calle 16 #18, Hermosillo'),
+        (@StudentTenId, '20250010', 'EMCL040410HDFNTA18', 'Emilio', 'Manuel', 'Castillo', '2004-10-10', 'H', @CareerComputing, @Period2025A, 0, 0, @LanguageList2, '97090', 2, 0, 0, 0, 'Mexico', 'Sonora', 'Calle 17 #19, Hermosillo');
 END;
 
 BEGIN

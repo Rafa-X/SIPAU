@@ -14,10 +14,27 @@ public static class IntelligenceEngine
     public const int MinSamplesLeaf = 10;
     public const int Folds = 5;
 
-    // Missing a student who leaves costs far more than one extra tutoring interview,
-    // so the cut sits below 0.5 to favour recall.
-    public const double RiskThreshold = 0.35;
+    // Seed of the stratified shuffle behind the folds: the same data gives the same figures.
+    public const int Seed = 20260917;
+
+    // Candidate cuts the threshold study grades, every 0.05 from 0.05 to 0.95.
+    public static readonly IReadOnlyList<double> CandidateThresholds = [.. Enumerable.Range(1, 19).Select(i => i / 20.0)];
+
+    // What a missed withdrawal costs, counted in follow-up interviews that were not needed. The
+    // decision threshold is the candidate that makes extra alerts + FalseNegativeCost · missed
+    // withdrawals smallest over trajectories the tree did not see; this number, not a hand-picked
+    // cut, is the policy decision, and the sensitivity study shows what other values would pick.
+    public const double FalseNegativeCost = 3;
+    public static readonly IReadOnlyList<double> SensitivityCosts = [1.5, 2, 3, 4, 5];
+
     public const double HighRiskPct = 50;
+
+    /// <summary>The threshold rule, in the words the screens use.</summary>
+    public static string ThresholdRule =>
+        $"De los cortes entre 5 % y 95 %, de 5 en 5, el que hace mínimo el costo de equivocarse sobre las "
+        + $"trayectorias que el árbol no vio: cada alerta de más cuesta 1 (una entrevista de tutoría que no hacía "
+        + $"falta) y cada baja no detectada cuesta {FalseNegativeCost.ToString("0.#", CultureInfo.InvariantCulture)}. "
+        + "Si varios empatan, el más bajo.";
 
     private const int TopStudents = 10;
     private const int MaxAlerts = 6;
@@ -28,8 +45,9 @@ public static class IntelligenceEngine
 
     private static readonly CultureInfo Mx = CultureInfo.GetCultureInfo("es-MX");
 
-    public static string LevelFor(double riskPct) =>
-        riskPct >= HighRiskPct ? "Alto" : riskPct >= RiskThreshold * 100 ? "Medio" : "Bajo";
+    // "Alto" never sits below the threshold: a student the model does not flag is not high risk.
+    public static string LevelFor(double riskPct, double threshold) =>
+        riskPct >= Math.Max(HighRiskPct, threshold * 100) ? "Alto" : riskPct >= threshold * 100 ? "Medio" : "Bajo";
 
     // ── Enrolment projection ────────────────────────────────────────────────
 
@@ -78,12 +96,14 @@ public static class IntelligenceEngine
 
             if (!hasBand) continue;
 
-            // ±2 standard errors, widening with each step past the data. Both edges are held at
-            // zero, like the projection: a steep enough decline sent the trend below zero, and
-            // clamping only the lower edge left an upper bound underneath it.
-            double spread = 2 * fit.StdError!.Value * (i < n ? 1 : 1 + 0.35 * (i - n + 1));
-            upper[i] = Math.Round(Math.Max(0, trend[i] + spread), 1);
-            lower[i] = Math.Round(Math.Max(0, trend[i] - spread), 1);
+            // The 95 % prediction interval of the regression: where one period at x would land
+            // 95 times in 100 if the line holds. It widens on its own as x leaves the fitted
+            // history, because the slope's uncertainty grows with the distance. Both edges are
+            // held at zero, like the projection: a steep enough decline sent the trend below
+            // zero, and clamping only the lower edge left an upper bound underneath it.
+            double margin = fit.PredictionMargin(x) ?? 0;
+            upper[i] = Math.Round(Math.Max(0, trend[i] + margin), 1);
+            lower[i] = Math.Round(Math.Max(0, trend[i] - margin), 1);
         }
 
         return new EnrollmentForecast(
@@ -119,7 +139,8 @@ public static class IntelligenceEngine
     /// forward one period at a time; at each step the line is fitted only on what came before
     /// and asked for the next period, and two references anybody can compute by hand get the
     /// same treatment. R² measures how well the line describes the history it was fitted to,
-    /// which is a different question from how well it predicts the term after.
+    /// which is a different question from how well it predicts the term after. Each step also
+    /// checks whether the period fell inside the 95 % interval drawn from the same cut.
     /// </summary>
     public static ForecastAccuracy? Backtest(AcademicHistory history)
     {
@@ -130,7 +151,7 @@ public static class IntelligenceEngine
         var positions = Positions(history);
 
         double trend = 0, lastValue = 0, drift = 0;
-        int evaluations = 0;
+        int evaluations = 0, inside = 0;
 
         for (int cut = BacktestMinimumTrain; cut < observed.Length; cut++)
         {
@@ -144,10 +165,15 @@ public static class IntelligenceEngine
             var growthPerPeriod = span <= 0 ? 0 : (trainY[^1] - trainY[0]) / span;
             var step = positions[cut] - trainX[^1];
 
-            trend += Math.Abs(Math.Max(0, fit.PredictAt(positions[cut])) - actual);
+            var predicted = fit.PredictAt(positions[cut]);
+            trend += Math.Abs(Math.Max(0, predicted) - actual);
             lastValue += Math.Abs(trainY[^1] - actual);
             drift += Math.Abs(Math.Max(0, trainY[^1] + growthPerPeriod * step) - actual);
             evaluations++;
+
+            // The interval as the chart would have drawn it at that cut, edges held at zero.
+            var margin = fit.PredictionMargin(positions[cut]) ?? 0;
+            if (Math.Max(0, predicted - margin) <= actual && actual <= Math.Max(0, predicted + margin)) inside++;
         }
 
         if (evaluations == 0) return null;
@@ -156,7 +182,8 @@ public static class IntelligenceEngine
             evaluations,
             Math.Round(trend / evaluations, 1),
             Math.Round(lastValue / evaluations, 1),
-            Math.Round(drift / evaluations, 1));
+            Math.Round(drift / evaluations, 1),
+            inside);
     }
 
     // Known upcoming periods first, then the SEP sequence, then a generic label.
@@ -211,11 +238,15 @@ public static class IntelligenceEngine
         var samples = finished.Select(o => new Sample(o.Features, o.Outcome!.Value)).ToList();
 
         // Quality comes from cross-validation; the published tree then learns from every trajectory.
-        var quality = DecisionTree.CrossValidate(samples, Folds, RiskThreshold, MaxDepth, MinSamplesLeaf);
+        // The refusal above guarantees a sample of each class per fold, so the run always exists.
+        var run = DecisionTree.CrossValidateScores(samples, Folds, MaxDepth, MinSamplesLeaf, Seed)!;
+        var threshold = ChooseThreshold(run.Scores);
+        var quality = DecisionTree.Confusion(run.Scores, threshold, samples.Count, Folds);
+        var evaluation = Evaluate(samples, run, threshold);
         var model = DecisionTree.Train(samples, MaxDepth, MinSamplesLeaf);
 
         var scored = active
-            .Select(o => Score(model, o))
+            .Select(o => Score(model, o, threshold))
             .OrderByDescending(s => s.RiskPct)
             .ThenBy(s => s.FullName, StringComparer.CurrentCulture)
             .ToList();
@@ -248,7 +279,7 @@ public static class IntelligenceEngine
             FinishedTrajectories: finished.Count,
             Withdrawals: withdrawals,
             Graduates: graduates,
-            Threshold: RiskThreshold,
+            Threshold: threshold,
             Quality: quality,
             Tree: model.Root,
             Rules: model.Rules(DropoutFeatures.Describe),
@@ -258,23 +289,150 @@ public static class IntelligenceEngine
             ScoredStudents: scored.Count,
             AtRiskStudents: atRisk,
             HighRiskStudents: scored.Count(s => s.Level == "Alto"),
-            Unscored: unscored);
+            Unscored: unscored,
+            UncertainStudents: scored.Count(s => s.Uncertain),
+            Evaluation: evaluation);
 
         return new DropoutAnalysis(full, scored);
     }
 
-    private static StudentRisk Score(DecisionTree model, StudentObservation o)
+    /// <summary>
+    /// The evidence behind the quality figures: the matrix of each fold, every candidate
+    /// threshold, what the misclassified trajectories look like, and the threshold rule graded
+    /// without letting it see the fold it is graded on.
+    /// </summary>
+    public static ModelEvaluation Evaluate(IReadOnlyList<Sample> samples, CrossValidationRun run, double threshold)
     {
-        var features = o.Features;
-        var risk = Math.Round(model.Predict(features) * 100, 1);
-        var reasons = model.Explain(features, DropoutFeatures.Describe);
+        var folds = Enumerable.Range(0, run.Folds)
+            .Select(k => new FoldResult(
+                k + 1,
+                run.TrainingSizes[k],
+                DecisionTree.Confusion(run.Scores.Where(s => s.Fold == k), threshold, run.TrainingSizes[k], run.Folds)))
+            .ToList();
+
+        var thresholds = CandidateThresholds
+            .Select(t => new ThresholdPoint(t, DecisionTree.Confusion(run.Scores, t, samples.Count, run.Folds)))
+            .ToList();
+
+        var sensitivity = SensitivityCosts
+            .Select(cost =>
+            {
+                var chosen = ChooseThreshold(run.Scores, cost);
+                return new CostChoice(cost, chosen, DecisionTree.Confusion(run.Scores, chosen, samples.Count, run.Folds));
+            })
+            .ToList();
+
+        // Nested: the rule picks a threshold from an inner cross-validation of the other folds,
+        // and that threshold is graded on the fold the rule never looked at.
+        var nestedThresholds = new List<double>(run.Folds);
+        var nestedScores = new List<OutOfFoldScore>(run.Scores.Count);
+        var nestedFlags = new List<bool>(run.Scores.Count);
+
+        for (int k = 0; k < run.Folds; k++)
+        {
+            var training = run.Scores.Where(s => s.Fold != k).Select(s => samples[s.Index]).ToList();
+            var inner = DecisionTree.CrossValidateScores(training, run.Folds, MaxDepth, MinSamplesLeaf, Seed);
+            var chosen = inner is null ? threshold : ChooseThreshold(inner.Scores);
+            nestedThresholds.Add(chosen);
+
+            foreach (var score in run.Scores.Where(s => s.Fold == k))
+            {
+                nestedScores.Add(score);
+                nestedFlags.Add(score.Probability >= chosen);
+            }
+        }
+
+        return new ModelEvaluation(
+            Seed,
+            folds,
+            thresholds,
+            sensitivity,
+            Matrix(nestedScores.Zip(nestedFlags), samples.Count, run.Folds),
+            nestedThresholds,
+            Profiles(samples, run.Scores, threshold));
+    }
+
+    /// <summary>
+    /// The selection rule: the candidate with the smallest cost over the held-out scores, the
+    /// lowest one when several tie. Leaf probabilities are discrete, so neighbouring candidates
+    /// often flag exactly the same trajectories.
+    /// </summary>
+    public static double ChooseThreshold(IReadOnlyList<OutOfFoldScore> scores, double falseNegativeCost = FalseNegativeCost) =>
+        CandidateThresholds
+            .Select(t => (Threshold: t, Cost: DecisionTree.Confusion(scores, t, scores.Count, 0).Cost(falseNegativeCost)))
+            .OrderBy(c => c.Cost)
+            .ThenBy(c => c.Threshold)
+            .First()
+            .Threshold;
+
+    private static ModelQuality Matrix(IEnumerable<(OutOfFoldScore Score, bool Flagged)> decisions, int trainingSize, int folds)
+    {
+        int tp = 0, fp = 0, tn = 0, fn = 0;
+        foreach (var (score, flagged) in decisions)
+        {
+            if (flagged && score.Label) tp++;
+            else if (flagged) fp++;
+            else if (score.Label) fn++;
+            else tn++;
+        }
+
+        return new ModelQuality(tp, fp, tn, fn, trainingSize, folds);
+    }
+
+    // The four cells of the matrix, each described by the mean of every input.
+    private static IReadOnlyList<ErrorProfile> Profiles(
+        IReadOnlyList<Sample> samples, IReadOnlyList<OutOfFoldScore> scores, double threshold)
+    {
+        string CellOf(OutOfFoldScore s) => (s.Probability >= threshold, s.Label) switch
+        {
+            (true, true) => "Bajas detectadas",
+            (false, true) => "Bajas no detectadas",
+            (true, false) => "Alertas de más",
+            _ => "Bien descartados",
+        };
+
+        string[] order = ["Bajas detectadas", "Bajas no detectadas", "Alertas de más", "Bien descartados"];
+
+        return
+        [
+            .. scores
+                .GroupBy(CellOf)
+                .OrderBy(g => Array.IndexOf(order, g.Key))
+                .Select(g =>
+                {
+                    var features = g.Select(s => samples[s.Index].Features).ToList();
+                    double Mean(string name) => Math.Round(features.Average(f => f[name]), 2);
+
+                    return new ErrorProfile(
+                        g.Key,
+                        g.Count(),
+                        Mean(DropoutFeatures.Average),
+                        Mean(DropoutFeatures.FailureRate),
+                        Mean(DropoutFeatures.RetakesPerPeriod),
+                        Mean(DropoutFeatures.EntryAge),
+                        Math.Round(features.Average(f => f[DropoutFeatures.Works]) * 100, 1));
+                }),
+        ];
+    }
+
+    private static StudentRisk Score(DecisionTree model, StudentObservation o, double threshold)
+    {
+        // One walk down the tree gives the number, the rule and how many trajectories back it.
+        var decision = model.Decide(o.Features, DropoutFeatures.Describe);
+        var risk = Math.Round(decision.Probability * 100, 1);
+        var (lower, upper) = Statistics.Wilson(decision.Positives, decision.Support);
 
         return new StudentRisk(
             o.StudentId, o.EnrollmentNumber, o.FullName, o.Career,
-            risk, LevelFor(risk),
-            reasons.Count == 0 ? ["El modelo no encontró condiciones que lo distingan"] : reasons,
+            risk, LevelFor(risk, threshold),
+            decision.Conditions.Count == 0 ? ["El modelo no encontró condiciones que lo distingan"] : decision.Conditions,
             Math.Round(o.AverageGrade, 2), Math.Round(o.FailureRate, 1), Math.Round(o.RetakesPerPeriod, 2),
-            o.EntryAge, o.Works, o.PeriodsObserved);
+            o.EntryAge, o.Works, o.PeriodsObserved,
+            RuleSupport: decision.Support,
+            RuleWithdrawals: decision.Positives,
+            LowerPct: Math.Round(lower * 100, 1),
+            UpperPct: Math.Round(upper * 100, 1),
+            Uncertain: lower < threshold && threshold <= upper);
     }
 
     // ── Anomaly detection ───────────────────────────────────────────────────

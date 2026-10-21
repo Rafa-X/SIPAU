@@ -14,8 +14,13 @@ namespace UPZMG.Api.Controllers;
 [RequirePermission(AppPermissions.ReadIndicators)]
 public class IntelligenceController(
     IntelligenceRepository intelligenceRepository,
-    AlertsRepository alertsRepository) : ControllerBase
+    AlertsRepository alertsRepository,
+    IConfiguration configuration) : ControllerBase
 {
+    // Whether the trajectories in this database are the demonstration seed. The risk screen says
+    // so next to the model's figures, so nobody reads them as results about real students.
+    private bool SyntheticData => configuration.GetValue<bool>("Intelligence:SyntheticData");
+
     // Whose alerts they are always comes from the token, never from the request body.
     private Guid CurrentUserId =>
         Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub"), out var id)
@@ -67,7 +72,7 @@ public class IntelligenceController(
     [RequirePermission(AppPermissions.ReadRisk)]
     // Dropout model: quality, learned rules, risk by career and the most urgent students
     public async Task<ActionResult<DropoutModelReport>> GetDropoutReport() =>
-        Ok(await intelligenceRepository.GetDropoutReportAsync());
+        Ok(await intelligenceRepository.GetDropoutReportAsync() with { SyntheticData = SyntheticData });
 
     [HttpGet("dropout/students")]
     [RequirePermission(AppPermissions.ReadRisk)]
@@ -79,5 +84,5 @@ public class IntelligenceController(
     [RequirePermission(AppPermissions.TrainRisk)]
     // Retrains now instead of waiting for the data to change
     public async Task<ActionResult<DropoutModelReport>> Retrain([FromBody] RetrainDropoutModel request) =>
-        Ok(await intelligenceRepository.RetrainAsync());
+        Ok(await intelligenceRepository.RetrainAsync() with { SyntheticData = SyntheticData });
 }
