@@ -37,13 +37,20 @@ public class ReauditProbes
         Assert.Equal(Guid.Empty, link.SpeakerId);
     }
 
+    // The limitation this probe used to record (R07): a student could point at a career or an
+    // entry period that did not exist. Both are foreign keys now, and like every other key of the
+    // model they refuse the delete of a row still in use instead of cascading it.
     [Fact]
-    public void StudentCareerAndEntryPeriodHaveNoForeignKeys()
+    public void StudentCareerAndEntryPeriodAreForeignKeys()
     {
         using var db = new AppDBContext(new DbContextOptionsBuilder<AppDBContext>()
             .UseSqlServer("Server=localhost;Database=AuditUnused;Integrated Security=true;TrustServerCertificate=true").Options);
-        var entity = db.Model.FindEntityType(typeof(Student))!;
-        Assert.DoesNotContain(entity.GetForeignKeys(), f => f.Properties.Any(p => p.Name is "CareerId" or "PeriodIdStart"));
+        var keys = db.Model.FindEntityType(typeof(Student))!.GetForeignKeys().ToList();
+
+        Assert.Contains(keys, f => f.Properties.Single().Name == "CareerId"
+            && f.PrincipalEntityType.ClrType == typeof(Careers) && f.DeleteBehavior == DeleteBehavior.NoAction);
+        Assert.Contains(keys, f => f.Properties.Single().Name == "PeriodIdStart"
+            && f.PrincipalEntityType.ClrType == typeof(Periods) && f.DeleteBehavior == DeleteBehavior.NoAction);
     }
 
     /// <summary>

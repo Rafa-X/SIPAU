@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using System.Text.Json;
 using UPZMG.Persistence.Models;
 
@@ -197,7 +198,8 @@ public class AppDBContext(DbContextOptions<AppDBContext> options) : DbContext(op
                 .HasColumnType("nvarchar(max)")
                 .HasConversion(
                     schedule => JsonSerializer.Serialize(schedule, (JsonSerializerOptions?)null),
-                    schedule => JsonSerializer.Deserialize<List<Schedule>>(schedule) ?? new List<Schedule>());
+                    schedule => JsonSerializer.Deserialize<List<Schedule>>(schedule) ?? new List<Schedule>(),
+                    JsonListComparer<Schedule>());
         });
         modelBuilder.Entity<Courses>(entity => {
             entity.ToTable("courses");
@@ -277,6 +279,15 @@ public class AppDBContext(DbContextOptions<AppDBContext> options) : DbContext(op
         modelBuilder.Entity<Student>(entity => {
             entity.ToTable("students");
             entity.HasKey(x => x.Id);
+            // A student belongs to a programme and entered in a period that exist. Without these
+            // keys a request that skipped the screens could store a student of no career, and
+            // the indicators would count somebody nobody can place.
+            entity.HasOne<Careers>()
+                .WithMany()
+                .HasForeignKey(x => x.CareerId);
+            entity.HasOne<Periods>()
+                .WithMany()
+                .HasForeignKey(x => x.PeriodIdStart);
             // Two simultaneous captures cannot both win: the database decides, not a prior read.
             entity.HasIndex(x => x.EnrollmentNumber).IsUnique();
             // CURP is optional in the capture, so only the ones actually given have to be unique.
@@ -379,7 +390,8 @@ public class AppDBContext(DbContextOptions<AppDBContext> options) : DbContext(op
                 .HasColumnType("nvarchar(max)")
                 .HasConversion(
                     problems => JsonSerializer.Serialize(problems, (JsonSerializerOptions?)null),
-                    problems => JsonSerializer.Deserialize<List<string>>(problems, (JsonSerializerOptions?)null) ?? new List<string>());
+                    problems => JsonSerializer.Deserialize<List<string>>(problems, (JsonSerializerOptions?)null) ?? new List<string>(),
+                    JsonListComparer<string>());
         });
 
         // Extension
@@ -489,6 +501,13 @@ public class AppDBContext(DbContextOptions<AppDBContext> options) : DbContext(op
             }
         }
     }
+
+    // A list kept as JSON in one column. Without a comparer EF compares the list reference, so an
+    // element changed in place would never be saved; comparing the JSON compares the elements.
+    private static ValueComparer<List<T>> JsonListComparer<T>() => new(
+        (a, b) => JsonSerializer.Serialize(a, (JsonSerializerOptions?)null) == JsonSerializer.Serialize(b, (JsonSerializerOptions?)null),
+        list => JsonSerializer.Serialize(list, (JsonSerializerOptions?)null).GetHashCode(),
+        list => JsonSerializer.Deserialize<List<T>>(JsonSerializer.Serialize(list, (JsonSerializerOptions?)null), (JsonSerializerOptions?)null)!);
 }
 
 /*

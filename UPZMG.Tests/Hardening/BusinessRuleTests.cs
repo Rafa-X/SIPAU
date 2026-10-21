@@ -23,6 +23,24 @@ public class BusinessRuleTests
             .UseInMemoryDatabase("rules-" + Guid.NewGuid())
             .Options);
 
+    // The career and entry period every sample student belongs to. A student whose career or
+    // period does not exist is refused, so the contexts that register students carry both.
+    private static readonly Guid Career = Guid.NewGuid();
+    private static readonly Guid EntryPeriod = Guid.NewGuid();
+
+    private static AppDBContext Catalogued()
+    {
+        var db = Memory();
+        db.Careers.Add(new Careers { Id = Career, Name = "Ingeniería en Sistemas Computacionales", Alias = "INCO" });
+        db.Periods.Add(new Periods
+        {
+            Id = EntryPeriod, IdCode = "2026-EA", SchoolCycle = "2026", SEP_Period = "Ene-Abr",
+            StartDate = new DateOnly(2026, 1, 5), EndDate = new DateOnly(2026, 4, 30),
+        });
+        db.SaveChanges();
+        return db;
+    }
+
     private static CreateStudent Student(string enrollment, string curp, params string[] languages) =>
         new()
         {
@@ -39,8 +57,8 @@ public class BusinessRuleTests
             BirthCountry = "México",
             BirthState = "Jalisco",
             Address = "Calle 1",
-            CareerId = Guid.NewGuid(),
-            PeriodIdStart = Guid.NewGuid(),
+            CareerId = Career,
+            PeriodIdStart = EntryPeriod,
             InscriptionType = InscriptionType.NuevoIngreso,
             Status = StudentStatus.Activo,
             IndigenousLanguages = [.. languages],
@@ -49,7 +67,7 @@ public class BusinessRuleTests
     [Fact]
     public async Task StudentsWithoutCurpAreAllAcceptedLikeTheIndexAllows()
     {
-        using var db = Memory();
+        using var db = Catalogued();
         var repository = new StudentsRepository(db);
 
         await repository.CreateStudentAsync(Student("UPH0001", string.Empty));
@@ -63,7 +81,7 @@ public class BusinessRuleTests
     [Fact]
     public async Task AStudentWithoutCurpCanBeCorrectedWhenOthersHaveNoneEither()
     {
-        using var db = Memory();
+        using var db = Catalogued();
         var repository = new StudentsRepository(db);
         await repository.CreateStudentAsync(Student("UPH0001", string.Empty));
         var second = await repository.CreateStudentAsync(Student("UPH0002", string.Empty));
@@ -86,9 +104,28 @@ public class BusinessRuleTests
     }
 
     [Fact]
+    public async Task AStudentOfACareerOrPeriodThatDoesNotExistIsRefused()
+    {
+        using var db = Catalogued();
+        var repository = new StudentsRepository(db);
+
+        var nowhere = Student("UPH0001", string.Empty);
+        nowhere.CareerId = Guid.NewGuid();
+        var career = await Assert.ThrowsAsync<InvalidOperationException>(() => repository.CreateStudentAsync(nowhere));
+        Assert.Contains("carrera", career.Message);
+
+        var never = Student("UPH0002", string.Empty);
+        never.PeriodIdStart = Guid.NewGuid();
+        var period = await Assert.ThrowsAsync<InvalidOperationException>(() => repository.CreateStudentAsync(never));
+        Assert.Contains("periodo", period.Message);
+
+        Assert.Empty(await db.Students.ToListAsync());
+    }
+
+    [Fact]
     public async Task ALanguageOutsideTheCatalogueIsRefusedInsteadOfDropped()
     {
-        using var db = Memory();
+        using var db = Catalogued();
         db.IndigenousLanguages.Add(new IndigenousLanguages { Id = Guid.NewGuid(), Language = "Maya Yucateco" });
         await db.SaveChangesAsync();
 
@@ -104,7 +141,7 @@ public class BusinessRuleTests
     [Fact]
     public async Task ALanguageMatchesTheCatalogueWithOrWithoutItsAccent()
     {
-        using var db = Memory();
+        using var db = Catalogued();
         var language = new IndigenousLanguages { Id = Guid.NewGuid(), Language = "Nahuatl" };
         db.IndigenousLanguages.Add(language);
         await db.SaveChangesAsync();
@@ -117,7 +154,7 @@ public class BusinessRuleTests
     [Fact]
     public async Task ADuplicatedCurpIsStillRefused()
     {
-        using var db = Memory();
+        using var db = Catalogued();
         var repository = new StudentsRepository(db);
 
         await repository.CreateStudentAsync(Student("UPH0001", "LORA040301HJCXXX01"));
@@ -129,7 +166,7 @@ public class BusinessRuleTests
     [Fact]
     public async Task ANewStudentKeepsTheirIndigenousLanguages()
     {
-        using var db = Memory();
+        using var db = Catalogued();
         var language = new IndigenousLanguages { Id = Guid.NewGuid(), Language = "Náhuatl" };
         db.IndigenousLanguages.Add(language);
         await db.SaveChangesAsync();
@@ -145,7 +182,7 @@ public class BusinessRuleTests
     [Fact]
     public async Task TwoStudentsCanSpeakTheSameLanguage()
     {
-        using var db = Memory();
+        using var db = Catalogued();
         db.IndigenousLanguages.Add(new IndigenousLanguages { Id = Guid.NewGuid(), Language = "Wixárika" });
         await db.SaveChangesAsync();
 
