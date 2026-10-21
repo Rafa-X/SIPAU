@@ -18,7 +18,8 @@ public class DataCaptureController(
     InfraestructureRepository infraestructureRepository,
     ScholarshipsRepository scholarshipsRepository,
     ExtensionRepository extensionRepository,
-    FinanceRepository financeRepository) : ControllerBase
+    FinanceRepository financeRepository,
+    BulkImportRepository bulkImportRepository) : ControllerBase
 {
 
     // The author always comes from the token, never from the request body.
@@ -42,6 +43,12 @@ public class DataCaptureController(
             return Conflict(new { message = ex.Message });
         }
     }
+
+    [HttpPost("students/import")]
+    [RequirePermission(AppPermissions.CaptureStudents)]
+    // Checks the students of a file and, when asked, stores all of them or none
+    public async Task<ActionResult<ImportResult>> ImportStudents([FromBody] ImportStudents request) =>
+        Ok(await bulkImportRepository.ImportStudentsAsync(request));
 
     [HttpGet("students/list")]
     [RequirePermission(AppPermissions.CaptureStudents)]
@@ -73,6 +80,12 @@ public class DataCaptureController(
             return Conflict(new { message = ex.Message });
         }
     }
+
+    [HttpPost("employees/import")]
+    [RequirePermission(AppPermissions.CaptureStaff)]
+    // Checks the employees of a file and, when asked, stores all of them or none
+    public async Task<ActionResult<ImportResult>> ImportEmployees([FromBody] ImportEmployees request) =>
+        Ok(await bulkImportRepository.ImportEmployeesAsync(request));
 
     [HttpPost("class-groups/create")]
     [RequirePermission(AppPermissions.CaptureClassGroups)]

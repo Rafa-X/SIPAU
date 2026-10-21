@@ -15,6 +15,12 @@ public interface IDataCaptureService
     Task<Employee?> CreateTeacher(CreateEmployee request);
     Task<ClassGroups?> CreateClassGroup(CreateClassGroup request);
 
+    /// <summary>Checks a file of students or, with Commit, stores all of it or none.</summary>
+    Task<ImportResult> ImportStudentsAsync(ImportStudents request);
+
+    /// <summary>Checks a file of employees or, with Commit, stores all of it or none.</summary>
+    Task<ImportResult> ImportEmployeesAsync(ImportEmployees request);
+
     /// <summary>The captured record, to fill the correction form; null when it no longer exists.</summary>
     Task<UpdateEmployee?> GetTeacherAsync(Guid id);
     Task<UpdateClassGroup?> GetClassGroupAsync(Guid id);

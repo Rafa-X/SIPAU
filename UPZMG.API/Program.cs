@@ -46,6 +46,7 @@ try
     builder.Services.AddScoped<ExtensionRepository>();
     builder.Services.AddScoped<FinanceRepository>();
     builder.Services.AddScoped<ScholarshipsRepository>();
+    builder.Services.AddScoped<BulkImportRepository>();
     // The trained model outlives a request; it is rebuilt when the academic data changes
     builder.Services.AddSingleton<IntelligenceModelCache>();
 
