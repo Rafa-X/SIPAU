@@ -16,6 +16,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The official formats exactly as the API publishes them, so the engine is tested on the real ones. -->
+    <None Include="..\UPZMG.API\ReportTemplates\*.json" LinkBase="ReportTemplates" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Persistence compiles UPZMG.Implementations, where the intelligent layer lives. -->
     <ProjectReference Include="..\UPZMG.Persistence\UPZMG.Persistence.csproj" />
     <ProjectReference Include="..\UPZMG.Shared\UPZMG.Shared.csproj" />
