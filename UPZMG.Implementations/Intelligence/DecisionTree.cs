@@ -45,6 +45,9 @@ public sealed record ModelQuality(
 
     public double F1 => Precision + Recall == 0 ? 0 : 2 * Precision * Recall / (Precision + Recall);
 
+    // Share of the evaluated trajectories that end up flagged
+    public double FlaggedShare => Evaluated == 0 ? 0 : (double)(TruePositives + FalsePositives) / Evaluated;
+
     // Share of positives: the precision of flagging students at random
     public double Prevalence => Evaluated == 0 ? 0 : (double)(TruePositives + FalseNegatives) / Evaluated;
 
@@ -55,11 +58,31 @@ public sealed record ModelQuality(
     public double BaselineAccuracy => Evaluated == 0
         ? 0 : (double)Math.Max(TruePositives + FalseNegatives, TrueNegatives + FalsePositives) / Evaluated;
 
+    /// <summary>The cost of this matrix when an extra alert costs 1 and a missed positive costs <paramref name="falseNegativeCost"/>.</summary>
+    public double Cost(double falseNegativeCost) => FalsePositives + falseNegativeCost * FalseNegatives;
+
     public static readonly ModelQuality None = new(0, 0, 0, 0, 0, 0);
 }
 
 /// <summary>A root-to-leaf path written as a readable rule.</summary>
 public sealed record TreeRule(string Condition, double Probability, int SampleCount);
+
+/// <summary>What the tree decided for one observation, and why.</summary>
+/// <param name="Probability">Share of positive labels among the training samples in the leaf reached.</param>
+/// <param name="Support">How many training samples reached that leaf.</param>
+/// <param name="Conditions">The path to the leaf, one condition per feature, in the order first tested.</param>
+public sealed record TreeDecision(double Probability, int Support, IReadOnlyList<string> Conditions)
+{
+    /// <summary>Positive training samples in the leaf: the k of the k / n behind the probability.</summary>
+    public int Positives => (int)Math.Round(Probability * Support);
+}
+
+/// <summary>The score one sample got from the fold model that never saw it.</summary>
+/// <param name="Index">Position of the sample in the list that was validated.</param>
+public sealed record OutOfFoldScore(int Fold, int Index, double Probability, bool Label);
+
+/// <summary>Every sample scored once by a model trained without it, and how big each training set was.</summary>
+public sealed record CrossValidationRun(int Folds, IReadOnlyList<int> TrainingSizes, IReadOnlyList<OutOfFoldScore> Scores);
 
 /// <summary>Share of the total impurity reduction a feature is responsible for (0..1).</summary>
 public sealed record FeatureWeight(string Feature, double Importance);
@@ -120,7 +143,15 @@ public sealed class DecisionTree
     public double Predict(IReadOnlyDictionary<string, double> features) => LeafFor(features).Probability;
 
     /// <summary>The tests that led to the prediction: one condition per feature, in the order first tested.</summary>
-    public IReadOnlyList<string> Explain(IReadOnlyDictionary<string, double> features, BoundDescriber? describe = null)
+    public IReadOnlyList<string> Explain(IReadOnlyDictionary<string, double> features, BoundDescriber? describe = null) =>
+        Decide(features, describe).Conditions;
+
+    /// <summary>
+    /// The leaf this observation reaches, with the path that leads to it. The probability, the
+    /// number of samples behind it and the explanation come from one walk down the tree, so the
+    /// reasons shown can never belong to a different leaf than the one that produced the number.
+    /// </summary>
+    public TreeDecision Decide(IReadOnlyDictionary<string, double> features, BoundDescriber? describe = null)
     {
         var path = new List<SplitTest>();
         var node = Root;
@@ -132,7 +163,7 @@ public sealed class DecisionTree
             node = goesLeft ? node.Left! : node.Right!;
         }
 
-        return Describe(path, describe ?? DefaultDescriber);
+        return new TreeDecision(node.Probability, node.SampleCount, Describe(path, describe ?? DefaultDescriber));
     }
 
     /// <summary>Every leaf as a rule, highest risk first.</summary>
@@ -321,6 +352,23 @@ public sealed class DecisionTree
         int minSamplesLeaf = 5,
         int seed = 20260917)
     {
+        var run = CrossValidateScores(samples, folds, maxDepth, minSamplesLeaf, seed);
+        return run is null ? ModelQuality.None : Confusion(run.Scores, decisionThreshold, samples.Count, folds);
+    }
+
+    /// <summary>
+    /// The scores behind <see cref="CrossValidate"/>: one per sample, each produced by the fold
+    /// model trained on the other folds. Keeping them, rather than only the pooled counts, is
+    /// what lets the matrix be read per fold and the decision threshold be studied on data no
+    /// model was trained on. Null when a fold could not hold a sample of each class.
+    /// </summary>
+    public static CrossValidationRun? CrossValidateScores(
+        IReadOnlyList<Sample> samples,
+        int folds = 5,
+        int maxDepth = 4,
+        int minSamplesLeaf = 5,
+        int seed = 20260917)
+    {
         ArgumentNullException.ThrowIfNull(samples);
 
         var positives = samples.Where(s => s.Label).ToList();
@@ -328,7 +376,7 @@ public sealed class DecisionTree
 
         // Each fold needs at least one sample of each class to mean anything.
         if (folds < 2 || positives.Count < folds || negatives.Count < folds)
-            return ModelQuality.None;
+            return null;
 
         var rng = new Random(seed);
         var foldOf = new Dictionary<Sample, int>(ReferenceEqualityComparer.Instance);
@@ -338,24 +386,40 @@ public sealed class DecisionTree
             for (int i = 0; i < shuffled.Count; i++) foldOf[shuffled[i]] = i % folds;
         }
 
-        int tp = 0, fp = 0, tn = 0, fn = 0;
+        var scores = new List<OutOfFoldScore>(samples.Count);
+        var trainingSizes = new List<int>(folds);
 
         for (int fold = 0; fold < folds; fold++)
         {
+            // The held-out fold is not in the training set: what is scored was never seen.
             var training = samples.Where(s => foldOf[s] != fold).ToList();
             var model = Train(training, maxDepth, minSamplesLeaf);
+            trainingSizes.Add(training.Count);
 
-            foreach (var sample in samples.Where(s => foldOf[s] == fold))
+            for (int i = 0; i < samples.Count; i++)
             {
-                var flagged = model.Predict(sample.Features) >= decisionThreshold;
-
-                if (flagged && sample.Label) tp++;
-                else if (flagged) fp++;
-                else if (sample.Label) fn++;
-                else tn++;
+                if (foldOf[samples[i]] != fold) continue;
+                scores.Add(new OutOfFoldScore(fold, i, model.Predict(samples[i].Features), samples[i].Label));
             }
         }
 
-        return new ModelQuality(tp, fp, tn, fn, samples.Count, folds);
+        return new CrossValidationRun(folds, trainingSizes, [.. scores.OrderBy(s => s.Index)]);
+    }
+
+    /// <summary>The confusion matrix of a set of scores at one decision threshold.</summary>
+    public static ModelQuality Confusion(IEnumerable<OutOfFoldScore> scores, double threshold, int trainingSize, int folds)
+    {
+        int tp = 0, fp = 0, tn = 0, fn = 0;
+        foreach (var score in scores)
+        {
+            var flagged = score.Probability >= threshold;
+
+            if (flagged && score.Label) tp++;
+            else if (flagged) fp++;
+            else if (score.Label) fn++;
+            else tn++;
+        }
+
+        return new ModelQuality(tp, fp, tn, fn, trainingSize, folds);
     }
 }

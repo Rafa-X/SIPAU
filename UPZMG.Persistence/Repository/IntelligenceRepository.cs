@@ -49,8 +49,14 @@ public sealed class IntelligenceModelCache
     private readonly SemaphoreSlim _dataGate = new(1, 1);
     private readonly SemaphoreSlim _modelGate = new(1, 1);
 
-    private IntelligenceState? _state;
-    private (string RunId, DropoutAnalysis Analysis)? _model;
+    // Both are replaced whole, never edited, so a request that reads them without taking a gate
+    // sees either the previous object or the new one. The model used to be a tuple: a struct
+    // that a reader could catch half written, with the run id of one training next to the
+    // analysis of another.
+    private volatile IntelligenceState? _state;
+    private volatile TrainedModel? _model;
+
+    private sealed record TrainedModel(string RunId, DropoutAnalysis Analysis);
 
     public async Task<IntelligenceState> GetStateAsync(
         AcademicFingerprint fingerprint, Func<AcademicFingerprint, Task<IntelligenceState>> load, bool force)
@@ -83,17 +89,27 @@ public sealed class IntelligenceModelCache
 
         if (!force && _model is { } cached && cached.RunId == state.RunId) return (state, cached.Analysis);
 
+        // One training at a time; whoever waits gets the result of the one before when it fits.
         await _modelGate.WaitAsync();
         try
         {
-            if (!force && _model is { } current && current.RunId == state.RunId) return (state, current.Analysis);
+            // Train on the newest cut of the data, not on the one this request read before it
+            // waited. A forced reload may have replaced it meanwhile, and training on the older
+            // cut put the cache back on data it had already moved past.
+            var latest = _state ?? state;
 
-            var analysis = train(state);
-            _model = (state.RunId, analysis);
-            return (state, analysis);
+            // A model of that cut answers forced requests too: each one reloaded the data on its
+            // way here, so a model of the newest cut was trained after it was asked for. Two people
+            // pressing "Reentrenar" at once get one training, not the same one twice in a row.
+            if (_model is { } current && current.RunId == latest.RunId) return (latest, current.Analysis);
+
+            var analysis = train(latest);
+            _model = new TrainedModel(latest.RunId, analysis);
+            return (latest, analysis);
         }
         finally
         {
+            // Released even when training throws: a failed run must not lock out every later one.
             _modelGate.Release();
         }
     }
@@ -178,7 +194,9 @@ public class IntelligenceRepository(AppDBContext db, IntelligenceModelCache cach
                     (SELECT COUNT_BIG(*) FROM kardex), ':',
                     (SELECT ISNULL(CHECKSUM_AGG(BINARY_CHECKSUM(*)), 0) FROM kardex)) AS Value
                 """)
-            .FirstOrDefaultAsync();
+            // Exactly one row by construction. First without an order made EF log a warning
+            // on every check, and the check runs on every request to the model.
+            .SingleOrDefaultAsync();
 
         return string.IsNullOrEmpty(value) ? AcademicFingerprint.Empty : new AcademicFingerprint(value);
     }

@@ -37,7 +37,7 @@
                     <TrendChart Id="enrollment-chart" Labels="_model.Enrollment.Labels" Series="_model.Enrollment.Series" Height="200"
                                 ForecastFromIndex="@(_model.Enrollment.HasModel ? _model.Enrollment.ForecastFromIndex : null)"
                                 BandUpper="_model.Enrollment.Upper" BandLower="_model.Enrollment.Lower"
-                                BandName="Intervalo ±2σ"
+                                BandName="Intervalo de predicción 95 %"
                                 AriaLabel="Matrícula histórica, su proyección y la banda de incertidumbre" />
                 }
                 else
@@ -78,6 +78,8 @@
                             error promedio de <b>@accuracy.TrendError.ToString("N1")</b> alumnos.
                             Repetir el último valor erraría @accuracy.LastValueError.ToString("N1") y
                             sumarle el crecimiento promedio, @accuracy.DriftError.ToString("N1").
+                            @accuracy.InsideInterval de @accuracy.Evaluations cayeron dentro del intervalo de 95 %
+                            que se habría dibujado antes de conocerlos.
                             @if (accuracy.TrendIsBeaten)
                             {
                                 <text> En este historial gana <b>@accuracy.Best</b>: la recta sirve para leer la dirección,

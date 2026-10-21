@@ -25,7 +25,7 @@ public sealed class EnrollmentChartModel
     public IReadOnlyList<string> Labels { get; set; } = [];
     public IReadOnlyList<ChartSeriesData> Series { get; set; } = [];
 
-    // Edges of the ±2σ band, when the fit could measure its error.
+    // Edges of the 95 % prediction interval, when the fit could measure its error.
     public IReadOnlyList<double>? Upper { get; set; }
     public IReadOnlyList<double>? Lower { get; set; }
     public int ForecastFromIndex { get; set; }

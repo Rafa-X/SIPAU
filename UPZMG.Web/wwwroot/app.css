@@ -164,6 +164,11 @@ body,
 .sipau-alert-row-actions { display: flex; gap: 2px; margin-top: -4px; }
 .sipau-alert-tools { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 8px; }
 .bulk-import-grid { margin: 0; }
+.sipau-import-problems {
+    margin: 6px 0 0; padding-left: 18px;
+    font-size: 0.8125rem; line-height: 1.45;
+    color: var(--mud-palette-text-secondary);
+}
 
 .mud-input-root { caret-color: var(--mud-palette-primary); }
 
@@ -1450,7 +1455,7 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
 }
 .sipau-risk-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .sipau-risk-why {
-    display: block; max-width: 52ch;
+    display: block; min-width: 24ch; max-width: 52ch;
     font-size: 0.8125rem; line-height: 1.45;
     color: var(--mud-palette-text-secondary);
 }
@@ -1550,6 +1555,52 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
 }
 .sipau-method-table td { padding: 8px 12px 8px 0; border-bottom: 1px solid var(--sipau-hairline); vertical-align: top; }
 .sipau-method-table td:first-child { font-weight: 650; white-space: nowrap; }
+
+/* A result whose interval straddles the threshold: dashed, because it is not settled either way. */
+.sipau-uncertain {
+    display: inline-block; margin: 4px 0 0 6px; padding: 1px 7px;
+    border: 1px dashed var(--sipau-hairline-strong); border-radius: var(--sipau-radius);
+    font-family: var(--sipau-font-narrow);
+    font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+    white-space: nowrap;
+}
+.sipau-tree-rule-meta .sipau-uncertain { margin: 0; }
+
+/* How the model was measured: folds, thresholds and error profiles */
+.sipau-eval-lead { max-width: 88ch; }
+.sipau-table-scroll { overflow-x: auto; }
+.sipau-eval-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; font-variant-numeric: tabular-nums; }
+.sipau-eval-table th,
+.sipau-eval-table td { padding: 8px 12px; border-bottom: 1px solid var(--sipau-hairline); text-align: left; white-space: nowrap; }
+.sipau-eval-table thead th {
+    white-space: normal; vertical-align: bottom;
+    border-bottom-color: var(--sipau-hairline-strong);
+    font-family: var(--sipau-font-narrow);
+    font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+}
+.sipau-eval-table tbody th,
+.sipau-eval-table tfoot th { font-weight: 650; }
+.sipau-eval-table .is-num { text-align: right; }
+.sipau-eval-table tfoot th,
+.sipau-eval-table tfoot td { border-bottom: 0; border-top: 1px solid var(--sipau-hairline-strong); font-weight: 750; }
+.sipau-eval-table tr.is-chosen th,
+.sipau-eval-table tr.is-chosen td { background: var(--sipau-wash-strong); font-weight: 750; }
+.sipau-eval-table tr.is-missed th { color: var(--sipau-rosa); }
+.sipau-eval-table tr.is-extra th { color: #8A5A00; }
+.sipau-dark .sipau-eval-table tr.is-missed th { color: #F08398; }
+.sipau-dark .sipau-eval-table tr.is-extra th { color: #E0B255; }
+.sipau-chosen-mark {
+    margin-left: 8px;
+    font-family: var(--sipau-font-narrow);
+    font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--sipau-anil-up);
+}
+.sipau-dark .sipau-chosen-mark { color: #8FB0DE; }
+.sipau-eval-gap { margin-top: 18px; border-top: 1px solid var(--sipau-hairline-strong); }
+.sipau-eval-note { margin: 0 0 8px; max-width: 88ch; font-size: 0.8125rem; line-height: 1.55; }
+.sipau-eval-note:last-child { margin-bottom: 0; }
 
 /* Dashboard: projection and alerts */
 .sipau-projection { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin-bottom: 10px; }

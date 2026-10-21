@@ -32,6 +32,61 @@ public class StatisticsTests
     }
 
     [Fact]
+    public void PredictionMargin_MatchesAHandComputedExample()
+    {
+        // x = 0..4, y = 10, 12, 15, 15, 19 → b = 2.1, a = 10, SSres = 2.7, s = √0.9, x̄ = 2, Sxx = 10.
+        // At x = 5: t(0.975, 3) · s · √(1 + 1/5 + 9/10) = 3.182 · 0.9487 · 1.4491.
+        var fit = Statistics.Fit([10, 12, 15, 15, 19])!;
+
+        Assert.Equal(2.1, fit.Slope, precision: 9);
+        Assert.Equal(3.182 * Math.Sqrt(0.9) * Math.Sqrt(2.1), fit.PredictionMargin(5)!.Value, precision: 9);
+
+        // Narrowest at the centre of the data, wider at its ends.
+        Assert.True(fit.PredictionMargin(2) < fit.PredictionMargin(0));
+        Assert.Equal(fit.PredictionMargin(0)!.Value, fit.PredictionMargin(4)!.Value, precision: 9);
+    }
+
+    [Fact]
+    public void PredictionMargin_IsUnknownWithTwoPoints()
+    {
+        Assert.Null(Statistics.Fit([500, 520])!.PredictionMargin(2));
+    }
+
+    [Theory]
+    [InlineData(1, 12.706)]
+    [InlineData(3, 3.182)]
+    [InlineData(8, 2.306)]
+    [InlineData(30, 2.042)]
+    [InlineData(60, 2.000)]
+    [InlineData(120, 1.980)]
+    public void StudentT975_MatchesTheTable(int degreesOfFreedom, double expected)
+    {
+        Assert.Equal(expected, Statistics.StudentT975(degreesOfFreedom), precision: 3);
+    }
+
+    [Theory]
+    [InlineData(0, 10, 0.0, 0.2775)]
+    [InlineData(5, 10, 0.2366, 0.7634)]
+    [InlineData(10, 10, 0.7225, 1.0)]
+    public void Wilson_MatchesTheTextbookInterval(int successes, int total, double lower, double upper)
+    {
+        var interval = Statistics.Wilson(successes, total);
+
+        Assert.Equal(lower, interval.Lower, precision: 4);
+        Assert.Equal(upper, interval.Upper, precision: 4);
+    }
+
+    [Fact]
+    public void Wilson_NarrowsAsTheSampleGrows()
+    {
+        var small = Statistics.Wilson(3, 10);
+        var large = Statistics.Wilson(300, 1000);
+
+        Assert.True(large.Upper - large.Lower < small.Upper - small.Lower);
+        Assert.Equal((0.0, 0.0), Statistics.Wilson(0, 0));
+    }
+
+    [Fact]
     public void Fit_ProjectsBeyondTheObservedRange()
     {
         var fit = Statistics.Fit([10, 20, 30, 40])!;
