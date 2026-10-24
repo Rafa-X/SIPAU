@@ -19,7 +19,7 @@
 -- Run (Git Bash / PowerShell, from the repo root):
 --   docker exec -i upzmg_db sh -c '/opt/mssql-tools18/bin/sqlcmd -S localhost -U dev_user -P "$MSSQL_DEV_PASSWORD" -C -d upzmg -b' < seed-academic-history.sql
 --
--- Idempotent: it first removes its own rows (enrolment numbers starting with 'UPH' and
+-- Idempotent: it first removes its own rows (enrollment numbers in the reserved 900000000+ range and
 -- subjects whose code starts with 'A5E0A5E0'). Periods are reused, never deleted.
 
 SET NOCOUNT ON;
@@ -53,9 +53,15 @@ DECLARE @NoReason UNIQUEIDENTIFIER = '88888888-0000-0000-0000-000000000001';
 IF NOT EXISTS (SELECT 1 FROM WithdrawReason WHERE Id = @NoReason)
     THROW 51000, 'Missing withdrawal reasons. Run seed-official-catalogs.sql first.', 1;
 
+DECLARE @HistoryEnrollmentStart BIGINT = 900000000;
+DECLARE @HistoryEnrollmentEnd BIGINT = 909999999;
+
 -- 1) Remove a previous run
 DECLARE @OldStudents TABLE (Id UNIQUEIDENTIFIER PRIMARY KEY);
-INSERT INTO @OldStudents SELECT Id FROM students WHERE EnrollmentNumber LIKE 'UPH%';
+INSERT INTO @OldStudents
+SELECT Id
+FROM students
+WHERE TRY_CONVERT(BIGINT, EnrollmentNumber) BETWEEN @HistoryEnrollmentStart AND @HistoryEnrollmentEnd;
 
 DECLARE @OldSubjects TABLE (Id UNIQUEIDENTIFIER PRIMARY KEY);
 INSERT INTO @OldSubjects SELECT Id FROM Courses WHERE CAST(CourseCode AS CHAR(36)) LIKE 'A5E0A5E0-%';
@@ -291,7 +297,7 @@ INSERT INTO students
      InscriptionType, Status, IndigenousLanguages, PostalCode, EnglishLevel,
      MaritalStatus, NumberOfChildren, Works, BirthCountry, BirthState, Address)
 SELECT s.Id,
-       CONCAT('UPH', RIGHT(p.SchoolCycle, 2), RIGHT(CONCAT('0000', s.Seq), 4)),
+    CONVERT(NVARCHAR(20), @HistoryEnrollmentStart + s.Seq),
        -- Shaped like a CURP (18 characters); not a real one.
        CONCAT('XE', CHOOSE(s.Seq % 4 + 1, 'HA', 'MO', 'RU', 'GA'), CONVERT(CHAR(6), b.BirthDate, 12),
               CASE WHEN s.IsMale = 1 THEN 'H' ELSE 'M' END, 'JC', 'XXX', RIGHT(CONCAT('0', s.Seq % 100), 2)),
@@ -447,7 +453,8 @@ SELECT p.SchoolCycle + ' ' + p.SEP_Period AS period,
        COUNT(DISTINCT CASE WHEN r.FinalStatus = 3 THEN r.StudentId END) AS graduated
 FROM periods p
 JOIN courseEnrollment r ON r.PeriodId = p.Id
-JOIN students s ON s.Id = r.StudentId AND s.EnrollmentNumber LIKE 'UPH%'
+JOIN students s ON s.Id = r.StudentId
+              AND TRY_CONVERT(BIGINT, s.EnrollmentNumber) BETWEEN @HistoryEnrollmentStart AND @HistoryEnrollmentEnd
 GROUP BY p.SchoolCycle, p.SEP_Period, p.StartDate
 ORDER BY p.StartDate;
 
@@ -456,13 +463,13 @@ SELECT COUNT(*) AS students,
        SUM(CASE WHEN Status IN (1, 2) THEN 1 ELSE 0 END) AS withdrawn,
        SUM(CASE WHEN Status = 3 THEN 1 ELSE 0 END) AS graduated
 FROM students
-WHERE EnrollmentNumber LIKE 'UPH%';
+WHERE TRY_CONVERT(BIGINT, EnrollmentNumber) BETWEEN @HistoryEnrollmentStart AND @HistoryEnrollmentEnd;
 
 SELECT CAST(100.0 * SUM(CASE WHEN k.IsPassed = 1 THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS DECIMAL(5, 2)) AS pass_rate,
        COUNT(*) AS kardex_rows
 FROM kardex k
 JOIN students s ON s.Id = k.StudentId
-WHERE s.EnrollmentNumber LIKE 'UPH%';
+WHERE TRY_CONVERT(BIGINT, s.EnrollmentNumber) BETWEEN @HistoryEnrollmentStart AND @HistoryEnrollmentEnd;
 
 END TRY
 BEGIN CATCH
