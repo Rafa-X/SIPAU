@@ -48,9 +48,9 @@ public sealed record ImportResult(bool Committed, IReadOnlyList<ImportRowResult>
 }
 
 /// <summary>
-/// The checks a row passes before anything is written: the rules of the capture forms, plus the
-/// one a form cannot have, that a file repeats its own keys. Pure, so they are tested without a
-/// database; the checks against stored records live in the repository.
+/// The rules every captured student and employee passes, whether it comes from a form or from a
+/// file, plus the one only a file needs: that it does not repeat its own keys. Pure, so they are
+/// tested without a database; the checks against stored records live in the repositories.
 /// </summary>
 public static class ImportRules
 {
@@ -73,6 +73,24 @@ public static class ImportRules
         if (s.NumberOfChildren < 0) problems.Add("El número de hijos no puede ser negativo.");
         CheckBirthDate(s.BirthDate, today, problems);
 
+        // The sizes of the columns the values are stored in: longer text reached the database and
+        // came back as a server error instead of as a reason.
+        CheckLength(s.EnrollmentNumber, 20, "Matrícula", problems);
+        CheckLength(s.Name, 100, "Nombre", problems);
+        CheckLength(s.MiddleName, 100, "Segundo nombre", problems);
+        CheckLength(s.LastName, 100, "Apellidos", problems);
+        CheckLength(s.Address, 100, "Domicilio", problems);
+        CheckLength(s.PostalCode, 10, "Código postal", problems);
+        CheckLength(s.BirthCountry, 100, "País de nacimiento", problems);
+        CheckLength(s.BirthState, 100, "Estado de nacimiento", problems);
+
+        // A number outside the list was stored as it came and read back as a value nobody can name.
+        CheckDefined(s.Gender, "El sexo", problems);
+        CheckDefined(s.EnglishLevel, "El nivel de inglés", problems);
+        CheckDefined(s.MaritalStatus, "El estado civil", problems);
+        CheckDefined(s.InscriptionType, "El tipo de inscripción", problems);
+        CheckDefined(s.Status, "El estatus del alumno", problems);
+
         return problems;
     }
 
@@ -90,6 +108,15 @@ public static class ImportRules
 
         if (e.FirstHiredDate == default) problems.Add("Falta la fecha de primera contratación.");
         else if (e.FirstHiredDate > today) problems.Add("La fecha de primera contratación está en el futuro.");
+        else if (e.BirthDate != default && e.FirstHiredDate <= e.BirthDate)
+            problems.Add("La fecha de primera contratación es anterior al nacimiento.");
+
+        CheckLength(e.FullName, 200, "Nombre completo", problems);
+        CheckLength(e.Email, 100, "Correo electrónico", problems);
+
+        CheckDefined(e.Gender, "El sexo", problems);
+        CheckDefined(e.HighestEducationLevel, "El nivel máximo de estudios", problems);
+        CheckDefined(e.TitleStatus, "El estatus de titulación", problems);
 
         return problems;
     }
@@ -141,6 +168,18 @@ public static class ImportRules
     {
         if (birthDate == default) problems.Add("Falta la fecha de nacimiento.");
         else if (birthDate > today) problems.Add("La fecha de nacimiento está en el futuro.");
+        else if (birthDate.Year < 1900) problems.Add("La fecha de nacimiento es anterior a 1900.");
+    }
+
+    private static void CheckLength(string? value, int max, string label, List<string> problems)
+    {
+        if (value is not null && value.Length > max)
+            problems.Add($"{label}: máximo {max} caracteres (tiene {value.Length}).");
+    }
+
+    private static void CheckDefined<TEnum>(TEnum value, string label, List<string> problems) where TEnum : struct, Enum
+    {
+        if (!Enum.IsDefined(value)) problems.Add($"{label} no es un valor del catálogo.");
     }
 
     private static bool Blank(string? value) => string.IsNullOrWhiteSpace(value);
