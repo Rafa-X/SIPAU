@@ -471,4 +471,171 @@ public class BusinessRuleTests
         Assert.Equal(1, item.Groups);
         Assert.Equal(0, item.Students);
     }
+
+    // ── What the API refuses although the forms would never send it ─────────────────────────
+
+    [Fact]
+    public async Task AStudentTooLongForItsRecordIsRefusedWithTheReason()
+    {
+        using var db = Catalogued();
+        var student = Student("A0099", "");
+        student.Name = new string('N', 120);
+
+        // The database refused it as "string or binary data would be truncated", a server error.
+        var refusal = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => new StudentsRepository(db).CreateStudentAsync(student));
+
+        Assert.Contains("Nombre: máximo 100 caracteres", refusal.Message);
+        Assert.Empty(db.Students);
+    }
+
+    /// <summary>
+    /// A role that accounts still hold cannot be deleted. Deleting it took the role away from
+    /// them, and an account without a role cannot sign in: one click locked a whole area out.
+    /// </summary>
+    [Fact]
+    public async Task ARoleThatAccountsHoldIsNotDeleted()
+    {
+        using var db = Memory();
+        var (_, _, plainRoleId) = await WithOneAdministratorAsync(db);
+        var clerk = new SystemUser
+        {
+            Id = Guid.NewGuid(), Email = "ce@upzmg.local", UserName = "ce", Password = "hash", IsActive = true,
+        };
+        db.SystemUsers.Add(clerk);
+        db.UserRoles.Add(new UserRole { UserId = clerk.Id, RoleId = plainRoleId });
+        await db.SaveChangesAsync();
+
+        var refusal = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => new RolesRepository(db).DeleteRoleAsync(new() { RequesterKey = Guid.NewGuid(), RoleId = plainRoleId }));
+
+        Assert.Contains("asígnale otro", refusal.Message);
+        Assert.True(await db.Roles.AnyAsync(r => r.Id == plainRoleId));
+        Assert.True(await db.UserRoles.AnyAsync(ur => ur.UserId == clerk.Id && ur.RoleId == plainRoleId));
+    }
+
+    [Fact]
+    public async Task APermissionThatDoesNotExistIsNotGranted()
+    {
+        using var db = Memory();
+        var (_, adminRoleId, plainRoleId) = await WithOneAdministratorAsync(db);
+        var manage = await db.RolePermissions.Where(rp => rp.RoleId == adminRoleId).Select(rp => rp.PermissionId).FirstAsync();
+        var roles = new RolesRepository(db);
+
+        // It ended as a foreign-key violation, a server error.
+        await Assert.ThrowsAsync<InvalidOperationException>(() => roles.SetRolePermissionsAsync(
+            new() { RequesterKey = Guid.NewGuid(), RoleId = plainRoleId, PermissionIds = [manage, Guid.NewGuid()] }));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => roles.SetRolePermissionsAsync(
+            new() { RequesterKey = Guid.NewGuid(), RoleId = Guid.NewGuid(), PermissionIds = [manage] }));
+
+        Assert.False(await db.RolePermissions.AnyAsync(rp => rp.RoleId == plainRoleId));
+    }
+
+    private static async Task<(AppDBContext Db, CreateClassGroup Group)> GroupContextAsync()
+    {
+        var db = Catalogued();
+        var otherCareer = new Careers { Id = Guid.NewGuid(), Name = "Ingeniería Industrial", Alias = "INDU" };
+        var course = new Courses { Id = Guid.NewGuid(), CareerId = Career, CourseName = "Bases de datos" };
+        var foreignCourse = new Courses { Id = Guid.NewGuid(), CareerId = otherCareer.Id, CourseName = "Procesos" };
+        var teacher = new Employee
+        {
+            Id = Guid.NewGuid(), EmployeeNumber = 1, FullName = "Laura Mendoza", Email = "laura@upzmg.local",
+            Rfc = "MERL850202AB1", Curp = "MERL850202MJCNZR01", Gender = Gender.M, IsTeacher = true,
+        };
+        var clerk = new Employee
+        {
+            Id = Guid.NewGuid(), EmployeeNumber = 2, FullName = "Pedro Ruiz", Email = "pedro@upzmg.local",
+            Rfc = "RUPE850202AB1", Curp = "RUPE850202HJCZDR01", Gender = Gender.H, IsTeacher = false,
+        };
+        var room = new SchoolFacility { Id = Guid.NewGuid(), Name = "Aula 1", Problems = [] };
+
+        db.Careers.Add(otherCareer);
+        db.Courses.AddRange(course, foreignCourse);
+        db.Employees.AddRange(teacher, clerk);
+        db.SchoolFacilities.Add(room);
+        await db.SaveChangesAsync();
+
+        return (db, new CreateClassGroup
+        {
+            RequesterKey = Guid.NewGuid(),
+            Schedule = [new Schedule { Day = "Lunes", Time = "08:00 - 10:00" }],
+            CourseId = course.Id,
+            PeriodId = EntryPeriod,
+            CareerId = Career,
+            TeacherId = teacher.Id,
+            FacilityId = room.Id,
+            IsTheory = true,
+            Capacity = 30,
+            Weekhours = 4,
+        });
+    }
+
+    /// <summary>
+    /// What a group points at must exist and agree: a missing room or period ended as a
+    /// foreign-key violation, and a course of another career was stored under the wrong one.
+    /// </summary>
+    [Fact]
+    public async Task AGroupPointsAtThingsThatExistAndAgree()
+    {
+        var (db, valid) = await GroupContextAsync();
+        using var _ = db;
+        var groups = new ClassGroupsRepository(db);
+        var foreignCourse = await db.Courses.Where(c => c.CareerId != Career).Select(c => c.Id).FirstAsync();
+        var clerk = await db.Employees.Where(e => !e.IsTeacher).Select(e => e.Id).FirstAsync();
+
+        async Task<string> Refusal(Action<CreateClassGroup> change)
+        {
+            var request = new CreateClassGroup
+            {
+                RequesterKey = valid.RequesterKey, Schedule = valid.Schedule, CourseId = valid.CourseId,
+                PeriodId = valid.PeriodId, CareerId = valid.CareerId, TeacherId = valid.TeacherId,
+                FacilityId = valid.FacilityId, IsTheory = valid.IsTheory, Capacity = valid.Capacity, Weekhours = valid.Weekhours,
+            };
+            change(request);
+            return (await Assert.ThrowsAsync<InvalidOperationException>(() => groups.CreateAsync(request))).Message;
+        }
+
+        Assert.Equal("El espacio seleccionado no existe.", await Refusal(g => g.FacilityId = Guid.NewGuid()));
+        Assert.Equal("El periodo seleccionado no existe.", await Refusal(g => g.PeriodId = Guid.NewGuid()));
+        Assert.Equal("La materia seleccionada no existe.", await Refusal(g => g.CourseId = Guid.NewGuid()));
+        Assert.Equal("La materia seleccionada no pertenece a esa carrera.", await Refusal(g => g.CourseId = foreignCourse));
+        Assert.Equal("El empleado seleccionado no está registrado como docente.", await Refusal(g => g.TeacherId = clerk));
+        Assert.Empty(db.ClassGroups);
+
+        await groups.CreateAsync(valid);
+        Assert.Single(db.ClassGroups);
+    }
+
+    [Theory]
+    // Stored, and as an interval it overlapped nothing: the room looked free at every hour.
+    [InlineData("Lunes", "12:00 - 08:00", "termina antes de empezar")]
+    [InlineData("Lunes", "08:00 - 08:00", "termina antes de empezar")]
+    // Read as Monday alone, so Tuesday to Friday were never checked for a clash.
+    [InlineData("Lunes a viernes", "08:00 - 10:00", "No se entiende el día")]
+    [InlineData("LunesLunes", "08:00 - 10:00", "No se entiende el día")]
+    public async Task AScheduleTheClashCheckCannotTrustIsRefused(string day, string time, string reason)
+    {
+        var (db, group) = await GroupContextAsync();
+        using var _ = db;
+        group.Schedule = [new Schedule { Day = day, Time = time }];
+
+        var refusal = await Assert.ThrowsAsync<InvalidOperationException>(() => new ClassGroupsRepository(db).CreateAsync(group));
+
+        Assert.Contains(reason, refusal.Message);
+    }
+
+    [Theory]
+    [InlineData("Lun")]
+    [InlineData("Mié.")]
+    [InlineData("lunes y miércoles")]
+    public async Task ShortAndCombinedDaysStillRead(string day)
+    {
+        var (db, group) = await GroupContextAsync();
+        using var _ = db;
+        group.Schedule = [new Schedule { Day = day, Time = "08:00 - 10:00" }];
+
+        await new ClassGroupsRepository(db).CreateAsync(group);
+
+        Assert.Single(db.ClassGroups);
+    }
 }
