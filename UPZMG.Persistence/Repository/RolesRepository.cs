@@ -48,7 +48,7 @@ public class RolesRepository(AppDBContext _db)
     public async Task<Role> EditRoleAsync(EditRole request)
     {
         var role = await db.Roles.FirstOrDefaultAsync(r => r.Id == request.RoleId)
-            ?? throw new Exception($"No role found with ID {request.RoleId}");
+            ?? throw new InvalidOperationException("El rol ya no existe.");
 
         var name = request.Name.Trim();
         if (name.Length == 0) throw new InvalidOperationException("El rol necesita un nombre.");
@@ -70,10 +70,18 @@ public class RolesRepository(AppDBContext _db)
     public async Task DeleteRoleAsync(DeleteRole request)
     {
         var role = await db.Roles.FirstOrDefaultAsync(r => r.Id == request.RoleId)
-            ?? throw new Exception($"No role found with ID {request.RoleId}");
+            ?? throw new InvalidOperationException("El rol ya no existe.");
 
         if (role.Name == "Admin")
             throw new InvalidOperationException("El rol Admin no puede eliminarse.");
+
+        // An account without a role cannot sign in at all. Deleting a role used to take it away
+        // from its accounts silently, which locked a whole area out with one click.
+        var accounts = await db.UserRoles.CountAsync(ur => ur.RoleId == request.RoleId);
+        if (accounts > 0)
+            throw new InvalidOperationException(accounts == 1
+                ? "Una cuenta tiene este rol: asígnale otro antes de eliminarlo."
+                : $"{accounts} cuentas tienen este rol: asígnales otro antes de eliminarlo.");
 
         // Deleting a role takes its permissions away from everyone in it. If this is the only
         // role with an active administrator, there would be nobody left to grant them back.
@@ -125,6 +133,15 @@ public class RolesRepository(AppDBContext _db)
 
     public async Task SetRolePermissionsAsync(SetRolePermissions request)
     {
+        if (!await db.Roles.AnyAsync(r => r.Id == request.RoleId))
+            throw new InvalidOperationException("El rol ya no existe.");
+
+        // An id that names no permission ended as a foreign-key violation and a server error.
+        var requested = request.PermissionIds.Distinct().ToList();
+        var known = await db.Permissions.AsNoTracking().CountAsync(p => requested.Contains(p.Id));
+        if (known != requested.Count)
+            throw new InvalidOperationException("Alguno de los permisos ya no existe. Vuelve a abrir la lista.");
+
         // Withdrawing the last grant of "administrar usuarios" would leave the permissions screen
         // unreachable for everyone, including whoever is using it right now.
         var administerId = await db.Permissions.AsNoTracking()
