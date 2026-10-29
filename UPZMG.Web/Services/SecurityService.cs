@@ -92,37 +92,86 @@ public sealed class SecurityService(
                     // Kept on failures too: the caller may need a header, such as Retry-After.
                     HttpResponse = response,
                     Sucess = false,
-                    ErrorMessage = ExtractErrorMessage(errorContent) ?? $"Request failed with status code: {response.StatusCode}"
+                    ErrorMessage = ExtractErrorMessage(errorContent) ?? FailureMessage(response.StatusCode)
                 };
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            // The API did not answer. The exception's own text ("No se puede establecer una
+            // conexión ya que el equipo de destino denegó…") reached the snackbar word for word.
+            return new DataResponse
+            {
+                StatusCode = HttpStatusCode.ServiceUnavailable,
+                Sucess = false,
+                ErrorMessage = "El servicio de datos no respondió. Tu sesión sigue abierta: vuelve a intentarlo en un momento."
+            };
+        }
+        catch (Exception)
         {
             return new DataResponse
             {
                 StatusCode = HttpStatusCode.InternalServerError,
                 Sucess = false,
-                ErrorMessage = ex.Message
+                ErrorMessage = FailureMessage(HttpStatusCode.InternalServerError)
             };
         }
     }
 
-    // Reads the {"message": "..."} shape returned by Conflict(new { message }) responses.
+    /// <summary>
+    /// The reason the API gave, when it gave one a person can read: the {"message": "..."} of its
+    /// refusals, or the first validation message written for the screen. The framework's own
+    /// validation texts are English and technical, so those fall back to the status. A body that
+    /// was not an object — a bare string — used to throw here and show that exception instead.
+    /// </summary>
     private static string? ExtractErrorMessage(string content)
     {
         if (string.IsNullOrWhiteSpace(content)) return null;
         try
         {
             using var doc = JsonDocument.Parse(content);
-            return doc.RootElement.TryGetProperty("message", out var messageProp) && messageProp.ValueKind == JsonValueKind.String
-                ? messageProp.GetString()
-                : null;
+            var root = doc.RootElement;
+            if (root.ValueKind != JsonValueKind.Object) return null;
+
+            if (root.TryGetProperty("message", out var message) && message.ValueKind == JsonValueKind.String)
+                return message.GetString();
+
+            if (root.TryGetProperty("errors", out var errors) && errors.ValueKind == JsonValueKind.Object)
+            {
+                return errors.EnumerateObject()
+                    .Where(field => field.Value.ValueKind == JsonValueKind.Array)
+                    .SelectMany(field => field.Value.EnumerateArray())
+                    .Where(text => text.ValueKind == JsonValueKind.String)
+                    .Select(text => text.GetString())
+                    .FirstOrDefault(text => !string.IsNullOrWhiteSpace(text) && !IsFrameworkText(text));
+            }
+
+            return null;
         }
         catch (JsonException)
         {
             return null;
         }
     }
+
+    // "The field X must be…", "A value for the 'X' parameter…", "The JSON value could not be…".
+    private static bool IsFrameworkText(string? text) =>
+        text is null
+        || text.StartsWith("The ", StringComparison.Ordinal)
+        || text.StartsWith("A value ", StringComparison.Ordinal)
+        || text.Contains("JSON", StringComparison.Ordinal);
+
+    // In place of "Request failed with status code: InternalServerError", which a long name in the
+    // student form put on screen.
+    private static string FailureMessage(HttpStatusCode status) => status switch
+    {
+        HttpStatusCode.Unauthorized => "La sesión expiró. Vuelve a iniciar sesión.",
+        HttpStatusCode.Forbidden => "Tu cuenta no tiene permiso para esta operación.",
+        HttpStatusCode.NotFound => "Lo que intentas modificar ya no existe.",
+        HttpStatusCode.BadRequest or HttpStatusCode.UnprocessableEntity => "Revisa los datos: alguno no es válido.",
+        HttpStatusCode.TooManyRequests => "Demasiados intentos. Espera unos minutos e inténtalo de nuevo.",
+        _ => "El servidor no pudo completar la operación. Vuelve a intentarlo; si sigue fallando, avisa a Tecnologías.",
+    };
 
     public async Task<DataResponse> SendGetRequestAsync<TResponse>(
         string path,
@@ -222,7 +271,9 @@ public sealed class SecurityService(
         var response = await SendPostRequestAsync<DeleteRole, object>(
             "roles/delete", JsonSerializer.Serialize(request), request.RequesterKey);
 
-        if (response.StatusCode != HttpStatusCode.OK) return false;
+        // The refusal says why (accounts still in the role, Admin); "No se pudo eliminar" did not.
+        if (response.StatusCode != HttpStatusCode.OK)
+            throw new InvalidOperationException(response.ErrorMessage ?? "No se pudo eliminar el rol.");
 
         permissionCache.Invalidate();
         return true;
