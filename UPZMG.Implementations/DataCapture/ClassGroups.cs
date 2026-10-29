@@ -13,8 +13,9 @@ public class CreateClassGroup
     public required Guid TeacherId { get; set; }
     public required Guid FacilityId { get; set; }
     public bool IsTheory { get; set; }
-    [Range(1, 500)]
+    [Range(1, 500, ErrorMessage = "La capacidad debe estar entre 1 y 500.")]
     public int Capacity { get; set; }
+    [Range(0, 60, ErrorMessage = "Las horas por semana deben estar entre 0 y 60.")]
     public double Weekhours { get; set; }
 }
 

@@ -12,6 +12,7 @@ public sealed partial class ClassGroupsRepository(AppDBContext db)
     public async Task<ClassGroups> CreateAsync(CreateClassGroup request)
     {
         EnsureReadableSchedule(request.Schedule);
+        await RequireReferencesAsync(request);
 
         var sameSpace = await db.ClassGroups
             .AsNoTracking()
@@ -78,6 +79,8 @@ public sealed partial class ClassGroupsRepository(AppDBContext db)
 
         var group = await db.ClassGroups.FirstOrDefaultAsync(g => g.Id == request.Id)
             ?? throw new InvalidOperationException("El grupo ya no existe.");
+
+        await RequireReferencesAsync(request);
 
         if (request.Capacity < group.Enrolled)
             throw new InvalidOperationException(
@@ -150,6 +153,41 @@ public sealed partial class ClassGroupsRepository(AppDBContext db)
     }
 
     /// <summary>
+    /// What the group points at must exist, and the course must be one of the career's. The
+    /// database refuses a missing one too, but as a foreign-key violation the person saw a server
+    /// error; a course of another career was stored and the group listed under the wrong career.
+    /// </summary>
+    private async Task RequireReferencesAsync(CreateClassGroup request)
+    {
+        if (!await db.Periods.AnyAsync(p => p.Id == request.PeriodId))
+            throw new InvalidOperationException("El periodo seleccionado no existe.");
+
+        if (!await db.Careers.AnyAsync(c => c.Id == request.CareerId))
+            throw new InvalidOperationException("La carrera seleccionada no existe.");
+
+        var courseCareer = await db.Courses.AsNoTracking()
+            .Where(c => c.Id == request.CourseId)
+            .Select(c => (Guid?)c.CareerId)
+            .FirstOrDefaultAsync();
+        if (courseCareer is null)
+            throw new InvalidOperationException("La materia seleccionada no existe.");
+        if (courseCareer != request.CareerId)
+            throw new InvalidOperationException("La materia seleccionada no pertenece a esa carrera.");
+
+        var isTeacher = await db.Employees.AsNoTracking()
+            .Where(e => e.Id == request.TeacherId)
+            .Select(e => (bool?)e.IsTeacher)
+            .FirstOrDefaultAsync();
+        if (isTeacher is null)
+            throw new InvalidOperationException("El docente seleccionado no existe.");
+        if (isTeacher == false)
+            throw new InvalidOperationException("El empleado seleccionado no está registrado como docente.");
+
+        if (!await db.Set<SchoolFacility>().AnyAsync(f => f.Id == request.FacilityId))
+            throw new InvalidOperationException("El espacio seleccionado no existe.");
+    }
+
+    /// <summary>
     /// Refuses a schedule the overlap check cannot read. An entry whose day or time range does
     /// not parse was skipped silently, so a group written as "Lunes 8 a 12" went into a room
     /// that was already taken: the clash check had nothing to compare and let it through.
@@ -170,10 +208,20 @@ public sealed partial class ClassGroupsRepository(AppDBContext db)
                     $"No se entiende el día «{entry.Day}». Escribe por ejemplo «Lunes» o «Lunes y miércoles».");
             }
 
-            if (ParseTimeRange(entry.Time) is null)
+            if (entry.Day.Length > MaxScheduleText || entry.Time.Length > MaxScheduleText)
+                throw new InvalidOperationException("Cada día y cada horario admiten hasta 60 caracteres.");
+
+            if (ParseTimeRange(entry.Time) is not { } range)
             {
                 throw new InvalidOperationException(
                     $"No se entiende el horario «{entry.Time}» del {entry.Day}. Escríbelo como «08:00 - 12:00».");
+            }
+
+            // "12:00 - 08:00" was stored, and as an interval it overlaps nothing: the room looked free.
+            if (range.End <= range.Start)
+            {
+                throw new InvalidOperationException(
+                    $"El horario «{entry.Time}» del {entry.Day} termina antes de empezar.");
             }
         }
     }
@@ -217,16 +265,21 @@ public sealed partial class ClassGroupsRepository(AppDBContext db)
     private static readonly string[] WeekDays =
         ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
 
+    private const int MaxScheduleText = 60;
+
     private static List<string> SplitDays(string day) =>
         [.. DaySeparatorRegex().Split(day).Where(token => token.Trim().Length > 0)];
 
     /// <summary>The week day a token names, or null when it names none.</summary>
     private static string? CanonicalDay(string token)
     {
-        var normalized = Normalize(token);
+        var normalized = Normalize(token).TrimEnd('.', ':', ';');
         if (normalized.Length < 3) return null;
 
-        return WeekDays.FirstOrDefault(day => day.StartsWith(normalized) || normalized.StartsWith(day));
+        // A short form names its day ("Lun", "Mié"); a longer text that merely begins with one
+        // does not. "Lunes a viernes" used to read as Monday alone, so the clash check missed
+        // Tuesday to Friday, and "LunesLunes…" was accepted as a day.
+        return WeekDays.FirstOrDefault(day => day.StartsWith(normalized, StringComparison.Ordinal));
     }
 
     private static HashSet<string> ParseDays(string day) =>
