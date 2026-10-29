@@ -68,6 +68,11 @@ public sealed class PermissionAuthorizationHandler(
     protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context, PermissionRequirement requirement)
     {
+        // Without a token there is nothing to resolve: the authenticated-user requirement refuses
+        // it. Logging it as a token without a user id put a false alarm in the log for every
+        // anonymous call.
+        if (context.User.Identity?.IsAuthenticated != true) return;
+
         var id = context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? context.User.FindFirstValue("sub");
         if (!Guid.TryParse(id, out var userId))
         {

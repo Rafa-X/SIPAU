@@ -225,7 +225,7 @@
     {
         var confirmed = await DialogService.ShowMessageBoxAsync(
             "Eliminar rol",
-            $"Se eliminará el rol '{role.Name}' y sus asignaciones de permisos y usuarios.",
+            $"Se eliminará el rol '{role.Name}' con sus permisos. Sólo se puede eliminar un rol que ninguna cuenta tiene asignado.",
             yesText: "Eliminar", cancelText: "Conservar");
 
         if (confirmed != true) return;

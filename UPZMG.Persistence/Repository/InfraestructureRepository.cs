@@ -11,6 +11,9 @@ namespace UPZMG.Persistence.Repository;
 /// </summary>
 public class InfraestructureRepository(AppDBContext db)
 {
+    private const int MaxProblems = 30;
+    private const int MaxProblemLength = 200;
+
     public async Task<SchoolFacility> CreateAsync(CreateFacility request)
     {
         var name = request.Name.Trim();
@@ -18,6 +21,16 @@ public class InfraestructureRepository(AppDBContext db)
         // Two spaces with the same name make the timetable ambiguous for whoever schedules a group.
         if (await db.SchoolFacilities.AnyAsync(f => f.Name == name))
             throw new InvalidOperationException($"Ya existe un espacio registrado con el nombre '{name}'.");
+
+        if (!Enum.IsDefined(request.Type))
+            throw new InvalidOperationException("El tipo de espacio no es un valor del catálogo.");
+
+        // Read back on the consult and in the board report, one line each.
+        var problems = request.Problems.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p.Trim()).ToList();
+        if (problems.Count > MaxProblems)
+            throw new InvalidOperationException($"Registra hasta {MaxProblems} problemas por espacio.");
+        if (problems.Any(p => p.Length > MaxProblemLength))
+            throw new InvalidOperationException($"Cada problema detectado admite hasta {MaxProblemLength} caracteres.");
 
         var facility = new SchoolFacility
         {
@@ -31,7 +44,7 @@ public class InfraestructureRepository(AppDBContext db)
             HasInternet = request.HasInternet,
             HasComputers = request.HasComputers || request.ComputersInOperation > 0,
             SupportDisabilities = request.SupportDisabilities,
-            Problems = request.Problems.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p.Trim()).ToList(),
+            Problems = problems,
         };
 
         db.SchoolFacilities.Add(facility);

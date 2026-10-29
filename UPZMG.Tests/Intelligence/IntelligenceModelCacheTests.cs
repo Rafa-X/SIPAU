@@ -21,11 +21,12 @@ public class IntelligenceModelCacheTests
         public int Loads => _loads;
         public int Trainings => _trainings;
         public int FailNextTrainings { get; set; }
+        public int LoadMilliseconds { get; set; } = 40;
 
         public async Task<IntelligenceState> Load(AcademicFingerprint fingerprint)
         {
             Interlocked.Increment(ref _loads);
-            await Task.Delay(40);
+            await Task.Delay(LoadMilliseconds);
             var run = $"run{Interlocked.Increment(ref _runs)}";
             return new IntelligenceState(fingerprint, DateTime.UtcNow, run, AcademicSnapshot.Empty, AcademicHistory.Empty);
         }
@@ -81,6 +82,41 @@ public class IntelligenceModelCacheTests
         // must come from the same one, whatever else was happening.
         Assert.All(all, r => Assert.Equal(r.State.RunId, r.Analysis.Report.RunId));
         Assert.True(source.Trainings <= source.Loads, $"{source.Trainings} trainings for {source.Loads} loads");
+    }
+
+    /// <summary>
+    /// Eight people pressing "Reentrenar" at the same moment get one reload and one training.
+    /// Each forced request used to reload the data on its own, and every reload trained again.
+    /// </summary>
+    [Fact]
+    public async Task SimultaneousRetrainingsShareOneReloadAndOneTraining()
+    {
+        var cache = new IntelligenceModelCache();
+        var source = new Source();
+        await cache.GetModelAsync(V1, source.Load, source.Train, force: false);
+
+        // Slow enough that every request has arrived while the first reload is still running.
+        source.LoadMilliseconds = 400;
+        var results = await Parallel(cache, source, V1, requests: 8, force: true);
+
+        Assert.Equal(2, source.Loads);
+        Assert.Equal(2, source.Trainings);
+        Assert.All(results, r => Assert.Same(results[0].Analysis, r.Analysis));
+    }
+
+    /// <summary>A press that comes after the last reload finished reads the data again.</summary>
+    [Fact]
+    public async Task ARetrainingAskedAfterTheLastReloadReadsTheDataAgain()
+    {
+        var cache = new IntelligenceModelCache();
+        var source = new Source();
+
+        var first = await cache.GetModelAsync(V1, source.Load, source.Train, force: true);
+        var second = await cache.GetModelAsync(V1, source.Load, source.Train, force: true);
+
+        Assert.NotEqual(first.State.RunId, second.State.RunId);
+        Assert.Equal(2, source.Loads);
+        Assert.Equal(2, source.Trainings);
     }
 
     [Fact]

@@ -89,6 +89,64 @@ public class ImportRulesTests
         Assert.Contains("Falta la fecha de primera contratación.", problems);
     }
 
+    /// <summary>
+    /// Text longer than its column used to pass every rule and come back from the database as a
+    /// server error; the form said "Request failed with status code: InternalServerError".
+    /// </summary>
+    [Fact]
+    public void TextLongerThanItsColumnIsNamedBeforeTheDatabaseSeesIt()
+    {
+        var student = Student(enrollment: new string('M', 21));
+        student.Name = new string('N', 101);
+        student.Address = new string('D', 100);
+
+        var problems = ImportRules.Check(student, Today);
+
+        Assert.Contains("Matrícula: máximo 20 caracteres (tiene 21).", problems);
+        Assert.Contains("Nombre: máximo 100 caracteres (tiene 101).", problems);
+        Assert.DoesNotContain(problems, p => p.StartsWith("Domicilio"));
+
+        var employee = Employee();
+        employee.FullName = new string('F', 201);
+        employee.Email = new string('a', 95) + "@upzmg.local";
+
+        var staff = ImportRules.Check(employee, Today);
+        Assert.Contains("Nombre completo: máximo 200 caracteres (tiene 201).", staff);
+        Assert.Contains(staff, p => p.StartsWith("Correo electrónico: máximo 100 caracteres"));
+    }
+
+    /// <summary>A number outside a catalogue was stored as it came and read back as nothing.</summary>
+    [Fact]
+    public void ValuesOutsideTheCataloguesAreRefused()
+    {
+        var student = Student();
+        student.Gender = (Gender)99;
+        student.Status = (StudentStatus)42;
+        student.InscriptionType = (InscriptionType)(-1);
+
+        var problems = ImportRules.Check(student, Today);
+
+        Assert.Contains("El sexo no es un valor del catálogo.", problems);
+        Assert.Contains("El estatus del alumno no es un valor del catálogo.", problems);
+        Assert.Contains("El tipo de inscripción no es un valor del catálogo.", problems);
+
+        var employee = Employee();
+        employee.TitleStatus = (TitleStatus)9;
+        Assert.Contains("El estatus de titulación no es un valor del catálogo.", ImportRules.Check(employee, Today));
+    }
+
+    [Fact]
+    public void ImplausibleDatesAreRefused()
+    {
+        var student = Student();
+        student.BirthDate = new DateOnly(1890, 1, 1);
+        Assert.Contains("La fecha de nacimiento es anterior a 1900.", ImportRules.Check(student, Today));
+
+        var employee = Employee();
+        employee.FirstHiredDate = employee.BirthDate.AddYears(-1);
+        Assert.Contains("La fecha de primera contratación es anterior al nacimiento.", ImportRules.Check(employee, Today));
+    }
+
     [Fact]
     public void ARepeatedKeyIsRefusedOnTheLaterRowAndPointsAtTheFirst()
     {

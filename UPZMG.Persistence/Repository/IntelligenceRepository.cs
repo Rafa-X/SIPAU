@@ -56,6 +56,14 @@ public sealed class IntelligenceModelCache
     private volatile IntelligenceState? _state;
     private volatile TrainedModel? _model;
 
+    // Numbers the loads: it turns odd when one starts and even when it ends, and _stateTicket is
+    // the number the current state's load started with. A forced request is answered by a load
+    // that was running when it arrived or started after it: either one read the data no earlier
+    // than the press. Without this every "Reentrenar" reloaded the data on its own, each reload
+    // was a new run, and eight presses at the same moment trained up to eight times in a row.
+    private long _loadTicket;
+    private long _stateTicket;
+
     private sealed record TrainedModel(string RunId, DropoutAnalysis Analysis);
 
     public async Task<IntelligenceState> GetStateAsync(
@@ -63,14 +71,27 @@ public sealed class IntelligenceModelCache
     {
         if (!force && IsFresh(_state, fingerprint)) return _state!;
 
+        var arrival = Interlocked.Read(ref _loadTicket);
+
         await _dataGate.WaitAsync();
         try
         {
             // Another request may have rebuilt it while this one waited.
             if (!force && IsFresh(_state, fingerprint)) return _state!;
+            if (force && _state is { } shared && Interlocked.Read(ref _stateTicket) >= arrival) return shared;
 
-            _state = await load(fingerprint);
-            return _state;
+            var ticket = Interlocked.Increment(ref _loadTicket);
+            try
+            {
+                var state = await load(fingerprint);
+                _state = state;
+                Interlocked.Exchange(ref _stateTicket, ticket);
+                return state;
+            }
+            finally
+            {
+                Interlocked.Increment(ref _loadTicket);
+            }
         }
         finally
         {
@@ -221,8 +242,12 @@ public class IntelligenceRepository(AppDBContext db, IntelligenceModelCache cach
             .AsNoTracking()
             .ToDictionaryAsync(c => c.Id, c => c.Name ?? "Sin nombre");
 
+        // In a stated order: the five validation folds are dealt from this list, so an order left
+        // to the query plan could change the threshold the screen publishes. By id it is the order
+        // the database already returns them in, and the figures stay the ones reported.
         var students = (await db.Students
                 .AsNoTracking()
+                .OrderBy(s => s.Id)
                 .Select(s => new
                 {
                     s.Id, s.EnrollmentNumber, s.Name, s.MiddleName, s.LastName,

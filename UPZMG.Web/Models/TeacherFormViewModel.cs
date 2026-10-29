@@ -26,12 +26,6 @@ public class EmployeeFormViewModel
     public int ExternalXPYears { get; set; }
     public DateTime? FirstHiredDate { get; set; }
     public bool IsTeacher { get; set; } = true;
-    
-    public string MaxDegree { get; set; } = string.Empty;
-    public string ContractType { get; set; } = string.Empty;
-    public Guid? AreaId { get; set; }
-    public int WeeklyHours { get; set; }
-    public bool HasPostgraduate { get; set; }
 
     // Dropdown options, filled from the catalogues the API serves.
     public List<SelectListItem> Areas { get; set; } = new();

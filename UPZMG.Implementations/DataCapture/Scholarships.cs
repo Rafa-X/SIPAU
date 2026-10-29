@@ -17,7 +17,9 @@ public sealed class CreateScholarship
 
     public FinantialSource FinantialSource { get; set; }
 
-    [Range(0, 999999999, ErrorMessage = "El monto no puede ser negativo.")]
+    // Typed as decimal: with integer bounds the check converted the amount to Int32 and an amount
+    // above two thousand million ended in a server error instead of this message.
+    [Range(typeof(decimal), "0", "999999999", ErrorMessage = "El monto debe estar entre 0 y 999,999,999.")]
     public decimal Amount { get; set; }
 
     [MaxLength(100)]

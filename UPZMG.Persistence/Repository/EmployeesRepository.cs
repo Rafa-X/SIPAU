@@ -73,6 +73,8 @@ public class EmployeesRepository(AppDBContext db)
         var employee = await db.Employees.FirstOrDefaultAsync(e => e.Id == request.Id)
             ?? throw new InvalidOperationException("El empleado ya no existe.");
 
+        RequireCaptureRules(request);
+
         if (await db.Employees.AnyAsync(e => e.Id != request.Id && e.EmployeeNumber == request.EmployeeNumber))
             throw new InvalidOperationException($"Ya existe otro empleado con el número '{request.EmployeeNumber}'.");
 
@@ -118,8 +120,21 @@ public class EmployeesRepository(AppDBContext db)
         return employee;
     }
 
+    /// <summary>
+    /// The capture rules, here as well as in the form: an employee number of zero, a blank name or
+    /// an address without "@" sent to the API was stored, and text longer than its column came
+    /// back as a server error.
+    /// </summary>
+    private static void RequireCaptureRules(CreateEmployee request)
+    {
+        var problems = ImportRules.Check(request, DateOnly.FromDateTime(DateTime.Today));
+        if (problems.Count > 0) throw new InvalidOperationException(string.Join(" ", problems));
+    }
+
     public async Task<Employee> CreateEmployeeAsync(CreateEmployee request)
     {
+        RequireCaptureRules(request);
+
         var existEmployeeNumber = await db.Employees.AnyAsync(e => e.EmployeeNumber == request.EmployeeNumber);
         if (existEmployeeNumber)
             throw new InvalidOperationException($"Ya existe un empleado con el número de empleado '{request.EmployeeNumber}'.");

@@ -450,6 +450,7 @@ else
                     "Otra persona guardó esta captura mientras la tenías abierta. Recarga la página para partir de lo último guardado.",
                 HttpStatusCode.UnprocessableEntity => "El servidor rechazó el envío: el formato está incompleto o sus sumas no cuadran. Revisa las secciones marcadas.",
                 HttpStatusCode.NotFound => "No se encontró la plantilla o la captura. Recarga la página.",
+                HttpStatusCode.BadRequest => response.Message ?? "No se pudo guardar: revisa las respuestas.",
                 HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => "Tu sesión ya no tiene permiso para guardar. Vuelve a iniciar sesión.",
                 _ => "No se pudo guardar. Tu captura sigue en pantalla; intenta de nuevo en un momento.",
             }, Severity.Error);

@@ -37,28 +37,28 @@ else
         <MudText Typo="Typo.h6" Class="mb-3">Datos del alumno</MudText>
         <MudGrid>
             <MudItem md="4">
-                <MudTextField @bind-Value="_model.EnrollmentNumber" Label="Matrícula"
+                <MudTextField @bind-Value="_model.EnrollmentNumber" Label="Matrícula" MaxLength="20"
                               Required="true" RequiredError="La matrícula es obligatoria." />
             </MudItem>
             <MudItem md="4">
-                <MudTextField @bind-Value="_model.Curp" Label="CURP"
+                <MudTextField @bind-Value="_model.Curp" Label="CURP" MaxLength="18"
                               Validation="@(new Func<string, string?>(ValidateCurp))" Immediate="true" />
             </MudItem>
         </MudGrid>
 
         <MudGrid>
             <MudItem md="4">
-                <MudTextField @bind-Value="_model.FirstName" Label="Nombre(s)"
+                <MudTextField @bind-Value="_model.FirstName" Label="Nombre(s)" MaxLength="100"
                               Required="true" RequiredError="El nombre es obligatorio." />
             </MudItem>
             @* The record keeps a second given name and the surnames, and every listing prints
                them in that order. Labelled "apellido paterno / materno", what was typed as the
                mother's surname came out in front of the father's. *@
             <MudItem md="4">
-                <MudTextField @bind-Value="_model.MiddleName" Label="Segundo nombre" />
+                <MudTextField @bind-Value="_model.MiddleName" Label="Segundo nombre" MaxLength="100" />
             </MudItem>
             <MudItem md="4">
-                <MudTextField @bind-Value="_model.LastName" Label="Apellidos"
+                <MudTextField @bind-Value="_model.LastName" Label="Apellidos" MaxLength="100"
                               Required="true" RequiredError="Los apellidos son obligatorios."
                               HelperText="Paterno y materno, en ese orden." />
             </MudItem>
@@ -66,7 +66,7 @@ else
 
         <MudGrid>
             <MudItem md="8">
-                <MudTextField @bind-Value="_model.Address" Label="Domicilio"
+                <MudTextField @bind-Value="_model.Address" Label="Domicilio" MaxLength="100"
                               Required="true" RequiredError="El domicilio es obligatorio." />
             </MudItem>
         </MudGrid>

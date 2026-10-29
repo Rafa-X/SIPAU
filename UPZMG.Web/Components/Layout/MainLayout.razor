@@ -244,7 +244,19 @@
         <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-6">
             @* Keyed on the route so the entrance animation replays on every navigation. *@
             <div class="sipau-page" @key="Nav.Uri">
-                @Body
+                @* Without a boundary an unhandled exception in any screen ended the circuit: the
+                   bottom error bar came up and the menu stopped answering until a reload. Inside
+                   the keyed div, so the next navigation starts with a fresh one. *@
+                <ErrorBoundary>
+                    <ChildContent>@Body</ChildContent>
+                    <ErrorContent>
+                        <EmptyState Title="No se pudo mostrar esta pantalla"
+                                    Description="El servicio de datos no respondió o rechazó la consulta. Tu sesión sigue abierta: vuelve a intentarlo en un momento o sigue con otra sección del menú.">
+                            <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Refresh"
+                                       OnClick="@(() => Nav.NavigateTo(Nav.Uri, forceLoad: true))">Volver a intentar</MudButton>
+                        </EmptyState>
+                    </ErrorContent>
+                </ErrorBoundary>
             </div>
         </MudContainer>
     </MudMainContent>

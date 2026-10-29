@@ -9,6 +9,7 @@ public class StudentsRepository(AppDBContext db)
 {
     public async Task<Student> CreateStudentAsync(CreateStudent request)
     {
+        RequireCaptureRules(request);
         await RequireCatalogueAsync(request);
 
         var existEnrollment = await db.Students.AnyAsync(s => s.EnrollmentNumber == request.EnrollmentNumber);
@@ -82,6 +83,17 @@ public class StudentsRepository(AppDBContext db)
             throw new InvalidOperationException("El periodo de inicio seleccionado no existe en el catálogo.");
     }
 
+    /// <summary>
+    /// The capture rules, here as well as in the form: the form is only one client of the API, and
+    /// what it never sends — a blank name, a status outside the list, text longer than its column —
+    /// was stored as it came, or came back as a server error.
+    /// </summary>
+    private static void RequireCaptureRules(CreateStudent request)
+    {
+        var problems = ImportRules.Check(request, DateOnly.FromDateTime(DateTime.Today));
+        if (problems.Count > 0) throw new InvalidOperationException(string.Join(" ", problems));
+    }
+
     /// <summary>The whole student, to fill the correction form.</summary>
     public async Task<UpdateStudent?> GetStudentAsync(Guid id)
     {
@@ -130,6 +142,7 @@ public class StudentsRepository(AppDBContext db)
         var student = await db.Students.FirstOrDefaultAsync(s => s.Id == request.Id)
             ?? throw new InvalidOperationException("El alumno ya no existe.");
 
+        RequireCaptureRules(request);
         await RequireCatalogueAsync(request);
 
         if (await db.Students.AnyAsync(s => s.Id != request.Id && s.EnrollmentNumber == request.EnrollmentNumber))
@@ -195,17 +208,21 @@ public class StudentsRepository(AppDBContext db)
                 (request.PeriodId == null || s.PeriodIdStart == request.PeriodId)
             select new { Student = s, Career = c, Period = p };
 
+        // A search term is text: "%", "_" and "[" in it used to act as wildcards and matched everyone.
         if (!string.IsNullOrWhiteSpace(request.Name))
         {
-            var term = request.Name.Trim();
+            var term = $"%{LikeLiteral(request.Name.Trim())}%";
             query = query.Where(x =>
-                EF.Functions.Like(x.Student.Name, $"%{term}%") ||
-                EF.Functions.Like(x.Student.LastName, $"%{term}%") ||
-                EF.Functions.Like(x.Student.MiddleName, $"%{term}%"));
+                EF.Functions.Like(x.Student.Name, term, @"\") ||
+                EF.Functions.Like(x.Student.LastName, term, @"\") ||
+                EF.Functions.Like(x.Student.MiddleName, term, @"\"));
         }
 
         if (!string.IsNullOrWhiteSpace(request.EnrollmentNumber))
-            query = query.Where(x => EF.Functions.Like(x.Student.EnrollmentNumber, $"%{request.EnrollmentNumber.Trim()}%"));
+        {
+            var term = $"%{LikeLiteral(request.EnrollmentNumber.Trim())}%";
+            query = query.Where(x => EF.Functions.Like(x.Student.EnrollmentNumber, term, @"\"));
+        }
 
         // Cap page size to keep listing queries cheap regardless of client input.
         var pageSize = request.PageSize <= 0 ? 10 : Math.Min(request.PageSize, 100);
@@ -231,6 +248,9 @@ public class StudentsRepository(AppDBContext db)
 
         return new StudentsListResponse { Items = items, TotalCount = await query.CountAsync() };
     }
+
+    private static string LikeLiteral(string term) =>
+        term.Replace(@"\", @"\\").Replace("%", @"\%").Replace("_", @"\_").Replace("[", @"\[");
 
     public Task<List<StudentsAges>> GetStudentsAgesNew() => GetStudentsAgesAsync(newOnly: true);
 

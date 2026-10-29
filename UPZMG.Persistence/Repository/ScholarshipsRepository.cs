@@ -28,6 +28,9 @@ public class ScholarshipsRepository(AppDBContext db)
         if (!await db.Periods.AnyAsync(p => p.Id == request.PeriodId))
             throw new InvalidOperationException("El periodo indicado no existe.");
 
+        if (!Enum.IsDefined(request.FinantialSource))
+            throw new InvalidOperationException("La fuente de financiamiento no es un valor del catálogo.");
+
         // The unique index would refuse it anyway; saying why is friendlier than a database error.
         if (await db.ScolarshipAssigneds.AnyAsync(s =>
                 s.StudentId == studentId && s.PeriodId == request.PeriodId &&
@@ -139,6 +142,9 @@ public class ScholarshipsRepository(AppDBContext db)
 
         if (!await db.Employees.AnyAsync(e => e.Id == request.TitulationAssessorId))
             throw new InvalidOperationException("El asesor indicado no existe.");
+
+        if (!Enum.IsDefined(request.Modality))
+            throw new InvalidOperationException("La modalidad de titulación no es un valor del catálogo.");
 
         if (request.TitleExpeditionDate < request.CreditsEgressDate)
             throw new InvalidOperationException("La expedición del título no puede ser anterior al egreso.");
