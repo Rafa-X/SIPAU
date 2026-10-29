@@ -43,26 +43,28 @@ else
 
         <MudGrid>
             <MudItem md="4">
-                <MudTextField @bind-Value="_model.Email" Label="Correo electrónico" InputType="InputType.Email"
+                <MudTextField @bind-Value="_model.Email" Label="Correo electrónico" InputType="InputType.Email" MaxLength="100"
                               Required="true" RequiredError="El correo electrónico es obligatorio." />
             </MudItem>
             <MudItem md="4">
-                <MudTextField @bind-Value="_model.Rfc" Label="RFC" />
+                <MudTextField @bind-Value="_model.Rfc" Label="RFC" MaxLength="13"
+                              Required="true" RequiredError="El RFC es obligatorio." />
             </MudItem>
             <MudItem md="4">
-                <MudTextField @bind-Value="_model.Curp" Label="CURP" />
+                <MudTextField @bind-Value="_model.Curp" Label="CURP" MaxLength="18"
+                              Required="true" RequiredError="La CURP es obligatoria." />
             </MudItem>
         </MudGrid>
 
         <MudGrid Class="mt-1">
             <MudItem md="4">
-                <MudTextField @bind-Value="_model.FirstName" Label="Nombre(s)" Required="true" RequiredError="Requerido." />
+                <MudTextField @bind-Value="_model.FirstName" Label="Nombre(s)" MaxLength="66" Required="true" RequiredError="Requerido." />
             </MudItem>
             <MudItem md="4">
-                <MudTextField @bind-Value="_model.LastName" Label="Apellido paterno" Required="true" RequiredError="Requerido." />
+                <MudTextField @bind-Value="_model.LastName" Label="Apellido paterno" MaxLength="66" Required="true" RequiredError="Requerido." />
             </MudItem>
             <MudItem md="4">
-                <MudTextField @bind-Value="_model.MiddleName" Label="Apellido materno" />
+                <MudTextField @bind-Value="_model.MiddleName" Label="Apellido materno" MaxLength="66" />
             </MudItem>
         </MudGrid>
         <MudGrid>
@@ -72,37 +74,8 @@ else
                 </MudSelect>
             </MudItem>
             <MudItem md="4">
-                <MudDatePicker @bind-Date="_model.BirthDate" Label="Fecha de nacimiento" MaxDate="DateTime.Today" />
-            </MudItem>
-            <MudItem md="4">
-                <MudSelect T="string" @bind-Value="_model.MaxDegree" Label="Grado máximo de estudios">
-                    @foreach (var degree in _maxDegrees)
-                    {
-                        <MudSelectItem T="string" Value="@degree.Value">@degree.Value</MudSelectItem>
-                    }
-                </MudSelect>
-            </MudItem>
-        </MudGrid>
-
-        <MudGrid Class="mt-2">
-            <MudItem md="4">
-                <MudSelect T="string" @bind-Value="_model.ContractType" Label="Tipo de contrato">
-                    @foreach (var contractType in _contractTypes)
-                    {
-                        <MudSelectItem T="string" Value="@contractType.Value">@contractType.Value</MudSelectItem>
-                    }
-                </MudSelect>
-            </MudItem>
-            <MudItem md="4">
-                <MudNumericField T="int" @bind-Value="_model.WeeklyHours" Label="Horas semanales" Min="0" Max="48" />
-            </MudItem>
-            <MudItem md="4">
-                <MudSelect T="Guid?" @bind-Value="_model.AreaId" Label="Área de adscripción">
-                    @foreach (var area in _internalAreas)
-                    {
-                        <MudSelectItem T="Guid?" Value="@area.Id">@area.Value</MudSelectItem>
-                    }
-                </MudSelect>
+                <MudDatePicker @bind-Date="_model.BirthDate" Label="Fecha de nacimiento" MaxDate="DateTime.Today"
+                               Required="true" RequiredError="La fecha de nacimiento es obligatoria." />
             </MudItem>
         </MudGrid>
 
@@ -125,7 +98,8 @@ else
                 </MudSelect>
             </MudItem>
             <MudItem md="4">
-                <MudDatePicker @bind-Date="_model.FirstHiredDate" Label="Fecha de primera contratación" MaxDate="DateTime.Today" />
+                <MudDatePicker @bind-Date="_model.FirstHiredDate" Label="Fecha de primera contratación" MaxDate="DateTime.Today"
+                               Required="true" RequiredError="La fecha de primera contratación es obligatoria." />
             </MudItem>
         </MudGrid>
 
@@ -141,9 +115,6 @@ else
                         <MudSelectItem T="string" Value="@language.Value">@language.Value</MudSelectItem>
                     }
                 </MudSelect>
-            </MudItem>
-            <MudItem md="6" Class="d-flex align-center">
-                <MudSwitch T="bool" @bind-Value="_model.HasPostgraduate" Color="Color.Secondary" Label="Cuenta con posgrado" />
             </MudItem>
         </MudGrid>
 
@@ -178,23 +149,11 @@ else
     private bool _notFound;
     private bool _saving;
     private EmployeeFormViewModel _model = new();
-    private IReadOnlyList<LookupOption> _maxDegrees = [];
-    private IReadOnlyList<LookupOption> _contractTypes = [];
-    private IReadOnlyList<LookupOption> _internalAreas = [];
     private IReadOnlyList<LookupOption> _languages = [];
-        
+
     protected override async Task OnInitializedAsync()
     {
-        var maxDegreesTask = _generalService.GetMaxDegreesAsync();
-        var contractTypesTask = _generalService.GetContractTypesAsync();
-        var internalAreasTask = _generalService.GetInternalAreasAsync();
-        var languagesTask = _generalService.GetIndigenousLanguagesAsync();
-        await Task.WhenAll(maxDegreesTask, contractTypesTask, internalAreasTask, languagesTask);
-
-        _maxDegrees = await maxDegreesTask;
-        _contractTypes = await contractTypesTask;
-        _internalAreas = await internalAreasTask;
-        _languages = await languagesTask;
+        _languages = await _generalService.GetIndigenousLanguagesAsync();
 
         if (Id is { } id) await LoadAsync(id);
     }

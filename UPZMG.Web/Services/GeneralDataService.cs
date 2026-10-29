@@ -69,45 +69,6 @@ public sealed class GeneralDataService(ISecurityService securityService): IGener
         return [];
     }
 
-    public async Task<IReadOnlyList<LookupOption>> GetMaxDegreesAsync()
-    {
-        var requesterKey = await securityService.GetRequesterKeyAsync();
-        var response = await securityService.SendGetRequestAsync<IReadOnlyList<LookupOption>>(
-            "general-data/lookups/max-degrees", requesterKey);
-
-        if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
-        {
-            return JsonSerializer.Deserialize<IReadOnlyList<LookupOption>>(response.Result, ResponseOptions) ?? [];
-        }
-        return [];
-    }
-
-    public async Task<IReadOnlyList<LookupOption>> GetContractTypesAsync()
-    {
-        var requesterKey = await securityService.GetRequesterKeyAsync();
-        var response = await securityService.SendGetRequestAsync<IReadOnlyList<LookupOption>>(
-            "general-data/lookups/contract-types", requesterKey);
-
-        if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
-        {
-            return JsonSerializer.Deserialize<IReadOnlyList<LookupOption>>(response.Result, ResponseOptions) ?? [];
-        }
-        return [];
-    }
-
-    public async Task<IReadOnlyList<LookupOption>> GetInternalAreasAsync()
-    {
-        var requesterKey = await securityService.GetRequesterKeyAsync();
-        var response = await securityService.SendGetRequestAsync<IReadOnlyList<LookupOption>>(
-            "general-data/lookups/internal-areas", requesterKey);
-
-        if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
-        {
-            return JsonSerializer.Deserialize<IReadOnlyList<LookupOption>>(response.Result, ResponseOptions) ?? [];
-        }
-        return [];
-    }
-
     public async Task<IReadOnlyList<LookupOption>> GetTeachersAsync() =>
         await GetLookupAsync("general-data/lookups/teachers");
 
