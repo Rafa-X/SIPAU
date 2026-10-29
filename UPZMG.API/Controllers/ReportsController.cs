@@ -22,6 +22,10 @@ public class ReportsController(
     // Far above the largest official format; stops a runaway payload.
     private const int MaxAnswers = 20_000;
 
+    // The same bound as a narrative block of the board report. One answer of a megabyte was
+    // stored, and the capture then sat on "Preparando el formato…" every time it was opened.
+    private const int MaxAnswerLength = 8_000;
+
     // The owner always comes from the token, never from the request body.
     private Guid CurrentUserId =>
         Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub"), out var id)
@@ -89,6 +93,9 @@ public class ReportsController(
 
         if (request.Answers.Count > MaxAnswers)
             return BadRequest("Too many answers.");
+
+        if (request.Answers.Values.Any(answer => answer is { Length: > MaxAnswerLength }))
+            return BadRequest(new { message = $"Una respuesta pasa de {MaxAnswerLength:N0} caracteres; resúmela." });
 
         var template = await reportTemplatesRepository.GetTemplateAsync(request.ReportType, request.Version);
         if (template is null) return NotFound("Template not found.");

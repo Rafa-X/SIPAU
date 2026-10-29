@@ -78,7 +78,7 @@
             {
                 var selectSpecifyKey = ReportFormState.SpecifyKey(Question.Key);
                 <MudTextField T="string" Label="Especifique" Value="@Form.Get(selectSpecifyKey)"
-                              ValueChanged="@(v => SetAsync(selectSpecifyKey, v))" Variant="Variant.Outlined"
+                              ValueChanged="@(v => SetAsync(selectSpecifyKey, v))" Variant="Variant.Outlined" MaxLength="8000"
                               Margin="Margin.Dense" Disabled="@ReadOnly" Class="sipau-capture-input-long mt-3" />
             }
             break;
@@ -95,7 +95,7 @@
             {
                 var checkSpecifyKey = ReportFormState.SpecifyKey(Question.Key);
                 <MudTextField T="string" Label="Especifique" Value="@Form.Get(checkSpecifyKey)"
-                              ValueChanged="@(v => SetAsync(checkSpecifyKey, v))" Variant="Variant.Outlined"
+                              ValueChanged="@(v => SetAsync(checkSpecifyKey, v))" Variant="Variant.Outlined" MaxLength="8000"
                               Margin="Margin.Dense" Disabled="@ReadOnly" Class="sipau-capture-input-long mt-3" />
             }
             break;
@@ -333,8 +333,9 @@
             break;
 
         default:
+            @* The API takes up to 8,000 characters per answer. *@
             <MudTextField T="string" Value="@Form.Get(Question.Key)" ValueChanged="@(v => SetAsync(Question.Key, v))"
-                          Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@ReadOnly"
+                          Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@ReadOnly" MaxLength="8000"
                           Class="sipau-capture-input-long" />
             break;
     }

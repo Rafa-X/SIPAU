@@ -183,6 +183,13 @@ public class BoardReportRepository(
         if (row is { Status: nameof(ReportStatus.submitted) })
             return BoardReportSaveResult.Refused("El informe ya se envió; para editarlo hay que generar uno nuevo.");
 
+        // Any key used to be stored, and a block the document does not have was kept forever.
+        if (await ReadInputsAsync(request.Cycle) is not { } inputs
+            || !BoardReportBuilder.Build(inputs, DateTime.UtcNow).Chapters
+                .SelectMany(chapter => chapter.Blocks)
+                .Any(block => block.Kind == BoardReportBlockKinds.Narrative && block.BlockKey == request.BlockKey))
+            return BoardReportSaveResult.Refused("Ese bloque no existe en el informe de este ciclo.");
+
         var narratives = row is null ? [] : ReadNarratives(row.AnswersJson);
 
         if (string.IsNullOrWhiteSpace(request.Text)) narratives.Remove(request.BlockKey);

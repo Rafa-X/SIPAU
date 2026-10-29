@@ -26,6 +26,14 @@ public class PeriodsController(
         if (request.EndDate <= request.StartDate)
             return BadRequest("EndDate must be after StartDate.");
 
+        // The screen asks for both and for a four-digit year; a direct call stored a period with
+        // no code, or one whose year read "20X7" in every listing.
+        if (string.IsNullOrWhiteSpace(request.Code) || string.IsNullOrWhiteSpace(request.Period))
+            return BadRequest("Code and Period are required.");
+
+        if (request.SchoolCycle.Trim() is not { Length: 4 } year || !year.All(char.IsAsciiDigit))
+            return BadRequest("SchoolCycle must be a four-digit year.");
+
         try
         {
             var period = await periodsRepository.CreatePeriodAsync(request);
