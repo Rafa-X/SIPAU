@@ -60,7 +60,7 @@ public static class BoardReportBuilder
         var blocks = new List<BoardReportBlock>
         {
             Narrative(input, "presentacion.mensaje", "Mensaje de la Rectoría",
-                $"El presente informe da cuenta de la operación de {InstitutionName} durante el ciclo {input.Cycle}, "
+                $"El presente informe da cuenta de la operación de {Text(institution, "nombre_institucion") ?? InstitutionName} durante el ciclo {input.Cycle}, "
                 + "en cumplimiento de las atribuciones de la Junta Directiva. Las cifras provienen de los formatos "
                 + "estadísticos oficiales que cada área capturó y de los registros académicos del sistema."),
             new BoardReportBlock(
@@ -112,8 +112,8 @@ public static class BoardReportBuilder
             blocks.Add(new BoardReportBlock(
                 BoardReportBlockKinds.Chart,
                 Title: "Evolución y proyección de la matrícula",
-                Source: "Inscripciones registradas · proyección por mínimos cuadrados",
-                Note: $"Pendiente de {Decimal(forecast.Slope)} alumnos por periodo, {FitNote(forecast)}.",
+                Source: "Inscripciones registradas · proyección de la tendencia",
+                Note: $"{ForecastTrend.Sentence(forecast.Slope)}; {FitNote(forecast)}.",
                 Chart: new BoardReportChart(
                     "line",
                     forecast.Labels,
@@ -150,9 +150,7 @@ public static class BoardReportBuilder
             "Formato 911.9A · Carrera",
             note: Text(career, "nombre_carrera") is { } name ? $"Programa reportado: {name}." : null));
 
-        blocks.Add(Narrative(input, "matricula.analisis", "Análisis de la matrícula",
-            "La matrícula mantiene su tendencia de crecimiento. Se recomienda revisar la capacidad instalada "
-            + "de los programas con mayor participación antes de la siguiente convocatoria."));
+        blocks.Add(Narrative(input, "matricula.analisis", "Análisis de la matrícula", EnrolmentAnalysis(input)));
 
         return new BoardReportChapter("II", "Matrícula",
             "Comportamiento histórico, distribución por programa y proyección.", blocks);
@@ -224,9 +222,7 @@ public static class BoardReportBuilder
             blocks.Add(Pending("Indicadores reportados al SII", students, "Formato SII · Perfil del alumno"));
         }
 
-        blocks.Add(Narrative(input, "aprovechamiento.analisis", "Análisis del aprovechamiento",
-            "El índice de aprobación se mantiene dentro del rango histórico de la universidad. "
-            + "Las academias darán seguimiento a las asignaturas con mayor reprobación."));
+        blocks.Add(Narrative(input, "aprovechamiento.analisis", "Análisis del aprovechamiento", AchievementAnalysis(input)));
 
         return new BoardReportChapter("III", "Aprovechamiento académico",
             "Aprobación, reprobación y los índices que se reportan al SII.", blocks);
@@ -275,9 +271,7 @@ public static class BoardReportBuilder
             [
                 .. blocks,
                 MatrixTable(career, "egresados_titulados", "Egresados y titulados del programa", "Formato 911.9A · Carrera"),
-                Narrative(input, "titulacion.analisis", "Análisis de la titulación",
-                    "La diferencia entre egreso y titulación se concentra en el trámite de cédula profesional. "
-                    + "Se propone reforzar el acompañamiento administrativo posterior al egreso."),
+                Narrative(input, "titulacion.analisis", "Análisis de la titulación", GraduationAnalysis(input)),
             ]);
     }
 
@@ -314,9 +308,7 @@ public static class BoardReportBuilder
             [
                 .. blocks,
                 MatrixTable(school, "becas_por_origen", "Becas por origen del financiamiento", "Formato 911.9 · Escuela"),
-                Narrative(input, "becas.analisis", "Análisis de becas",
-                    "La cobertura de becas sostiene la permanencia de los alumnos con menor ingreso familiar. "
-                    + "Se recomienda cruzar el padrón con la lista de riesgo de deserción del capítulo X."),
+                Narrative(input, "becas.analisis", "Análisis de becas", ScholarshipsAnalysis(input)),
             ]);
     }
 
@@ -361,9 +353,7 @@ public static class BoardReportBuilder
         blocks.Add(MatrixTable(school, "personal_funcion", "Personal por función reportado", "Formato 911.9 · Escuela", onlyWithValues: true));
         blocks.Add(MatrixTable(school, "docentes_nivel_estudios", "Docentes por nivel máximo de estudios", "Formato 911.9 · Escuela", onlyWithValues: true));
 
-        blocks.Add(Narrative(input, "personal.analisis", "Análisis de la plantilla",
-            $"La universidad cuenta con {Count(input.Dashboard.TeachersWithPostgrad)} docentes con estudios de posgrado, "
-            + "condición que sostiene los procesos de acreditación de los programas educativos."));
+        blocks.Add(Narrative(input, "personal.analisis", "Análisis de la plantilla", StaffAnalysis(input)));
 
         return new BoardReportChapter("VI", "Personal académico y administrativo",
             "Plantilla por función y nivel de estudios.", blocks);
@@ -406,9 +396,7 @@ public static class BoardReportBuilder
                     + "el inventario de cómputo se integrará cuando se envíe."));
         }
 
-        blocks.Add(Narrative(input, "infraestructura.analisis", "Análisis de la infraestructura",
-            "Los espacios educativos cubren la demanda del ciclo. Las necesidades de mantenimiento se "
-            + "atenderán con cargo al programa anual de conservación."));
+        blocks.Add(Narrative(input, "infraestructura.analisis", "Análisis de la infraestructura", FacilitiesAnalysis(input)));
 
         return new BoardReportChapter("VII", "Infraestructura y equipamiento",
             "Espacios educativos, capacidad instalada y equipamiento.", blocks);
@@ -463,9 +451,7 @@ public static class BoardReportBuilder
         blocks.Add(MatrixTable(institution, "servicio_social", "Servicio social por sector", "Formato 911.10 · Institución"));
         blocks.Add(MatrixTable(institution, "practicas_profesionales", "Prácticas profesionales por sector", "Formato 911.10 · Institución"));
         blocks.Add(MatrixTable(institution, "proyectos_vinculacion", "Proyectos de vinculación por sector", "Formato 911.10 · Institución", onlyWithValues: true));
-        blocks.Add(Narrative(input, "vinculacion.analisis", "Análisis de la vinculación",
-            "Los convenios vigentes sostienen la colocación de alumnos en estadía. "
-            + "Se buscará ampliar la participación del sector social en el siguiente ciclo."));
+        blocks.Add(Narrative(input, "vinculacion.analisis", "Análisis de la vinculación", OutreachAnalysis(input)));
 
         return new BoardReportChapter("VIII", "Vinculación y extensión",
             "Servicio social, prácticas profesionales y proyectos con los sectores.", blocks);
@@ -533,9 +519,7 @@ public static class BoardReportBuilder
                 Note: "El renglón final es el balance del ejercicio: ingresos menos egresos."));
         }
 
-        blocks.Add(Narrative(input, "finanzas.analisis", "Análisis financiero",
-            "El subsidio público sigue siendo la principal fuente de ingreso de la universidad. "
-            + "Los ingresos propios se destinan a mantenimiento y equipamiento."));
+        blocks.Add(Narrative(input, "finanzas.analisis", "Análisis financiero", FinanceAnalysis(input)));
 
         return new BoardReportChapter("IX", "Finanzas institucionales",
             "Origen de los ingresos del ejercicio reportado.", blocks);
@@ -551,13 +535,13 @@ public static class BoardReportBuilder
             blocks.Add(new BoardReportBlock(
                 BoardReportBlockKinds.Figures,
                 Title: "Proyección de matrícula",
-                Source: "Regresión lineal sobre los periodos registrados",
+                Source: "Tendencia de los periodos registrados",
                 Figures:
                 [
                     new(forecast.NextLabel ?? "Siguiente periodo", Count((int)Math.Round(next)),
                         forecast.NextMargin is { } margin ? $"± {Decimal(margin, 0)} alumnos" : "sin margen medible"),
-                    new("Crecimiento por periodo", Decimal(forecast.Slope), "alumnos"),
-                    new("Ajuste del modelo", forecast.R2 is { } r2 ? Decimal(r2, 2) : "—", "R²"),
+                    new("Cambio por periodo", Decimal(forecast.Slope), "alumnos"),
+                    new("Lo que explica la tendencia", forecast.R2 is { } r2 ? Percent(r2 * 100) : "—", "de los cambios de matrícula"),
                 ]));
         }
 
@@ -566,8 +550,8 @@ public static class BoardReportBuilder
             blocks.Add(new BoardReportBlock(
                 BoardReportBlockKinds.Table,
                 Title: "Riesgo de deserción por programa",
-                Source: "Árbol de decisión entrenado con las trayectorias terminadas",
-                Note: $"El modelo detecta el {Percent(dropout.Quality.Recall * 100)} de las bajas en validación cruzada.",
+                Source: "Modelo de riesgo, que aprende de los alumnos que ya terminaron",
+                Note: $"En pruebas con alumnos que ya terminaron detectó {Percent(dropout.Quality.Recall * 100)} de las bajas.",
                 Table: new BoardReportTable(
                     ["Programa educativo", "Alumnos evaluados", "Por atender", "Riesgo alto"],
                     [.. dropout.ByCareer.Select(c => new BoardReportRow(c.Career,
@@ -584,11 +568,11 @@ public static class BoardReportBuilder
         {
             blocks.Add(new BoardReportBlock(
                 BoardReportBlockKinds.Table,
-                Title: "Desviaciones detectadas",
-                Source: "Detección estadística sobre las series institucionales",
+                Title: "Alertas de indicadores",
+                Source: "Revisión de los indicadores institucionales",
                 Table: new BoardReportTable(
                     ["Periodo", "Hallazgo"],
-                    [.. input.Anomalies.Select(a => new BoardReportRow(a.Period ?? "—", [a.Title]))])));
+                    [.. input.Anomalies.Select(a => new BoardReportRow(a.Period ?? "—", [$"{a.Title}. {a.Detail}"]))])));
         }
 
         blocks.Add(Narrative(input, "prospectiva.acuerdos", "Acuerdos propuestos a la Junta",
@@ -597,6 +581,154 @@ public static class BoardReportBuilder
 
         return new BoardReportChapter("X", "Prospectiva y acuerdos",
             "Proyección, riesgos detectados y acuerdos propuestos.", blocks);
+    }
+
+    // ── Suggested texts ─────────────────────────────────────────────────────
+    //
+    // Each one is written from the figures of this report. They used to be fixed sentences ("la
+    // matrícula mantiene su tendencia de crecimiento"), which stayed on the page of a university
+    // whose enrolment was falling, one click away from being sent to the board as its own words.
+
+    private const double Noticeable = 2;
+
+    private static string EnrolmentAnalysis(BoardReportInputs input)
+    {
+        var periods = input.History.Periods.Where(p => p.Enrolled > 0).ToList();
+        if (periods.Count < 2)
+            return "Todavía no hay inscripciones registradas en dos periodos para comentar la evolución de la matrícula.";
+
+        var first = periods[0];
+        var last = periods[^1];
+        var change = 100.0 * (last.Enrolled - first.Enrolled) / first.Enrolled;
+
+        var text = $"La matrícula pasó de {Count(first.Enrolled)} alumnos en {first.Label} a {Count(last.Enrolled)} en {last.Label} "
+            + $"({change.ToString("+0.0;−0.0;0.0", Mx)} %).";
+
+        if (input.Forecast is { HasModel: true, NextValue: { } next })
+            text += $" La tendencia proyecta {Count((int)Math.Round(next))} alumnos para {input.Forecast.NextLabel}.";
+
+        var careers = input.Dashboard.StudentsByCareer;
+        if (careers.Count > 1 && careers.Sum(c => c.Students) is > 0 and var total)
+        {
+            var top = careers.MaxBy(c => c.Students)!;
+            text += $" {top.Career} concentra {Percent(100.0 * top.Students / total)} de los alumnos activos.";
+        }
+
+        return change switch
+        {
+            >= Noticeable => text + " Conviene revisar la capacidad instalada de los programas con mayor participación antes de la siguiente convocatoria.",
+            <= -Noticeable => text + " Conviene revisar con los programas las causas de la disminución antes de la siguiente convocatoria.",
+            _ => text,
+        };
+    }
+
+    private static string AchievementAnalysis(BoardReportInputs input)
+    {
+        var graded = input.History.Periods.Where(p => p.HasGrades).ToList();
+        if (graded.Count == 0) return "Todavía no hay calificaciones capturadas para comentar el aprovechamiento.";
+
+        var latest = graded[^1];
+        var rate = latest.PassRate!.Value;
+        var text = $"En {latest.Label} se aprobó {Percent(rate)} de las oportunidades calificadas";
+        if (graded.Count == 1) return text + ".";
+
+        var mean = graded.SkipLast(1).Average(p => p.PassRate!.Value);
+        var gap = rate - mean;
+        var compared = Math.Abs(gap) < Noticeable ? "cerca del" : gap > 0 ? "por encima del" : "por debajo del";
+        text += $", {compared} promedio de los periodos anteriores ({Percent(mean)}).";
+
+        return gap <= -Noticeable ? text + " Conviene dar seguimiento a las asignaturas con mayor reprobación." : text;
+    }
+
+    private static string GraduationAnalysis(BoardReportInputs input)
+    {
+        if (input.Titulation is not { Graduates: > 0 } titulation)
+            return "Todavía no hay egresados registrados para comentar la titulación.";
+
+        var text = (titulation.Graduates == 1 ? "De 1 egresado, " : $"De {Count(titulation.Graduates)} egresados, ")
+            + (titulation.Titled == 1 ? "1 tiene" : $"{Count(titulation.Titled)} tienen")
+            + $" un proceso de titulación registrado ({Percent(titulation.TitulationRate)}).";
+
+        if (titulation.ByModality.Count > 0)
+            text += $" La modalidad más frecuente es {titulation.ByModality.MaxBy(m => m.Count)!.Modality}.";
+
+        return titulation.TitulationRate < 50
+            ? text + " Conviene reforzar el acompañamiento administrativo posterior al egreso."
+            : text;
+    }
+
+    private static string ScholarshipsAnalysis(BoardReportInputs input)
+    {
+        if (input.Scholarships is not { Beneficiaries: > 0 } scholarships)
+            return "Todavía no hay becas registradas para comentar.";
+
+        var text = (scholarships.Beneficiaries == 1 ? "1 alumno tiene" : $"{Count(scholarships.Beneficiaries)} alumnos tienen")
+            + $" beca en {scholarships.Scope}, por un total de {Money((double)scholarships.TotalAmount)}.";
+
+        var main = Enumerable.Range(0, scholarships.Sources.Count).MaxBy(i => scholarships.Amounts[i]);
+        if (scholarships.Sources.Count > 1) text += $" La fuente con mayor monto es {scholarships.Sources[main]}.";
+
+        return input.Dropout is { HasModel: true }
+            ? text + " Se recomienda cruzar el padrón con la lista de riesgo de deserción del capítulo X."
+            : text;
+    }
+
+    private static string StaffAnalysis(BoardReportInputs input)
+    {
+        var teachers = input.Dashboard.TotalTeachers;
+        if (teachers == 0) return "Todavía no hay docentes registrados para comentar la plantilla.";
+
+        var postgrad = input.Dashboard.TeachersWithPostgrad;
+        return $"La universidad tiene {Plural(teachers, "docente registrado", "docentes registrados")}, {Count(postgrad)} con estudios de posgrado "
+            + $"({Percent(100.0 * postgrad / teachers)}).";
+    }
+
+    private static string FacilitiesAnalysis(BoardReportInputs input)
+    {
+        if (input.Facilities.Count == 0) return "Todavía no hay espacios registrados para comentar la infraestructura.";
+
+        var idle = input.Facilities.Count(f => !f.InUse);
+        var count = input.Facilities.Count;
+        var text = $"Hay {Plural(count, "espacio registrado", "espacios registrados")}, con capacidad para {Count(input.Facilities.Sum(f => f.Capacity))} personas.";
+
+        return idle switch
+        {
+            0 => text + (count == 1 ? " Está en uso." : " Todos están en uso."),
+            1 => text + (count == 1 ? " Está fuera de uso; conviene revisar si requiere mantenimiento." : " Uno está fuera de uso; conviene revisar si requiere mantenimiento."),
+            _ => text + $" {Count(idle)} están fuera de uso; conviene revisar si requieren mantenimiento.",
+        };
+    }
+
+    private static string OutreachAnalysis(BoardReportInputs input)
+    {
+        if (input.Outreach.Count == 0) return "Todavía no hay proyectos de vinculación registrados para comentar.";
+
+        var organizations = input.Outreach.Select(p => p.Organization).Distinct(StringComparer.CurrentCultureIgnoreCase).Count();
+        var withStudent = input.Outreach.Count(p => p.HasStudent);
+        return (input.Outreach.Count == 1 ? "Se registró 1 proyecto" : $"Se registraron {Count(input.Outreach.Count)} proyectos")
+            + $" con {Plural(organizations, "organización", "organizaciones")}, con "
+            + $"{Plural(input.Outreach.Sum(p => p.AccreditedHours), "hora acreditada", "horas acreditadas")}; "
+            + (withStudent == 1 ? "1 tiene" : $"{Count(withStudent)} tienen") + " un alumno asignado.";
+    }
+
+    private static string FinanceAnalysis(BoardReportInputs input)
+    {
+        if (input.Finance is not { } finance) return "Todavía no hay un resumen financiero capturado para comentar.";
+
+        var balance = finance.TotalIncome - finance.TotalExpense;
+        var text = $"En el ejercicio {finance.FiscalYear} los ingresos fueron de {Money((double)finance.TotalIncome)} "
+            + $"y los egresos de {Money((double)finance.TotalExpense)}, ";
+
+        text += balance switch
+        {
+            > 0 => $"con un superávit de {Money((double)balance)}.",
+            < 0 => $"con un déficit de {Money((double)-balance)}.",
+            _ => "sin diferencia entre ambos.",
+        };
+
+        return finance.TotalIncome > 0
+            ? text + $" El subsidio público aportó {Percent((double)(100 * (finance.FederalIncome + finance.StateIncome) / finance.TotalIncome))} de los ingresos."
+            : text;
     }
 
     // ── Blocks ──────────────────────────────────────────────────────────────
@@ -708,11 +840,13 @@ public static class BoardReportBuilder
 
     private static string Count(int value) => value.ToString("N0", Mx);
 
+    private static string Plural(int value, string one, string many) => $"{Count(value)} {(value == 1 ? one : many)}";
+
     // Two observed periods fit any line exactly, so the report says so instead of printing R² = 1.
     private static string FitNote(EnrollmentForecast forecast) =>
         forecast.R2 is { } r2
-            ? $"con R² de {Decimal(r2, 2)}"
-            : "tendencia preliminar: con dos periodos observados el ajuste todavía no puede medirse";
+            ? $"la tendencia explica {Percent(r2 * 100)} de los cambios"
+            : "tendencia preliminar: con dos periodos observados todavía no se puede medir qué tan firme es";
 
     private static string Decimal(double value, int decimals = 1) =>
         Math.Abs(value - Math.Round(value)) < 0.001
