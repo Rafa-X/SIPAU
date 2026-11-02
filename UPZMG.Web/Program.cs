@@ -1,13 +1,17 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.FileProviders;
 using MudBlazor.Services;
 using UPZMG.Web.Components;
 using UPZMG.Web.Security;
 using UPZMG.Web.Services;
 
-Console.Title = "UPZMG.Web";
+// A service or a scheduled task has no console, and setting a title there stops the process
+// before it starts.
+try { Console.Title = "UPZMG.Web"; } catch (IOException) { }
+
 var builder = WebApplication.CreateBuilder(args);
 using var startupLoggerFactory = CreateStartupLoggerFactory();
 var startupLogger = startupLoggerFactory.CreateLogger("Startup");
@@ -35,6 +39,13 @@ try
     // No database context here, on purpose: the Web holds no database credentials and every
     // read and write goes through the API. A context registered "just in case" was the only
     // reason a deployed Web would have needed a connection string.
+
+    // The session cookie and the form tokens are protected with these keys. By default they are
+    // tied to the folder the app runs from, so a new release folder or a second Web signed everybody
+    // out. A second machine also has to share the keys: DataProtection:KeysPath points to that folder.
+    var dataProtection = builder.Services.AddDataProtection().SetApplicationName("UPZMG.Web");
+    if (builder.Configuration["DataProtection:KeysPath"] is { Length: > 0 } keysPath)
+        dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
 
     // Cookie Auth
     builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -83,10 +94,14 @@ try
     // HttpClient to call API (server-to-server). Configurable so a deployed Web
     // can point somewhere other than the local development API.
     var apiBaseAddress = builder.Configuration["Api:BaseAddress"] ?? "https://localhost:5003/";
+    builder.Services.AddSingleton<ApiLinkState>();
+    builder.Services.AddTransient<ApiLinkHandler>();
     var apiClientBuilder = builder.Services.AddHttpClient("UpzmgApi", client =>
     {
         client.BaseAddress = new Uri(apiBaseAddress);
-    });
+        // ApiLinkHandler sets the limit of each call; this one must not end the long ones first.
+        client.Timeout = Timeout.InfiniteTimeSpan;
+    }).AddHttpMessageHandler<ApiLinkHandler>();
 
     // Local development uses an untrusted dev cert by default.
     if (builder.Environment.IsDevelopment())
