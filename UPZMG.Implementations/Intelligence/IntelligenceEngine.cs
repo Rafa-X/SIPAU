@@ -39,6 +39,10 @@ public static class IntelligenceEngine
     private const int TopStudents = 10;
     private const int MaxAlerts = 6;
 
+    // Three terms are one school year. A deviation older than that is part of the history: it is
+    // still listed, but nobody can act on it and it must not announce itself as news.
+    private const int RecentPeriods = 3;
+
     // Periods held back before the retrospective check can say anything. Fewer than this and
     // the fit it is measuring has barely any history to fit.
     public const int BacktestMinimumTrain = 5;
@@ -219,9 +223,9 @@ public static class IntelligenceEngine
         int graduates = finished.Count - withdrawals;
 
         var refusal = finished.Count < MinimumTrainingSamples
-            ? $"Se necesitan al menos {MinimumTrainingSamples} trayectorias terminadas con calificaciones; hay {finished.Count}."
+            ? $"Hacen falta al menos {MinimumTrainingSamples} alumnos que ya hayan egresado o causado baja definitiva, con calificaciones capturadas; hay {finished.Count}."
             : withdrawals < Folds || graduates < Folds
-                ? $"Se necesitan al menos {Folds} bajas y {Folds} egresos para entrenar y validar; hay {withdrawals} y {graduates}."
+                ? $"Hacen falta al menos {Folds} bajas definitivas y {Folds} egresos con calificaciones capturadas; hay {withdrawals} y {graduates}."
                 : null;
 
         if (refusal is not null)
@@ -269,7 +273,7 @@ public static class IntelligenceEngine
             .ToList();
 
         var atRisk = scored.Count(s => s.Level != "Bajo");
-        var status = $"Entrenado con {finished.Count} trayectorias terminadas ({withdrawals} bajas y {graduates} egresos).";
+        var status = $"Aprendió de {finished.Count} alumnos que ya terminaron ({withdrawals} bajas y {graduates} egresos).";
 
         var full = new DropoutModelReport(
             HasModel: true,
@@ -450,24 +454,28 @@ public static class IntelligenceEngine
         var found = new List<AnomalyAlert>();
         var enrolment = periods.Select(p => (double)p.Enrolled).ToList();
 
+        bool IsRecent(int index) => index >= periods.Count - RecentPeriods;
+
         // 1. Change unlike any other. The first period has no change, so it stays out of the stats.
         var changes = Statistics.PercentChange(enrolment);
-        var z = Statistics.ZScores(changes[1..]);
+        var observed = changes[1..];
+        var z = Statistics.ZScores(observed);
+        var usual = (Low: observed.Average() - Statistics.StandardDeviation(observed),
+                     High: observed.Average() + Statistics.StandardDeviation(observed));
         for (int i = 1; i < periods.Count; i++)
         {
             var score = z[i - 1];
             if (Math.Abs(score) < 1.8) continue;
 
-            var direction = changes[i] < 0 ? "Caída" : "Alza";
-            var severity = Math.Abs(score) >= 2.5 ? "error" : "warning";
+            var (title, detail, severity) = DescribeChange(periods[i], periods[i - 1], changes[i], score, usual);
             found.Add(new AnomalyAlert(
-                $"{direction} atípica de matrícula en {periods[i].Label}",
-                $"{Format(changes[i], "+0.0;-0.0")} % respecto al periodo anterior, "
-                + $"{Format(Math.Abs(score), "0.0")} desviaciones estándar fuera del cambio habitual.",
+                title,
+                detail,
                 severity,
                 Math.Round(Math.Abs(score), 1),
                 periods[i].Label,
-                AlertKey("enrolment-change", periods[i].Label, severity)));
+                AlertKey("enrolment-change", periods[i].Label, severity),
+                IsRecent(i)));
         }
 
         // 2. Off the institution's own trend.
@@ -482,12 +490,13 @@ public static class IntelligenceEngine
 
                 found.Add(new AnomalyAlert(
                     $"Matrícula fuera de tendencia en {periods[i].Label}",
-                    $"Se observaron {Format(enrolment[i], "N0")} alumnos y la recta esperaba "
-                    + $"{Format(fit.PredictAt(i), "N0")} ({Format(residual, "+0;-0")}).",
+                    $"Se registraron {Format(enrolment[i], "N0")} alumnos y por la tendencia se esperaban unos "
+                    + $"{Format(fit.PredictAt(i), "N0")} ({Format(Math.Abs(residual), "N0")} {(residual < 0 ? "menos" : "más")}).",
                     "info",
                     Math.Round(Math.Abs(sigmas), 1),
                     periods[i].Label,
-                    AlertKey("enrolment-trend", periods[i].Label, "info")));
+                    AlertKey("enrolment-trend", periods[i].Label, "info"),
+                    IsRecent(i)));
             }
         }
 
@@ -504,7 +513,8 @@ public static class IntelligenceEngine
             {
                 found.Add(new AnomalyAlert(
                     $"Aprobación por debajo de su historial en {last.Label}",
-                    $"{Format(latestPassRate, "0.0")} % de aprobación frente a un promedio previo de {Format(mean, "0.0")} %.",
+                    $"Se aprobó {Format(latestPassRate, "0.0")} % de las oportunidades calificadas; "
+                    + $"el promedio de los periodos anteriores es {Format(mean, "0.0")} %.",
                     "warning",
                     Math.Round(mean - latestPassRate, 1),
                     last.Label,
@@ -522,7 +532,8 @@ public static class IntelligenceEngine
             {
                 found.Add(new AnomalyAlert(
                     $"Bajas por encima de lo habitual en {last.Label}",
-                    $"{Format(last.WithdrawalRate, "0.0")} % de los inscritos se dio de baja; el promedio previo es {Format(mean, "0.0")} %.",
+                    $"Se dio de baja {Format(last.WithdrawalRate, "0.0")} % de los inscritos; "
+                    + $"el promedio de los periodos anteriores es {Format(mean, "0.0")} %.",
                     "warning",
                     Math.Round(last.WithdrawalRate - mean, 1),
                     last.Label,
@@ -536,11 +547,55 @@ public static class IntelligenceEngine
         return
         [
             .. found
-                .OrderByDescending(a => SeverityRank(a.Severity))
+                .OrderByDescending(a => a.Recent)
+                .ThenByDescending(a => SeverityRank(a.Severity))
                 .ThenByDescending(a => a.Period == last.Label)
                 .ThenByDescending(a => a.Magnitude)
                 .Take(MaxAlerts)
         ];
+    }
+
+    /// <summary>
+    /// The change of one period in words a person can check against the series. The direction of
+    /// the change and how it compares with the usual one are separate facts: in a series that
+    /// normally grows 10 %, a period that grew 0.2 % is unusual and is not an "alza".
+    /// </summary>
+    private static (string Title, string Detail, string Severity) DescribeChange(
+        PeriodStats period, PeriodStats previous, double change, double score, (double Low, double High) usual)
+    {
+        // No registrations at all reads as a missing capture far more often than as an empty term.
+        if (period.Enrolled == 0)
+        {
+            return ($"Sin inscripciones registradas en {period.Label}",
+                $"{previous.Label} tuvo {Format(previous.Enrolled, "N0")} alumnos inscritos y este periodo no tiene "
+                + "ninguno: revisa si falta capturarlas.",
+                "warning");
+        }
+
+        var severity = Math.Abs(score) >= 2.5 ? "error" : "warning";
+        var title = (change, score) switch
+        {
+            ( < 0, < 0) => $"Caída atípica de matrícula en {period.Label}",
+            ( > 0, > 0) => $"Alza atípica de matrícula en {period.Label}",
+            (_, < 0) => $"Crecimiento de matrícula menor al habitual en {period.Label}",
+            _ => $"Caída de matrícula menor a la habitual en {period.Label}",
+        };
+
+        // Falling less than usual is worth knowing, and nobody has to rush to fix it.
+        if (change <= 0 && score > 0) severity = "info";
+
+        var verb = change switch
+        {
+            < 0 => $"bajó {Format(-change, "0.0")} %",
+            > 0 => $"subió {Format(change, "0.0")} %",
+            _ => "no cambió",
+        };
+
+        return (title,
+            $"La matrícula {verb} frente a {previous.Label} (de {Format(previous.Enrolled, "N0")} a "
+            + $"{Format(period.Enrolled, "N0")} alumnos); lo habitual es que cambie entre "
+            + $"{Format(usual.Low, "+0.0;−0.0;0.0")} % y {Format(usual.High, "+0.0;−0.0;0.0")} %.",
+            severity);
     }
 
     // Test, period and severity: enough to recognise the same deviation on the next read.

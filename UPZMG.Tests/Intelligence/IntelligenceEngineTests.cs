@@ -122,7 +122,7 @@ public class IntelligenceEngineTests
 
         Assert.False(report.HasModel);
         Assert.Equal(4, report.Withdrawals);
-        Assert.Contains("bajas y", report.Status);
+        Assert.Contains("bajas definitivas y", report.Status);
     }
 
     [Fact]
@@ -476,6 +476,120 @@ public class IntelligenceEngineTests
             [(500, 85, 5), (900, 85, 5), (500, 85, 5), (900, 85, 5), (100, 85, 5), (900, 85, 5), (500, 60, 90)]));
 
         Assert.True(alerts.Count <= 6);
-        Assert.Equal(alerts.Select(a => a.Magnitude).OrderByDescending(m => m), alerts.Select(a => a.Magnitude));
+
+        // What can still be acted on comes first; inside each group, the worse one.
+        Assert.Equal(alerts.OrderByDescending(a => a.Recent).Select(a => a.Key), alerts.Select(a => a.Key));
+        foreach (var group in alerts.GroupBy(a => a.Recent))
+        {
+            var rank = group.Select(a => a.Severity switch { "error" => 2, "warning" => 1, _ => 0 }).ToList();
+            Assert.Equal(rank.OrderByDescending(r => r), rank);
+        }
+    }
+
+    // ── What an alert says, for every shape the series can take ──────────────
+
+    [Fact]
+    public void Alerts_SayTheFiguresAPersonCanCheck()
+    {
+        var alerts = IntelligenceEngine.DetectAnomalies(History(500, 510, 520, 530, 460, 470, 480, 490, 500, 510, 520, 530));
+
+        var drop = Assert.Single(alerts, a => a.Title.StartsWith("Caída"));
+        Assert.Contains("bajó 13.2 %", drop.Detail);
+        Assert.Contains("(de 530 a 460 alumnos)", drop.Detail);
+        Assert.Contains("lo habitual es que cambie entre", drop.Detail);
+        Assert.DoesNotContain("desviaciones", drop.Detail);
+    }
+
+    [Fact]
+    public void Alerts_ForARiseSayItRose()
+    {
+        var alerts = IntelligenceEngine.DetectAnomalies(History(500, 505, 510, 515, 620, 625, 630, 635, 640, 645, 650, 655));
+
+        var rise = Assert.Single(alerts, a => a.Title.StartsWith("Alza"));
+        Assert.Contains("subió", rise.Detail);
+        Assert.Contains("(de 515 a 620 alumnos)", rise.Detail);
+    }
+
+    [Fact]
+    public void Alerts_DoNotCallARiseADropWhenItIsOnlySmallerThanUsual()
+    {
+        // Grows about 10 % every period, and one period only grew a little.
+        var alerts = IntelligenceEngine.DetectAnomalies(History(100, 110, 121, 133, 146, 147, 162, 178, 196, 216, 238, 262));
+
+        var slow = Assert.Single(alerts, a => a.Period == History(100, 110, 121, 133, 146, 147, 162, 178, 196, 216, 238, 262).Periods[5].Label && a.Key.StartsWith("enrolment-change"));
+        Assert.StartsWith("Crecimiento de matrícula menor al habitual", slow.Title);
+        Assert.Contains("subió 0.7 %", slow.Detail);
+        Assert.DoesNotContain("Alza", slow.Title);
+        Assert.DoesNotContain("Caída", slow.Title);
+    }
+
+    [Fact]
+    public void Alerts_ThatFallLessThanUsualAreNotAnEmergency()
+    {
+        // Falls about 10 % every period, and one period only fell a little.
+        var series = new[] { 1000, 900, 810, 729, 656, 650, 585, 527, 474, 427, 384, 346 };
+        var alerts = IntelligenceEngine.DetectAnomalies(History(series));
+
+        var mild = Assert.Single(alerts, a => a.Key.StartsWith("enrolment-change"));
+        Assert.StartsWith("Caída de matrícula menor a la habitual", mild.Title);
+        Assert.Contains("bajó 0.9 %", mild.Detail);
+        Assert.Equal("info", mild.Severity);
+    }
+
+    [Fact]
+    public void Alerts_ForAnEmptyPeriodAskWhetherTheCaptureIsMissing()
+    {
+        var alerts = IntelligenceEngine.DetectAnomalies(History(500, 505, 510, 515, 520, 525, 530, 535, 540, 545, 550, 0));
+
+        var empty = Assert.Single(alerts, a => a.Title.StartsWith("Sin inscripciones"));
+        Assert.Contains("revisa si falta capturarlas", empty.Detail);
+        Assert.Contains("550", empty.Detail);
+        Assert.DoesNotContain("100", empty.Detail);
+    }
+
+    [Fact]
+    public void Alerts_NeverPrintAnImpossibleNumber()
+    {
+        int[][] series =
+        [
+            [0, 0, 500, 0, 500, 0, 500],
+            [1, 1000, 1, 1000, 1, 1000],
+            [0, 0, 0, 1, 0, 0, 0],
+            [500, 500, 500, 500, 500, 5000],
+        ];
+
+        foreach (var values in series)
+        {
+            foreach (var alert in IntelligenceEngine.DetectAnomalies(History(values)))
+            {
+                Assert.DoesNotContain("NaN", alert.Detail);
+                Assert.DoesNotContain("∞", alert.Detail);
+                Assert.DoesNotContain("Infinity", alert.Detail);
+                Assert.False(string.IsNullOrWhiteSpace(alert.Detail));
+            }
+        }
+    }
+
+    [Fact]
+    public void Alerts_OlderThanASchoolYearStayListedAndAreNotNews()
+    {
+        var alerts = IntelligenceEngine.DetectAnomalies(History(500, 510, 520, 530, 460, 470, 480, 490, 500, 510, 520, 530));
+
+        var old = Assert.Single(alerts, a => a.Title.StartsWith("Caída"));
+        Assert.False(old.Recent);
+
+        var inbox = AlertInboxBuilder.Build(alerts, []);
+        Assert.True(Assert.Single(inbox.Alerts, a => a.Alert.Key == old.Key).Seen);
+        Assert.Equal(alerts.Count(a => a.Recent), inbox.Unseen);
+    }
+
+    [Fact]
+    public void Alerts_OfTheLastSchoolYearAreNews()
+    {
+        var alerts = IntelligenceEngine.DetectAnomalies(History(500, 510, 520, 530, 540, 550, 560, 570, 580, 490, 500, 510));
+
+        var drop = Assert.Single(alerts, a => a.Title.StartsWith("Caída"));
+        Assert.True(drop.Recent);
+        Assert.Contains(AlertInboxBuilder.Build(alerts, []).Alerts, a => a.Alert.Key == drop.Key && !a.Seen);
     }
 }
