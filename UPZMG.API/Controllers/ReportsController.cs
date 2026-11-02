@@ -89,16 +89,16 @@ public class ReportsController(
         if (userId == Guid.Empty) return Unauthorized();
 
         if (request.Status is not (ReportStatus.draft or ReportStatus.submitted))
-            return BadRequest("Status must be draft or submitted.");
+            return BadRequest(new { message = "El estado de la captura debe ser borrador o enviado." });
 
         if (request.Answers.Count > MaxAnswers)
-            return BadRequest("Too many answers.");
+            return BadRequest(new { message = "La captura tiene demasiadas respuestas." });
 
         if (request.Answers.Values.Any(answer => answer is { Length: > MaxAnswerLength }))
             return BadRequest(new { message = $"Una respuesta pasa de {MaxAnswerLength:N0} caracteres; resúmela." });
 
         var template = await reportTemplatesRepository.GetTemplateAsync(request.ReportType, request.Version);
-        if (template is null) return NotFound("Template not found.");
+        if (template is null) return NotFound(new { message = "No se encontró la plantilla de ese formato." });
 
         var result = await reportsRepository.SaveAsync(request, userId, template);
         return result.Outcome switch

@@ -4,6 +4,7 @@
 @using UPZMG.Implementations.Intelligence
 @inject IDashboardService DashboardSvc
 @inject IIntelligenceService Ai
+@inject IAuthorizationService Authorization
 
 <PageTitle>Tablero de Control — SIPAU</PageTitle>
 
@@ -27,11 +28,18 @@
 {
     <LoadingState Text="Contando los datos capturados…" />
 }
+else if (_refused)
+{
+    <SectionCard FullHeight="false">
+        <EmptyState Icon="@Icons.Material.Filled.Lock" Title="Tu cuenta todavía no tiene indicadores asignados"
+                    Description="Cuando quien administra los usuarios le asigne permisos a tu rol, aquí verás las cifras." />
+    </SectionCard>
+}
 else if (_summary is null)
 {
     <SectionCard FullHeight="false">
         <EmptyState Title="No se pudieron cargar las cifras"
-                    Description="El API no respondió. Verifica que UPZMG.API esté corriendo e intenta de nuevo.">
+                    Description="El sistema no respondió. Vuelve a intentarlo en un momento; si sigue así, avisa a Tecnologías.">
             <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="LoadAsync">Reintentar</MudButton>
         </EmptyState>
     </SectionCard>
@@ -106,12 +114,12 @@ else
     <MudGrid Class="mt-1">
         <MudItem xs="12" md="6" lg="@(_canSeeRisk ? 4 : 6)">
             <SectionCard Title="Proyección de matrícula"
-                         Subtitle="Regresión lineal sobre los alumnos inscritos en cada periodo"
+                         Subtitle="Tendencia de los alumnos inscritos en cada periodo"
                          Icon="@Icons.Material.Filled.Timeline">
                 <ChildContent>
                     @if (_aiLoading)
                     {
-                        <LoadingState Text="Ajustando la regresión…" />
+                        <LoadingState Text="Calculando la proyección…" />
                     }
                     else if (_forecast.Labels.Count == 0)
                     {
@@ -138,11 +146,7 @@ else
                     @if (_forecast.HasModel)
                     {
                         <span>
-                            Pendiente <b>@_forecast.Slope.ToString("+0.0;-0.0")</b> alumnos por periodo ·
-                            @if (_forecast.R2 is { } r2)
-                            {
-                                <text>R² <b>@r2.ToString("0.00")</b> · </text>
-                            }
+                            @ForecastTrend.Sentence(_forecast.Slope) ·
                             <MudLink Href="/charts" Typo="Typo.caption">Ver en Gráficas</MudLink>
                         </span>
                     }
@@ -151,23 +155,23 @@ else
         </MudItem>
 
         <MudItem xs="12" md="6" lg="@(_canSeeRisk ? 4 : 6)">
-            <SectionCard Title="Alertas del modelo"
-                         Subtitle="Desviaciones en la matrícula, la aprobación y las bajas"
+            <SectionCard Title="Alertas de indicadores"
+                         Subtitle="Cambios fuera de lo habitual en la matrícula, la aprobación y las bajas"
                          Icon="@Icons.Material.Filled.NotificationImportant">
                 @if (_aiLoading)
                 {
-                    <LoadingState Text="Buscando desviaciones…" />
+                    <LoadingState Text="Revisando los indicadores…" />
                 }
                 else if (_anomaliesFailed)
                 {
                     <EmptyState Icon="@Icons.Material.Filled.CloudOff"
-                                Title="No pudimos revisar las series"
-                                Description="El servicio de indicadores no respondió, así que esta tarjeta no puede afirmar que no haya desviaciones." />
+                                Title="No pudimos revisar los indicadores"
+                                Description="El servicio de indicadores no respondió, así que esta tarjeta no puede decir si todo está en orden." />
                 }
                 else if (_anomalies.Count == 0)
                 {
                     <EmptyState Icon="@Icons.Material.Filled.Verified"
-                                Title="Sin desviaciones"
+                                Title="Sin alertas"
                                 Description="Ningún periodo se aparta de su comportamiento habitual." />
                 }
                 else
@@ -176,9 +180,15 @@ else
                         @foreach (var alert in _anomalies.Take(4))
                         {
                             <li class="sipau-alert">
-                                <MudIcon Icon="@AlertIcon(alert.Severity)" Size="Size.Small" Color="@AlertColor(alert.Severity)" />
+                                <MudIcon Icon="@AlertIcon(alert.Recent ? alert.Severity : "info")" Size="Size.Small" Color="@AlertColor(alert.Recent ? alert.Severity : "info")" />
                                 <div>
-                                    <div class="sipau-alert-title">@alert.Title</div>
+                                    <div class="sipau-alert-title">
+                                        @alert.Title
+                                        @if (!alert.Recent)
+                                        {
+                                            <span class="sipau-alert-old" title="Pasó hace más de un ciclo escolar">Histórica</span>
+                                        }
+                                    </div>
                                     <div class="sipau-alert-detail">@alert.Detail</div>
                                 </div>
                             </li>
@@ -192,17 +202,17 @@ else
         {
             <MudItem xs="12" lg="4">
                 <SectionCard Title="Riesgo de deserción"
-                             Subtitle="Alumnos activos que el árbol de decisión sugiere atender"
+                             Subtitle="Alumnos activos que conviene atender"
                              Icon="@Icons.Material.Filled.PsychologyAlt">
                     <ChildContent>
                         @if (_aiLoading)
                         {
-                            <LoadingState Text="Evaluando trayectorias…" />
+                            <LoadingState Text="Revisando a los alumnos…" />
                         }
                         else if (_dropout is not { HasModel: true })
                         {
-                            <EmptyState Title="Todavía no hay modelo"
-                                        Description="@(_dropout?.Status ?? "No se pudo consultar el modelo de deserción.")" />
+                            <EmptyState Title="Todavía no hay datos suficientes"
+                                        Description="@(_dropout?.Status ?? "No se pudo consultar el riesgo de deserción.")" />
                         }
                         else
                         {
@@ -230,7 +240,7 @@ else
                         @if (_dropout is { HasModel: true })
                         {
                             <span>
-                                Detecta el <b>@((_dropout.Quality.Recall * 100).ToString("0")) %</b> de las bajas en validación ·
+                                En pruebas con alumnos que ya terminaron detectó <b>@((_dropout.Quality.Recall * 100).ToString("0")) %</b> de las bajas ·
                                 <MudLink Href="/charts/dropout" Typo="Typo.caption">Ver alumnos</MudLink>
                             </span>
                         }
@@ -265,14 +275,14 @@ else
                             </div>
                             <div>
                                 <span class="sipau-field-label">Deserción</span>
-                                <b>@(_indicators.DropoutRate?.ToString("0.00") ?? "—") %</b>
+                                <b>@(_indicators.DropoutRate is { } dropoutRate ? $"{dropoutRate:0.00} %" : "—")</b>
                                 <span class="sipau-indicator-note">
                                     @_indicators.WithdrawnStudents.ToString("N0") bajas de @_indicators.EnrolledStudents.ToString("N0") inscritos
                                 </span>
                             </div>
                             <div>
                                 <span class="sipau-field-label">Eficiencia terminal</span>
-                                <b>@(_indicators.TerminalEfficiency?.ToString("0.00") ?? "—") %</b>
+                                <b>@(_indicators.TerminalEfficiency is { } efficiency ? $"{efficiency:0.00} %" : "—")</b>
                                 <span class="sipau-indicator-note">
                                     @if (_indicators.CohortLabel is { } cohort)
                                     {
@@ -296,14 +306,12 @@ else
 }
 
 @code {
-    // Areas the API lets see per-student dropout risk.
-    private const string RiskRoles = "Admin,Control Escolar,Servicios Estudiantiles,Direccion Academica";
-
     [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
 
     private DashboardSummary? _summary;
     private AcademicIndicators? _indicators;
     private bool _loading = true;
+    private bool _refused;
 
     private bool _aiLoading = true;
     private bool _canSeeRisk;
@@ -325,7 +333,8 @@ else
         if (AuthState is not null)
         {
             var user = (await AuthState).User;
-            _canSeeRisk = RiskRoles.Split(',').Any(user.IsInRole);
+            // By permission, like the API: a role that was given it also gets this card.
+            _canSeeRisk = (await Authorization.AuthorizeAsync(user, AppPermissions.ReadRisk)).Succeeded;
         }
 
         await LoadAsync();
@@ -338,9 +347,15 @@ else
         {
             _summary = await DashboardSvc.GetSummaryAsync();
         }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            // The API answered, and the answer is about this account: nothing failed.
+            _refused = true;
+            _summary = null;
+        }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            // API down or refused the call: show a retry instead of breaking the page.
+            // API down: show a retry instead of breaking the page.
             _summary = null;
         }
         finally

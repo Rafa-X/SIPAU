@@ -136,7 +136,10 @@ public sealed class AccessControlTests(TestDatabase database) : IAsyncLifetime
 
             // The token exchange the Web performs on its behalf is refused as well.
             var exchange = await _api.CreateClient().PostAsync("auth/token", JsonBody(new { userId = rm.UserId, sharedSecret = database.SharedSecret }));
-            Assert.Equal(HttpStatusCode.Unauthorized, exchange.StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, exchange.StatusCode);
+
+            // And the Web learns it from the permissions call too, with the token it still holds.
+            Assert.Equal(HttpStatusCode.Forbidden, (await rm.Client.GetAsync("auth/permissions")).StatusCode);
         }
         finally
         {
@@ -151,7 +154,9 @@ public sealed class AccessControlTests(TestDatabase database) : IAsyncLifetime
         var forged = await client.PostAsync("auth/web-login",
             JsonBody(new { email = A, password = Accounts.PasswordOf(A), sharedSecret = "un-secreto-que-no-es" }));
 
-        Assert.Equal(HttpStatusCode.Unauthorized, forged.StatusCode);
+        // 403, not the 401 of a wrong password: the Web must not blame the person's password for
+        // its own configuration.
+        Assert.Equal(HttpStatusCode.Forbidden, forged.StatusCode);
     }
 
     private async Task<List<Guid>> PermissionsOfAsync(Guid role)

@@ -86,6 +86,13 @@ public sealed class WebPermissionHandler(
     // picked up almost at once.
     private static readonly TimeSpan CacheFailureFor = TimeSpan.FromSeconds(5);
 
+    /// <summary>
+    /// Whether the last check of this account failed. A flaky link can fail the check and then
+    /// answer the screen that asks why: without this, that screen tells somebody who does have the
+    /// permission that their area does not.
+    /// </summary>
+    public static string FailedCheckKey(Guid userId) => $"web_permissions_failed:{userId}";
+
     protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context, WebPermissionRequirement requirement)
     {
@@ -121,6 +128,7 @@ public sealed class WebPermissionHandler(
 
             var empty = new HashSet<string>(StringComparer.Ordinal);
             cache.Set(key, empty, CacheFailureFor);
+            cache.Set(FailedCheckKey(userId), true, CacheFailureFor);
             return empty;
         }
     }

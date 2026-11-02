@@ -23,11 +23,21 @@ public static class TemplateValidator
     private const int MaxReportTypeLength = 40;
     private const int MaxVersionLength = 20;
 
+    private static bool HasNullEntries(ReportTemplateDefinition template) =>
+        template.Sections.Any(section => section is null || section.Questions.Any(q => q is null
+            || q.Rows.Contains(null!) || q.Columns.Contains(null!) || q.SubColumns.Contains(null!)
+            || q.Options.Contains(null!) || q.Sum.Contains(null!) || q.RowTotalColumns.Contains(null!)
+            || q.Fields.Contains(null!)));
+
     public static TemplateValidation Validate(ReportTemplateDefinition template)
     {
         var problems = new List<TemplateProblem>();
         var questions = new Dictionary<string, ReportTemplateQuestion>(StringComparer.OrdinalIgnoreCase);
         var owners = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        // JSON allows a null where a list item goes, and nothing below can read one.
+        if (HasNullEntries(template))
+            return new TemplateValidation([new TemplateProblem("Plantilla", "Hay una sección, un reactivo o un renglón vacío (null): quítalo.")]);
 
         ValidateHeader(template, problems);
 

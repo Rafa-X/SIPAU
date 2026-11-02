@@ -51,15 +51,14 @@
                 @if (_model.Enrollment.HasModel)
                 {
                     <span>
-                        Regresión lineal por mínimos cuadrados ·
-                        pendiente <b>@_model.Enrollment.Slope.ToString("+0.0;-0.0")</b> alumnos por periodo ·
+                        @ForecastTrend.Sentence(_model.Enrollment.Slope) ·
                         @if (_model.Enrollment.R2 is { } r2)
                         {
-                            <text>R² <b>@r2.ToString("0.00")</b></text>
+                            <text>la tendencia explica <b>@((r2 * 100).ToString("0")) %</b> de los cambios (R² @r2.ToString("0.00"))</text>
                         }
                         else
                         {
-                            <text>tendencia preliminar: con dos periodos el ajuste no puede medirse</text>
+                            <text>tendencia preliminar: con dos periodos todavía no se puede medir qué tan firme es</text>
                         }
                         @if (_model.Enrollment.NextValue is { } next)
                         {
@@ -73,19 +72,17 @@
 
                     @if (_model.Enrollment.Accuracy is { } accuracy)
                     {
-                        <span class="sipau-field-empty">
-                            Comprobación retrospectiva sobre @accuracy.Evaluations periodo(s) que el modelo no había visto:
-                            error promedio de <b>@accuracy.TrendError.ToString("N1")</b> alumnos.
-                            Repetir el último valor erraría @accuracy.LastValueError.ToString("N1") y
-                            sumarle el crecimiento promedio, @accuracy.DriftError.ToString("N1").
-                            @accuracy.InsideInterval de @accuracy.Evaluations cayeron dentro del intervalo de 95 %
-                            que se habría dibujado antes de conocerlos.
+                        <div class="sipau-field-empty mt-1">
+                            Se comprobó contra @ReportUi.Plural(accuracy.Evaluations, "periodo ya conocido", "periodos ya conocidos"):
+                            la línea falló por <b>@accuracy.TrendError.ToString("N1")</b> alumnos en promedio
+                            (repetir la cifra anterior, por @accuracy.LastValueError.ToString("N1"); sumarle el crecimiento
+                            promedio, por @accuracy.DriftError.ToString("N1")), y @accuracy.InsideInterval de @accuracy.Evaluations
+                            cayeron dentro del rango sombreado.
                             @if (accuracy.TrendIsBeaten)
                             {
-                                <text> En este historial gana <b>@accuracy.Best</b>: la recta sirve para leer la dirección,
-                                no como pronóstico puntual.</text>
+                                <text> Sirve para ver hacia dónde va la matrícula, no como una cifra exacta.</text>
                             }
-                        </span>
+                        </div>
                     }
                 }
                 else
@@ -111,11 +108,28 @@
                 </MudTooltip>
             </Actions>
             <ChildContent>
-                <BarChart Id="career-chart" Labels="_model.CareerDistribution.Labels" Series="_model.CareerDistribution.Series" Height="160"
-                          AriaLabel="Alumnos por carrera" />
+                @if (_careersFailed)
+                {
+                    <EmptyState Icon="@Icons.Material.Filled.CloudOff"
+                                Title="No pudimos leer la distribución"
+                                Description="El servicio de indicadores no respondió. Vuelve a cargar la página; si sigue así, avisa a Tecnologías." />
+                }
+                else if (_model.CareerDistribution.Total == 0)
+                {
+                    <EmptyState Icon="@Icons.Material.Filled.School" Title="Sin alumnos activos"
+                                Description="Captura alumnos en Captura de datos › Alumnos y aparecerán aquí por carrera." />
+                }
+                else
+                {
+                    <BarChart Id="career-chart" Labels="_model.CareerDistribution.Labels" Series="_model.CareerDistribution.Series" Height="160"
+                              AriaLabel="Alumnos por carrera" />
+                }
             </ChildContent>
             <Footer>
-                Carrera con mayor matrícula: <b>@_model.CareerDistribution.TopLabel</b> · total <b>@_model.CareerDistribution.Total.ToString("N0")</b> alumnos
+                @if (_model.CareerDistribution.Total > 0)
+                {
+                    <span>Carrera con mayor matrícula: <b>@_model.CareerDistribution.TopLabel</b> · total <b>@_model.CareerDistribution.Total.ToString("N0")</b> alumnos</span>
+                }
             </Footer>
         </SectionCard>
     </MudItem>
@@ -126,8 +140,22 @@
                      Subtitle="Grupos y alumnos inscritos por carrera en el periodo activo"
                      Icon="@Icons.Material.Filled.Groups">
             <ChildContent>
-                <BarChart Id="groups-chart" Labels="_model.GroupDistributionByCareer.Labels" Series="_model.GroupDistributionByCareer.Series" Height="160"
-                          AriaLabel="Grupos y alumnos inscritos por carrera" />
+                @if (_groupsFailed)
+                {
+                    <EmptyState Icon="@Icons.Material.Filled.CloudOff"
+                                Title="No pudimos leer la distribución"
+                                Description="El servicio de indicadores no respondió. Vuelve a cargar la página; si sigue así, avisa a Tecnologías." />
+                }
+                else if (_model.GroupDistributionByCareer.Labels.Count == 0)
+                {
+                    <EmptyState Icon="@Icons.Material.Filled.Groups" Title="Sin grupos en el periodo activo"
+                                Description="Captura grupos de clase del periodo activo y aparecerán aquí por carrera." />
+                }
+                else
+                {
+                    <BarChart Id="groups-chart" Labels="_model.GroupDistributionByCareer.Labels" Series="_model.GroupDistributionByCareer.Series" Height="160"
+                              AriaLabel="Grupos y alumnos inscritos por carrera" />
+                }
             </ChildContent>
             <Actions>
                 <MudTooltip Text="Descargar gráfica PNG" Placement="Placement.Top">
@@ -196,7 +224,7 @@
                     </MudAvatar>
                     <MudText Typo="Typo.h6">Riesgo de deserción</MudText>
                     <MudText Typo="Typo.body2" Color="Color.Secondary">
-                        Árbol de decisión que aprende de las trayectorias terminadas y señala a los alumnos activos que conviene atender.
+                        Señala a los alumnos activos que conviene atender, a partir de lo que pasó con quienes ya terminaron.
                     </MudText>
                 </MudCardContent>
                 <MudCardActions>
@@ -290,15 +318,19 @@
             : careers.MaxBy(career => career.Value)?.Label ?? "Sin datos";
     }
 
-    // Both charts endpoints are limited to Admin and Recursos Humanos; other areas see the page without them.
+    // A read that failed is not an empty university: the two say different things on screen.
+    private bool _careersFailed;
+    private bool _groupsFailed;
+
     private async Task<List<UPZMG.Implementations.Charts.ChartCategory>> GetCareersAsync()
     {
         try
         {
             return await _chartsService.GetCareersDistributionAsync();
         }
-        catch (HttpRequestException)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
+            _careersFailed = true;
             return [];
         }
     }
@@ -309,8 +341,9 @@
         {
             return await _chartsService.GetGroupsDistributionByCareerAsync();
         }
-        catch (HttpRequestException)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
+            _groupsFailed = true;
             return [];
         }
     }

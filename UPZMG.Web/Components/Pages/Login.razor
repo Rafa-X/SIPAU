@@ -46,7 +46,27 @@
                     Vuelve a intentarlo en @minutes minuto@(minutes == 1 ? "" : "s").
                 </div>
             }
-            else if (_hasError)
+            else if (_error == "servicio")
+            {
+                <div class="sipau-login-error" role="alert">
+                    El sistema no está disponible en este momento, así que no pudimos revisar tus datos.
+                    Vuelve a intentarlo en unos minutos; si sigue igual, avisa a Tecnologías.
+                </div>
+            }
+            else if (_error == "baja")
+            {
+                <div class="sipau-login-error" role="alert">
+                    Tu cuenta fue dada de baja y se cerró tu sesión. Si crees que es un error,
+                    pide a quien administra los usuarios que la reactive.
+                </div>
+            }
+            else if (_error == "inactividad")
+            {
+                <div class="sipau-login-error" role="alert">
+                    Tu sesión se cerró por inactividad. Vuelve a iniciar sesión para continuar.
+                </div>
+            }
+            else if (_error is not null)
             {
                 <div class="sipau-login-error" role="alert">
                     No pudimos validar esas credenciales. Revisa tu correo y tu contraseña;
@@ -56,6 +76,10 @@
 
             <form method="post" action="/Account/Login">
                 <AntiforgeryToken />
+                @if (!string.IsNullOrEmpty(_returnUrl))
+                {
+                    <input type="hidden" name="ReturnUrl" value="@_returnUrl" />
+                }
 
                 <label class="sipau-login-label" for="email">Correo electrónico</label>
                 <div class="sipau-login-field">
@@ -96,7 +120,8 @@
 
 
 @code {
-    private bool _hasError;
+    private string? _error;
+    private string? _returnUrl;
 
     // Set when the API answered 429: the password may well be right, the account just has to wait.
     private int? _waitMinutes;
@@ -111,11 +136,11 @@
             return;
         }
 
-        var query = new Uri(Nav.Uri).Query;
-        _hasError = query.Contains("error", StringComparison.OrdinalIgnoreCase);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(new Uri(Nav.Uri).Query);
+        if (query.TryGetValue("error", out var error)) _error = error.ToString();
+        if (query.TryGetValue("ReturnUrl", out var returnUrl)) _returnUrl = returnUrl.ToString();
 
-        var waiting = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(query);
-        if (waiting.TryGetValue("minutos", out var value) && int.TryParse(value, out var minutes))
+        if (query.TryGetValue("minutos", out var value) && int.TryParse(value, out var minutes))
             _waitMinutes = Math.Clamp(minutes, 1, 60);
     }
 

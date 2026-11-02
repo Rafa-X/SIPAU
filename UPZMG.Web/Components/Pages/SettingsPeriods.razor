@@ -103,7 +103,7 @@
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
             _periods = [];
-            Snackbar.Add("No se pudieron cargar los periodos. Verifica que el API esté corriendo.", Severity.Error);
+            Snackbar.Add("No se pudieron cargar los periodos. Vuelve a intentarlo en un momento.", Severity.Error);
         }
         finally
         {

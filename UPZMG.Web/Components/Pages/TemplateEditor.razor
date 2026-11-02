@@ -213,7 +213,7 @@ else
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
-            Snackbar.Add("No se pudieron cargar las plantillas: el API no respondió.", Severity.Error);
+            Snackbar.Add("No se pudieron cargar las plantillas: el sistema no respondió.", Severity.Error);
         }
         finally
         {

@@ -115,9 +115,14 @@ public class ReportsRepository(AppDBContext db)
         }
         catch (DbUpdateConcurrencyException)
         {
-            // Somebody else wrote this capture between our read and our write. Whether they
-            // submitted it or only saved, ours is no longer an informed change.
-            return new SaveReportResult(SaveReportOutcome.Locked);
+            // Somebody else wrote this capture between our read and our write, so ours is no longer
+            // an informed change. Which refusal depends on what they did: telling someone a format
+            // "was already sent" when another tab only saved a draft sends them looking for a
+            // submission that never happened.
+            var current = await db.Reports.AsNoTracking().FirstOrDefaultAsync(r => r.Id == report.Id);
+            return new SaveReportResult(current is not null && ParseStatus(current.Status) == ReportStatus.draft
+                ? SaveReportOutcome.Stale
+                : SaveReportOutcome.Locked);
         }
 
         return new SaveReportResult(

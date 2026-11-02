@@ -62,18 +62,28 @@ public class UsersRepository(AppDBContext db)
 
     public async Task<SystemUser> CreateUserAsync(CreateUser request)
     {
+        if (string.IsNullOrWhiteSpace(request.UserName))
+            throw new InvalidOperationException("El nombre es obligatorio.");
+
+        if (PasswordRules.Problem(request.Password) is { } problem)
+            throw new InvalidOperationException(problem);
+
         var employee = await db.Employees.AsNoTracking().Select(e => new { e.Id, e.Email })
             .FirstOrDefaultAsync(e => e.Email == request.Email)
             ?? throw new InvalidOperationException(
                 $"No hay ningún empleado con el correo '{request.Email}': el usuario se crea sobre su expediente.");
         
+        var roleId = await ExistingRoleAsync(request.RoleId);
+
         var user = new SystemUser
         {
             Id = Guid.NewGuid(),
             EmployeeId = employee.Id,
             UserName = request.UserName,
-            Email = request.Email,
-            IsActive = true,
+            // Written as the employee's record has it, whatever the case it was typed in.
+            Email = employee.Email,
+            // The form's switch: an account created switched off used to be stored active.
+            IsActive = request.IsActive,
             LastLogin = null
         };
         user.Password = PasswordHasher.HashPassword(user, request.Password);
@@ -81,7 +91,7 @@ public class UsersRepository(AppDBContext db)
         var userrole = new UserRole
         {
             UserId = user.Id,
-            RoleId = Guid.Parse(request.RoleId)
+            RoleId = roleId
         };
 
         db.SystemUsers.Add(user);
@@ -121,6 +131,10 @@ public class UsersRepository(AppDBContext db)
     /// </summary>
     public async Task<SystemUser> EditUserAsync(EditUser request, Guid requestedBy)
     {
+        // Blank means "keep the current one".
+        if (!string.IsNullOrWhiteSpace(request.Password) && PasswordRules.Problem(request.Password) is { } problem)
+            throw new InvalidOperationException(problem);
+
         var user = await db.SystemUsers.FirstOrDefaultAsync(u => u.Id == request.UserId)
             ?? throw new InvalidOperationException("El usuario ya no existe.");
         var userRole = await db.UserRoles.FirstOrDefaultAsync(ur => ur.UserId == request.UserId)
@@ -128,15 +142,7 @@ public class UsersRepository(AppDBContext db)
 
         // A missing or unparseable role used to be stored as an empty Guid, which left the
         // account pointing at a role that does not exist: no permissions, and no way back.
-        var roleId = userRole.RoleId;
-        if (!string.IsNullOrWhiteSpace(request.RoleId))
-        {
-            if (!Guid.TryParse(request.RoleId, out roleId))
-                throw new InvalidOperationException("El rol indicado no es válido.");
-
-            if (!await db.Roles.AnyAsync(r => r.Id == roleId))
-                throw new InvalidOperationException("El rol indicado ya no existe.");
-        }
+        var roleId = string.IsNullOrWhiteSpace(request.RoleId) ? userRole.RoleId : await ExistingRoleAsync(request.RoleId);
 
         await EnsureAccessSurvivesAsync(request.UserId, requestedBy, request.IsActive, roleId);
 
@@ -148,6 +154,17 @@ public class UsersRepository(AppDBContext db)
         await db.SaveChangesAsync();
 
         return user;
+    }
+
+    // Unchecked, a role that is not an id or that does not exist reached the database as a 500.
+    private async Task<Guid> ExistingRoleAsync(string role)
+    {
+        if (!Guid.TryParse(role, out var roleId))
+            throw new InvalidOperationException("El rol indicado no es válido.");
+
+        return await db.Roles.AnyAsync(r => r.Id == roleId)
+            ? roleId
+            : throw new InvalidOperationException("El rol indicado ya no existe.");
     }
 
     /// <summary>

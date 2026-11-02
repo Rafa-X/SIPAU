@@ -18,7 +18,13 @@
     protected override async Task OnInitializedAsync()
     {
         var state = await AuthState;
-        if (state.User.Identity?.IsAuthenticated != true) Nav.NavigateTo("/login", forceLoad: true);
+        if (state.User.Identity?.IsAuthenticated == true) return;
+
+        // Inside a live connection this can only be a session that ran out, because a page opened
+        // without one never gets this far. The person gets told, and comes back to the same screen.
+        Nav.NavigateTo(RendererInfo.IsInteractive
+            ? $"/login?error=inactividad&ReturnUrl={Uri.EscapeDataString("/" + Nav.ToBaseRelativePath(Nav.Uri))}"
+            : "/login", forceLoad: true);
     }
 
     [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = null!;

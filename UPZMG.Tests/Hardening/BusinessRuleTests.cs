@@ -274,6 +274,124 @@ public class BusinessRuleTests
         Assert.Equal("nuevo", await db.SystemUsers.Where(u => u.Id == userId).Select(u => u.UserName).FirstAsync());
     }
 
+    private static async Task<CreateUser> ANewAccountAsync(AppDBContext db, Guid roleId)
+    {
+        db.Employees.Add(new Employee
+        {
+            Id = Guid.NewGuid(), EmployeeNumber = 1, FullName = "Ana Ríos", Email = "ana.rios@upzmg.local",
+            Rfc = "RIAA000101AAA", Curp = "RIAA000101MJCSNN09", Gender = Gender.M,
+        });
+        await db.SaveChangesAsync();
+
+        return new CreateUser
+        {
+            RequesterKey = Guid.NewGuid(), UserName = "Ana Ríos", Email = "ana.rios@upzmg.local",
+            RoleId = roleId.ToString(), IsActive = true, Password = "ClaveDePrueba1",
+        };
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ANewAccountIsStoredTheWayTheFormSwitchSays(bool active)
+    {
+        using var db = Memory();
+        var (_, _, plainRoleId) = await WithOneAdministratorAsync(db);
+        var request = await ANewAccountAsync(db, plainRoleId);
+        request.IsActive = active;
+
+        var created = await new UsersRepository(db).CreateUserAsync(request);
+
+        // Switched off in the dialog, the account used to be stored active, able to sign in.
+        Assert.Equal(active, await db.SystemUsers.Where(u => u.Id == created.Id).Select(u => u.IsActive).FirstAsync());
+    }
+
+    [Theory]
+    [InlineData("no-es-un-identificador", "no es válido")]
+    [InlineData("11111111-2222-3333-4444-555555555555", "ya no existe")]
+    public async Task ANewAccountNeedsARoleThatExists(string role, string reason)
+    {
+        using var db = Memory();
+        var (_, _, plainRoleId) = await WithOneAdministratorAsync(db);
+        var request = await ANewAccountAsync(db, plainRoleId);
+        request.RoleId = role;
+
+        var refused = await Assert.ThrowsAsync<InvalidOperationException>(() => new UsersRepository(db).CreateUserAsync(request));
+
+        Assert.Contains(reason, refused.Message);
+        Assert.False(await db.SystemUsers.AnyAsync(u => u.Email == request.Email));
+    }
+
+    [Theory]
+    [InlineData("a", "al menos")]
+    [InlineData("          ", "obligatoria")]
+    public async Task ANewAccountNeedsAUsablePassword(string password, string reason)
+    {
+        using var db = Memory();
+        var (_, _, plainRoleId) = await WithOneAdministratorAsync(db);
+        var request = await ANewAccountAsync(db, plainRoleId);
+        request.Password = password;
+
+        var refused = await Assert.ThrowsAsync<InvalidOperationException>(() => new UsersRepository(db).CreateUserAsync(request));
+
+        Assert.Contains(reason, refused.Message);
+    }
+
+    [Fact]
+    public async Task ANewAccountNeedsAName()
+    {
+        using var db = Memory();
+        var (_, _, plainRoleId) = await WithOneAdministratorAsync(db);
+        var request = await ANewAccountAsync(db, plainRoleId);
+        request.UserName = "   ";
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => new UsersRepository(db).CreateUserAsync(request));
+    }
+
+    [Fact]
+    public async Task ChangingAPasswordFollowsTheSameRuleAsTheForm()
+    {
+        using var db = Memory();
+        var (userId, _, _) = await WithOneAdministratorAsync(db);
+        var repository = new UsersRepository(db);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => repository.EditUserAsync(
+            new EditUser { RequesterKey = Guid.NewGuid(), UserId = userId, UserName = "admin", IsActive = true, Password = "abc" },
+            requestedBy: userId));
+
+        Assert.Equal("hash", await db.SystemUsers.Where(u => u.Id == userId).Select(u => u.Password).FirstAsync());
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("        ")]
+    public async Task ABlankPasswordInAnEditKeepsTheCurrentOne(string? password)
+    {
+        using var db = Memory();
+        var (userId, _, _) = await WithOneAdministratorAsync(db);
+
+        await new UsersRepository(db).EditUserAsync(
+            new EditUser { RequesterKey = Guid.NewGuid(), UserId = userId, UserName = "admin", IsActive = true, Password = password },
+            requestedBy: userId);
+
+        Assert.Equal("hash", await db.SystemUsers.Where(u => u.Id == userId).Select(u => u.Password).FirstAsync());
+    }
+
+    [Theory]
+    [InlineData("1234567", false)]
+    [InlineData("12345678", true)]
+    [InlineData("  con espacios  ", true)]
+    public void APasswordIsMeasuredAsItWasTyped(string password, bool usable) =>
+        Assert.Equal(usable, PasswordRules.Problem(password) is null);
+
+    [Fact]
+    public void APasswordHasACeiling()
+    {
+        Assert.Null(PasswordRules.Problem(new string('x', PasswordRules.MaximumLength)));
+        Assert.NotNull(PasswordRules.Problem(new string('x', PasswordRules.MaximumLength + 1)));
+    }
+
     [Fact]
     public async Task TheOnlyRoleThatAdministersCannotLoseThePermission()
     {

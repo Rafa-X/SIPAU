@@ -7,9 +7,9 @@
 @inject ISecurityService SecuritySvc
 @inject IJSRuntime JS
 
-<PageTitle>Consultar Alumnos — SIPAU</PageTitle>
+<PageTitle>Consultar alumnos — SIPAU</PageTitle>
 
-<PageHeader Title="Consultar Alumnos" Subtitle="Alumnos capturados de todos los periodos; filtra por carrera o por periodo de ingreso" BackHref="/datacapture" />
+<PageHeader Title="Consultar alumnos" Subtitle="Alumnos capturados de todos los periodos; filtra por carrera o por periodo de ingreso" BackHref="/datacapture" />
 
 <MudPaper Elevation="1" Class="pa-2">
     <DataToolbar Search="@_name" SearchChanged="OnNameChanged"
@@ -59,12 +59,20 @@
             </TemplateColumn>
         </Columns>
         <PagerContent>
-            <MudDataGridPager T="StudentListItem" RowsPerPageString="Filas por página" InfoFormat="{first_item}-{last_item} de {all_items}" />
+            <MudDataGridPager T="StudentListItem" RowsPerPageString="Filas por página" InfoFormat="{first_item}–{last_item} de {all_items}" />
         </PagerContent>
         <NoRecordsContent>
-            <EmptyState Icon="@Icons.Material.Filled.SearchOff"
-                        Title="Sin coincidencias"
-                        Description="Ningún alumno coincide con la búsqueda o los filtros aplicados." />
+            @if (string.IsNullOrWhiteSpace(_name) && string.IsNullOrWhiteSpace(_enrollmentNumber) && _careerId is null && _periodId is null)
+            {
+                <EmptyState Icon="@Icons.Material.Filled.SearchOff" Title="Sin alumnos registrados"
+                            Description="Captura un alumno o importa un archivo y aparecerá aquí." />
+            }
+            else
+            {
+                <EmptyState Icon="@Icons.Material.Filled.SearchOff"
+                            Title="Sin coincidencias"
+                            Description="Ningún alumno coincide con la búsqueda o los filtros aplicados." />
+            }
         </NoRecordsContent>
     </MudDataGrid>
 </MudPaper>

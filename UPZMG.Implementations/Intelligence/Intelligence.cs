@@ -37,6 +37,25 @@ public sealed record EnrollmentForecast(
         : null;
 }
 
+/// <summary>The slope of the enrolment line in words, whichever way it goes.</summary>
+public static class ForecastTrend
+{
+    private static readonly System.Globalization.CultureInfo Mx = System.Globalization.CultureInfo.GetCultureInfo("es-MX");
+
+    public static string Sentence(double slope)
+    {
+        var amount = Math.Abs(slope).ToString("0.#", Mx);
+        var students = amount == "1" ? "1 alumno" : $"{amount} alumnos";
+
+        return slope switch
+        {
+            >= 0.05 => $"La matrícula crece cerca de {students} por periodo",
+            <= -0.05 => $"La matrícula baja cerca de {students} por periodo",
+            _ => "La matrícula se mantiene estable",
+        };
+    }
+}
+
 /// <summary>
 /// What the projection would have got wrong, measured by moving the cut forward: for every
 /// period from the sixth on, the line is fitted only on what was known before it and asked to
@@ -204,8 +223,8 @@ public sealed record DropoutModelReport(
     /// the last period each student had grades in; it is not "probability of leaving next term".
     /// </summary>
     public string Target =>
-        "Baja definitiva frente a egreso, aprendido del último periodo con calificaciones de cada "
-        + "trayectoria terminada. No es una probabilidad de abandono en el periodo siguiente.";
+        "De cada 100 alumnos que terminaron con un último periodo parecido, cuántos acabaron en baja definitiva; "
+        + "los demás egresaron. No predice quién se irá el próximo periodo.";
 
     public int UnscoredActiveStudents => Unscored.Total;
 
@@ -225,8 +244,12 @@ public sealed record DropoutModelReport(
 /// purpose: a corrected grade must not bring back an alert somebody already dealt with. The
 /// severity is part of it, because an alert that got worse deserves to be seen again.
 /// </param>
+/// <param name="Recent">
+/// Whether it happened in the last school year. An older one stays on the list as history, and
+/// never counts as something new to look at.
+/// </param>
 public sealed record AnomalyAlert(
-    string Title, string Detail, string Severity, double Magnitude, string? Period, string Key = "");
+    string Title, string Detail, string Severity, double Magnitude, string? Period, string Key = "", bool Recent = true);
 
 /// <summary>An alert as one person has it: the deviation, and whether they already saw it.</summary>
 public sealed record UserAlert(AnomalyAlert Alert, bool Seen);
@@ -264,7 +287,7 @@ public static class AlertInboxBuilder
 
             // A receipt for a deviation that is no longer detected simply matches nothing.
             if (receipt is { Dismissed: true }) { dismissed++; continue; }
-            shown.Add(new UserAlert(alert, receipt is { Seen: true }));
+            shown.Add(new UserAlert(alert, receipt is { Seen: true } || !alert.Recent));
         }
 
         return new AlertInbox(shown, dismissed);

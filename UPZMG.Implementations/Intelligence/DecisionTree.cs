@@ -227,7 +227,7 @@ public sealed class DecisionTree
     {
         if (node.IsLeaf)
         {
-            var condition = path.Count == 0 ? "Todos los casos" : string.Join(" y ", Describe(path, describe));
+            var condition = path.Count == 0 ? "Todos los casos" : string.Join(" · ", Describe(path, describe));
             into.Add(new TreeRule(condition, node.Probability, node.SampleCount));
             return;
         }

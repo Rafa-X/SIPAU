@@ -6,7 +6,10 @@ using Microsoft.IdentityModel.Tokens;
 using UPZMG.Persistence;
 using UPZMG.Persistence.Repository;
 
-Console.Title = "UPZMG.API";
+// A service or a scheduled task has no console, and setting a title there stops the process
+// before it starts.
+try { Console.Title = "UPZMG.API"; } catch (IOException) { }
+
 var builder = WebApplication.CreateBuilder(args);
 using var startupLoggerFactory = CreateStartupLoggerFactory();
 var startupLogger = startupLoggerFactory.CreateLogger("Startup");

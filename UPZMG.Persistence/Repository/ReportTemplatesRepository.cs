@@ -18,6 +18,9 @@ public class ReportTemplatesRepository(AppDBContext db, ReportTemplateStore stor
         PropertyNameCaseInsensitive = true,
         ReadCommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true,
+        // "rows": null in a hand-written template reads as a JSON error with its line, instead of
+        // reaching the validator as a list that is not there.
+        RespectNullableAnnotations = true,
     };
 
     // Every template on disk, broken ones included, so whoever maintains them can see what to fix
@@ -48,8 +51,8 @@ public class ReportTemplatesRepository(AppDBContext db, ReportTemplateStore stor
                 template.ReportType,
                 template.Version,
                 template.DisplayName,
-                template.Sections.Count,
-                template.Sections.Sum(s => s.Questions.Count),
+                template.Sections.Count(s => s is not null),
+                template.Sections.Sum(s => s?.Questions.Count ?? 0),
                 problems));
         }
 
@@ -131,8 +134,9 @@ public class ReportTemplatesRepository(AppDBContext db, ReportTemplateStore stor
             if (submitted > 0)
             {
                 return TemplateSaveResult.Refused(
-                    $"Plantilla: «{template.ReportType}» versión {template.Version} ya tiene {submitted} captura(s) "
-                    + "enviada(s). Publica una versión nueva en lugar de modificar el formato con el que se enviaron.");
+                    $"Plantilla: «{template.ReportType}» versión {template.Version} ya tiene "
+                    + (submitted == 1 ? "1 captura enviada" : $"{submitted} capturas enviadas")
+                    + ". Publica una versión nueva en lugar de modificar el formato con el que se enviaron.");
             }
         }
 
@@ -152,8 +156,9 @@ public class ReportTemplatesRepository(AppDBContext db, ReportTemplateStore stor
                     if (captures > 0)
                     {
                         return TemplateSaveResult.Refused(
-                            $"Plantilla: «{previous.ReportType}» versión {previous.Version} tiene {captures} captura(s) "
-                            + "y no puede renombrarse. Publica la versión nueva y deja la anterior en su sitio.");
+                            $"Plantilla: «{previous.ReportType}» versión {previous.Version} tiene "
+                            + (captures == 1 ? "1 captura" : $"{captures} capturas")
+                            + " y no puede renombrarse. Publica la versión nueva y deja la anterior en su sitio.");
                     }
                 }
             }
@@ -185,7 +190,7 @@ public class ReportTemplatesRepository(AppDBContext db, ReportTemplateStore stor
 
         if (captures > 0)
             return TemplateSaveResult.Refused(
-                $"Plantilla: hay {captures} captura(s) con este formato, así que no se puede eliminar.");
+                $"Plantilla: {(captures == 1 ? "hay 1 captura" : $"hay {captures} capturas")} con este formato, así que no se puede eliminar.");
 
         File.Delete(path);
         return new TemplateSaveResult(true, Path.GetFileNameWithoutExtension(path));

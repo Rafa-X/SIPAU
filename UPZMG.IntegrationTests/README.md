@@ -50,8 +50,8 @@ La Web de las pruebas distribuidas sirve HTTPS con el certificado de desarrollo 
 | `AccessControlTests.EachAreaReachesWhatItsRoleGrantsAndNothingElse` | Matriz de acceso por área: cada cuenta sembrada contra diez endpoints, 200 o 403 según el permiso de su rol. |
 | `AccessControlTests.AnAreaCannotWriteIntoAnotherAreasRecords` | Recursos Humanos no puede registrar ni importar alumnos; Control Escolar no puede registrar empleados. Nada queda guardado. |
 | `AccessControlTests.AWithdrawnPermissionAppliesOnTheVeryNextRequest` | Un permiso retirado aplica en la siguiente petición, con el mismo token: la API consulta la base en cada petición. |
-| `AccessControlTests.ASuspendedAccountLosesAccessAndCannotGetANewToken` | Una cuenta suspendida pierde el acceso y la API ya no le emite tokens. |
-| `AccessControlTests.OnlyAProcessThatKnowsTheSharedSecretCanSignSomebodyIn` | Sólo un proceso con el secreto compartido puede autenticar a alguien en la API. |
+| `AccessControlTests.ASuspendedAccountLosesAccessAndCannotGetANewToken` | Una cuenta suspendida pierde el acceso y la API ya no le emite tokens; su 403 es lo que permite a la Web distinguirla de un fallo. |
+| `AccessControlTests.OnlyAProcessThatKnowsTheSharedSecretCanSignSomebodyIn` | Sólo un proceso con el secreto compartido puede autenticar a alguien en la API. Responde 403, no el 401 de una contraseña equivocada. |
 | `ConcurrencyTests.TwelveSimultaneousCapturesOfOneStudentStoreItOnce` | Doce capturas simultáneas de la misma matrícula: una se guarda y once reciben 409. Ninguna termina en 500. |
 | `ConcurrencyTests.ColdRequestsForTheModelShareOneTraining` | Ocho peticiones simultáneas con el modelo sin entrenar comparten un solo entrenamiento. |
 | `ConcurrencyTests.RetrainingsWhileOthersReadLeaveOneConsistentModel` | Reentrenamientos concurrentes con lectores: todo responde 200 y el resumen coincide con el listado. |
@@ -61,3 +61,7 @@ La Web de las pruebas distribuidas sirve HTTPS con el certificado de desarrollo 
 | `ReportLifecycleTests.ADraftChangesUntilItIsSubmittedAndThenNever` | Ciclo de un formato oficial: borrador editable, protección contra sobrescritura (412), envío incompleto rechazado (422), envío, bloqueo (409) y lectura sólo por su autor. |
 | `WebApiProcessTests.ASessionOpenedInTheWebReadsTheDatabaseThroughTheApi` | Con la Web y la API en procesos separados, el inicio de sesión de la Web pasa por la API y la página muestra cifras calculadas por la API. |
 | `WebApiProcessTests.WhenTheApiStopsTheWebSaysSoAndRecoversWhenItReturns` | Se detiene la API: la Web sigue arriba, conserva la sesión y dice que no pudo consultar. Al volver la API, la misma sesión se recupera sola. |
+| `WebApiProcessTests.WithTheApiDownSigningInDoesNotBlameThePassword` | Con la API detenida, iniciar sesión dice que el sistema no está disponible, no que la contraseña está mal. |
+| `WebApiProcessTests.ASuspendedAccountIsSignedOutAndToldWhy` | Una cuenta dada de baja con la sesión abierta sale al inicio de sesión con el motivo y pierde su cookie. |
+| `WebApiProcessTests.ASignInLandsOnTheScreenThatAskedForItAndNeverOnAnotherSite` | Tras iniciar sesión se vuelve a la pantalla que lo pidió, nunca a una dirección de otro sitio. |
+| `WebApiProcessTests.TheRiskScreenSpeaksPlainlyToTheAreasThatActOnIt` | Para un área, la pantalla de riesgo explica el porcentaje y no habla de pliegues, Gini ni intervalos de confianza. |

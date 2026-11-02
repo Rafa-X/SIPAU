@@ -32,7 +32,7 @@ else if (_failed)
 {
     <SectionCard FullHeight="false">
         <EmptyState Title="No se pudieron cargar los formatos"
-                    Description="El API no respondió. Verifica que esté corriendo y vuelve a intentarlo.">
+                    Description="El sistema no respondió. Vuelve a intentarlo en un momento; si sigue así, avisa a Tecnologías.">
             <MudButton Variant="Variant.Outlined" Color="Color.Primary"
                        StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync">Reintentar</MudButton>
         </EmptyState>
@@ -44,7 +44,7 @@ else
     {
         <SectionCard FullHeight="false" Class="mb-6">
             <EmptyState Title="No hay formatos disponibles"
-                        Description="Agrega una plantilla JSON en la carpeta ReportTemplates del API para habilitar un formato oficial." />
+                        Description="Todavía no se ha publicado ningún formato oficial. Se publican en Configuración › Plantillas de formatos." />
         </SectionCard>
     }
 

@@ -9,4 +9,7 @@ public class LoginViewModel
     public string? Email { get; set; } = string.Empty;
     public string? Password { get; set; } = string.Empty;
     public string? ErrorMessage { get; set; } = string.Empty;
+
+    /// <summary>The screen that asked for the sign-in, so the person lands back on it.</summary>
+    public string? ReturnUrl { get; set; }
 }

@@ -23,7 +23,7 @@ else if (_document is null)
     <PageHeader Title="Informe no disponible" BackHref="/boardreport" />
     <SectionCard FullHeight="false">
         <EmptyState Title="No se pudo armar el informe"
-                    Description="No hay formatos oficiales de este ciclo, o el API no respondió.">
+                    Description="No hay formatos oficiales de este ciclo, o el sistema no respondió. Vuelve a intentarlo en un momento.">
             <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="LoadAsync">Reintentar</MudButton>
         </EmptyState>
     </SectionCard>
@@ -46,10 +46,12 @@ else
                     @* "Cerrar" and not "Enviar": what this does is freeze the document inside the
                        system. There is no mail or transport behind it, and saying "enviado a la
                        Junta" promised a delivery the system does not perform. *@
-                    <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.LockClock" Disabled="_working" OnClick="ConfirmAndSubmitAsync">
-                        Cerrar informe
-                    </MudButton>
+                    <MudTooltip Text="@(_document.Missing.Count > 0 ? "Faltan formatos por enviar" : string.Empty)" Placement="Placement.Bottom">
+                        <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.LockClock" Disabled="@(_working || _document.Missing.Count > 0)" OnClick="ConfirmAndSubmitAsync">
+                            Cerrar informe
+                        </MudButton>
+                    </MudTooltip>
                 }
             </AuthorizeView>
         </Actions>
@@ -104,7 +106,7 @@ else
                             @if (source.OtherCaptures > 0)
                             {
                                 <div class="sipau-risk-sub">
-                                    Hay @source.OtherCaptures captura(s) más de este formato; el informe tomó la enviada más reciente.
+                                    Hay @ReportUi.Plural(source.OtherCaptures, "captura más", "capturas más") de este formato; el informe tomó la enviada más reciente.
                                 </div>
                             }
                             @if (source.LastModified is { } modified && source.Status != "pending")
@@ -216,7 +218,7 @@ else
         {
             var keep = await DialogService.ShowMessageBoxAsync(
                 "Hay texto sin guardar",
-                $"El bloque «{_editing}» tiene cambios que no se han guardado. Si cambias de bloque se descartan.",
+                "Este apartado tiene cambios que no se han guardado. Si cambias de apartado se descartan.",
                 yesText: "Descartar y continuar", cancelText: "Seguir redactando");
 
             if (keep != true) return;
@@ -256,13 +258,13 @@ else
 
         if (_editing is not null && _draft != (_editingOriginal ?? string.Empty))
         {
-            Snackbar.Add("Guarda o descarta el bloque que estás redactando antes de cerrar el informe.", Severity.Warning);
+            Snackbar.Add("Guarda o descarta el apartado que estás redactando antes de cerrar el informe.", Severity.Warning);
             return;
         }
 
         var pending = _document.PendingNarratives;
         var detail = pending > 0
-            ? $"Quedan {pending} bloque(s) con la redacción sugerida por el sistema. "
+            ? $"{(pending == 1 ? "Queda 1 apartado" : $"Quedan {pending} apartados")} con la redacción sugerida por el sistema. "
             : string.Empty;
 
         var confirmed = await DialogService.ShowMessageBoxAsync(

@@ -74,6 +74,64 @@ public class TemplateEngineTests
         Assert.True(validation.IsValid, string.Join("\n", validation.Problems.Select(p => $"{p.Where}: {p.Message}")));
     }
 
+    // JSON allows a null almost anywhere, and it used to reach the validator as a 500.
+    [Theory]
+    [InlineData("""{ "reportType": "X", "version": "1", "displayName": "x", "sections": null }""")]
+    [InlineData("""{ "reportType": "X", "version": "1", "displayName": "x", "sections": [null] }""")]
+    [InlineData("""{ "reportType": "X", "version": "1", "displayName": "x", "sections": [{ "title": "S", "questions": null }] }""")]
+    [InlineData("""{ "reportType": "X", "version": "1", "displayName": "x", "sections": [{ "title": "S", "questions": [null] }] }""")]
+    [InlineData("""{ "reportType": "X", "version": "1", "displayName": "x", "sections": [{ "title": "S", "questions": [{ "key": "m", "text": "m", "type": "matrix", "rows": null, "columns": ["a"] }] }] }""")]
+    [InlineData("""{ "reportType": "X", "version": "1", "displayName": "x", "sections": [{ "title": "S", "questions": [{ "key": "m", "text": "m", "type": "matrix", "rows": [null], "columns": ["a"] }] }] }""")]
+    [InlineData("""{ "reportType": "X", "version": "1", "displayName": null, "sections": [] }""")]
+    public async Task ATemplateWithNullsIsRefusedWithAReason(string json)
+    {
+        var folder = Directory.CreateTempSubdirectory("plantillas-").FullName;
+        try
+        {
+            var repository = new ReportTemplatesRepository(
+                new AppDBContext(new DbContextOptionsBuilder<AppDBContext>().UseInMemoryDatabase("templates-" + Guid.NewGuid()).Options),
+                new ReportTemplateStore(folder));
+
+            var result = await repository.SaveTemplateAsync(new SaveReportTemplate { RequesterKey = Guid.NewGuid(), Json = json });
+
+            Assert.False(result.Saved);
+            Assert.NotEmpty(result.Problems!);
+            Assert.Empty(Directory.GetFiles(folder));
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task AFileEditedByHandWithNullsDoesNotTakeTheListDown()
+    {
+        var folder = Directory.CreateTempSubdirectory("plantillas-").FullName;
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(folder, "Mala_1.json"),
+                """{ "reportType": "Mala", "version": "1", "displayName": "x", "sections": [{ "title": "S", "questions": [{ "key": "m", "text": "m", "type": "matrix", "rows": null }] }] }""");
+            await File.WriteAllTextAsync(Path.Combine(folder, "Vacia_1.json"),
+                """{ "reportType": "Vacia", "version": "1", "displayName": "x", "sections": [null] }""");
+            File.Copy(Path.Combine(Folder, Files().First() + ".json"), Path.Combine(folder, Files().First() + ".json"));
+
+            var repository = new ReportTemplatesRepository(
+                new AppDBContext(new DbContextOptionsBuilder<AppDBContext>().UseInMemoryDatabase("templates-" + Guid.NewGuid()).Options),
+                new ReportTemplateStore(folder));
+
+            var listed = await repository.GetTemplatesAsync();
+
+            Assert.Equal(3, listed.Count);
+            Assert.Equal(2, listed.Count(t => t.Problems.Count > 0));
+            Assert.Null(await repository.GetTemplateAsync("Mala", "1"));
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
     [Fact]
     public async Task TheCatalogueHasEightFormatsWith52SectionsAnd175Questions()
     {

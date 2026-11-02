@@ -58,7 +58,7 @@
                 <CellTemplate>
                     @if (!string.IsNullOrWhiteSpace(context.Item.Role?.Name))
                     {
-                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">@context.Item.Role.Name</MudChip>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">@RoleLabels.Of(context.Item.Role.Name)</MudChip>
                     }
                     else
                     {
@@ -125,7 +125,7 @@
             {
                 <EmptyState Icon="@Icons.Material.Filled.CloudOff"
                             Title="Sin catálogo de usuarios"
-                            Description="No se recibieron usuarios de la API. Verifica que UPZMG.API esté corriendo y que la base de datos tenga los datos de prueba cargados." />
+                            Description="No se pudo leer la lista de usuarios. Vuelve a intentarlo en un momento; si sigue así, avisa a Tecnologías." />
             }
             else
             {
@@ -222,9 +222,9 @@
             : $"«{user.UserName}» quedó dado de baja.", Severity.Success);
     }
 
-    private Task OpenCreate() => ShowDialog("Nuevo Usuario", new UserFormViewModel(), created: true);
+    private Task OpenCreate() => ShowDialog("Nuevo usuario", new UserFormViewModel(), created: true);
 
-    private Task OpenEdit(SystemUser user) => ShowDialog("Editar Usuario", new UserFormViewModel
+    private Task OpenEdit(SystemUser user) => ShowDialog("Editar usuario", new UserFormViewModel
     {
         Id = user.Id,
         UserName = user.UserName,

@@ -9,16 +9,16 @@
 <PageTitle>Riesgo de deserción — SIPAU</PageTitle>
 
 <PageHeader Title="Riesgo de deserción" BackHref="/charts"
-            Subtitle="Un árbol de decisión aprende de las trayectorias que ya terminaron y señala a los alumnos activos que conviene atender, con la regla que lo explica.">
+            Subtitle="Alumnos activos que conviene entrevistar, según lo que pasó con quienes ya terminaron. Es un aviso para dar acompañamiento, no un diagnóstico.">
     <Actions>
         @if (_report is { HasModel: true })
         {
-            <span class="sipau-report-status is-compact is-sent" title="Fecha del último entrenamiento">
-                Entrenado @_report.TrainedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm", Mx)
+            <span class="sipau-report-status is-compact is-sent" title="Última vez que el modelo aprendió de los datos">
+                Actualizado @_report.TrainedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm", Mx)
             </span>
         }
         <AuthorizeView Policy="@AppPermissions.TrainRisk">
-            <MudTooltip Text="Vuelve a entrenar con los datos actuales" Placement="Placement.Bottom">
+            <MudTooltip Text="Vuelve a calcular con los datos actuales" Placement="Placement.Bottom">
                 <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary"
                            StartIcon="@Icons.Material.Filled.ModelTraining"
                            Disabled="@(_loading || _retraining)" OnClick="RetrainAsync">
@@ -31,13 +31,13 @@
 
 @if (_loading)
 {
-    <LoadingState Text="Consultando el modelo…" />
+    <LoadingState Text="Revisando a los alumnos…" />
 }
 else if (_report is null)
 {
     <SectionCard FullHeight="false">
-        <EmptyState Title="No se pudo consultar el modelo"
-                    Description="El API no respondió o tu área no tiene acceso al riesgo por alumno. Verifica que UPZMG.API esté corriendo e intenta de nuevo.">
+        <EmptyState Title="No se pudo consultar el riesgo"
+                    Description="El sistema no respondió o tu área no tiene acceso al riesgo por alumno. Vuelve a intentarlo en un momento; si sigue así, avisa a Tecnologías.">
             <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="LoadAsync">Reintentar</MudButton>
         </EmptyState>
     </SectionCard>
@@ -46,8 +46,8 @@ else if (!_report.HasModel)
 {
     <SectionCard FullHeight="false">
         <EmptyState Icon="@Icons.Material.Filled.PsychologyAlt"
-                    Title="Todavía no hay modelo"
-                    Description="@($"{_report.Status} El árbol aprende de alumnos que ya egresaron o se dieron de baja; en cuanto haya suficientes con calificaciones capturadas, se entrena solo.")" />
+                    Title="Todavía no hay datos suficientes"
+                    Description="@($"{_report.Status} En cuanto los haya, este listado se calcula solo.")" />
     </SectionCard>
 }
 else
@@ -56,25 +56,23 @@ else
 
     <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mb-4">
         <b>Qué significa el porcentaje.</b> @_report.Target
-        Se toma como señal desde @Pct(_report.Threshold), el corte que elige la regla de costo descrita en
-        «Cómo se midió»; @UnscoredNote.
+        Se señala a partir de @Pct(_report.Threshold).
     </MudAlert>
 
     @if (_report.SyntheticData)
     {
         <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mb-4"
                   Icon="@Icons.Material.Filled.Science">
-            <b>Datos sintéticos.</b> El modelo aprendió del historial de demostración que carga la semilla del
-            sistema, no de expedientes reales. Las cifras muestran que el método funciona y que se puede medir;
-            no describen a los alumnos de la UPZMG y deben medirse de nuevo con datos institucionales.
+            <b>Datos sintéticos.</b> Este modelo aprendió de un historial de ejemplo, no de expedientes reales de la
+            UPZMG. Sirve para ver cómo funciona; sus cifras no describen a los alumnos de la universidad y hay que
+            volver a medirlas con datos reales antes de usarlas para decidir.
         </MudAlert>
     }
 
     @if (_mixedRuns)
     {
         <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mb-4">
-            El resumen y el listado vienen de dos entrenamientos distintos porque los datos
-            cambiaron mientras se consultaban.
+            Los datos cambiaron mientras se consultaban, así que el resumen y el listado pueden no coincidir.
             <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Inherit" OnClick="LoadAsync">
                 Volver a cargar
             </MudButton>
@@ -88,15 +86,15 @@ else
         </MudItem>
         <MudItem xs="12" sm="6" lg="3">
             <StatCard Title="Conviene atender" Value="@_report.AtRiskStudents.ToString("N0", Mx)"
-                      Subtitle="@($"{Share(_report.AtRiskStudents, _report.ScoredStudents)} con probabilidad ≥ {Pct(_report.Threshold)} · {_report.HighRiskStudents.ToString("N0", Mx)} en riesgo alto")" />
+                      Subtitle="@($"{Share(_report.AtRiskStudents, _report.ScoredStudents)} de los evaluados · {_report.HighRiskStudents.ToString("N0", Mx)} en riesgo alto")" />
         </MudItem>
         <MudItem xs="12" sm="6" lg="3">
             <StatCard Title="Resultado incierto" Value="@_report.UncertainStudents.ToString("N0", Mx)"
-                      Subtitle="su intervalo cruza el umbral: se revisan con el tutor antes de actuar" />
+                      Subtitle="hay pocos casos parecidos para asegurarlo: revísalos con su tutor antes de actuar" />
         </MudItem>
         <MudItem xs="12" sm="6" lg="3">
             <StatCard Title="Bajas que detecta" Value="@Pct(quality.Recall)"
-                      Subtitle="@($"{quality.TruePositives} de {Positives(quality)} en la validación · IC 95 % {Interval(quality.TruePositives, Positives(quality))}")" />
+                      Subtitle="@($"{quality.TruePositives} de {Positives(quality)} bajas de quienes ya terminaron · {Between(quality.TruePositives, Positives(quality))}")" />
         </MudItem>
     </MudGrid>
 
@@ -116,7 +114,7 @@ else
                             <Meter Value="@career.AtRiskPct" />
                             <div class="sipau-risk-sub">
                                 @career.AtRisk de @career.Students alumnos · @career.HighRisk en riesgo alto ·
-                                probabilidad media @Number(career.AverageRiskPct, "0.0") %
+                                riesgo promedio @Number(career.AverageRiskPct, "0.0") %
                             </div>
                         </li>
                     }
@@ -125,8 +123,8 @@ else
         </MudItem>
 
         <MudItem xs="12" md="6" lg="4">
-            <SectionCard Title="Variables que más pesan"
-                         Subtitle="Parte de la mejora de pureza (Gini) que aporta cada variable"
+            <SectionCard Title="Qué datos pesan más"
+                         Subtitle="Qué tanto ayuda cada dato a distinguir a quienes se dieron de baja"
                          Icon="@Icons.Material.Filled.Tune">
                 <ul class="sipau-risk-list">
                     @foreach (var weight in _report.Importance)
@@ -145,7 +143,7 @@ else
 
         <MudItem xs="12" lg="4">
             <SectionCard Title="Qué tan bien acierta"
-                         Subtitle="@($"Validación cruzada de {quality.Folds} pliegues: a cada trayectoria la calificó un árbol que no la vio")"
+                         Subtitle="@($"Probado con {quality.Evaluated.ToString("N0", Mx)} alumnos que ya terminaron, sin que el modelo viera su resultado")"
                          Icon="@Icons.Material.Filled.FactCheck">
                 <ChildContent>
                     <table class="sipau-confusion">
@@ -172,24 +170,21 @@ else
                     </table>
 
                     <dl class="sipau-metrics">
-                        <div><dt>Sensibilidad</dt><dd>@Pct(quality.Recall)</dd></div>
-                        <div><dt>Precisión</dt><dd>@Pct(quality.Precision)</dd></div>
-                        <div><dt>F1</dt><dd>@Pct(quality.F1)</dd></div>
-                        <div><dt>Exactitud</dt><dd>@Pct(quality.Accuracy)</dd></div>
+                        <div><dt>Bajas que detecta</dt><dd>@Pct(quality.Recall)</dd></div>
+                        <div><dt>Aciertos al señalar</dt><dd>@Pct(quality.Precision)</dd></div>
                     </dl>
                 </ChildContent>
                 <Footer>
-                    De cada 100 alumnos que marca, @Number(quality.Precision * 100, "0") sí se dieron de baja; al azar
-                    serían @Number(quality.Prevalence * 100, "0"): @Number(quality.Lift, "0.0") veces mejor.
-                    Decir que nadie se va acertaría el @Pct(quality.BaselineAccuracy) sin detectar ninguna baja, por eso
-                    la exactitud sola no basta.
+                    De cada 100 alumnos que señala, @Number(quality.Precision * 100, "0") sí se dieron de baja; eligiendo
+                    al azar serían @Number(quality.Prevalence * 100, "0"). Por eso sirve para decidir a quién entrevistar
+                    primero, no para concluir que un alumno se va a ir.
                 </Footer>
             </SectionCard>
         </MudItem>
     </MudGrid>
 
     <SectionCard Title="Alumnos que conviene atender" Flush="true" FullHeight="false" Class="mt-4"
-                 Subtitle="Alumnos activos ordenados por probabilidad de baja; «Por qué» es la ruta que siguió el árbol"
+                 Subtitle="De mayor a menor riesgo; «Por qué» resume lo que pone a cada alumno en la lista"
                  Icon="@Icons.Material.Filled.PersonSearch">
         <DataToolbar @bind-Search="_search" Placeholder="Nombre o matrícula…"
                      Count="Filtered.Count" Total="_students.Count" OnExport="ExportAsync">
@@ -228,7 +223,7 @@ else
                         </span>
                         @if (context.Item.Uncertain)
                         {
-                            <span class="sipau-uncertain" title="El intervalo de su regla cruza el umbral">Incierto</span>
+                            <span class="sipau-uncertain" title="Hay pocos casos con este perfil, así que el dato no es firme">Incierto</span>
                         }
                     </CellTemplate>
                 </TemplateColumn>
@@ -250,8 +245,8 @@ else
                         @if (context.Item.RuleSupport > 0)
                         {
                             <div class="sipau-risk-sub">
-                                @context.Item.RuleWithdrawals de @context.Item.RuleSupport con esta regla se dieron de baja
-                                (IC 95 % @Number(context.Item.LowerPct, "0")–@Number(context.Item.UpperPct, "0") %)
+                                @context.Item.RuleWithdrawals de @context.Item.RuleSupport con este perfil se dieron de baja
+                                (entre @Number(context.Item.LowerPct, "0") y @Number(context.Item.UpperPct, "0") %)
                             </div>
                         }
                     </CellTemplate>
@@ -269,8 +264,8 @@ else
         </MudDataGrid>
     </SectionCard>
 
-    <SectionCard Title="Reglas que aprendió el árbol" Flush="true" FullHeight="false" Class="mt-4"
-                 Subtitle="Cada hoja del árbol como regla; el porcentaje es la proporción de bajas entre las trayectorias que llegaron ahí"
+    <SectionCard Title="Perfiles que encontró el modelo" Flush="true" FullHeight="false" Class="mt-4"
+                 Subtitle="Cada perfil combina datos del último periodo; el porcentaje es cuántos alumnos con ese perfil se dieron de baja"
                  Icon="@Icons.Material.Filled.AccountTree">
         <ol class="sipau-tree-rules">
             @foreach (var rule in _report.Rules)
@@ -282,11 +277,11 @@ else
                     <div class="sipau-tree-rule-meta">
                         <span class="@LevelClass(level)">@Number(rule.Probability * 100, "0") % de bajas</span>
                         <span class="sipau-risk-sub">
-                            @rule.SampleCount trayectorias · IC 95 % @Number(low * 100, "0")–@Number(high * 100, "0") %
+                            @rule.SampleCount alumnos · entre @Number(low * 100, "0") y @Number(high * 100, "0") %
                         </span>
                         @if (low < _report.Threshold && _report.Threshold <= high)
                         {
-                            <span class="sipau-uncertain" title="El intervalo cruza el umbral">Incierta</span>
+                            <span class="sipau-uncertain" title="Hay pocos casos con este perfil, así que el dato no es firme">Incierto</span>
                         }
                     </div>
                 </li>
@@ -294,304 +289,337 @@ else
         </ol>
     </SectionCard>
 
-    @if (_report.Evaluation is { Folds.Count: > 0 } evaluation)
-    {
-        var chosen = evaluation.Thresholds.FirstOrDefault(t => Math.Abs(t.Threshold - _report.Threshold) < 1e-9);
-        var nested = evaluation.Nested;
-
-        <MudText Typo="Typo.h5" Class="mt-8 mb-1">Cómo se midió</MudText>
-        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="sipau-eval-lead mb-3">
-            Todas las cifras de esta sección salen de trayectorias que el árbol que las calificó nunca vio. Con la misma
-            base y la semilla @evaluation.Seed se obtienen los mismos números.
-        </MudText>
-
-        <SectionCard Title="Resultados por pliegue" Flush="true" FullHeight="false"
-                     Subtitle="@($"Con el corte de {Pct(_report.Threshold)}; cada pliegue lo calificó un árbol que aprendió de los otros cuatro")"
-                     Icon="@Icons.Material.Filled.ViewWeek">
-            <ChildContent>
-                <div class="sipau-table-scroll">
-                    <table class="sipau-eval-table">
-                        <caption class="sipau-sr">Matriz de confusión de cada pliegue</caption>
-                        <thead>
-                            <tr>
-                                <th scope="col">Pliegue</th>
-                                <th scope="col" class="is-num">Aprendió de</th>
-                                <th scope="col" class="is-num">Evaluó</th>
-                                <th scope="col" class="is-num">Bajas</th>
-                                <th scope="col" class="is-num">Detectadas</th>
-                                <th scope="col" class="is-num">No detectadas</th>
-                                <th scope="col" class="is-num">Alertas de más</th>
-                                <th scope="col" class="is-num">Bien descartados</th>
-                                <th scope="col" class="is-num">Sensibilidad</th>
-                                <th scope="col" class="is-num">Precisión</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var fold in evaluation.Folds)
-                            {
-                                var q = fold.Quality;
-                                <tr>
-                                    <th scope="row">@fold.Fold</th>
-                                    <td class="is-num">@fold.TrainingSize</td>
-                                    <td class="is-num">@q.Evaluated</td>
-                                    <td class="is-num">@Positives(q)</td>
-                                    <td class="is-num">@q.TruePositives</td>
-                                    <td class="is-num">@q.FalseNegatives</td>
-                                    <td class="is-num">@q.FalsePositives</td>
-                                    <td class="is-num">@q.TrueNegatives</td>
-                                    <td class="is-num">@Pct(q.Recall)</td>
-                                    <td class="is-num">@Precision(q)</td>
-                                </tr>
-                            }
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <th scope="row">Total</th>
-                                <td class="is-num">—</td>
-                                <td class="is-num">@quality.Evaluated</td>
-                                <td class="is-num">@Positives(quality)</td>
-                                <td class="is-num">@quality.TruePositives</td>
-                                <td class="is-num">@quality.FalseNegatives</td>
-                                <td class="is-num">@quality.FalsePositives</td>
-                                <td class="is-num">@quality.TrueNegatives</td>
-                                <td class="is-num">@Pct(quality.Recall)</td>
-                                <td class="is-num">@Precision(quality)</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            </ChildContent>
-            <Footer>
-                <p class="sipau-eval-note">
-                    Ningún pliegue se califica con el árbol que aprendió de él: «aprendió de» más «evaluó» suma las
-                    @_report.FinishedTrajectories trayectorias terminadas. La sensibilidad va de
-                    @Pct(evaluation.Folds.Min(f => f.Quality.Recall)) a @Pct(evaluation.Folds.Max(f => f.Quality.Recall)):
-                    con @evaluation.Folds.Min(f => Positives(f.Quality)) a @evaluation.Folds.Max(f => Positives(f.Quality))
-                    bajas por pliegue, cada una mueve la cifra unos @Number(100.0 / Math.Max(1, evaluation.Folds.Max(f => Positives(f.Quality))), "0")
-                    puntos. Por eso se informa el total con su intervalo de 95 %: @Interval(quality.TruePositives, Positives(quality))
-                    en sensibilidad y @Interval(quality.TruePositives, quality.TruePositives + quality.FalsePositives) en precisión.
-                </p>
-            </Footer>
-        </SectionCard>
-
-        <MudGrid Class="mt-1">
-            <MudItem xs="12" lg="6">
-                <SectionCard Title="Elección del umbral" Flush="true"
-                             Subtitle="Cada corte candidato aplicado a las predicciones fuera de pliegue"
-                             Icon="@Icons.Material.Filled.Tune">
-                    <ChildContent>
-                        <div class="sipau-table-scroll">
-                            <table class="sipau-eval-table">
-                                <caption class="sipau-sr">Resultado de cada corte candidato</caption>
-                                <thead>
-                                    <tr>
-                                        <th scope="col">Corte</th>
-                                        <th scope="col" class="is-num">Marcados</th>
-                                        <th scope="col" class="is-num">Sensibilidad</th>
-                                        <th scope="col" class="is-num">Precisión</th>
-                                        <th scope="col" class="is-num">Costo</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var point in VisibleThresholds(evaluation))
-                                    {
-                                        var isChosen = ReferenceEquals(point, chosen);
-                                        <tr class="@(isChosen ? "is-chosen" : null)">
-                                            <th scope="row">
-                                                @Pct(point.Threshold)
-                                                @if (isChosen) { <span class="sipau-chosen-mark">elegido</span> }
-                                            </th>
-                                            <td class="is-num">@Flagged(point.Quality) · @Pct(point.Quality.FlaggedShare)</td>
-                                            <td class="is-num">@Pct(point.Quality.Recall)</td>
-                                            <td class="is-num">@Precision(point.Quality)</td>
-                                            <td class="is-num">@Number(point.Cost, "0.#")</td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    </ChildContent>
-                    <Footer>
-                        <p class="sipau-eval-note"><b>Regla.</b> @IntelligenceEngine.ThresholdRule</p>
-                    </Footer>
-                </SectionCard>
-            </MudItem>
-
-            <MudItem xs="12" lg="6">
-                <SectionCard Title="Qué tan firme es el umbral" Flush="true"
-                             Subtitle="El corte con otros costos, y la calidad cuando se elige sin ver el pliegue evaluado"
-                             Icon="@Icons.Material.Filled.Balance">
-                    <ChildContent>
-                        <div class="sipau-table-scroll">
-                            <table class="sipau-eval-table">
-                                <caption class="sipau-sr">Corte que elige la regla con otros costos de una baja no detectada</caption>
-                                <thead>
-                                    <tr>
-                                        <th scope="col">Una baja no detectada cuesta</th>
-                                        <th scope="col" class="is-num">Corte</th>
-                                        <th scope="col" class="is-num">Marcados</th>
-                                        <th scope="col" class="is-num">Sensibilidad</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var choice in evaluation.Sensitivity)
-                                    {
-                                        var none = Flagged(choice.Quality) == 0;
-                                        <tr class="@(choice.FalseNegativeCost == IntelligenceEngine.FalseNegativeCost ? "is-chosen" : null)">
-                                            <th scope="row">@Number(choice.FalseNegativeCost, "0.#") entrevistas</th>
-                                            <td class="is-num">@(none ? "no marcar" : Pct(choice.Threshold))</td>
-                                            <td class="is-num">@Pct(choice.Quality.FlaggedShare)</td>
-                                            <td class="is-num">@Pct(choice.Quality.Recall)</td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div class="sipau-table-scroll sipau-eval-gap">
-                            <table class="sipau-eval-table">
-                                <caption class="sipau-sr">Calidad con el corte elegido a la vista y a ciegas</caption>
-                                <thead>
-                                    <tr>
-                                        <th scope="col">Cómo se eligió el corte</th>
-                                        <th scope="col" class="is-num">Sensibilidad</th>
-                                        <th scope="col" class="is-num">Precisión</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <th scope="row">Con todas las predicciones</th>
-                                        <td class="is-num">@Pct(quality.Recall)</td>
-                                        <td class="is-num">@Precision(quality)</td>
-                                    </tr>
-                                    <tr>
-                                        <th scope="row">Sin ver el pliegue evaluado</th>
-                                        <td class="is-num">@Pct(nested.Recall)</td>
-                                        <td class="is-num">@Precision(nested)</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </ChildContent>
-                    <Footer>
-                        <p class="sipau-eval-note">
-                            Con costos de @CostsThatKeep(evaluation) el corte no se mueve. En la validación anidada la regla
-                            eligió, en cada pliegue y mirando sólo los otros cuatro, @Join(evaluation.NestedThresholds.Select(Pct)),
-                            y se calificó con el pliegue que no vio. La diferencia entre las dos filas es lo que se gana por
-                            elegir el corte y medirlo sobre las mismas predicciones.
-                        </p>
-                    </Footer>
-                </SectionCard>
-            </MudItem>
-
-            <MudItem xs="12">
-                <SectionCard Title="En qué se equivoca" Flush="true" FullHeight="false"
-                             Subtitle="Promedio de cada variable en las cuatro casillas de la matriz, con el corte elegido"
-                             Icon="@Icons.Material.Filled.CompareArrows">
-                    <ChildContent>
-                        <div class="sipau-table-scroll">
-                            <table class="sipau-eval-table">
-                                <caption class="sipau-sr">Perfil de los aciertos y los errores del modelo</caption>
-                                <thead>
-                                    <tr>
-                                        <th scope="col">Casilla</th>
-                                        <th scope="col" class="is-num">Trayectorias</th>
-                                        <th scope="col" class="is-num">@DropoutFeatures.Average</th>
-                                        <th scope="col" class="is-num">Reprobación</th>
-                                        <th scope="col" class="is-num">Oport. extra por periodo</th>
-                                        <th scope="col" class="is-num">@DropoutFeatures.EntryAge</th>
-                                        <th scope="col" class="is-num">Trabaja</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var profile in evaluation.Errors)
-                                    {
-                                        <tr class="@ProfileClass(profile.Group)">
-                                            <th scope="row">@profile.Group</th>
-                                            <td class="is-num">@profile.Count</td>
-                                            <td class="is-num">@Number(profile.AverageGrade, "0.00")</td>
-                                            <td class="is-num">@Number(profile.FailureRate, "0.0") %</td>
-                                            <td class="is-num">@Number(profile.RetakesPerPeriod, "0.00")</td>
-                                            <td class="is-num">@Number(profile.EntryAge, "0.0")</td>
-                                            <td class="is-num">@Number(profile.WorksPct, "0") %</td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    </ChildContent>
-                    <Footer>
-                        <p class="sipau-eval-note">
-                            Un error es una trayectoria cuyo último periodo se parece más a la otra clase. Las bajas no
-                            detectadas son alumnos que se fueron con un periodo parecido al de quienes egresan, y las alertas
-                            de más, egresados que pasaron por un periodo parecido al de quienes se van: con estas cinco
-                            variables no hay con qué separarlos, y por eso el listado se toma como aviso para entrevistar,
-                            no como diagnóstico.
-                        </p>
-                    </Footer>
-                </SectionCard>
-            </MudItem>
-        </MudGrid>
-    }
-
     <MudExpansionPanels Class="mt-4 sipau-method" Elevation="0" Outlined="true">
-        <MudExpansionPanel Text="Cómo decide el modelo">
+        <MudExpansionPanel Text="Cómo se calcula este aviso">
             <div class="sipau-method-body">
                 <p>
-                    Cada alumno se describe con cinco variables tomadas de su último periodo con calificaciones: el anterior
-                    a su egreso o baja, o el más reciente si sigue estudiando. En cada nodo, el árbol (CART) prueba todos los
-                    cortes posibles y se queda con el que más reduce la impureza de Gini:
-                </p>
-                <p class="sipau-formula">
-                    Gini(S) = 1 − Σ pᵢ² &nbsp;·&nbsp; Ganancia = Gini(S) − |I|/|S|·Gini(I) − |D|/|S|·Gini(D)
+                    SIPAU compara el último periodo con calificaciones de cada alumno activo con lo que pasó con los alumnos
+                    que ya terminaron: @_report.Graduates.ToString("N0", Mx) egresaron y @_report.Withdrawals.ToString("N0", Mx) se dieron de baja definitiva.
+                    Usa cinco datos: promedio, reprobación, oportunidades extra por periodo, edad al ingresar y si trabaja.
+                    El sexo no se usa.
                 </p>
                 <p>
-                    Deja de dividir a los @IntelligenceEngine.MaxDepth niveles, cuando un nodo es puro o cuando un lado quedaría
-                    con menos de @IntelligenceEngine.MinSamplesLeaf trayectorias. Cada hoja guarda la proporción de bajas que le
-                    tocó; un alumno activo se marca cuando esa proporción es de @Pct(_report.Threshold) o más.
-                </p>
-
-                <p>
-                    <b>Preparación, entrenamiento y evaluación por separado.</b> Primero se calcula, para cada trayectoria
-                    terminada, su vector de cinco variables y su etiqueta (baja definitiva o egreso). Después, en cada uno de
-                    los @IntelligenceEngine.Folds pliegues, un árbol aprende de las otras cuatro quintas partes y califica la
-                    que no vio; los pliegues se arman barajando bajas y egresos por separado, con la semilla
-                    @IntelligenceEngine.Seed, para que cada uno conserve la proporción de bajas. Con esas calificaciones se
-                    mide la calidad y se elige el umbral. Al final se entrena el árbol publicado con todas las trayectorias
-                    terminadas, y sólo ese árbol califica a los alumnos activos, que nunca se usan para aprender.
-                </p>
-
-                <p><b>Umbral.</b> @IntelligenceEngine.ThresholdRule</p>
-
-                <p>
-                    <b>Resultados inciertos.</b> Cada probabilidad es la proporción de bajas entre las trayectorias de una
-                    hoja. Su intervalo de Wilson al 95 % dice qué tan firme es: cuando cruza el umbral, con las trayectorias
-                    que sostienen la regla no se puede saber si el alumno debe estar en la lista, y el sistema lo marca como
-                    incierto para que se revise con su tutor antes de intervenir.
-                </p>
-
-                <table class="sipau-method-table">
-                    <thead><tr><th scope="col">Variable</th><th scope="col">Cómo se calcula</th></tr></thead>
-                    <tbody>
-                        @foreach (var feature in DropoutFeatures.All)
-                        {
-                            <tr><td>@feature.Name</td><td>@feature.Definition</td></tr>
-                        }
-                    </tbody>
-                </table>
-
-                <p>
-                    <b>Protecciones contra fugas de información.</b> Sólo se entrena con trayectorias que ya terminaron
-                    (@_report.Withdrawals bajas y @_report.Graduates egresos); los alumnos activos se evalúan pero nunca se usan
-                    para aprender. Se descartan las calificaciones del periodo en que terminó cada trayectoria, porque las materias
-                    abandonadas al darse de baja se registran como reprobadas. A todos se les mide con el mismo tramo, un
-                    periodo, para que nadie destaque sólo por lo corta o larga que fue su trayectoria. La edad se toma al
-                    ingresar, no la de hoy. Y no se usan totales (materias o periodos cursados), porque en una trayectoria
-                    terminada dicen cuánto duró el alumno.
+                    El resultado es un aviso para decidir a quién entrevistar primero, no un diagnóstico: el modelo se equivoca
+                    en los dos sentidos, y hay alumnos en riesgo que no aparecen aquí. Cuando hay pocos casos con el mismo perfil,
+                    el alumno se marca como incierto para que se revise con su tutor antes de actuar.
                 </p>
             </div>
         </MudExpansionPanel>
     </MudExpansionPanels>
+
+    @* The evidence behind the figures, for whoever answers for the model; nobody needs it to act on the list. *@
+    <AuthorizeView Policy="@AppPermissions.TrainRisk">
+        <MudExpansionPanels Class="mt-2 sipau-method" Elevation="0" Outlined="true">
+            <MudExpansionPanel Text="Detalle técnico del modelo">
+                @if (_report.Evaluation is { Folds.Count: > 0 } evaluation)
+                {
+                    var chosen = evaluation.Thresholds.FirstOrDefault(t => Math.Abs(t.Threshold - _report.Threshold) < 1e-9);
+                    var nested = evaluation.Nested;
+
+                    <MudText Typo="Typo.h6" Class="mb-1">Cómo se midió</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="sipau-eval-lead mb-3">
+                        Todas las cifras de esta sección salen de trayectorias que el árbol que las calificó nunca vio, y repetir la
+                        medición con los mismos datos da los mismos números.
+                    </MudText>
+
+                    <dl class="sipau-metrics mb-3">
+                        <div><dt>Sensibilidad</dt><dd>@Pct(quality.Recall)</dd></div>
+                        <div><dt>Precisión</dt><dd>@Pct(quality.Precision)</dd></div>
+                        <div><dt>F1</dt><dd>@Pct(quality.F1)</dd></div>
+                        <div><dt>Exactitud</dt><dd>@Pct(quality.Accuracy)</dd></div>
+                        <div><dt>Lift</dt><dd>@Number(quality.Lift, "0.0")</dd></div>
+                    </dl>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="sipau-eval-lead mb-3">
+                        Decir que nadie se va acertaría el @Pct(quality.BaselineAccuracy) sin detectar ninguna baja, por eso la exactitud
+                        sola no basta.
+                    </MudText>
+
+                    <SectionCard Title="Resultados por pliegue" Flush="true" FullHeight="false"
+                                 Subtitle="@($"Con el corte de {Pct(_report.Threshold)}; cada pliegue lo calificó un árbol que aprendió de los otros cuatro")"
+                                 Icon="@Icons.Material.Filled.ViewWeek">
+                        <ChildContent>
+                            <div class="sipau-table-scroll">
+                                <table class="sipau-eval-table">
+                                    <caption class="sipau-sr">Matriz de confusión de cada pliegue</caption>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Pliegue</th>
+                                            <th scope="col" class="is-num">Aprendió de</th>
+                                            <th scope="col" class="is-num">Evaluó</th>
+                                            <th scope="col" class="is-num">Bajas</th>
+                                            <th scope="col" class="is-num">Detectadas</th>
+                                            <th scope="col" class="is-num">No detectadas</th>
+                                            <th scope="col" class="is-num">Alertas de más</th>
+                                            <th scope="col" class="is-num">Bien descartados</th>
+                                            <th scope="col" class="is-num">Sensibilidad</th>
+                                            <th scope="col" class="is-num">Precisión</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var fold in evaluation.Folds)
+                                        {
+                                            var q = fold.Quality;
+                                            <tr>
+                                                <th scope="row">@fold.Fold</th>
+                                                <td class="is-num">@fold.TrainingSize</td>
+                                                <td class="is-num">@q.Evaluated</td>
+                                                <td class="is-num">@Positives(q)</td>
+                                                <td class="is-num">@q.TruePositives</td>
+                                                <td class="is-num">@q.FalseNegatives</td>
+                                                <td class="is-num">@q.FalsePositives</td>
+                                                <td class="is-num">@q.TrueNegatives</td>
+                                                <td class="is-num">@Pct(q.Recall)</td>
+                                                <td class="is-num">@Precision(q)</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <th scope="row">Total</th>
+                                            <td class="is-num">—</td>
+                                            <td class="is-num">@quality.Evaluated</td>
+                                            <td class="is-num">@Positives(quality)</td>
+                                            <td class="is-num">@quality.TruePositives</td>
+                                            <td class="is-num">@quality.FalseNegatives</td>
+                                            <td class="is-num">@quality.FalsePositives</td>
+                                            <td class="is-num">@quality.TrueNegatives</td>
+                                            <td class="is-num">@Pct(quality.Recall)</td>
+                                            <td class="is-num">@Precision(quality)</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </ChildContent>
+                        <Footer>
+                            <p class="sipau-eval-note">
+                                Ningún pliegue se califica con el árbol que aprendió de él: «aprendió de» más «evaluó» suma las
+                                @_report.FinishedTrajectories trayectorias terminadas. La sensibilidad va de
+                                @Pct(evaluation.Folds.Min(f => f.Quality.Recall)) a @Pct(evaluation.Folds.Max(f => f.Quality.Recall)):
+                                con @evaluation.Folds.Min(f => Positives(f.Quality)) a @evaluation.Folds.Max(f => Positives(f.Quality))
+                                bajas por pliegue, cada una mueve la cifra unos @Number(100.0 / Math.Max(1, evaluation.Folds.Max(f => Positives(f.Quality))), "0")
+                                puntos. Por eso se informa el total con su intervalo de 95 %: @Interval(quality.TruePositives, Positives(quality))
+                                en sensibilidad y @Interval(quality.TruePositives, quality.TruePositives + quality.FalsePositives) en precisión.
+                            </p>
+                        </Footer>
+                    </SectionCard>
+
+                    <MudGrid Class="mt-1">
+                        <MudItem xs="12" lg="6">
+                            <SectionCard Title="Elección del umbral" Flush="true"
+                                         Subtitle="Cada corte candidato aplicado a las predicciones fuera de pliegue"
+                                         Icon="@Icons.Material.Filled.Tune">
+                                <ChildContent>
+                                    <div class="sipau-table-scroll">
+                                        <table class="sipau-eval-table">
+                                            <caption class="sipau-sr">Resultado de cada corte candidato</caption>
+                                            <thead>
+                                                <tr>
+                                                    <th scope="col">Corte</th>
+                                                    <th scope="col" class="is-num">Marcados</th>
+                                                    <th scope="col" class="is-num">Sensibilidad</th>
+                                                    <th scope="col" class="is-num">Precisión</th>
+                                                    <th scope="col" class="is-num">Costo</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var point in VisibleThresholds(evaluation))
+                                                {
+                                                    var isChosen = ReferenceEquals(point, chosen);
+                                                    <tr class="@(isChosen ? "is-chosen" : null)">
+                                                        <th scope="row">
+                                                            @Pct(point.Threshold)
+                                                            @if (isChosen) { <span class="sipau-chosen-mark">elegido</span> }
+                                                        </th>
+                                                        <td class="is-num">@Flagged(point.Quality) · @Pct(point.Quality.FlaggedShare)</td>
+                                                        <td class="is-num">@Pct(point.Quality.Recall)</td>
+                                                        <td class="is-num">@Precision(point.Quality)</td>
+                                                        <td class="is-num">@Number(point.Cost, "0.#")</td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </ChildContent>
+                                <Footer>
+                                    <p class="sipau-eval-note"><b>Regla.</b> @IntelligenceEngine.ThresholdRule</p>
+                                </Footer>
+                            </SectionCard>
+                        </MudItem>
+
+                        <MudItem xs="12" lg="6">
+                            <SectionCard Title="Qué tan firme es el umbral" Flush="true"
+                                         Subtitle="El corte con otros costos, y la calidad cuando se elige sin ver el pliegue evaluado"
+                                         Icon="@Icons.Material.Filled.Balance">
+                                <ChildContent>
+                                    <div class="sipau-table-scroll">
+                                        <table class="sipau-eval-table">
+                                            <caption class="sipau-sr">Corte que elige la regla con otros costos de una baja no detectada</caption>
+                                            <thead>
+                                                <tr>
+                                                    <th scope="col">Una baja no detectada cuesta</th>
+                                                    <th scope="col" class="is-num">Corte</th>
+                                                    <th scope="col" class="is-num">Marcados</th>
+                                                    <th scope="col" class="is-num">Sensibilidad</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var choice in evaluation.Sensitivity)
+                                                {
+                                                    var none = Flagged(choice.Quality) == 0;
+                                                    <tr class="@(choice.FalseNegativeCost == IntelligenceEngine.FalseNegativeCost ? "is-chosen" : null)">
+                                                        <th scope="row">@Number(choice.FalseNegativeCost, "0.#") entrevistas</th>
+                                                        <td class="is-num">@(none ? "no marcar" : Pct(choice.Threshold))</td>
+                                                        <td class="is-num">@Pct(choice.Quality.FlaggedShare)</td>
+                                                        <td class="is-num">@Pct(choice.Quality.Recall)</td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div class="sipau-table-scroll sipau-eval-gap">
+                                        <table class="sipau-eval-table">
+                                            <caption class="sipau-sr">Calidad con el corte elegido a la vista y a ciegas</caption>
+                                            <thead>
+                                                <tr>
+                                                    <th scope="col">Cómo se eligió el corte</th>
+                                                    <th scope="col" class="is-num">Sensibilidad</th>
+                                                    <th scope="col" class="is-num">Precisión</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <th scope="row">Con todas las predicciones</th>
+                                                    <td class="is-num">@Pct(quality.Recall)</td>
+                                                    <td class="is-num">@Precision(quality)</td>
+                                                </tr>
+                                                <tr>
+                                                    <th scope="row">Sin ver el pliegue evaluado</th>
+                                                    <td class="is-num">@Pct(nested.Recall)</td>
+                                                    <td class="is-num">@Precision(nested)</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </ChildContent>
+                                <Footer>
+                                    <p class="sipau-eval-note">
+                                        Con costos de @CostsThatKeep(evaluation) el corte no se mueve. En la validación anidada la regla
+                                        eligió, en cada pliegue y mirando sólo los otros cuatro, @Join(evaluation.NestedThresholds.Select(Pct)),
+                                        y se calificó con el pliegue que no vio. La diferencia entre las dos filas es lo que se gana por
+                                        elegir el corte y medirlo sobre las mismas predicciones.
+                                    </p>
+                                </Footer>
+                            </SectionCard>
+                        </MudItem>
+
+                        <MudItem xs="12">
+                            <SectionCard Title="En qué se equivoca" Flush="true" FullHeight="false"
+                                         Subtitle="Promedio de cada variable en las cuatro casillas de la matriz, con el corte elegido"
+                                         Icon="@Icons.Material.Filled.CompareArrows">
+                                <ChildContent>
+                                    <div class="sipau-table-scroll">
+                                        <table class="sipau-eval-table">
+                                            <caption class="sipau-sr">Perfil de los aciertos y los errores del modelo</caption>
+                                            <thead>
+                                                <tr>
+                                                    <th scope="col">Casilla</th>
+                                                    <th scope="col" class="is-num">Trayectorias</th>
+                                                    <th scope="col" class="is-num">@DropoutFeatures.Average</th>
+                                                    <th scope="col" class="is-num">Reprobación</th>
+                                                    <th scope="col" class="is-num">Oport. extra por periodo</th>
+                                                    <th scope="col" class="is-num">@DropoutFeatures.EntryAge</th>
+                                                    <th scope="col" class="is-num">Trabaja</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var profile in evaluation.Errors)
+                                                {
+                                                    <tr class="@ProfileClass(profile.Group)">
+                                                        <th scope="row">@profile.Group</th>
+                                                        <td class="is-num">@profile.Count</td>
+                                                        <td class="is-num">@Number(profile.AverageGrade, "0.00")</td>
+                                                        <td class="is-num">@Number(profile.FailureRate, "0.0") %</td>
+                                                        <td class="is-num">@Number(profile.RetakesPerPeriod, "0.00")</td>
+                                                        <td class="is-num">@Number(profile.EntryAge, "0.0")</td>
+                                                        <td class="is-num">@Number(profile.WorksPct, "0") %</td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </ChildContent>
+                                <Footer>
+                                    <p class="sipau-eval-note">
+                                        Un error es una trayectoria cuyo último periodo se parece más a la otra clase. Las bajas no
+                                        detectadas son alumnos que se fueron con un periodo parecido al de quienes egresan, y las alertas
+                                        de más, egresados que pasaron por un periodo parecido al de quienes se van: con estas cinco
+                                        variables no hay con qué separarlos, y por eso el listado se toma como aviso para entrevistar,
+                                        no como diagnóstico.
+                                    </p>
+                                </Footer>
+                            </SectionCard>
+                        </MudItem>
+                    </MudGrid>
+                }
+                <MudText Typo="Typo.h6" Class="mt-6 mb-1">Cómo decide el modelo</MudText>
+                <div class="sipau-method-body">
+                    <p>
+                        Cada alumno se describe con cinco variables tomadas de su último periodo con calificaciones: el anterior
+                        a su egreso o baja, o el más reciente si sigue estudiando. En cada nodo, el árbol (CART) prueba todos los
+                        cortes posibles y se queda con el que más reduce la impureza de Gini:
+                    </p>
+                    <p class="sipau-formula">
+                        Gini(S) = 1 − Σ pᵢ² &nbsp;·&nbsp; Ganancia = Gini(S) − |I|/|S|·Gini(I) − |D|/|S|·Gini(D)
+                    </p>
+                    <p>
+                        Deja de dividir a los @IntelligenceEngine.MaxDepth niveles, cuando un nodo es puro o cuando un lado quedaría
+                        con menos de @IntelligenceEngine.MinSamplesLeaf trayectorias. Cada hoja guarda la proporción de bajas que le
+                        tocó; un alumno activo se marca cuando esa proporción es de @Pct(_report.Threshold) o más.
+                    </p>
+
+                    <p>
+                        <b>Preparación, entrenamiento y evaluación por separado.</b> Primero se calcula, para cada trayectoria
+                        terminada, su vector de cinco variables y su etiqueta (baja definitiva o egreso). Después, en cada uno de
+                        los @IntelligenceEngine.Folds pliegues, un árbol aprende de las otras cuatro quintas partes y califica la
+                        que no vio; los pliegues se arman barajando bajas y egresos por separado, para que cada uno conserve la
+                        proporción de bajas. Con esas calificaciones se
+                        mide la calidad y se elige el umbral. Al final se entrena el árbol publicado con todas las trayectorias
+                        terminadas, y sólo ese árbol califica a los alumnos activos, que nunca se usan para aprender.
+                    </p>
+
+                    <p><b>Umbral.</b> @IntelligenceEngine.ThresholdRule</p>
+
+                    <p>
+                        <b>Resultados inciertos.</b> Cada probabilidad es la proporción de bajas entre las trayectorias de una
+                        hoja. Su intervalo de Wilson al 95 % dice qué tan firme es: cuando cruza el umbral, con las trayectorias
+                        que sostienen la regla no se puede saber si el alumno debe estar en la lista, y el sistema lo marca como
+                        incierto para que se revise con su tutor antes de intervenir.
+                    </p>
+
+                    <table class="sipau-method-table">
+                        <thead><tr><th scope="col">Variable</th><th scope="col">Cómo se calcula</th></tr></thead>
+                        <tbody>
+                            @foreach (var feature in DropoutFeatures.All)
+                            {
+                                <tr><td>@feature.Name</td><td>@feature.Definition</td></tr>
+                            }
+                        </tbody>
+                    </table>
+
+                    <p>
+                        <b>Protecciones contra fugas de información.</b> Sólo se entrena con trayectorias que ya terminaron
+                        (@_report.Withdrawals bajas y @_report.Graduates egresos); los alumnos activos se evalúan pero nunca se usan
+                        para aprender. Se descartan las calificaciones del periodo en que terminó cada trayectoria, porque las materias
+                        abandonadas al darse de baja se registran como reprobadas. A todos se les mide con el mismo tramo, un
+                        periodo, para que nadie destaque sólo por lo corta o larga que fue su trayectoria. La edad se toma al
+                        ingresar, no la de hoy. Y no se usan totales (materias o periodos cursados), porque en una trayectoria
+                        terminada dicen cuánto duró el alumno.
+                    </p>
+                </div>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    </AuthorizeView>
 }
 
 @code {
@@ -704,19 +732,19 @@ else
             ("Trabaja", s => s.Works),
             ("Periodos evaluados", s => s.PeriodsObserved),
             ("Por qué", s => string.Join(" → ", s.Reasons)),
-            ("Trayectorias de la regla", s => s.RuleSupport),
-            ("Bajas en la regla", s => s.RuleWithdrawals),
-            ("IC 95 % inferior", s => s.LowerPct),
-            ("IC 95 % superior", s => s.UpperPct),
+            ("Alumnos con este perfil", s => s.RuleSupport),
+            ("Bajas con este perfil", s => s.RuleWithdrawals),
+            ("Riesgo mínimo probable %", s => s.LowerPct),
+            ("Riesgo máximo probable %", s => s.UpperPct),
             ("Resultado incierto", s => s.Uncertain),
-            ("Corrida del modelo", _ => run),
-            ("Entrenado", _ => trained?.ToString("yyyy-MM-dd HH:mm") ?? "desconocido"),
+            ("Versión del modelo", _ => run),
+            ("Modelo actualizado", _ => trained?.ToString("yyyy-MM-dd HH:mm") ?? "desconocido"),
             ("Alcance exportado", _ => scope));
 
         await JS.InvokeVoidAsync("sigieDownload", CsvExport.FileName("riesgo-desercion"), csv);
 
         Snackbar.Add(
-            $"Se exportaron {rows.Count:N0} alumno(s) ({scope}) de la corrida {run}. "
+            (rows.Count == 1 ? $"Se exportó 1 alumno ({scope}). " : $"Se exportaron {rows.Count:N0} alumnos ({scope}). ")
             + "El archivo contiene datos personales: compártelo sólo con quien da el acompañamiento.",
             Severity.Info);
     }
@@ -729,7 +757,7 @@ else
     {
         get
         {
-            if (_report is null || _report.Unscored.Total == 0) return "todos los activos evaluados";
+            if (_report is null || _report.Unscored.Total == 0) return "todos los alumnos activos";
 
             var reasons = new List<string>();
             if (_report.Unscored.NoGrades > 0) reasons.Add($"{_report.Unscored.NoGrades:N0} sin calificaciones");
@@ -760,6 +788,14 @@ else
         if (total == 0) return "—";
         var (low, high) = Statistics.Wilson(successes, total);
         return $"{Number(low * 100, "0")}–{Number(high * 100, "0")} %";
+    }
+
+    // The same interval in words, for the part of the screen that is not technical.
+    private static string Between(int successes, int total)
+    {
+        if (total == 0) return "sin datos";
+        var (low, high) = Statistics.Wilson(successes, total);
+        return $"entre {Number(low * 100, "0")} y {Number(high * 100, "0")} %";
     }
 
     private static string Join(IEnumerable<string> items)

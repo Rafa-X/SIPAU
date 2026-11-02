@@ -132,7 +132,7 @@ else
 
         <MudStack Row="true" Spacing="2" Class="mt-6">
             <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Save"
-                       Disabled="_saving" OnClick="Submit">@(IsEditing ? "Guardar cambios" : "Guardar Empleado")</MudButton>
+                       Disabled="_saving" OnClick="Submit">@(IsEditing ? "Guardar cambios" : "Guardar empleado")</MudButton>
             <MudButton Variant="Variant.Outlined" OnClick="@(() => Nav.NavigateTo("/datacapture"))">Cancelar</MudButton>
         </MudStack>
     </MudForm>

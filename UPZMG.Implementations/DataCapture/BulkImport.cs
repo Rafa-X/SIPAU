@@ -48,6 +48,40 @@ public sealed record ImportResult(bool Committed, IReadOnlyList<ImportRowResult>
 }
 
 /// <summary>
+/// The bytes of an uploaded file as text. Excel's plain "CSV" is written in the computer's ANSI code
+/// page with nothing that says so, and reading that as UTF-8 stored "Mar�a" without any error.
+/// </summary>
+public static class CsvText
+{
+    private static readonly UTF8Encoding StrictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+
+    static CsvText() => Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
+    public static string Decode(byte[] bytes)
+    {
+        if (bytes is [0xEF, 0xBB, 0xBF, ..]) return Encoding.UTF8.GetString(bytes, 3, bytes.Length - 3);
+        if (bytes is [0xFF, 0xFE, ..]) return Encoding.Unicode.GetString(bytes, 2, bytes.Length - 2);
+        if (bytes is [0xFE, 0xFF, ..]) return Encoding.BigEndianUnicode.GetString(bytes, 2, bytes.Length - 2);
+
+        try
+        {
+            return StrictUtf8.GetString(bytes);
+        }
+        catch (DecoderFallbackException)
+        {
+            return Encoding.GetEncoding(1252).GetString(bytes);
+        }
+    }
+
+    /// <summary>A spreadsheet renamed to .csv, or anything else that is not text: text never carries a NUL.</summary>
+    public static bool IsBinary(ReadOnlySpan<byte> bytes)
+    {
+        if (bytes is [0xFF, 0xFE, ..] or [0xFE, 0xFF, ..]) return false;
+        return bytes[..Math.Min(bytes.Length, 8192)].IndexOf((byte)0) >= 0;
+    }
+}
+
+/// <summary>
 /// The rules every captured student and employee passes, whether it comes from a form or from a
 /// file, plus the one only a file needs: that it does not repeat its own keys. Pure, so they are
 /// tested without a database; the checks against stored records live in the repositories.

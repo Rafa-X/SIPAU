@@ -27,8 +27,37 @@
 <body>
     <Routes @rendermode="InteractiveServer" />
 
+    @* Blazor looks this element up by id and sets its state as a class; without it the notice it
+       shows on its own is in English. *@
+    <dialog id="components-reconnect-modal" class="sipau-reconnect" data-nosnippet aria-labelledby="sipau-reconnect-title">
+        <div class="sipau-reconnect-spinner" aria-hidden="true"></div>
+        <p id="sipau-reconnect-title" class="sipau-reconnect-title">Se perdió la conexión con el servidor</p>
+        <p class="sipau-reconnect-when-trying">
+            Estamos reconectando. Lo que escribiste sigue en pantalla: no cierres esta página.
+        </p>
+        <p class="sipau-reconnect-when-retrying">
+            Sigue sin responder. Próximo intento en <span id="components-seconds-to-next-attempt"></span> s.
+            Lo que escribiste sigue en pantalla: no cierres esta página.
+        </p>
+        <p class="sipau-reconnect-when-failed">
+            No pudimos reconectar. Revisa tu conexión y vuelve a intentarlo; si recargas la página,
+            se pierde lo que no hayas guardado.
+        </p>
+        <p class="sipau-reconnect-when-paused">
+            Esta pantalla quedó en pausa por inactividad. Continúa donde te quedaste.
+        </p>
+        <p class="sipau-reconnect-when-resume-failed">
+            No se pudo continuar donde te quedaste. Recarga la página; se pierde lo que no hayas guardado.
+        </p>
+        <div class="sipau-reconnect-actions">
+            <button type="button" id="sipau-reconnect-retry" class="sipau-reconnect-btn">Volver a intentar</button>
+            <button type="button" id="sipau-reconnect-resume" class="sipau-reconnect-btn">Continuar</button>
+            <button type="button" id="sipau-reconnect-reload" class="sipau-reconnect-btn is-quiet">Recargar la página</button>
+        </div>
+    </dialog>
+
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
-    <script src="app.js?v=login-network-1" defer></script>
+    <script src="app.js?v=session-notices-1" defer></script>
     <script src="_framework/blazor.web.js"></script>
 </body>
 </html>

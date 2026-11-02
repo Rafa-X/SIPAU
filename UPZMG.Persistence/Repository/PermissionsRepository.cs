@@ -76,7 +76,7 @@ public class PermissionsRepository(AppDBContext _db)
 
         var definition = AppPermissions.All.FirstOrDefault(p => p.Name == name)
             ?? throw new InvalidOperationException(
-                $"«{name}» no es un permiso del sistema: ninguna pantalla ni endpoint lo revisa, "
+                $"«{name}» no es un permiso del sistema: ninguna pantalla lo revisa, "
                 + "así que crearlo no otorgaría nada. El catálogo lo define el sistema.");
 
         if (await db.Permissions.AnyAsync(p => p.Name == name))
@@ -139,7 +139,7 @@ public class PermissionsRepository(AppDBContext _db)
     {
         if (IsDeclared(name))
             throw new InvalidOperationException(
-                $"«{name}» es un permiso del sistema y no puede {action}: la autorización compara ese "
+                $"«{name}» es un permiso del sistema y no puede {action}: las pantallas lo buscan por ese "
                 + "nombre exacto. Lo que se administra es qué roles lo tienen.");
     }
 }

@@ -96,7 +96,7 @@ else
                 </MudSelect>
             </MudItem>
             <MudItem md="4">
-                <MudTextField @bind-Value="_model.NumberOfChildren" Label="Numero de hijos"
+                <MudTextField @bind-Value="_model.NumberOfChildren" Label="Número de hijos"
                               Required="true" RequiredError="El numero es obligatorio." />
             </MudItem>
             <MudItem md="4">
@@ -179,7 +179,7 @@ else
 
         <MudStack Row="true" Spacing="2" Class="mt-6">
             <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Save"
-                       Disabled="_saving" OnClick="Submit">@(IsEditing ? "Guardar cambios" : "Guardar Alumno")</MudButton>
+                       Disabled="_saving" OnClick="Submit">@(IsEditing ? "Guardar cambios" : "Guardar alumno")</MudButton>
             <MudButton Variant="Variant.Outlined" Color="Color.Default"
                        OnClick="@(() => Nav.NavigateTo(IsEditing ? "/datacapture/students/consult" : "/datacapture"))">Cancelar</MudButton>
         </MudStack>
