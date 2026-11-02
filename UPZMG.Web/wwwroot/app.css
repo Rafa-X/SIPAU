@@ -161,6 +161,14 @@ body,
     font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.04em;
     vertical-align: 1px;
 }
+.sipau-alert-old {
+    display: inline-block; margin-left: 6px; padding: 1px 6px;
+    border-radius: 999px;
+    border: 1px solid var(--sipau-hairline-strong);
+    font-family: var(--sipau-font-narrow);
+    font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.04em;
+    vertical-align: 1px;
+}
 .sipau-alert-row-actions { display: flex; gap: 2px; margin-top: -4px; }
 .sipau-alert-tools { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 8px; }
 .bulk-import-grid { margin: 0; }
@@ -1761,3 +1769,60 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
 
 .sipau-chart-data thead th { color: var(--mud-palette-text-secondary); font-weight: 650; }
 .sipau-chart-data th:first-child { text-align: left; font-weight: 600; }
+
+/* Reconnection notice. Blazor sets one of the components-reconnect-* classes on the dialog. */
+.sipau-reconnect {
+    /* The stylesheet's reset removes the margin a dialog centres itself with. */
+    margin: auto;
+    max-width: 26rem;
+    padding: 1.5rem 1.75rem;
+    border: 1px solid var(--sipau-hairline-strong);
+    border-radius: var(--sipau-radius);
+    background: var(--mud-palette-surface);
+    color: var(--mud-palette-text-primary);
+    font-family: var(--sipau-font);
+    text-align: center;
+}
+.sipau-reconnect::backdrop { background: rgba(8, 30, 51, 0.45); }
+.sipau-reconnect p { margin: 0 0 0.5rem; font-size: 0.875rem; line-height: 1.45; display: none; }
+.sipau-reconnect .sipau-reconnect-title { display: block; font-size: 1rem; font-weight: 650; }
+.components-reconnect-show .sipau-reconnect-when-trying,
+.components-reconnect-retrying .sipau-reconnect-when-retrying,
+.components-reconnect-failed .sipau-reconnect-when-failed,
+.components-reconnect-paused .sipau-reconnect-when-paused,
+.components-reconnect-resume-failed .sipau-reconnect-when-resume-failed { display: block; }
+/* "show" stays on while it retries or gives up, so the first message has to step aside. */
+.components-reconnect-retrying .sipau-reconnect-when-trying,
+.components-reconnect-failed .sipau-reconnect-when-trying,
+.components-reconnect-failed .sipau-reconnect-when-retrying { display: none; }
+
+.sipau-reconnect-spinner {
+    display: none;
+    width: 2rem; height: 2rem; margin: 0 auto 0.75rem;
+    border: 3px solid var(--sipau-hairline);
+    border-top-color: var(--sipau-plano);
+    border-radius: 50%;
+    animation: sipau-reconnect-spin 0.9s linear infinite;
+}
+.components-reconnect-show .sipau-reconnect-spinner,
+.components-reconnect-retrying .sipau-reconnect-spinner { display: block; }
+.components-reconnect-failed .sipau-reconnect-spinner { display: none; }
+@keyframes sipau-reconnect-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .sipau-reconnect-spinner { animation-duration: 3s; } }
+
+.sipau-reconnect-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; margin-top: 0.75rem; }
+.sipau-reconnect-btn {
+    display: none;
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--sipau-plano);
+    border-radius: var(--sipau-radius);
+    background: var(--sipau-plano);
+    color: #fff;
+    font: inherit; font-size: 0.8125rem; font-weight: 600;
+    cursor: pointer;
+}
+.sipau-reconnect-btn.is-quiet { background: transparent; color: var(--mud-palette-text-primary); border-color: var(--sipau-hairline-strong); }
+.components-reconnect-failed #sipau-reconnect-retry,
+.components-reconnect-failed #sipau-reconnect-reload,
+.components-reconnect-paused #sipau-reconnect-resume,
+.components-reconnect-resume-failed #sipau-reconnect-reload { display: inline-block; }

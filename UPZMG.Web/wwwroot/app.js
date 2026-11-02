@@ -473,6 +473,46 @@
         input.focus();
     });
 
+    // The reconnection notice (App.razor). Blazor sets its state as a class and reports it here.
+    var reconnect = document.getElementById('components-reconnect-modal');
+    if (reconnect) {
+        reconnect.addEventListener('components-reconnect-state-changed', function (e) {
+            switch (e.detail.state) {
+                case 'show':
+                case 'paused':
+                    if (!reconnect.open) { reconnect.showModal(); }
+                    break;
+                case 'hide':
+                    if (reconnect.open) { reconnect.close(); }
+                    break;
+                case 'rejected':
+                    // The server no longer has this screen: the only way back is a fresh page.
+                    location.reload();
+                    break;
+            }
+        });
+        document.getElementById('sipau-reconnect-retry').addEventListener('click', function () {
+            Blazor.reconnect().then(function (ok) { if (!ok) { location.reload(); } });
+        });
+        document.getElementById('sipau-reconnect-resume').addEventListener('click', function () {
+            Blazor.resumeCircuit().then(function (ok) { if (!ok) { location.reload(); } });
+        });
+        document.getElementById('sipau-reconnect-reload').addEventListener('click', function () { location.reload(); });
+    }
+
+    // Signing out ends the session for the whole browser, and each open tab keeps its own live
+    // connection, which would otherwise go on showing data. They are told, and reload into /login.
+    if ('BroadcastChannel' in window) {
+        var session = new BroadcastChannel('sipau-session');
+        session.onmessage = function (e) {
+            if (e.data === 'signed-out' && location.pathname !== '/login') { location.assign('/login'); }
+        };
+        document.addEventListener('submit', function (e) {
+            var action = e.target && e.target.getAttribute ? e.target.getAttribute('action') : null;
+            if (action && action.toLowerCase() === '/account/logout') { session.postMessage('signed-out'); }
+        });
+    }
+
     window.addEventListener('scroll', onScroll, { passive: true, capture: true });
     window.addEventListener('resize', onScroll, { passive: true });
     window.addEventListener('keydown', reveal, { passive: true });
