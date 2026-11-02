@@ -2,6 +2,8 @@
     Create / edit a system user. Returns the edited UserFormViewModel on OK.
     Enforces "one user = one role" (single MudSelect).
 *@
+@using UPZMG.Implementations.Users
+
 <MudDialog>
     <DialogContent>
         @* Why the previous attempt was refused, above the fields it refers to. *@
@@ -14,7 +16,7 @@
 
         <MudForm @ref="_form">
             <MudTextField @bind-Value="_model.UserName" Label="Nombre completo"
-                          Required="true" RequiredError="El nombre es obligatorio."
+                          Required="true" RequiredError="El nombre es obligatorio." MaxLength="100"
                           Immediate="true" Class="mb-3" />
 
             @* The EditUser contract carries no Email and the repository never
@@ -33,7 +35,7 @@
                        Required="true" RequiredError="Selecciona un rol." Class="mb-3">
                 @foreach (var role in Roles)
                 {
-                    <MudSelectItem T="string" Value="@role.Id.ToString()">@role.Name</MudSelectItem>
+                    <MudSelectItem T="string" Value="@role.Id.ToString()">@RoleLabels.Of(role.Name)</MudSelectItem>
                 }
             </MudSelect>
 
@@ -44,7 +46,7 @@
                           InputType="InputType.Password"
                           Required="@(!_model.IsEditing)" RequiredError="La contraseña es obligatoria."
                           Validation="@(new Func<string, string?>(ValidatePassword))"
-                          HelperText="@(_model.IsEditing ? "Déjala en blanco para conservar la contraseña actual." : "Mínimo 8 caracteres.")"
+                          HelperText="@(_model.IsEditing ? "Déjala en blanco para conservar la contraseña actual." : $"Mínimo {PasswordRules.MinimumLength} caracteres.")"
                           Immediate="true" Class="mb-3" />
 
             <MudSwitch T="bool" @bind-Value="_model.IsActive" Color="Color.Secondary" Label="Usuario activo" />
@@ -97,10 +99,7 @@
     {
         // Blank on edit means "unchanged"; blank on create means an account
         // nobody can sign in with.
-        if (string.IsNullOrWhiteSpace(password))
-            return _model.IsEditing ? null : "La contraseña es obligatoria.";
-
-        return password.Length < 8 ? "Debe tener al menos 8 caracteres." : null;
+        return string.IsNullOrWhiteSpace(password) && _model.IsEditing ? null : PasswordRules.Problem(password);
     }
 
     private async Task Submit()
