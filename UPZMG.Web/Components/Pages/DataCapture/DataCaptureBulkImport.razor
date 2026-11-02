@@ -18,6 +18,7 @@
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
+@inject ILogger<DataCaptureBulkImport> Logger
 
 <PageTitle>Importación masiva — SIPAU</PageTitle>
 
@@ -25,8 +26,8 @@
             Subtitle="Carga un CSV con una fila por registro, revisa qué filas se aceptan y confirma la importación" />
 
 <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4">
-    Para campos <b>ID</b> se acepta el alias/nombre del parametro, por ejemplo <b>INCO</b> para una carrera y <b>2026-EA</b> para un periodo.
-    La columna de lenguas indígenas puede quedar vacía; para varias lenguas usa una celda entre comillas, por ejemplo <b>"Nahuatl,Maya Yucateco"</b>; las lenguas válidas son las del catálogo.
+    En <b>Carrera</b> escribe la clave de la carrera, por ejemplo <b>INCO</b>, y en <b>Periodo de inicio</b> la del periodo, por ejemplo <b>2026-EA</b>.
+    La columna de lenguas indígenas puede quedar vacía; para varias lenguas usa una celda entre comillas, por ejemplo <b>"Nahuatl,Maya Yucateco"</b>. Las lenguas válidas son las del catálogo.
 </MudAlert>
 
 <MudPaper Elevation="1" Class="bulk-import-container pa-6">
@@ -87,12 +88,12 @@
 @if (_review.Count > 0)
 {
     <SectionCard Title="Revisión del archivo" Flush="true" FullHeight="false" Class="mt-4"
-                 Subtitle="@($"{Accepted} fila(s) aceptadas y {Refused} rechazadas. Todavía no se ha guardado nada.")"
+                 Subtitle="@($"{ReportUi.Plural(Accepted, "fila aceptada", "filas aceptadas")} y {ReportUi.Plural(Refused, "rechazada", "rechazadas")}. Todavía no se ha guardado nada.")"
                  Icon="@Icons.Material.Filled.FactCheck">
         <Actions>
             <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.CloudUpload"
                        Disabled="@(_busy || Accepted == 0)" OnClick="ImportAsync">
-                @(_busy ? "Importando…" : $"Importar {Accepted} fila(s) aceptadas")
+                @(_busy ? "Importando…" : $"Importar {ReportUi.Plural(Accepted, "fila aceptada", "filas aceptadas")}")
             </MudButton>
         </Actions>
         <ChildContent>
@@ -147,7 +148,7 @@
 @if (_imported is { Committed: true } imported)
 {
     <SectionCard Title="Importación confirmada" Flush="true" FullHeight="false" Class="mt-4"
-                 Subtitle="@($"Se guardaron {imported.Accepted} registro(s) en una sola operación.")"
+                 Subtitle="@(imported.Accepted == 1 ? "Se guardó 1 registro." : $"Se guardaron {imported.Accepted} registros en una sola operación.")"
                  Icon="@Icons.Material.Filled.TaskAlt">
         <Actions>
             <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="@ConsultUrl"
@@ -175,6 +176,7 @@
 
 @code {
     private const long MaxFileSize = 10 * 1024 * 1024;
+    private const string NotACsv = "No reconocemos este archivo como un CSV de la plantilla. Descarga la plantilla, copia tus datos en ella y en Excel usa Guardar como › CSV UTF-8.";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private MudForm _form = null!;
     private IBrowserFile? _file;
@@ -200,7 +202,7 @@
         [nameof(CreateStudent.CURP)] = "CURP",
         [nameof(CreateStudent.Name)] = "Nombre",
         [nameof(CreateStudent.MiddleName)] = "Segundo nombre",
-        [nameof(CreateStudent.LastName)] = "Apellido paterno",
+        [nameof(CreateStudent.LastName)] = "Apellidos",
         [nameof(CreateStudent.BirthDate)] = "Fecha de nacimiento",
         [nameof(CreateStudent.Gender)] = "Sexo",
         [nameof(CreateStudent.IndigenousLanguages)] = "Lenguas indígenas",
@@ -283,11 +285,17 @@
         if (!_form.IsValid || _file is null || string.IsNullOrWhiteSpace(_areaKey)) return;
         if (!string.Equals(Path.GetExtension(_file.Name), ".csv", StringComparison.OrdinalIgnoreCase))
         {
-            Snackbar.Add("Sólo se aceptan archivos .csv.", Severity.Error);
+            Snackbar.Add("Sólo se aceptan archivos .csv. En Excel usa Guardar como › CSV UTF-8.", Severity.Error);
             return;
         }
 
         Reset();
+        if (_file.Size > MaxFileSize)
+        {
+            _message = $"El archivo pesa {_file.Size / 1024.0 / 1024.0:0.0} MB y el máximo es {MaxFileSize / 1024 / 1024} MB. Divídelo en varios archivos.";
+            return;
+        }
+
         _busy = true;
         _careers = null;
         _periods = null;
@@ -323,7 +331,8 @@
         }
         catch (Exception ex) when (ex is IOException or CsvHelperException)
         {
-            _message = $"No se pudo leer el archivo: {ex.Message}";
+            Logger.LogWarning(ex, "A bulk import file could not be read.");
+            _message = "No se pudo leer el archivo. Vuelve a seleccionarlo; si sigue igual, copia tus datos en la plantilla.";
         }
         finally
         {
@@ -340,9 +349,11 @@
 
         var left = _review.Count - rows.Count;
         var confirmed = await DialogService.ShowMessageBoxAsync(
-            $"Importar {rows.Count} registro(s)",
-            $"Se guardarán las {rows.Count} filas aceptadas en una sola operación; si alguna falla al guardarse, no se guarda ninguna."
-            + (left > 0 ? $" Las {left} filas rechazadas no se importan." : string.Empty),
+            rows.Count == 1 ? "Importar 1 registro" : $"Importar {rows.Count} registros",
+            (rows.Count == 1
+                ? "Se guardará la fila aceptada."
+                : $"Se guardarán las {rows.Count} filas aceptadas en una sola operación; si alguna falla al guardarse, no se guarda ninguna.")
+            + (left switch { 0 => string.Empty, 1 => " La fila rechazada no se importa.", _ => $" Las {left} filas rechazadas no se importan." }),
             yesText: "Importar", cancelText: "Cancelar");
         if (confirmed != true) return;
 
@@ -358,7 +369,7 @@
                 _imported = result;
                 _review = [];
                 _pending = [];
-                Snackbar.Add($"Se importaron {result.Accepted} registro(s).", Severity.Success);
+                Snackbar.Add(result.Accepted == 1 ? "Se importó 1 registro." : $"Se importaron {result.Accepted} registros.", Severity.Success);
                 return;
             }
 
@@ -400,24 +411,35 @@
             .ToArray();
 
         await using var stream = _file!.OpenReadStream(MaxFileSize);
-        using var reader = new StreamReader(stream);
+        using var buffer = new MemoryStream();
+        await stream.CopyToAsync(buffer);
+
+        if (CsvText.IsBinary(buffer.GetBuffer().AsSpan(0, (int)buffer.Length)))
+            throw new InvalidOperationException(NotACsv);
+
+        using var reader = new StringReader(CsvText.Decode(buffer.ToArray()));
         using var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)
         {
             HasHeaderRecord = true,
             MissingFieldFound = null,
             BadDataFound = null,
             TrimOptions = TrimOptions.Trim,
+            // Excel writes ";" when the computer's list separator is ";".
+            DetectDelimiter = true,
         });
 
         if (!await csv.ReadAsync() || !csv.ReadHeader() || csv.HeaderRecord is null)
-            throw new InvalidOperationException("El CSV debe tener una fila de encabezados.");
+            throw new InvalidOperationException("El archivo está vacío: debe tener una fila de encabezados y una fila por registro.");
 
         var headers = csv.HeaderRecord.Select(h => h.Trim()).ToList();
         var headerMap = properties.ToDictionary(
             property => property.Name,
             property => FindHeader(requestType, property.Name, headers),
             StringComparer.OrdinalIgnoreCase);
+
         var missing = headerMap.Where(pair => pair.Value is null).Select(pair => CsvHeaderFor(requestType, pair.Key)).ToList();
+        if (missing.Count == headerMap.Count)
+            throw new InvalidOperationException(NotACsv);
         if (missing.Count > 0)
             throw new InvalidOperationException($"Faltan columnas requeridas: {string.Join(", ", missing)}.");
 
@@ -430,14 +452,11 @@
             var line = csv.Context.Parser?.Row ?? readable.Count + unreadable.Count + 2;
             var values = properties.ToDictionary(p => p.Name, p => csv.GetField(headerMap[p.Name]!) ?? string.Empty, StringComparer.OrdinalIgnoreCase);
 
-            try
-            {
-                readable.Add((line, await BuildRequestAsync(requestType, properties, values, requesterKey)));
-            }
-            catch (FormatException ex)
-            {
-                unreadable.Add(new ImportRowResult(line, KeyOf(values), NameOf(values), [ex.Message]));
-            }
+            var (request, problems) = await BuildRequestAsync(requestType, properties, values, requesterKey);
+            if (problems.Count == 0)
+                readable.Add((line, request));
+            else
+                unreadable.Add(new ImportRowResult(line, KeyOf(values), NameOf(values), problems));
         }
 
         return (readable, unreadable);
@@ -456,7 +475,11 @@
     {
         var spanishHeader = CsvHeaderFor(requestType, propertyName);
         return headers.FirstOrDefault(header => string.Equals(NormalizeHeader(header), NormalizeHeader(spanishHeader), StringComparison.Ordinal))
-            ?? headers.FirstOrDefault(header => string.Equals(NormalizeHeader(header), NormalizeHeader(propertyName), StringComparison.Ordinal));
+            ?? headers.FirstOrDefault(header => string.Equals(NormalizeHeader(header), NormalizeHeader(propertyName), StringComparison.Ordinal))
+            // The column's name in earlier copies of the template: it always held both surnames.
+            ?? (propertyName == nameof(CreateStudent.LastName)
+                ? headers.FirstOrDefault(header => NormalizeHeader(header) == "apellidopaterno")
+                : null);
     }
 
     private static string CsvHeaderFor(Type requestType, string propertyName) =>
@@ -472,16 +495,35 @@
             .ToLowerInvariant();
     }
 
-    private async Task<object> BuildRequestAsync(Type requestType, PropertyInfo[] properties, Dictionary<string, string> values, Guid requesterKey)
+    // Every problem of the row at once: stopping at the first one makes the person fix a file once
+    // per mistake.
+    private async Task<(object Request, List<string> Problems)> BuildRequestAsync(Type requestType, PropertyInfo[] properties, Dictionary<string, string> values, Guid requesterKey)
     {
         var request = Activator.CreateInstance(requestType)!;
         requestType.GetProperty(nameof(CreateStudent.RequesterKey))!.SetValue(request, requesterKey);
+
+        var problems = new List<string>();
         foreach (var property in properties)
         {
-            var value = await ConvertValueAsync(requestType, property.Name, property.PropertyType, values[property.Name], values);
-            property.SetValue(request, value);
+            // A quote left open swallows the lines below it into one cell, and those rows would
+            // disappear from the review without a word.
+            if (values[property.Name].IndexOfAny(['\n', '\r']) >= 0)
+            {
+                problems.Add($"La celda «{CsvHeaderFor(requestType, property.Name)}» ocupa varias líneas: revisa que sus comillas cierren.");
+                continue;
+            }
+
+            try
+            {
+                property.SetValue(request, await ConvertValueAsync(requestType, property.Name, property.PropertyType, values[property.Name], values));
+            }
+            catch (FormatException ex)
+            {
+                problems.Add(ex.Message);
+            }
         }
-        return request;
+
+        return (request, problems);
     }
 
     /// <summary>
@@ -549,14 +591,16 @@
     // The enum's own name ("UnionLibre") or the label the screens show ("Unión libre").
     private static object ParseEnum(Type enumType, string column, string value)
     {
+        var options = string.Join(", ", Enum.GetValues(enumType).Cast<Enum>().Select(option => option.Label()));
+        if (value.Length == 0) throw new FormatException($"Falta «{column}». Los valores válidos son: {options}.");
+
         var wanted = Plain(value).Replace(" ", "");
         foreach (Enum option in Enum.GetValues(enumType))
         {
             if (Plain(option.ToString()) == wanted || Plain(option.Label()).Replace(" ", "") == wanted) return option;
         }
 
-        var valid = string.Join(", ", Enum.GetValues(enumType).Cast<Enum>().Select(option => option.Label()));
-        throw new FormatException($"'{value}' no es un valor de «{column}». Los válidos son: {valid}.");
+        throw new FormatException($"'{value}' no es un valor de «{column}». Los válidos son: {options}.");
     }
 
     private static string Plain(string value)
@@ -570,12 +614,17 @@
     {
         "hombre" or "h" => Gender.H,
         "mujer" or "m" => Gender.M,
-        _ => throw new FormatException($"El sexo '{value}' no es válido. Usa 'Hombre' o 'Mujer'.")
+        "" => throw new FormatException("Falta el sexo: usa Hombre o Mujer."),
+        _ => throw new FormatException($"El sexo '{value}' no es válido: usa Hombre o Mujer.")
     };
 
     private async Task<Guid> ResolveGuidAsync(string propertyName, string value, IReadOnlyDictionary<string, string> rowValues)
     {
         if (Guid.TryParse(value, out var id)) return id;
+
+        // Left empty on purpose: the API's review says "falta" for each one, with the row's other reasons.
+        if (value.Length == 0 && propertyName is nameof(CreateStudent.CareerId) or nameof(CreateStudent.PeriodIdStart)) return Guid.Empty;
+
         if (propertyName == nameof(CreateStudent.CareerId))
         {
             var career = (await CareersAsync()).FirstOrDefault(x =>

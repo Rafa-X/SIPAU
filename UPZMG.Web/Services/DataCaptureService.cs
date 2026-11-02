@@ -25,7 +25,7 @@ public sealed class DataCaptureService(ISecurityService securityService): IDataC
     public IReadOnlyList<SelectOption> BulkAreas { get; } = new List<SelectOption>
     {
         new("students", "Alumnos"),
-        new("teachers", "Docentes / RRHH"),
+        new("teachers", "Docentes y personal"),
         //new("classgroups", "Grupos de clase"),
     };
 
@@ -79,7 +79,7 @@ public sealed class DataCaptureService(ISecurityService securityService): IDataC
         {
             HttpStatusCode.Forbidden => "Tu área no puede importar esta información.",
             HttpStatusCode.Unauthorized => "La sesión expiró. Vuelve a iniciar sesión.",
-            _ => "El API no respondió; no se guardó nada. Intenta de nuevo en unos minutos.",
+            _ => "El sistema no respondió; no se guardó nada. Intenta de nuevo en unos minutos.",
         });
     }
 
