@@ -10,9 +10,9 @@
 @inject IIntelligenceService Ai
 @inject IChartsService ChartsSvc
 
-<PageTitle>Gráficas de Alumnos - SIPAU</PageTitle>
+<PageTitle>Gráficas de alumnos — SIPAU</PageTitle>
 
-<PageHeader Title="Gráficas de Alumnos" BackHref="/charts" />
+<PageHeader Title="Gráficas de alumnos" BackHref="/charts" />
 
 @if (_loading)
 {
@@ -138,7 +138,7 @@ else
                     </span>
                     @if (_graded.Count < _periods.Count)
                     {
-                        <text> · @(_periods.Count - _graded.Count) periodo(s) sin kardex capturado quedan fuera</text>
+                        <text> · @ReportUi.Plural(_periods.Count - _graded.Count, "periodo sin kardex capturado queda fuera", "periodos sin kardex capturado quedan fuera")</text>
                     }
                 }
             </Footer>

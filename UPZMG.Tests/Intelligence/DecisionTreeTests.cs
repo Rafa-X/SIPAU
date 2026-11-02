@@ -210,7 +210,7 @@ public class DecisionTreeTests
         {
             var decision = tree.Decide(sample.Features);
 
-            var rule = Assert.Single(rules, r => r.Condition == string.Join(" y ", decision.Conditions));
+            var rule = Assert.Single(rules, r => r.Condition == string.Join(" · ", decision.Conditions));
             Assert.Equal(tree.Predict(sample.Features), decision.Probability);
             Assert.Equal(rule.Probability, decision.Probability);
             Assert.Equal(rule.SampleCount, decision.Support);
@@ -218,7 +218,7 @@ public class DecisionTreeTests
         }
 
         // The k / n behind each percentage are the training samples that reach that leaf.
-        foreach (var leaf in samples.GroupBy(s => string.Join(" y ", tree.Decide(s.Features).Conditions)))
+        foreach (var leaf in samples.GroupBy(s => string.Join(" · ", tree.Decide(s.Features).Conditions)))
         {
             var decision = tree.Decide(leaf.First().Features);
             Assert.Equal(leaf.Count(), decision.Support);

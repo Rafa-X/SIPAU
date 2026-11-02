@@ -54,13 +54,13 @@ public sealed class ReportsService(ISecurityService securityService) : IReportsS
         if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
         {
             return JsonSerializer.Deserialize<TemplateSaveResult>(response.Result, ResponseOptions)
-                ?? TemplateSaveResult.Refused("El API respondió algo que no se pudo leer.");
+                ?? TemplateSaveResult.Refused("La respuesta del sistema no se pudo leer. Vuelve a intentarlo; si sigue así, avisa a Tecnologías.");
         }
 
         return TemplateSaveResult.Refused(response.StatusCode switch
         {
             HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized => "Sólo un administrador puede editar plantillas.",
-            _ => "No se pudo guardar: el API no respondió.",
+            _ => "No se pudo guardar: el sistema no respondió.",
         });
     }
 

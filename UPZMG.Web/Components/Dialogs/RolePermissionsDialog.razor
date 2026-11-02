@@ -17,7 +17,7 @@
             {
                 <MudCheckBox T="bool" Value="@_selected.Contains(permission.Id)"
                              ValueChanged="@(v => Toggle(permission.Id, v))"
-                             Label="@permission.Name" Color="Color.Secondary" Dense="true" />
+                             Label="@(permission.DisplayName ?? permission.Name)" title="@permission.Description" Color="Color.Secondary" Dense="true" />
             }
         }
     </DialogContent>

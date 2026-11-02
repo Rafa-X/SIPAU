@@ -33,7 +33,7 @@
                     <MudDataGrid T="Role" Items="RolesFiltered" Hover="true" Dense="true" Elevation="0"
                                  Filterable="false" SortMode="SortMode.Multiple">
                         <Columns>
-                            <PropertyColumn Property="x => x.Name" Title="Rol" />
+                            <PropertyColumn Property="x => RoleLabels.Of(x.Name)" Title="Rol" />
                             <TemplateColumn Title="Acciones" CellClass="sipau-cell-end" HeaderClass="sipau-cell-end" Sortable="false">
                                 <CellTemplate>
                                     <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary"
@@ -67,7 +67,7 @@
 
     <MudItem xs="12" md="6">
         <SectionCard Title="Permisos"
-                     Subtitle="Los define el sistema: cada endpoint y cada pantalla comparan ese nombre exacto. Lo que se administra es qué roles los tienen."
+                     Subtitle="Los define el sistema y no se crean ni se renombran aquí. Lo que se administra es qué roles los tienen."
                      Flush="true">
             <Actions>
                 <MudButton Variant="Variant.Filled" Color="Color.Secondary" Disabled="_isRestoring"
@@ -102,7 +102,7 @@
                                 <CellTemplate>
                                     @if (IsSystemPermission(context.Item))
                                     {
-                                        <MudTooltip Text="Renombrarlo o borrarlo dejaría sin efecto la autorización que lo revisa.">
+                                        <MudTooltip Text="Es parte del sistema: renombrarlo o borrarlo dejaría sin protección las pantallas que lo usan.">
                                             <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Default"
                                                      Icon="@Icons.Material.Filled.Lock">Del sistema</MudChip>
                                         </MudTooltip>
@@ -309,14 +309,14 @@
 
             var message = result.Added == 0 && result.Updated == 0
                 ? "El catálogo ya estaba completo."
-                : $"Catálogo actualizado: {result.Added} permiso(s) agregado(s) y {result.Updated} redactado(s) de nuevo.";
+                : $"Catálogo actualizado: {ReportUi.Plural(result.Added, "permiso agregado", "permisos agregados")} y {ReportUi.Plural(result.Updated, "redactado de nuevo", "redactados de nuevo")}.";
 
             Snackbar.Add(message, Severity.Success);
 
             if (result.Unknown > 0)
             {
                 Snackbar.Add(
-                    $"Hay {result.Unknown} permiso(s) que el sistema no revisa: no otorgan nada y pueden eliminarse.",
+                    $"{(result.Unknown == 1 ? "Hay 1 permiso que el sistema no revisa: no otorga nada y puede eliminarse." : $"Hay {result.Unknown} permisos que el sistema no revisa: no otorgan nada y pueden eliminarse.")}",
                     Severity.Info);
             }
         }

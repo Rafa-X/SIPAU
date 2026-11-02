@@ -24,15 +24,15 @@ public class PeriodsController(
     public async Task<IActionResult> CreatePeriod([FromBody] CreatePeriod request)
     {
         if (request.EndDate <= request.StartDate)
-            return BadRequest("EndDate must be after StartDate.");
+            return BadRequest("El fin del periodo debe ser posterior a su inicio.");
 
         // The screen asks for both and for a four-digit year; a direct call stored a period with
         // no code, or one whose year read "20X7" in every listing.
         if (string.IsNullOrWhiteSpace(request.Code) || string.IsNullOrWhiteSpace(request.Period))
-            return BadRequest("Code and Period are required.");
+            return BadRequest("Indica el código y el periodo.");
 
         if (request.SchoolCycle.Trim() is not { Length: 4 } year || !year.All(char.IsAsciiDigit))
-            return BadRequest("SchoolCycle must be a four-digit year.");
+            return BadRequest("El año del periodo debe tener cuatro dígitos, por ejemplo 2026.");
 
         try
         {

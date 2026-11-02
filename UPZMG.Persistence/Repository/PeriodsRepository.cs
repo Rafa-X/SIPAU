@@ -26,7 +26,7 @@ public class PeriodsRepository(AppDBContext db)
         var code = request.Code.Trim();
         var exist = await db.Periods.AnyAsync(p => p.IdCode == code);
         if (exist)
-            throw new InvalidOperationException("A period with the same code already exists.");
+            throw new InvalidOperationException("Ya existe un periodo con ese código.");
 
         // New periods start inactive; activating one is a separate, explicit step.
         var period = new Periods

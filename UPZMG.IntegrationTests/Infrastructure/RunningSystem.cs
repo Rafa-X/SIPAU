@@ -85,19 +85,22 @@ public sealed partial class RunningSystem(TestDatabase database) : IAsyncDisposa
         { BaseAddress = WebAddress, Timeout = TimeSpan.FromSeconds(120) };
 
     /// <summary>Signs in through the Web's own form, antiforgery token included, as a person does.</summary>
-    public async Task<HttpResponseMessage> SignInAsync(HttpClient browser, string email, string password)
+    public async Task<HttpResponseMessage> SignInAsync(HttpClient browser, string email, string password, string? returnUrl = null)
     {
         var form = await browser.GetStringAsync("login");
         var token = AntiforgeryInput().Match(form) is { Success: true } input
             ? InputValue().Match(input.Value).Groups[1].Value
             : throw new InvalidOperationException("La página de inicio de sesión no trae el token antifalsificación.");
 
-        return await browser.PostAsync("Account/Login", new FormUrlEncodedContent(new Dictionary<string, string>
+        var fields = new Dictionary<string, string>
         {
             ["Email"] = email,
             ["Password"] = password,
             ["__RequestVerificationToken"] = WebUtility.HtmlDecode(token),
-        }));
+        };
+        if (returnUrl is not null) fields["ReturnUrl"] = returnUrl;
+
+        return await browser.PostAsync("Account/Login", new FormUrlEncodedContent(fields));
     }
 
     private static Process Launch(string directory, string dll, string name, Dictionary<string, string> environment)
