@@ -2,6 +2,8 @@
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 @inject IAuthorizationService Authorization
+@inject AuthenticationStateProvider AuthProvider
+@inject ApiClient Api
 @using UPZMG.Implementations.Intelligence
 @inject IIntelligenceService Ai
 @inject ISnackbar Snackbar
@@ -86,7 +88,7 @@
                 @if (_alertsLoading)
                 {
                     <div class="px-4 py-3 sipau-alert-panel">
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">Consultando las series…</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Revisando los indicadores…</MudText>
                     </div>
                 }
                 else if (_alertsFailed)
@@ -114,7 +116,7 @@
                         <MudText Typo="Typo.caption" Color="Color.Secondary">
                             @(_inbox.Dismissed > 0
                                 ? "No te quedan alertas en la lista: quitaste las que se detectaron."
-                                : "No se detectaron alertas en el corte consultado.")
+                                : "No hay alertas: los indicadores están dentro de lo habitual.")
                         </MudText>
                     </div>
                 }
@@ -122,11 +124,15 @@
                 {
                     var a = item.Alert;
                     <div class="@($"sipau-alert-panel sipau-alert-row{(item.Seen ? " is-seen" : null)}")">
-                        <MudIcon Icon="@SeverityIcon(a.Severity)" Size="Size.Small" Color="@SeverityColor(a.Severity)" />
+                        <MudIcon Icon="@SeverityIcon(a.Recent ? a.Severity : "info")" Size="Size.Small" Color="@SeverityColor(a.Recent ? a.Severity : "info")" />
                         <div class="sipau-alert-row-text">
                             <div class="sipau-alert-row-title">
                                 @a.Title
-                                @if (!item.Seen)
+                                @if (!a.Recent)
+                                {
+                                    <span class="sipau-alert-old" title="Pasó hace más de un ciclo escolar">Histórica</span>
+                                }
+                                else if (!item.Seen)
                                 {
                                     <span class="sipau-alert-new">Nueva</span>
                                 }
@@ -293,6 +299,18 @@
         await LoadNavTargetsAsync();
     }
 
+    // Runs on every navigation, because each one hands the layout a new Body. The answer is cached
+    // for seconds, so this is not one more call per screen.
+    protected override async Task OnParametersSetAsync()
+    {
+        var state = await AuthProvider.GetAuthenticationStateAsync();
+        if (Guid.TryParse(state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId)
+            && await Api.IsSuspendedAsync(userId))
+        {
+            Nav.NavigateTo("/Account/Suspended", forceLoad: true);
+        }
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
@@ -388,7 +406,7 @@
             }
 
             var when = _alertsReadAtUtc?.ToLocalTime();
-            if (when is null) return "Desviaciones detectadas por el modelo estadístico";
+            if (when is null) return "Cambios fuera de lo habitual en los indicadores";
 
             var count = _inbox.Alerts.Count == 1 ? "1 alerta" : $"{_inbox.Alerts.Count} alertas";
             var unseen = Unseen == 0 ? "todas vistas" : Unseen == 1 ? "1 sin ver" : $"{Unseen} sin ver";
@@ -533,7 +551,7 @@
 
     // ── Identity helpers ────────────────────────────────────────────────────
     private static string Email(ClaimsPrincipal u) => u.FindFirst(ClaimTypes.Email)?.Value ?? string.Empty;
-    private static string Role(ClaimsPrincipal u) => u.FindFirst(ClaimTypes.Role)?.Value ?? "—";
+    private static string Role(ClaimsPrincipal u) => RoleLabels.Of(u.FindFirst(ClaimTypes.Role)?.Value);
 
     /// <summary>
     /// The name on the account, or the address when there is none. It used to be invented from

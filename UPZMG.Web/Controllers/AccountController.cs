@@ -11,12 +11,14 @@ using UPZMG.Web.Services;
 namespace UPZMG.Web.Controllers;
 
 public class AccountController(
-    ISecurityService securityService, 
-    ISecurityEventLogger securityLogger, 
+    ISecurityService securityService,
+    ISecurityEventLogger securityLogger,
+    ApiClient apiClient,
     IConfiguration configuration) : Controller
 {
     private readonly ISecurityService _securityService = securityService;
     private readonly ISecurityEventLogger _securityLogger = securityLogger;
+    private readonly ApiClient _apiClient = apiClient;
     private readonly IConfiguration _configuration = configuration;
 
     // The login page (GET) is now a Blazor component at /login. This controller
@@ -26,11 +28,11 @@ public class AccountController(
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Login(LoginViewModel model)
-    {   
+    {
         try{
             // If the user is already authenticated, redirect to the dashboard
             if (User.Identity?.IsAuthenticated == true)
-                return LocalRedirect("/dashboard");
+                return AfterSignIn(model.ReturnUrl);
 
             // If the user is not authenticated, proceed with login logic
             var claims = new List<Claim>();
@@ -47,7 +49,7 @@ public class AccountController(
             {
                 _securityLogger.LogLoginRejected(email, "Missing credentials");
                 model.ErrorMessage = "Email y contraseña son requeridos.";
-                return Redirect("/login?error=1");
+                return BackToLogin("1", model.ReturnUrl);
             }
 
             var sharedSecret = _configuration["InternalAuth:WebSharedSecret"]
@@ -66,14 +68,20 @@ public class AccountController(
             {
                 _securityLogger.LogLoginRejected(email, "Sign-in temporarily blocked after repeated failures");
                 var minutes = Math.Max(1, (int)Math.Ceiling(authenticatedUser.RetryAfterSeconds / 60.0));
-                return Redirect($"/login?error=espera&minutos={minutes}");
+                return BackToLogin($"espera&minutos={minutes}", model.ReturnUrl);
+            }
+
+            if (authenticatedUser is { Unavailable: true })
+            {
+                _securityLogger.LogLoginRejected(email, "The API did not answer the sign-in or refused this Web");
+                return BackToLogin("servicio", model.ReturnUrl);
             }
 
             if (authenticatedUser is null || authenticatedUser.UserId == Guid.Empty || string.IsNullOrWhiteSpace(authenticatedUser.RoleName))
             {
                 _securityLogger.LogLoginRejected(email, "User not found or inactive");
                 model.ErrorMessage = "Credenciales inválidas.";
-                return Redirect("/login?error=1");
+                return BackToLogin("1", model.ReturnUrl);
             }
 
             var claimEmail = authenticatedUser.Email?.Trim() ?? string.Empty;
@@ -83,7 +91,7 @@ public class AccountController(
             {
                 _securityLogger.LogLoginRejected(email, "Authenticated user returned invalid claim values");
                 model.ErrorMessage = "Credenciales inválidas.";
-                return Redirect("/login?error=1");
+                return BackToLogin("1", model.ReturnUrl);
             }
 
             // 2) Create cookie claims from API-authenticated user
@@ -109,10 +117,23 @@ public class AccountController(
         {
             _securityLogger.LogLoginRejected(model.Email ?? string.Empty, $"Exception during login: {ex.Message}");
             model.ErrorMessage = "Ocurrió un error durante el inicio de sesión. Por favor, inténtelo de nuevo.";
-            return Redirect("/login?error=1");
+            return BackToLogin("servicio", model.ReturnUrl);
         }
-        return LocalRedirect("/dashboard");
+        return AfterSignIn(model.ReturnUrl);
     }
+
+    // Only an address of this site, and never one of the two pages that make no sense to come back to.
+    private IActionResult AfterSignIn(string? returnUrl) =>
+        LocalRedirect(Url.IsLocalUrl(returnUrl)
+            && !returnUrl!.StartsWith("/login", StringComparison.OrdinalIgnoreCase)
+            && !returnUrl.StartsWith("/no-encontrada", StringComparison.OrdinalIgnoreCase)
+                ? returnUrl
+                : "/dashboard");
+
+    private RedirectResult BackToLogin(string error, string? returnUrl) =>
+        Redirect(Url.IsLocalUrl(returnUrl)
+            ? $"/login?error={error}&ReturnUrl={Uri.EscapeDataString(returnUrl!)}"
+            : $"/login?error={error}");
 
     [Authorize]
     [HttpPost]
@@ -127,6 +148,22 @@ public class AccountController(
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         _securityLogger.LogLogout(userId, email);
         return LocalRedirect("/login");
+    }
+
+    // Where the shell sends an account the API reports as suspended. Its cookie is still valid, so
+    // without this the person stays signed in looking at screens whose every call is refused. It
+    // asks the API again: being linked here must not be enough to sign anybody out.
+    [Authorize]
+    [HttpGet]
+    public async Task<IActionResult> Suspended()
+    {
+        var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userIdValue, out var userId) || !await _apiClient.IsSuspendedAsync(userId, fresh: true))
+            return LocalRedirect("/dashboard");
+
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        _securityLogger.LogLogout(userId, User.FindFirstValue(ClaimTypes.Email));
+        return LocalRedirect("/login?error=baja");
     }
 
     // Authorization is enforced by Blazor's AuthorizeRouteView; if the cookie

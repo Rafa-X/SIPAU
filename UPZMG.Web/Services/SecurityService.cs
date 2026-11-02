@@ -46,7 +46,9 @@ public sealed class SecurityService(
             };
         }
 
-        return new AccountWebLoginResponse();
+        // Only a 401 says the credentials are wrong. Anything else means nobody checked them, and
+        // saying "revisa tu contraseña" then sends the person after a problem they do not have.
+        return new AccountWebLoginResponse { Unavailable = response.StatusCode != HttpStatusCode.Unauthorized };
     }
 #endregion
 

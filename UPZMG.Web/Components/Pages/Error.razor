@@ -3,33 +3,32 @@
 
 <PageTitle>Error — SIPAU</PageTitle>
 
-<h1 class="text-danger">Error.</h1>
-<h2 class="text-danger">Ocurrió un error al procesar la solicitud.</h2>
+<PageHeader Title="No pudimos completar lo que pediste"
+            Subtitle="Fue un error del sistema, no algo que hayas hecho" />
 
-@if (ShowRequestId)
-{
-    <p>
-        <strong>Request ID:</strong> <code>@RequestId</code>
-    </p>
-}
-
-<h3>Modo de desarrollo</h3>
-<p>
-    Cambiar al ambiente <strong>Development</strong> mostrará información más detallada sobre el error ocurrido.
-</p>
-<p>
-    <strong>El ambiente Development no debe habilitarse en aplicaciones desplegadas.</strong>
-    Puede exponer información sensible de las excepciones a los usuarios finales.
-</p>
+<SectionCard FullHeight="false">
+    <EmptyState Icon="@Icons.Material.Filled.ReportProblem"
+                Title="Vuelve a intentarlo en un momento"
+                Description="@Advice">
+        <MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/dashboard"
+                   StartIcon="@Icons.Material.Filled.SpaceDashboard">
+            Ir al Tablero de Control
+        </MudButton>
+    </EmptyState>
+</SectionCard>
 
 @code {
     // Reached via app.UseExceptionHandler("/error") when an unhandled exception occurs.
     [CascadingParameter]
     private HttpContext? HttpContext { get; set; }
 
-    private string? RequestId { get; set; }
-    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+    private string? _folio;
+
+    // The trace id goes in the message because it is what finds this error in the log.
+    private string Advice => string.IsNullOrEmpty(_folio)
+        ? "Si sigue pasando, avisa a Tecnologías."
+        : $"Si sigue pasando, avisa a Tecnologías y menciona el folio {_folio}.";
 
     protected override void OnInitialized() =>
-        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+        _folio = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
 }

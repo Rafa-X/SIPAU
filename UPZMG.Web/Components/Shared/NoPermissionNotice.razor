@@ -1,5 +1,7 @@
 @using System.Security.Claims
 @inject ApiClient Api
+@inject NavigationManager Nav
+@inject Microsoft.Extensions.Caching.Memory.IMemoryCache Cache
 
 @*
     Shown when the signed-in account may not open a screen.
@@ -22,7 +24,7 @@
         <EmptyState Icon="@Icons.Material.Filled.CloudOff"
                     Title="No pudimos verificar tus permisos"
                     Description="El servicio que resuelve los permisos no respondió, así que esta pantalla no puede decir si tu cuenta tiene acceso o no. Vuelve a intentarlo en un momento; si sigue así, avisa a Tecnologías.">
-            <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="CheckAsync"
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="RetryAsync"
                        StartIcon="@Icons.Material.Filled.Refresh">
                 Volver a intentar
             </MudButton>
@@ -46,6 +48,17 @@
 
     protected override Task OnInitializedAsync() => CheckAsync();
 
+    // The service answers again, so what was refused for lack of an answer gets a fresh look. Staying
+    // here would now tell somebody who may well have the permission that their area does not.
+    private async Task RetryAsync()
+    {
+        await CheckAsync();
+        if (_unverified) return;
+
+        var onRefusalPage = new Uri(Nav.Uri).AbsolutePath.Equals("/sin-permiso", StringComparison.OrdinalIgnoreCase);
+        Nav.NavigateTo(onRefusalPage ? "/dashboard" : Nav.Uri, forceLoad: true);
+    }
+
     private async Task CheckAsync()
     {
         var user = (await AuthState).User;
@@ -58,7 +71,7 @@
         try
         {
             await Api.GetPermissionsSnapshotAsync(userId);
-            _unverified = false;
+            _unverified = Cache.TryGetValue(WebPermissionHandler.FailedCheckKey(userId), out _);
         }
         catch
         {

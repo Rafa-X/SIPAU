@@ -14,4 +14,7 @@ public sealed class AccountWebLoginResponse
 
 	/// <summary>How long the account has to wait, as the API reported it.</summary>
 	public int RetryAfterSeconds { get; init; }
+
+	/// <summary>The credentials could not be checked at all: the API did not answer, or refused this Web.</summary>
+	public bool Unavailable { get; init; }
 }

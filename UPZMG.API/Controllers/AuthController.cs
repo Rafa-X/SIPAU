@@ -37,7 +37,10 @@ public class AuthController(
         if (string.IsNullOrWhiteSpace(expected) || req.SharedSecret != expected)
         {
             _securityLogger.LogTokenExchangeRejected(Guid.Empty, "Web login shared secret mismatch or missing");
-            return Unauthorized();
+
+            // Not the 401 of a wrong password: this is the Web misconfigured, and the person trying
+            // to sign in must not be told that their password is the problem.
+            return Forbid();
         }
 
         var email = req.Email?.Trim() ?? string.Empty;
@@ -100,10 +103,17 @@ public class AuthController(
         var user = await usersRepository.GetSystemUserByIdAsync(req.UserId);
 
         // A suspended account keeps its web cookie until it expires, so without this check it
-        // would go on exchanging it for fresh tokens after the suspension.
-        if (user is null || user.Id == Guid.Empty || user.Role is null || !user.IsActive)
+        // would go on exchanging it for fresh tokens after the suspension. The 403 is how the Web
+        // tells a suspended account, which it signs out, from a request that simply failed.
+        if (user is { IsActive: false } && user.Id != Guid.Empty)
         {
-            _securityLogger.LogTokenExchangeRejected(req.UserId, "User not found or inactive");
+            _securityLogger.LogTokenExchangeRejected(req.UserId, "User inactive");
+            return Forbid();
+        }
+
+        if (user is null || user.Id == Guid.Empty || user.Role is null)
+        {
+            _securityLogger.LogTokenExchangeRejected(req.UserId, "User not found");
             return Unauthorized();
         }
 
@@ -149,6 +159,12 @@ public class AuthController(
 
         if (!Guid.TryParse(userIdValue, out var userId))
             return Unauthorized();
+
+        // A token issued before the suspension is still valid for this endpoint, and reporting the
+        // role's permissions would open screens whose every call is then refused.
+        var user = await usersRepository.GetSystemUserByIdAsync(userId);
+        if (user is { IsActive: false } && user.Id != Guid.Empty)
+            return Forbid();
 
         var userPermissions = await securityRepository.GetSystemUserPermissionsAsync(userId);
 
