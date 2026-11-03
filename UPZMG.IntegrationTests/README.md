@@ -51,13 +51,20 @@ La Web de las pruebas distribuidas sirve HTTPS con el certificado de desarrollo 
 | `AccessControlTests.AnAreaCannotWriteIntoAnotherAreasRecords` | Recursos Humanos no puede registrar ni importar alumnos; Control Escolar no puede registrar empleados. Nada queda guardado. |
 | `AccessControlTests.AWithdrawnPermissionAppliesOnTheVeryNextRequest` | Un permiso retirado aplica en la siguiente petición, con el mismo token: la API consulta la base en cada petición. |
 | `AccessControlTests.ASuspendedAccountLosesAccessAndCannotGetANewToken` | Una cuenta suspendida pierde el acceso y la API ya no le emite tokens; su 403 es lo que permite a la Web distinguirla de un fallo. |
+| `AccessControlTests.APermissionAloneOpensWhatItsDescriptionPromises` | Un rol con un solo permiso abre lo que ese permiso describe, sin depender de otro, y nada más. |
 | `AccessControlTests.OnlyAProcessThatKnowsTheSharedSecretCanSignSomebodyIn` | Sólo un proceso con el secreto compartido puede autenticar a alguien en la API. Responde 403, no el 401 de una contraseña equivocada. |
 | `ConcurrencyTests.TwelveSimultaneousCapturesOfOneStudentStoreItOnce` | Doce capturas simultáneas de la misma matrícula: una se guarda y once reciben 409. Ninguna termina en 500. |
+| `ConcurrencyTests.TwoAdministratorsSuspendingEachOtherLeaveOneStanding` | Dos administradores que se suspenden mutuamente a la vez: sólo una baja procede y siempre queda uno activo. |
+| `ConcurrencyTests.TwelveRequestsForOneSlotCreateOneGroup` | Doce peticiones por el mismo espacio y hora: se crea un grupo y once reciben 409. |
 | `ConcurrencyTests.ColdRequestsForTheModelShareOneTraining` | Ocho peticiones simultáneas con el modelo sin entrenar comparten un solo entrenamiento. |
 | `ConcurrencyTests.RetrainingsWhileOthersReadLeaveOneConsistentModel` | Reentrenamientos concurrentes con lectores: todo responde 200 y el resumen coincide con el listado. |
 | `BulkImportTests.TheCheckWritesNothingAndGivesEveryRowItsReason` | La revisión de un CSV no escribe nada y explica cada fila rechazada: dato faltante, duplicado en el archivo, duplicado en la base, lengua desconocida, CURP corta. |
 | `BulkImportTests.ConfirmedRowsAreStoredTogetherAndListedBack` | Las filas confirmadas se guardan juntas y se devuelven como confirmación. Repetir el archivo no duplica nada. |
 | `BulkImportTests.AFailureHalfwayThroughTheWriteLeavesNothingBehind` | Si la base rechaza una fila a mitad de la escritura, se revierte el lote completo. |
+| `ReportLifecycleTests.AnAnswerOutsideTheCatalogueIsNotAcceptedAsOfficial` | Un periodo o un nivel inventados no se aceptan como formato oficial (422); en borrador sí se pueden guardar. |
+| `ReportLifecycleTests.ATableOverItsLimitIsNotAcceptedAsOfficial` | 61 líneas donde la plantilla permite 60 no se aceptan como formato oficial, aunque cuadren con su total. |
+| `ReportLifecycleTests.EverySeededCaptureIsWithinItsLists` | Las ocho capturas sembradas cumplen esa regla: ningún borrador existente queda atorado por ella. |
+| `ReportLifecycleTests.SendingAFormatAgainDoesNotAdvanceTheBoardReport` | Enviar otra vez un formato ya enviado no mueve el avance del Informe de Junta: cuenta formatos, no capturas. |
 | `ReportLifecycleTests.ADraftChangesUntilItIsSubmittedAndThenNever` | Ciclo de un formato oficial: borrador editable, protección contra sobrescritura (412), envío incompleto rechazado (422), envío, bloqueo (409) y lectura sólo por su autor. |
 | `WebApiProcessTests.ASessionOpenedInTheWebReadsTheDatabaseThroughTheApi` | Con la Web y la API en procesos separados, el inicio de sesión de la Web pasa por la API y la página muestra cifras calculadas por la API. |
 | `WebApiProcessTests.WhenTheApiStopsTheWebSaysSoAndRecoversWhenItReturns` | Se detiene la API: la Web sigue arriba, conserva la sesión y dice que no pudo consultar. Al volver la API, la misma sesión se recupera sola. |
