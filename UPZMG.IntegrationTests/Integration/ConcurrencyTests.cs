@@ -115,6 +115,64 @@ public sealed class ConcurrencyTests(TestDatabase database)
         }
     }
 
+    /// <summary>Nothing in the database stops two roles or two spaces with one name.</summary>
+    [SqlServerFact]
+    public async Task TwelveRequestsForOneNameCreateOneRoleAndOneSpace()
+    {
+        await using var api = new ApiHost(database);
+        var admin = await api.SignInAsync(Accounts.Admin, Accounts.PasswordOf(Accounts.Admin));
+
+        const string Name = "Doce a la vez";
+        var roles = await Task.WhenAll(Enumerable.Range(0, 12)
+            .Select(_ => admin.PostAsync("roles/create", new { requesterKey = admin.UserId, name = Name })));
+        var spaces = await Task.WhenAll(Enumerable.Range(0, 12)
+            .Select(_ => admin.PostAsync("data-capture/facilities/create", new
+            {
+                requesterKey = admin.UserId, name = Name, type = 0, squareMeters = 10, capacity = 10,
+                computersInOperation = 0, inUse = true, hasInternet = false, hasComputers = false,
+                supportDisabilities = false, problems = Array.Empty<string>(),
+            })));
+
+        try
+        {
+            Assert.Equal(1, await database.ScalarAsync<int>($"SELECT COUNT(*) FROM roles WHERE Name = '{Name}'"));
+            Assert.Equal(1, await database.ScalarAsync<int>($"SELECT COUNT(*) FROM SchoolFacility WHERE Name = '{Name}'"));
+            Assert.Equal(11, roles.Count(r => r.StatusCode == HttpStatusCode.Conflict));
+            Assert.Equal(11, spaces.Count(r => r.StatusCode == HttpStatusCode.Conflict));
+        }
+        finally
+        {
+            await database.ExecuteAsync($"DELETE FROM roles WHERE Name = '{Name}'");
+            await database.ExecuteAsync($"DELETE FROM SchoolFacility WHERE Name = '{Name}'");
+        }
+    }
+
+    /// <summary>The index keeps one period per code; whoever loses must hear why, not a server error.</summary>
+    [SqlServerFact]
+    public async Task TwelveRequestsForOneCodeCreateOnePeriod()
+    {
+        await using var api = new ApiHost(database);
+        var admin = await api.SignInAsync(Accounts.Admin, Accounts.PasswordOf(Accounts.Admin));
+
+        const string Code = "DOCE";
+        var periods = await Task.WhenAll(Enumerable.Range(0, 12)
+            .Select(_ => admin.PostAsync("periods/create", new
+            {
+                requesterKey = admin.UserId, code = Code, period = "Ene-Abr", schoolCycle = "2099",
+                startDate = "2099-01-01", endDate = "2099-04-30",
+            })));
+
+        try
+        {
+            Assert.Equal(1, await database.ScalarAsync<int>($"SELECT COUNT(*) FROM periods WHERE IdCode = '{Code}'"));
+            Assert.Equal(11, periods.Count(r => r.StatusCode == HttpStatusCode.Conflict));
+        }
+        finally
+        {
+            await database.ExecuteAsync($"DELETE FROM periods WHERE IdCode = '{Code}'");
+        }
+    }
+
     [SqlServerFact]
     public async Task ColdRequestsForTheModelShareOneTraining()
     {
