@@ -36,7 +36,7 @@ else
         <span class="sipau-doc-bar-meta">
             @_document.Chapters.Count capítulos ·
             @_document.Sources.Count(s => s.IsSubmitted) de @_document.Sources.Count formatos ·
-            @(_document.IsSubmitted ? "enviado" : "borrador")
+            @(_document.IsSubmitted ? "cerrado" : "borrador")
         </span>
         <MudButton StartIcon="@Icons.Material.Filled.Print" Variant="Variant.Filled" Color="Color.Secondary"
                    OnClick="PrintAsync">Imprimir o guardar PDF</MudButton>
@@ -61,7 +61,7 @@ else
                 </div>
                 <div class="sipau-form-head-status">
                     <div class="sipau-doc-label">Estado</div>
-                    <div class="sipau-doc-value">@(_document.IsSubmitted ? "Enviado" : "Borrador")</div>
+                    <div class="sipau-doc-value">@(_document.IsSubmitted ? "Cerrado" : "Borrador")</div>
                     <div class="sipau-doc-note">@ReportUi.Local(_document.SubmittedAtUtc ?? _document.GeneratedAtUtc)</div>
                 </div>
             </header>
