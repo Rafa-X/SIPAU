@@ -5,6 +5,7 @@
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 @*
     The report as the university reviews it before sending it to the Junta: every figure comes
@@ -12,6 +13,8 @@
 *@
 
 <PageTitle>Informe @Cycle — SIPAU</PageTitle>
+
+<NavigationLock ConfirmExternalNavigation="@HasUnsavedText" OnBeforeInternalNavigation="ConfirmLeaveAsync" />
 
 @if (_loading)
 {
@@ -34,7 +37,7 @@ else
                 Subtitle="@($"{_document.Chapters.Count} capítulos · {_document.Sources.Count(s => s.IsSubmitted)} de {_document.Sources.Count} formatos enviados")">
         <Actions>
             <span class="@(_document.IsSubmitted ? "sipau-report-status is-compact is-sent" : "sipau-report-status is-compact is-draft")">
-                @(_document.IsSubmitted ? "Enviado" : "Borrador")
+                @(_document.IsSubmitted ? "Cerrado" : "Borrador")
             </span>
             <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary"
                        StartIcon="@Icons.Material.Filled.Print" Href="@($"/boardreport/{Cycle}/documento")">
@@ -69,7 +72,7 @@ else
     else if (!_document.IsSubmitted)
     {
         <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Class="mb-4">
-            Todas las áreas enviaron su formato. El informe puede enviarse a la Junta Directiva.
+            Todas las áreas enviaron su formato. El informe ya se puede cerrar.
         </MudAlert>
     }
 
@@ -80,13 +83,16 @@ else
                     @foreach (var chapter in _document.Chapters)
                     {
                         <li>
-                            <a class="sipau-capture-step" href="@($"#cap-{chapter.Number}")">
+                            @* A button and not href="#cap-I": with <base href="/"> that link means the root
+                               of the site, so every chapter of the index took people out of the report. *@
+                            <button type="button" class="sipau-capture-step"
+                                    @onclick="@(() => GoToAsync($"cap-{chapter.Number}"))">
                                 <span class="sipau-capture-step-num">@chapter.Number</span>
                                 <span class="sipau-capture-step-body">
                                     <span class="sipau-capture-step-title">@chapter.Title</span>
                                     <span class="sipau-capture-step-meta">@Pending(chapter)</span>
                                 </span>
-                            </a>
+                            </button>
                         </li>
                     }
                 </ol>
@@ -199,6 +205,8 @@ else
     // What the open block said when it was opened, to tell an edited draft from an untouched one.
     private string? _editingOriginal;
 
+    private bool HasUnsavedText => _editing is not null && _draft != (_editingOriginal ?? string.Empty);
+
     protected override Task OnParametersSetAsync() => LoadAsync();
 
     private async Task LoadAsync()
@@ -214,7 +222,7 @@ else
     /// </summary>
     private async Task EditAsync(string key, string? text)
     {
-        if (_editing is not null && _editing != key && _draft != (_editingOriginal ?? string.Empty))
+        if (_editing != key && HasUnsavedText)
         {
             var keep = await DialogService.ShowMessageBoxAsync(
                 "Hay texto sin guardar",
@@ -227,6 +235,21 @@ else
         _editing = key;
         _draft = text ?? string.Empty;
         _editingOriginal = _draft;
+    }
+
+    private async Task GoToAsync(string elementId) => await JS.InvokeVoidAsync("sipauScrollTo", elementId);
+
+    // The buttons that leave this page took the paragraph with them without a word.
+    private async Task ConfirmLeaveAsync(LocationChangingContext context)
+    {
+        if (!HasUnsavedText) return;
+
+        var leave = await DialogService.ShowMessageBoxAsync(
+            "Hay texto sin guardar",
+            "Este apartado tiene cambios que no se han guardado. Si sales de esta pantalla se descartan.",
+            yesText: "Descartar y salir", cancelText: "Seguir redactando");
+
+        if (leave != true) context.PreventNavigation();
     }
 
     private async Task SaveAsync(string key, string? text)
@@ -256,7 +279,7 @@ else
     {
         if (_document is null) return;
 
-        if (_editing is not null && _draft != (_editingOriginal ?? string.Empty))
+        if (HasUnsavedText)
         {
             Snackbar.Add("Guarda o descarta el apartado que estás redactando antes de cerrar el informe.", Severity.Warning);
             return;

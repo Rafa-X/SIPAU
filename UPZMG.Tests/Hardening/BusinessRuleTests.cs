@@ -348,6 +348,103 @@ public class BusinessRuleTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => new UsersRepository(db).CreateUserAsync(request));
     }
 
+    private static CreateTitulation Titulation(Guid assessor) => new()
+    {
+        RequesterKey = Guid.NewGuid(),
+        StudentEnrollmentNumber = "UPH0099",
+        TitulationAssessorId = assessor,
+        Modality = TitulationModality.Tesis,
+        CreditsEgressDate = new DateOnly(2026, 4, 30),
+        CertificateTitulationDate = new DateOnly(2026, 5, 15),
+        TitleExpeditionDate = new DateOnly(2026, 6, 1),
+    };
+
+    private static async Task<(AppDBContext Db, Guid Assessor)> TitulationContextAsync()
+    {
+        var db = Catalogued();
+        var assessor = new Employee
+        {
+            Id = Guid.NewGuid(), EmployeeNumber = 7, FullName = "Laura Mendoza", Email = "laura@upzmg.local",
+            Rfc = "MERL850202AB1", Curp = "MERL850202MJCNZR01", Gender = Gender.M, IsTeacher = true,
+        };
+        db.Employees.Add(assessor);
+        await db.SaveChangesAsync();
+
+        var graduate = Student("UPH0099", string.Empty);
+        graduate.Status = StudentStatus.Egresado;
+        await new StudentsRepository(db).CreateStudentAsync(graduate);
+
+        return (db, assessor.Id);
+    }
+
+    /// <summary>
+    /// A student enters, finishes the credits, gets the certificate and then the title. Only the
+    /// last against the first was checked: a certificate dated 1900 was stored as it came.
+    /// </summary>
+    [Fact]
+    public async Task ATitulationFollowsTheOrderOfThings()
+    {
+        var (db, assessor) = await TitulationContextAsync();
+        using var _ = db;
+        var repository = new ScholarshipsRepository(db);
+
+        async Task<string> Refusal(Action<CreateTitulation> change)
+        {
+            var request = Titulation(assessor);
+            change(request);
+            return (await Assert.ThrowsAsync<InvalidOperationException>(() => repository.CreateTitulationAsync(request))).Message;
+        }
+
+        var longAgo = new DateOnly(1900, 1, 1);
+
+        Assert.Contains("anterior al ingreso", await Refusal(t =>
+        {
+            t.CreditsEgressDate = longAgo;
+            t.CertificateTitulationDate = longAgo;
+            t.TitleExpeditionDate = longAgo;
+        }));
+        Assert.Contains("certificado de titulación no puede ser anterior al egreso", await Refusal(t => t.CertificateTitulationDate = longAgo));
+        Assert.Contains("anterior al certificado", await Refusal(t => t.CertificateTitulationDate = new DateOnly(2026, 5, 20).AddMonths(1)));
+        Assert.Contains("fecha futura", await Refusal(t => t.TitleExpeditionDate = DateOnly.FromDateTime(DateTime.Today).AddDays(1)));
+        Assert.Empty(db.TitulationProcesses);
+
+        await repository.CreateTitulationAsync(Titulation(assessor));
+        Assert.Single(db.TitulationProcesses);
+    }
+
+    [Fact]
+    public async Task ALicenceComesWithItsNumber()
+    {
+        var (db, assessor) = await TitulationContextAsync();
+        using var _ = db;
+        var repository = new ScholarshipsRepository(db);
+
+        var withoutNumber = Titulation(assessor);
+        withoutNumber.HasProfessionalLicence = true;
+        var refusal = await Assert.ThrowsAsync<InvalidOperationException>(() => repository.CreateTitulationAsync(withoutNumber));
+        Assert.Contains("cédula", refusal.Message);
+
+        var complete = Titulation(assessor);
+        complete.HasProfessionalLicence = true;
+        complete.ProfessionalLicenceNumber = " 1234567 ";
+        var stored = await repository.CreateTitulationAsync(complete);
+        Assert.Equal("1234567", stored.ProfessionalLicenceNumber);
+    }
+
+    [Fact]
+    public async Task ANumberWithoutALicenceIsNotKept()
+    {
+        var (db, assessor) = await TitulationContextAsync();
+        using var _ = db;
+
+        var request = Titulation(assessor);
+        request.ProfessionalLicenceNumber = "1234567";
+
+        var stored = await new ScholarshipsRepository(db).CreateTitulationAsync(request);
+
+        Assert.Null(stored.ProfessionalLicenceNumber);
+    }
+
     [Fact]
     public async Task ChangingAPasswordFollowsTheSameRuleAsTheForm()
     {
@@ -740,6 +837,94 @@ public class BusinessRuleTests
         var refusal = await Assert.ThrowsAsync<InvalidOperationException>(() => new ClassGroupsRepository(db).CreateAsync(group));
 
         Assert.Contains(reason, refusal.Message);
+    }
+
+    private static async Task<Guid> AnotherRoomAsync(AppDBContext db)
+    {
+        var room = new SchoolFacility { Id = Guid.NewGuid(), Name = "Aula 2", Problems = [] };
+        db.SchoolFacilities.Add(room);
+        await db.SaveChangesAsync();
+        return room.Id;
+    }
+
+    /// <summary>Nobody gives two classes at once: only the room was checked.</summary>
+    [Fact]
+    public async Task ATeacherCannotBeInTwoRoomsAtTheSameHour()
+    {
+        var (db, group) = await GroupContextAsync();
+        using var _ = db;
+        var groups = new ClassGroupsRepository(db);
+        await groups.CreateAsync(group);
+
+        group.FacilityId = await AnotherRoomAsync(db);
+
+        var refusal = await Assert.ThrowsAsync<InvalidOperationException>(() => groups.CreateAsync(group));
+        Assert.Contains("El docente ya tiene otro grupo", refusal.Message);
+
+        // At another hour the same teacher is free, and the other room is free for somebody else.
+        group.Schedule = [new Schedule { Day = "Lunes", Time = "10:00 - 12:00" }];
+        await groups.CreateAsync(group);
+        Assert.Equal(2, await db.ClassGroups.CountAsync());
+    }
+
+    private static UpdateClassGroup Correction(CreateClassGroup group, Guid id, List<Schedule> schedule) => new()
+    {
+        Id = id,
+        RequesterKey = group.RequesterKey,
+        Schedule = schedule,
+        CourseId = group.CourseId,
+        PeriodId = group.PeriodId,
+        CareerId = group.CareerId,
+        TeacherId = group.TeacherId,
+        FacilityId = group.FacilityId,
+        IsTheory = group.IsTheory,
+        Capacity = 25,
+        Weekhours = group.Weekhours,
+    };
+
+    /// <summary>
+    /// The seed has teachers with groups at the same hour. Correcting the capacity of one of them
+    /// must not be refused for a clash this correction did not create, and the form sending one
+    /// row per day for a group stored as "Lunes y miércoles" is not the group moving.
+    /// </summary>
+    [Fact]
+    public async Task CorrectingSomethingElseDoesNotReopenAnOldClash()
+    {
+        var (db, group) = await GroupContextAsync();
+        using var _ = db;
+
+        var stored = new List<Schedule> { new() { Day = "Lunes y miércoles", Time = "08:00-10:00 hrs" } };
+        var first = await new ClassGroupsRepository(db).CreateAsync(new CreateClassGroup
+        {
+            RequesterKey = group.RequesterKey, Schedule = stored, CourseId = group.CourseId, PeriodId = group.PeriodId,
+            CareerId = group.CareerId, TeacherId = group.TeacherId, FacilityId = group.FacilityId, IsTheory = true,
+            Capacity = 30, Weekhours = 4,
+        });
+
+        db.ClassGroups.Add(new ClassGroups
+        {
+            Id = Guid.NewGuid(), Schedule = stored, CourseId = group.CourseId, PeriodId = group.PeriodId,
+            CareerId = group.CareerId, TeacherId = group.TeacherId, FacilityId = await AnotherRoomAsync(db),
+            IsTheory = true, Capacity = 30, Weekhours = 4,
+        });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var sameHours = new List<Schedule>
+        {
+            new() { Day = "Lunes", Time = "08:00-10:00 hrs" },
+            new() { Day = "Miércoles", Time = "08:00-10:00 hrs" },
+        };
+
+        var corrected = await new ClassGroupsRepository(db).UpdateAsync(Correction(group, first.Id, sameHours));
+        Assert.Equal(25, corrected.Capacity);
+
+        // Moving it to an hour that also clashes is a new decision, and is refused.
+        db.ChangeTracker.Clear();
+        var partly = new List<Schedule> { new() { Day = "Lunes", Time = "09:00-11:00 hrs" } };
+        var refusal = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new ClassGroupsRepository(db).UpdateAsync(Correction(group, first.Id, partly)));
+        Assert.Contains("El docente ya tiene otro grupo", refusal.Message);
     }
 
     [Theory]

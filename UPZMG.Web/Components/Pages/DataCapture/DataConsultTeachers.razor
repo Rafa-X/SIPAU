@@ -4,23 +4,31 @@
 @inject IDataCaptureService CaptureSvc
 @inject IJSRuntime JS
 
-<PageTitle>Consultar docentes — SIPAU</PageTitle>
+<PageTitle>Consultar personal — SIPAU</PageTitle>
 
-<PageHeader Title="Consultar docentes" BackHref="/datacapture"
-            Subtitle="Personal docente registrado en el sistema" />
+<PageHeader Title="Consultar personal" BackHref="/datacapture"
+            Subtitle="Docentes y personal administrativo registrados en el sistema" />
 
 @if (_loading)
 {
-    <LoadingState Text="Leyendo la plantilla docente…" />
+    <LoadingState Text="Leyendo la plantilla de personal…" />
 }
-else if (_teachers.Count == 0)
+else if (_loadFailed)
+{
+    <SectionCard FullHeight="false">
+        <EmptyState Icon="@Icons.Material.Filled.CloudOff"
+                    Title="No pudimos leer el listado"
+                    Description="El servicio no respondió, así que esta pantalla no puede afirmar que no haya registros. Vuelve a cargar la página; si sigue así, avisa a Tecnologías." />
+    </SectionCard>
+}
+else if (_staff.Count == 0)
 {
     <SectionCard FullHeight="false">
         <EmptyState Icon="@Icons.Material.Filled.Groups"
-                    Title="Sin docentes registrados"
-                    Description="Captura personal docente y aparecerá aquí. Si tu área no es Recursos Humanos, el listado no se muestra.">
+                    Title="Sin personal registrado"
+                    Description="Captura a una persona y aparecerá aquí.">
             <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/datacapture/teachers">
-                Capturar docente
+                Capturar personal
             </MudButton>
         </EmptyState>
     </SectionCard>
@@ -29,14 +37,26 @@ else
 {
     <SectionCard Flush="true" FullHeight="false">
         <DataToolbar @bind-Search="_search" Placeholder="Buscar por nombre o número de empleado…"
-                     Count="Filtered.Count" Total="_teachers.Count" OnExport="ExportAsync" />
+                     Count="Filtered.Count" Total="_staff.Count" OnExport="ExportAsync">
+            <Filters>
+                <MudSelect T="string" @bind-Value="_kind" Dense="true" Variant="Variant.Outlined" Margin="Margin.Dense"
+                           Class="sipau-toolbar-filter-wide mt-0" Placeholder="Tipo de personal" Clearable="true">
+                    <MudSelectItem T="string" Value="@(null!)">Todo el personal</MudSelectItem>
+                    <MudSelectItem T="string" Value="@Teachers">Docentes</MudSelectItem>
+                    <MudSelectItem T="string" Value="@NotTeachers">No docentes</MudSelectItem>
+                </MudSelect>
+            </Filters>
+        </DataToolbar>
 
-        <MudDataGrid T="TeacherListItem" Items="Filtered" Hover="true" Dense="true" Elevation="0"
+        <MudDataGrid T="EmployeeListItem" Items="Filtered" Hover="true" Dense="true" Elevation="0"
                      RowsPerPage="25" SortMode="SortMode.Single">
             <Columns>
                 <PropertyColumn Property="x => x.EmployeeNumber" Title="Número" />
                 <PropertyColumn Property="x => x.FullName" Title="Nombre" />
                 <PropertyColumn Property="x => x.Email" Title="Correo" />
+                <TemplateColumn Title="Tipo" SortBy="x => x.IsTeacher">
+                    <CellTemplate>@KindOf(context.Item)</CellTemplate>
+                </TemplateColumn>
                 <PropertyColumn Property="x => x.EducationLevel" Title="Nivel de estudios" />
                 <TemplateColumn Title="Primera contratación" SortBy="x => x.FirstHiredDate">
                     <CellTemplate>@context.Item.FirstHiredDate.ToString("dd/MM/yyyy")</CellTemplate>
@@ -51,10 +71,10 @@ else
             </Columns>
             <NoRecordsContent>
                 <EmptyState Icon="@Icons.Material.Filled.SearchOff" Title="Sin coincidencias"
-                            Description="Ningún docente coincide con la búsqueda." />
+                            Description="Nadie coincide con la búsqueda." />
             </NoRecordsContent>
             <PagerContent>
-                <MudDataGridPager T="TeacherListItem" PageSizeOptions="@(new[] { 25, 50, 100 })"
+                <MudDataGridPager T="EmployeeListItem" PageSizeOptions="@(new[] { 25, 50, 100 })"
                                   RowsPerPageString="Filas por página"
                                   InfoFormat="{first_item}–{last_item} de {all_items}" />
             </PagerContent>
@@ -63,25 +83,38 @@ else
 }
 
 @code {
-    private IReadOnlyList<TeacherListItem> _teachers = [];
+    private const string Teachers = "docentes";
+    private const string NotTeachers = "no-docentes";
+
+    private IReadOnlyList<EmployeeListItem> _staff = [];
     private bool _loading = true;
+    private bool _loadFailed;
     private string _search = string.Empty;
+    private string? _kind;
 
     protected override async Task OnInitializedAsync()
     {
-        _teachers = await CaptureSvc.GetTeachersListAsync();
+        var rows = await CaptureSvc.GetEmployeesListAsync();
+        // Null is "the listing could not be read", which is not the same as having none.
+        _loadFailed = rows is null;
+        _staff = rows ?? [];
         _loading = false;
     }
 
-    private List<TeacherListItem> Filtered => _teachers.Where(Matches).ToList();
+    private List<EmployeeListItem> Filtered => _staff.Where(Matches).ToList();
 
-    private bool Matches(TeacherListItem teacher)
+    private static string KindOf(EmployeeListItem employee) => employee.IsTeacher ? "Docente" : "No docente";
+
+    private bool Matches(EmployeeListItem employee)
     {
+        if (_kind == Teachers && !employee.IsTeacher) return false;
+        if (_kind == NotTeachers && employee.IsTeacher) return false;
+
         if (string.IsNullOrWhiteSpace(_search)) return true;
         var query = _search.Trim();
-        return teacher.FullName.Contains(query, StringComparison.CurrentCultureIgnoreCase)
-            || teacher.EmployeeNumber.ToString().Contains(query, StringComparison.OrdinalIgnoreCase)
-            || teacher.Email.Contains(query, StringComparison.OrdinalIgnoreCase);
+        return employee.FullName.Contains(query, StringComparison.CurrentCultureIgnoreCase)
+            || employee.EmployeeNumber.ToString().Contains(query, StringComparison.OrdinalIgnoreCase)
+            || employee.Email.Contains(query, StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task ExportAsync()
@@ -90,9 +123,10 @@ else
             ("Número", t => t.EmployeeNumber),
             ("Nombre", t => t.FullName),
             ("Correo", t => t.Email),
+            ("Tipo", t => KindOf(t)),
             ("Nivel de estudios", t => t.EducationLevel),
             ("Primera contratación", t => t.FirstHiredDate.ToString("dd/MM/yyyy")));
 
-        await JS.InvokeVoidAsync("sigieDownload", CsvExport.FileName("docentes"), csv);
+        await JS.InvokeVoidAsync("sigieDownload", CsvExport.FileName("personal"), csv);
     }
 }

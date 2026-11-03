@@ -69,6 +69,9 @@ else
                 <MudTextField @bind-Value="_model.Address" Label="Domicilio" MaxLength="100"
                               Required="true" RequiredError="El domicilio es obligatorio." />
             </MudItem>
+            <MudItem md="4">
+                <MudTextField @bind-Value="_model.PostalCode" Label="Código postal" MaxLength="10" />
+            </MudItem>
         </MudGrid>
 
         <MudGrid>
@@ -247,6 +250,7 @@ else
             BirthCountry = student.BirthCountry ?? string.Empty,
             BirthState = student.BirthState ?? string.Empty,
             Address = student.Address,
+            PostalCode = student.PostalCode ?? string.Empty,
         };
     }
 
@@ -281,6 +285,8 @@ else
             NumberOfChildren = _model.NumberOfChildren,
             Works = _model.Works,
             Address = _model.Address.Trim(),
+            // The form used to leave it out, so correcting anything in a student erased it.
+            PostalCode = string.IsNullOrWhiteSpace(_model.PostalCode) ? null : _model.PostalCode.Trim(),
             CareerId = _model.CareerId,
             PeriodIdStart = _model.PeriodIdStart,
             InscriptionType = _model.InscriptionType,

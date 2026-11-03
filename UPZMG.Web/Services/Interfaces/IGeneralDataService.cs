@@ -14,7 +14,7 @@ public interface IGeneralDataService
     Task<IReadOnlyList<LookupOption>> GetFacilitiesAsync();
     Task<IReadOnlyList<LookupOption>> GetIndigenousLanguagesAsync();
 
-    /// <summary>Institution master data from the 911.10 capture; never null.</summary>
-    Task<InstitutionProfile> GetInstitutionAsync();
+    /// <summary>Institution master data from the 911.10 capture; null when it could not be read.</summary>
+    Task<InstitutionProfile?> GetInstitutionAsync();
 
 }

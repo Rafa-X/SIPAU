@@ -13,14 +13,15 @@ public sealed record XlsxCell(string? Text = null, double? Number = null, bool B
     public static XlsxCell Value(double value) => new(Number: value);
 
     /// <summary>
-    /// A captured answer. Anything that parses as a number is written as one:
-    /// a 911 count stored as text is a spreadsheet the área cannot add up.
+    /// A captured answer. The answer to a number question is written as one: a 911 count stored as
+    /// text is a spreadsheet the área cannot add up. Any other stays as typed, because "00123" in a
+    /// text answer is an identifier and turning it into 123 loses its zeros.
     /// </summary>
-    public static XlsxCell Answer(string? raw)
+    public static XlsxCell Answer(string? raw, bool numeric)
     {
         if (string.IsNullOrWhiteSpace(raw)) return new XlsxCell();
 
-        return ReportFormState.TryParseNumber(raw, out var number) ? Value(number) : Label(raw);
+        return numeric && ReportFormState.TryParseNumber(raw, out var number) ? Value(number) : Label(raw);
     }
 }
 

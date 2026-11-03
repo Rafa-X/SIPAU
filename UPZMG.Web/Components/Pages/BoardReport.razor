@@ -24,6 +24,14 @@
 {
     <LoadingState Text="Revisando los formatos de cada ciclo…" />
 }
+else if (_loadFailed)
+{
+    <SectionCard FullHeight="false">
+        <EmptyState Icon="@Icons.Material.Filled.CloudOff"
+                    Title="No pudimos leer los ciclos"
+                    Description="El servicio no respondió, así que esta pantalla no puede afirmar que no haya informes. Vuelve a cargar la página; si sigue así, avisa a Tecnologías." />
+    </SectionCard>
+}
 else if (_cycles.Count == 0)
 {
     <SectionCard FullHeight="false">
@@ -106,20 +114,24 @@ else
 @code {
     private IReadOnlyList<BoardReportListItem> _cycles = [];
     private bool _loading = true;
+    private bool _loadFailed;
 
     protected override async Task OnInitializedAsync()
     {
-        _cycles = await BoardSvc.GetCyclesAsync();
+        var cycles = await BoardSvc.GetCyclesAsync();
+        // Null is "the listing could not be read", which is not the same as having none.
+        _loadFailed = cycles is null;
+        _cycles = cycles ?? [];
         _loading = false;
     }
 
     private static string Subtitle(BoardReportListItem cycle) =>
         cycle.Status == BoardReportStatus.Submitted
-            ? "Enviado a la Junta Directiva"
+            ? "Cerrado: sus cifras ya no cambian"
             : "En preparación";
 
     private static string StatusLabel(string status) =>
-        status == BoardReportStatus.Submitted ? "Enviado" : "Borrador";
+        status == BoardReportStatus.Submitted ? "Cerrado" : "Borrador";
 
     private static string StatusClass(string status) =>
         status == BoardReportStatus.Submitted

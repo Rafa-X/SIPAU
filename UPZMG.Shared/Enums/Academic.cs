@@ -100,8 +100,29 @@ public static class DayLabels
         var plain = text.Trim().Normalize(System.Text.NormalizationForm.FormD);
         plain = new string([.. plain.Where(c => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c)
             != System.Globalization.UnicodeCategory.NonSpacingMark)]);
-        return Enum.TryParse<Days>(plain, ignoreCase: true, out var day) ? day : null;
+        if (Enum.TryParse<Days>(plain, ignoreCase: true, out var day)) return day;
+
+        // "Lun" and "Mié." are accepted when a group is captured, so they can come back.
+        var shortForm = plain.TrimEnd('.', ':', ';');
+        return shortForm.Length < 3
+            ? null
+            : Enum.GetValues<Days>().Cast<Days?>()
+                .FirstOrDefault(known => known!.Value.ToString().StartsWith(shortForm, StringComparison.OrdinalIgnoreCase));
     }
+
+    /// <summary>
+    /// The days of a stored cell. "Lunes y miércoles" is how most stored groups are written, and
+    /// read as one day it is none.
+    /// </summary>
+    public static List<Days> ParseAll(string? text) =>
+        (text ?? string.Empty)
+            .Split([',', '/', '&'], StringSplitOptions.RemoveEmptyEntries)
+            .SelectMany(part => part.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            .Where(word => !word.Equals("y", StringComparison.OrdinalIgnoreCase) && !word.Equals("e", StringComparison.OrdinalIgnoreCase))
+            .Select(Parse)
+            .OfType<Days>()
+            .Distinct()
+            .ToList();
 }
 
 public enum ScheduleTime

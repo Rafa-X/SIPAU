@@ -27,7 +27,8 @@ public class ChartsController(
 
     /// <summary>Titled students against graduates, with the modality breakdown.</summary>
     [HttpGet("titulation-summary")]
-    [RequirePermission(AppPermissions.ReadIndicators)]
+    // The titulation consult shows it too, to whoever captures titulations.
+    [RequirePermission(AppPermissions.ReadIndicators, AppPermissions.CaptureTitulation)]
     public async Task<ActionResult<TitulationSummary>> GetTitulationSummary() =>
         Ok(await scholarshipsRepository.GetTitulationSummaryAsync());
 

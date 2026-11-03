@@ -64,7 +64,7 @@ else
                 <TemplateColumn Title="" Sortable="false" CellClass="sipau-cell-end">
                     <CellTemplate>
                         <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
-                                   Href="/datacapture/finance">Editar</MudButton>
+                                   Href="@($"/datacapture/finance?ejercicio={context.Item.FiscalYear}")">Editar</MudButton>
                     </CellTemplate>
                 </TemplateColumn>
             </Columns>

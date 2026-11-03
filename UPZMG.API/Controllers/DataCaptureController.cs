@@ -59,11 +59,11 @@ public class DataCaptureController(
         return Ok(result);
     }
 
-    [HttpGet("employees/teachers")]
+    [HttpGet("employees/list")]
     [RequirePermission(AppPermissions.CaptureStaff)]
-    // Teaching staff already captured
-    public async Task<IActionResult> GetTeachersList() =>
-        Ok(await employeesRepository.GetTeachersListAsync());
+    // The staff already captured, whether they teach or not
+    public async Task<IActionResult> GetEmployeesList() =>
+        Ok(await employeesRepository.GetEmployeesListAsync());
 
     [HttpPost("employees/create")]
     [RequirePermission(AppPermissions.CaptureStaff)]

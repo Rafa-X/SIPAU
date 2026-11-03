@@ -129,7 +129,7 @@ public class ScholarshipsRepository(AppDBContext db)
         var enrollment = request.StudentEnrollmentNumber.Trim();
         var student = await db.Students.AsNoTracking()
             .Where(s => s.EnrollmentNumber == enrollment)
-            .Select(s => new { s.Id, s.CareerId, s.Status })
+            .Select(s => new { s.Id, s.CareerId, s.Status, s.PeriodIdStart })
             .FirstOrDefaultAsync()
             ?? throw new InvalidOperationException($"No hay ningún alumno con la matrícula '{enrollment}'.");
 
@@ -146,8 +146,7 @@ public class ScholarshipsRepository(AppDBContext db)
         if (!Enum.IsDefined(request.Modality))
             throw new InvalidOperationException("La modalidad de titulación no es un valor del catálogo.");
 
-        if (request.TitleExpeditionDate < request.CreditsEgressDate)
-            throw new InvalidOperationException("La expedición del título no puede ser anterior al egreso.");
+        await RequireCoherentTitulationAsync(request, student.PeriodIdStart);
 
         var titulation = new TitulationProcess
         {
@@ -160,14 +159,43 @@ public class ScholarshipsRepository(AppDBContext db)
             CertificateTitulationDate = request.CertificateTitulationDate,
             TitleExpeditionDate = request.TitleExpeditionDate,
             HasProfessionalLicence = request.HasProfessionalLicence,
-            ProfessionalLicenceNumber = string.IsNullOrWhiteSpace(request.ProfessionalLicenceNumber)
-                ? null
-                : request.ProfessionalLicenceNumber.Trim(),
+            ProfessionalLicenceNumber = request.HasProfessionalLicence ? request.ProfessionalLicenceNumber!.Trim() : null,
         };
 
         db.TitulationProcesses.Add(titulation);
         await db.SaveGuardingUniquenessAsync("Ese alumno ya tiene un proceso de titulación registrado.");
         return titulation;
+    }
+
+    /// <summary>
+    /// A process has an order: the student enters, finishes the credits, gets the certificate and
+    /// then the title. Only the last against the first was checked, so a certificate dated 1900 and
+    /// "tiene cédula" with no number went into the record the SII reads.
+    /// </summary>
+    private async Task RequireCoherentTitulationAsync(CreateTitulation request, Guid entryPeriodId)
+    {
+        var entered = await db.Periods.AsNoTracking()
+            .Where(p => p.Id == entryPeriodId)
+            .Select(p => (DateOnly?)p.StartDate)
+            .FirstOrDefaultAsync();
+
+        if (entered is { } start && request.CreditsEgressDate < start)
+            throw new InvalidOperationException($"El egreso no puede ser anterior al ingreso del alumno ({start:dd/MM/yyyy}).");
+
+        if (request.CertificateTitulationDate < request.CreditsEgressDate)
+            throw new InvalidOperationException("El certificado de titulación no puede ser anterior al egreso.");
+
+        if (request.TitleExpeditionDate < request.CreditsEgressDate)
+            throw new InvalidOperationException("La expedición del título no puede ser anterior al egreso.");
+
+        if (request.TitleExpeditionDate < request.CertificateTitulationDate)
+            throw new InvalidOperationException("La expedición del título no puede ser anterior al certificado.");
+
+        if (request.TitleExpeditionDate > DateOnly.FromDateTime(DateTime.Today))
+            throw new InvalidOperationException("La expedición del título no puede ser una fecha futura.");
+
+        if (request.HasProfessionalLicence && string.IsNullOrWhiteSpace(request.ProfessionalLicenceNumber))
+            throw new InvalidOperationException("Indica el número de cédula profesional, o marca que no la tiene.");
     }
 
     public async Task<List<TitulationListItem>> GetTitulationsAsync() =>

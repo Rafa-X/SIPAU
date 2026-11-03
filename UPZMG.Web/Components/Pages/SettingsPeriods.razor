@@ -71,8 +71,17 @@
                         </TemplateColumn>
                     </Columns>
                     <NoRecordsContent>
-                        <EmptyState Title="Sin periodos registrados"
-                                    Description="Agrega el primer periodo con el formulario y actívalo para empezar a capturar." />
+                        @if (_loadFailed)
+                        {
+                            <EmptyState Icon="@Icons.Material.Filled.CloudOff"
+                                        Title="No pudimos leer los periodos"
+                                        Description="El servicio no respondió, así que esta pantalla no puede afirmar que no haya registros. Vuelve a cargar la página; si sigue así, avisa a Tecnologías." />
+                        }
+                        else
+                        {
+                            <EmptyState Title="Sin periodos registrados"
+                                        Description="Agrega el primer periodo con el formulario y actívalo para empezar a capturar." />
+                        }
                     </NoRecordsContent>
                 </MudDataGrid>
             }
@@ -83,6 +92,7 @@
 @code {
     private IReadOnlyList<PeriodItem> _periods = [];
     private bool _loading = true;
+    private bool _loadFailed;
     private bool _saving;
 
     private string _newCode = string.Empty;
@@ -99,11 +109,12 @@
         try
         {
             _periods = await PeriodsSvc.GetPeriodsAsync();
+            _loadFailed = false;
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
             _periods = [];
-            Snackbar.Add("No se pudieron cargar los periodos. Vuelve a intentarlo en un momento.", Severity.Error);
+            _loadFailed = true;
         }
         finally
         {
@@ -112,9 +123,11 @@
     }
 
     private string ActiveSummary =>
-        _periods.FirstOrDefault(p => p.IsActive) is { } p
-            ? $"Periodo activo: {p.Period} ({p.SchoolCycle})"
-            : "No hay ningún periodo activo — actívalo antes de capturar.";
+        _loadFailed
+            ? "No se pudo saber cuál es el periodo activo."
+            : _periods.FirstOrDefault(p => p.IsActive) is { } p
+                ? $"Periodo activo: {p.Period} ({p.SchoolCycle})"
+                : "No hay ningún periodo activo — actívalo antes de capturar.";
 
     private async Task AddPeriodAsync()
     {

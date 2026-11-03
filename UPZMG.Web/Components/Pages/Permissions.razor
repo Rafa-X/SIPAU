@@ -27,8 +27,11 @@
                 }
                 else
                 {
-                    <DataToolbar @bind-Search="_roleSearch" Placeholder="Buscar rol…"
-                                 Count="RolesFiltered.Count" Total="_roles.Count" />
+                    @if (_roles.Count > 0)
+                    {
+                        <DataToolbar @bind-Search="_roleSearch" Placeholder="Buscar rol…"
+                                     Count="RolesFiltered.Count" Total="_roles.Count" />
+                    }
 
                     <MudDataGrid T="Role" Items="RolesFiltered" Hover="true" Dense="true" Elevation="0"
                                  Filterable="false" SortMode="SortMode.Multiple">
@@ -55,9 +58,10 @@
                             </TemplateColumn>
                         </Columns>
                         <NoRecordsContent>
-                            <EmptyState Icon="@Icons.Material.Filled.PersonSearch"
-                                        Title="Sin roles"
-                                        Description="No se encontraron roles con ese criterio." />
+                            @* The system always has its roles, so none at all means the read failed. *@
+                            <EmptyState Icon="@(_roles.Count == 0 ? Icons.Material.Filled.CloudOff : Icons.Material.Filled.PersonSearch)"
+                                        Title="@(_roles.Count == 0 ? "No pudimos leer los roles" : "Sin coincidencias")"
+                                        Description="@(_roles.Count == 0 ? "El servicio no respondió. Vuelve a cargar la página; si sigue así, avisa a Tecnologías." : "Ningún rol coincide con la búsqueda.")" />
                         </NoRecordsContent>
                     </MudDataGrid>
                 }
@@ -82,8 +86,11 @@
                 }
                 else
                 {
-                    <DataToolbar @bind-Search="_permissionSearch" Placeholder="Buscar permiso…"
-                                 Count="PermissionsFiltered.Count" Total="_permissions.Count" />
+                    @if (_permissions.Count > 0)
+                    {
+                        <DataToolbar @bind-Search="_permissionSearch" Placeholder="Buscar permiso…"
+                                     Count="PermissionsFiltered.Count" Total="_permissions.Count" />
+                    }
 
                     <MudDataGrid T="Permission" Items="PermissionsFiltered" Hover="true" Dense="true" Elevation="0"
                                  Filterable="false" SortMode="SortMode.Multiple">
@@ -119,9 +126,9 @@
                             </TemplateColumn>
                         </Columns>
                         <NoRecordsContent>
-                            <EmptyState Icon="@Icons.Material.Filled.SearchOff"
-                                        Title="Sin permisos"
-                                        Description="No se encontraron permisos con ese criterio." />
+                            <EmptyState Icon="@(_permissions.Count == 0 ? Icons.Material.Filled.CloudOff : Icons.Material.Filled.SearchOff)"
+                                        Title="@(_permissions.Count == 0 ? "No pudimos leer los permisos" : "Sin coincidencias")"
+                                        Description="@(_permissions.Count == 0 ? "El servicio no respondió. Vuelve a cargar la página; si sigue así, avisa a Tecnologías." : "Ningún permiso coincide con la búsqueda.")" />
                         </NoRecordsContent>
                     </MudDataGrid>
                 }
@@ -262,7 +269,16 @@
             return;
         }
 
-        var assigned = await _securityService.GetRolePermissions(new GetRolePermissions { RequesterKey = requesterKey, RoleId = role.Id });
+        List<Guid> assigned;
+        try
+        {
+            assigned = await _securityService.GetRolePermissions(new GetRolePermissions { RequesterKey = requesterKey, RoleId = role.Id });
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            return;
+        }
 
         var parameters = new DialogParameters<RolePermissionsDialog>
         {

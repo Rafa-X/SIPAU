@@ -16,7 +16,7 @@
 
 <PageHeader
             Title="@(IsEditing ? "Corregir grupo de clase" : "Grupos de Clase")"
-            Subtitle="@(IsEditing ? "Al guardar se revisa otra vez que el espacio no se empalme" : "Registra los grupos, responsables, espacios y horarios del periodo activo")"
+            Subtitle="@(IsEditing ? "Al guardar se revisa otra vez que el espacio y el docente no se empalmen" : "Registra los grupos, responsables, espacios y horarios del periodo activo")"
             BackHref="@(IsEditing ? "/datacapture/class-groups/consult" : "/datacapture")" />
 
 @if (IsEditing && _notFound)
@@ -167,6 +167,8 @@ else
     private bool _notFound;
     private bool _saving;
     private ClassGroupFormViewModel _model = new();
+    private double _storedWeekhours;
+    private string _storedSchedule = string.Empty;
     private IReadOnlyList<PeriodLookupOption> _periods = [];
     private IReadOnlyList<LookupOption> _careers = [];
     private IReadOnlyList<LookupOption> _courses = [];
@@ -212,26 +214,31 @@ else
             FacilityId = group.FacilityId,
             IsTheory = group.IsTheory,
             Capacity = group.Capacity,
-            Schedules = [.. group.Schedule.Select(ToScheduleRow)],
+            Schedules = [.. group.Schedule.SelectMany(ToScheduleRows)],
         };
+
+        _storedWeekhours = group.Weekhours;
+        _storedSchedule = ScheduleKey();
 
         if (_model.Schedules.Count == 0) AddSchedule();
     }
 
-    // "08:00-10:00 hrs" is how the schedule is stored; the form needs the two ends apart.
-    private static ScheduleItemViewModel ToScheduleRow(Schedule schedule)
+    // "08:00-10:00 hrs" is how the schedule is stored; the form needs the two ends apart, and one row
+    // per day. Read as a single day, "Lunes y miércoles" opened empty and could not be saved as it was.
+    private static IEnumerable<ScheduleItemViewModel> ToScheduleRows(Schedule schedule)
     {
-        var row = new ScheduleItemViewModel
-        {
-            Day = DayLabels.Parse(schedule.Day),
-        };
         var match = Regex.Match(schedule.Time ?? string.Empty, @"(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})");
-        if (!match.Success) return row;
+        var start = match.Success ? ParseTime(match.Groups[1].Value, match.Groups[2].Value) : null;
+        var end = match.Success ? ParseTime(match.Groups[3].Value, match.Groups[4].Value) : null;
 
-        row.StartTime = ParseTime(match.Groups[1].Value, match.Groups[2].Value);
-        row.EndTime = ParseTime(match.Groups[3].Value, match.Groups[4].Value);
-        return row;
+        var days = DayLabels.ParseAll(schedule.Day);
+        if (days.Count == 0) return [new ScheduleItemViewModel { StartTime = start, EndTime = end }];
+
+        return days.Select(day => new ScheduleItemViewModel { Day = day, StartTime = start, EndTime = end });
     }
+
+    private string ScheduleKey() =>
+        string.Join(';', _model.Schedules.Select(s => $"{s.Day}|{s.StartTime}|{s.EndTime}").Order());
 
     private static ScheduleTime? ParseTime(string hour, string minute) =>
         Enum.TryParse<ScheduleTime>($"_{int.Parse(hour):00}_{minute}", out var time) ? time : null;
@@ -274,13 +281,17 @@ else
             }
         }
 
-        var weekHours = _model.Schedules.Sum(schedule =>
-        {
-            var start = TimeOnly.Parse(FormatTime(schedule.StartTime));
-            var end = TimeOnly.Parse(FormatTime(schedule.EndTime));
+        // They follow the schedule only when the schedule changed. A stored group can carry hours its
+        // sessions do not add up to, and correcting its capacity must not rewrite them.
+        var weekHours = IsEditing && ScheduleKey() == _storedSchedule
+            ? _storedWeekhours
+            : _model.Schedules.Sum(schedule =>
+            {
+                var start = TimeOnly.Parse(FormatTime(schedule.StartTime));
+                var end = TimeOnly.Parse(FormatTime(schedule.EndTime));
 
-            return (end - start).TotalHours;
-        });
+                return (end - start).TotalHours;
+            });
 
         var request = new UpdateClassGroup
         {

@@ -97,6 +97,9 @@ else
     private bool _readsOutreach, _readsScholarships, _readsTitulations, _readsFinance;
     private const string NotYourArea = "Tu rol no consulta esta área.";
 
+    // With no summary these cards said "0 con estatus activo": a figure nobody had read.
+    private const string NotRead = "No se pudieron leer las cifras de esta área.";
+
     [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = null!;
 
     private sealed record CaptureArea(
@@ -148,17 +151,19 @@ else
     [
         new("Alumnos", "Control Escolar", Icons.Material.Filled.School,
             _summary?.TotalStudents, "alumnos registrados",
-            $"{_summary?.ActiveStudents ?? 0:N0} con estatus activo · {_summary?.NewEnrollments ?? 0:N0} de nuevo ingreso en el periodo",
+            _summary is null
+                ? NotRead
+                : $"{_summary.ActiveStudents:N0} con estatus activo · {_summary.NewEnrollments:N0} de nuevo ingreso en el periodo",
             "/datacapture/students", "/datacapture/students/consult"),
 
         new("Docentes y personal", "Recursos Humanos", Icons.Material.Filled.Groups,
             _summary?.TotalTeachers, "docentes registrados",
-            $"{_summary?.TeachersWithPostgrad ?? 0:N0} con posgrado",
+            _summary is null ? NotRead : $"{_summary.TeachersWithPostgrad:N0} con posgrado",
             "/datacapture/teachers", "/datacapture/teachers/consult"),
 
         new("Grupos de clase", "Dirección Académica", Icons.Material.Filled.Class,
             _summary?.ClassGroups, "grupos del periodo activo",
-            $"{_summary?.GroupEnrolled ?? 0:N0} inscritos de {_summary?.GroupCapacity ?? 0:N0} lugares",
+            _summary is null ? NotRead : $"{_summary.GroupEnrolled:N0} inscritos de {_summary.GroupCapacity:N0} lugares",
             "/datacapture/class-groups", "/datacapture/class-groups/consult"),
 
         new("Infraestructura", "Recursos Materiales y Servicios Generales", Icons.Material.Filled.Domain,

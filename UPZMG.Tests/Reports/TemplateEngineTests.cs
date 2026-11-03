@@ -62,6 +62,198 @@ public class TemplateEngineTests
     private static ReportTemplateQuestion Question(ReportTemplateDefinition template, string key) =>
         template.Sections.SelectMany(s => s.Questions).Single(q => q.Key == key);
 
+    private static ReportTemplateDefinition OneQuestion(ReportTemplateQuestion question) => new()
+    {
+        ReportType = "Prueba",
+        DisplayName = "Prueba",
+        Version = "2024-2025",
+        Sections = [new ReportTemplateSection { Key = "s", Title = "Sección", Questions = [question] }],
+    };
+
+    private static ReportFormState Answered(ReportTemplateQuestion question, string key, string value) =>
+        new(OneQuestion(question), new Dictionary<string, string?> { [key] = value });
+
+    [Fact]
+    public async Task AnAnswerOutsideATableListIsNotOfficial()
+    {
+        var answers = AcademicBodies();
+        answers["liiadt[2][nivel]"] = "Nivel inventado";
+
+        var form = new ReportFormState(await LoadAsync("SII_CuerposAcademicos"), answers);
+
+        var problem = Assert.Single(form.OutOfCatalogue());
+        Assert.Contains("Línea 2", problem.Message);
+        Assert.Contains("Nivel inventado", problem.Message);
+    }
+
+    [Fact]
+    public async Task ATableOverItsLimitIsNotOfficial()
+    {
+        var answers = AcademicBodies();
+        answers["liiadt[#]"] = "61";
+
+        var form = new ReportFormState(await LoadAsync("SII_CuerposAcademicos"), answers);
+
+        Assert.Contains(form.OutOfCatalogue(), problem => problem.Message.Contains("el máximo son 60"));
+    }
+
+    [Fact]
+    public async Task TheSeededCaptureIsWithinItsLists() =>
+        Assert.Empty(new ReportFormState(await LoadAsync("SII_CuerposAcademicos"), AcademicBodies()).OutOfCatalogue());
+
+    [Theory]
+    [InlineData("select", "q", "C", true)]
+    [InlineData("select", "q", "a", false)]
+    [InlineData("matrix_select", "q[Fila]", "C", true)]
+    [InlineData("matrix_select", "q[Fila]", "B", false)]
+    [InlineData("boolean", "q", "quizá", true)]
+    [InlineData("boolean", "q", "true", false)]
+    [InlineData("date", "q", "ayer", true)]
+    [InlineData("date", "q", "2026-11-02", false)]
+    public void AnAnswerTheScreenCouldNotHaveGivenIsFound(string type, string key, string value, bool found)
+    {
+        var question = new ReportTemplateQuestion
+        {
+            Key = "q", Text = "Pregunta", Type = type, Options = ["A", "B"], Rows = ["Fila"],
+        };
+
+        Assert.Equal(found, Answered(question, key, value).OutOfCatalogue().Count > 0);
+    }
+
+    [Fact]
+    public void ACheckedOptionOutsideTheListIsFound()
+    {
+        var question = new ReportTemplateQuestion { Key = "q", Text = "Pregunta", Type = "checkbox_group", Options = ["A", "B"] };
+        var form = new ReportFormState(OneQuestion(question));
+
+        form.ToggleOption("q", "A", true);
+        Assert.Empty(form.OutOfCatalogue());
+
+        form.ToggleOption("q", "Inventada", true);
+        Assert.Contains("Inventada", Assert.Single(form.OutOfCatalogue()).Message);
+    }
+
+    [Fact]
+    public void OptionsWrittenWithSemicolonsAreReadAsSeveralOptions()
+    {
+        var question = new ReportTemplateQuestion { Key = "q", Text = "Pregunta", Type = "checkbox_group", Options = ["A", "B", "C"] };
+
+        var form = Answered(question, "q", "A;B");
+
+        // As the seed writes them: each box shows ticked, and each can be unticked.
+        Assert.True(form.IsChecked("q", "A"));
+        Assert.True(form.IsChecked("q", "B"));
+        Assert.Equal("A, B", form.CheckedSummary("q"));
+        Assert.Empty(form.OutOfCatalogue());
+
+        form.ToggleOption("q", "A", false);
+        Assert.Equal("B", form.CheckedSummary("q"));
+    }
+
+    [Fact]
+    public void AnOptionThatContainsASemicolonStaysWhole()
+    {
+        var question = new ReportTemplateQuestion { Key = "q", Text = "Pregunta", Type = "checkbox_group", Options = ["Uno; dos", "Tres"] };
+
+        var form = Answered(question, "q", "Uno; dos");
+
+        Assert.True(form.IsChecked("q", "Uno; dos"));
+        Assert.Empty(form.OutOfCatalogue());
+    }
+
+    [Fact]
+    public void ACellOfATableKeepsToItsType()
+    {
+        var question = new ReportTemplateQuestion
+        {
+            Key = "t", Text = "Tabla", Type = "table",
+            Fields =
+            [
+                new ReportTemplateField { Key = "n", Text = "Cantidad", Type = "number" },
+                new ReportTemplateField { Key = "d", Text = "Fecha", Type = "date" },
+            ],
+        };
+        var form = new ReportFormState(OneQuestion(question), new Dictionary<string, string?>
+        {
+            ["t[#]"] = "1",
+            ["t[1][n]"] = "muchos",
+            ["t[1][d]"] = "ayer",
+        });
+
+        Assert.Equal(2, form.OutOfCatalogue().Count);
+    }
+
+    [Fact]
+    public void AHiddenQuestionIsNotChecked()
+    {
+        var question = new ReportTemplateQuestion { Key = "q", Text = "Pregunta", Type = "select", Options = ["A"], ShowIf = "otra" };
+
+        Assert.Empty(Answered(question, "q", "Inventada").OutOfCatalogue());
+    }
+
+    /// <summary>
+    /// A format that was already sent is printed with its violations. A catalogue that changes
+    /// later must not make that document look wrong, so this stays out of them.
+    /// </summary>
+    [Fact]
+    public void AnOptionOutsideTheListIsNotARuleBrokenOnPaper()
+    {
+        var question = new ReportTemplateQuestion { Key = "q", Text = "Pregunta", Type = "select", Options = ["A"] };
+
+        var form = Answered(question, "q", "Periodo que ya no existe");
+
+        Assert.Empty(form.Violations);
+        Assert.NotEmpty(form.OutOfCatalogue());
+    }
+
+    private static List<XlsxCell> Cells(ReportFormState form) =>
+        [.. ReportExport.ToSheets(form).SelectMany(sheet => sheet.Rows).SelectMany(row => row)];
+
+    [Theory]
+    [InlineData("00123")]
+    [InlineData("1E5")]
+    public void AnIdentifierKeepsItsTextInTheWorkbook(string identifier)
+    {
+        var question = new ReportTemplateQuestion { Key = "clave", Text = "Clave", Type = "text" };
+
+        var cell = Assert.Single(Cells(Answered(question, "clave", identifier)), c => c.Text == identifier);
+
+        Assert.Null(cell.Number);
+    }
+
+    [Fact]
+    public void ATextCellOfATableKeepsItsZerosAndANumberCellAddsUp()
+    {
+        var question = new ReportTemplateQuestion
+        {
+            Key = "t", Text = "Tabla", Type = "table",
+            Fields =
+            [
+                new ReportTemplateField { Key = "clave", Text = "Clave", Type = "text" },
+                new ReportTemplateField { Key = "n", Text = "Cantidad", Type = "number" },
+            ],
+        };
+        var form = new ReportFormState(OneQuestion(question), new Dictionary<string, string?>
+        {
+            ["t[#]"] = "1",
+            ["t[1][clave]"] = "00123",
+            ["t[1][n]"] = "0456",
+        });
+
+        var cells = Cells(form);
+
+        Assert.Contains(cells, c => c.Text == "00123");
+        Assert.Contains(cells, c => c.Number == 456);
+    }
+
+    [Fact]
+    public void TheAnswerToANumberQuestionIsANumberInTheWorkbook()
+    {
+        var question = new ReportTemplateQuestion { Key = "n", Text = "Cuántos", Type = "number" };
+
+        Assert.Contains(Cells(Answered(question, "n", "123")), c => c.Number == 123);
+    }
+
     [Theory]
     [MemberData(nameof(Published))]
     public async Task EveryPublishedFormatLoadsAndPassesTheValidator(string file)

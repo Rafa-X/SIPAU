@@ -107,7 +107,10 @@ public class UsersRepository(AppDBContext db)
     /// attributed to them. An administrator cannot suspend their own account, which is the one
     /// mistake that would lock everyone out of user management.
     /// </summary>
-    public async Task<SystemUser> SetUserActiveAsync(Guid userId, bool isActive, Guid requestedBy)
+    public Task<SystemUser> SetUserActiveAsync(Guid userId, bool isActive, Guid requestedBy) =>
+        db.InExclusiveSectionAsync(ExclusiveSection.Accounts, () => ChangeActiveAsync(userId, isActive, requestedBy));
+
+    private async Task<SystemUser> ChangeActiveAsync(Guid userId, bool isActive, Guid requestedBy)
     {
         var user = await db.SystemUsers.FirstOrDefaultAsync(u => u.Id == userId)
             ?? throw new InvalidOperationException("El usuario ya no existe.");
@@ -129,7 +132,10 @@ public class UsersRepository(AppDBContext db)
     /// dialog can also deactivate an account and change its role, which locks everyone out the
     /// same way, only reached from another screen.
     /// </summary>
-    public async Task<SystemUser> EditUserAsync(EditUser request, Guid requestedBy)
+    public Task<SystemUser> EditUserAsync(EditUser request, Guid requestedBy) =>
+        db.InExclusiveSectionAsync(ExclusiveSection.Accounts, () => ChangeAccountAsync(request, requestedBy));
+
+    private async Task<SystemUser> ChangeAccountAsync(EditUser request, Guid requestedBy)
     {
         // Blank means "keep the current one".
         if (!string.IsNullOrWhiteSpace(request.Password) && PasswordRules.Problem(request.Password) is { } problem)
@@ -170,7 +176,9 @@ public class UsersRepository(AppDBContext db)
     /// <summary>
     /// Refuses a change that would leave nobody able to sign in, or nobody able to administer
     /// users. The account being changed is judged by the state it is about to have; everybody
-    /// else by the state stored now, which this change does not touch.
+    /// else by the state stored now, which this change does not touch. The callers run inside
+    /// <see cref="ExclusiveSection.Accounts"/>: two administrators suspending each other at once
+    /// each saw the other still active here, and both went through, leaving nobody.
     /// </summary>
     private async Task EnsureAccessSurvivesAsync(Guid userId, Guid requestedBy, bool isActive, Guid? roleId)
     {

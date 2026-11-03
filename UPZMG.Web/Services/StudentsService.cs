@@ -84,9 +84,10 @@ public sealed class StudentsService(
                 return JsonSerializer.Deserialize<UpdateStudent>(response.Result, ResponseOptions);
             }
         }
-        catch (HttpRequestException)
+        catch (HttpRequestException ex) when (ex.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Forbidden)
         {
-            // Missing student, or an area that may not read it: the screen says so.
+            // Missing student, or an area that may not read it: the screen says so. Any other
+            // failure goes on to the screen that says it failed, not that nobody is there.
         }
         return null;
     }

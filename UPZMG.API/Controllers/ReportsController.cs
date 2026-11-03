@@ -12,7 +12,9 @@ namespace UPZMG.Api.Controllers;
 
 [ApiController]
 [Route("reports")]
-[RequirePermission(AppPermissions.CaptureReports)]
+// Whoever captures a format and whoever publishes it both read the templates. An attribute on the
+// action adds to this one, so requiring capture here left a role with only "formatos.publicar" out.
+[RequirePermission(AppPermissions.CaptureReports, AppPermissions.PublishReports)]
 public class ReportsController(
     ReportTemplatesRepository reportTemplatesRepository,
     ReportsRepository reportsRepository) : ControllerBase
@@ -69,11 +71,13 @@ public class ReportsController(
         Ok(await reportTemplatesRepository.DeleteTemplateAsync(request));
 
     [HttpGet("mine")]
+    [RequirePermission(AppPermissions.CaptureReports)]
     // Captures of the signed-in user, newest first
     public async Task<ActionResult<List<ReportListItem>>> GetMine() =>
         Ok(await reportsRepository.GetMineAsync(CurrentUserId));
 
     [HttpGet("{reportId:guid}")]
+    [RequirePermission(AppPermissions.CaptureReports)]
     // One capture of the signed-in user, with its answers
     public async Task<ActionResult<ReportDetail>> GetReport(Guid reportId)
     {
@@ -82,6 +86,7 @@ public class ReportsController(
     }
 
     [HttpPost("save")]
+    [RequirePermission(AppPermissions.CaptureReports)]
     // Save a draft or submit a capture; a submission is re-checked against its template
     public async Task<IActionResult> SaveReport([FromBody] SaveReport request)
     {

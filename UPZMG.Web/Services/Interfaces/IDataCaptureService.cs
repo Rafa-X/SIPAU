@@ -28,8 +28,8 @@ public interface IDataCaptureService
     Task<Employee?> UpdateTeacher(UpdateEmployee request);
     Task<ClassGroups?> UpdateClassGroup(UpdateClassGroup request);
 
-    Task<IReadOnlyList<TeacherListItem>> GetTeachersListAsync();
-    Task<IReadOnlyList<ClassGroupListItem>> GetClassGroupsListAsync();
+    Task<IReadOnlyList<EmployeeListItem>?> GetEmployeesListAsync();
+    Task<IReadOnlyList<ClassGroupListItem>?> GetClassGroupsListAsync();
 
     Task<SchoolFacility?> CreateFacility(CreateFacility request);
     Task<OutreachProject?> CreateOutreachProject(CreateOutreachProject request);

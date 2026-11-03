@@ -55,8 +55,16 @@ public class BoardReportRepository(
         var items = new List<BoardReportListItem>();
         foreach (var cycle in cycles)
         {
-            var expected = templates.Count(t => t.Version == cycle);
-            var sent = captures.Count(c => c.TemplateVersion == cycle && c.Status == nameof(ReportStatus.submitted));
+            var formats = templates.Where(t => t.Version == cycle).Select(t => t.ReportType).ToList();
+            var expected = formats.Count;
+
+            // Formats, not captures: an area can send one twice. Counting rows showed "8 de 8" with
+            // two formats missing, while the document itself refused to close.
+            var sent = captures
+                .Where(c => c.TemplateVersion == cycle && c.Status == nameof(ReportStatus.submitted) && formats.Contains(c.ReportType!))
+                .Select(c => c.ReportType)
+                .Distinct()
+                .Count();
             var document = documents.FirstOrDefault(d => d.TemplateVersion == cycle);
 
             var written = document is null ? 0 : ReadNarratives(document.AnswersJson).Count;
@@ -181,7 +189,7 @@ public class BoardReportRepository(
             .FirstOrDefaultAsync(r => r.ReportType == NarrativeReportType && r.TemplateVersion == request.Cycle);
 
         if (row is { Status: nameof(ReportStatus.submitted) })
-            return BoardReportSaveResult.Refused("El informe ya se envió; para editarlo hay que generar uno nuevo.");
+            return BoardReportSaveResult.Refused("El informe ya está cerrado y no admite cambios.");
 
         // Any key used to be stored, and a block the document does not have was kept forever.
         if (await ReadInputsAsync(request.Cycle) is not { } inputs
@@ -242,7 +250,7 @@ public class BoardReportRepository(
             .FirstOrDefaultAsync(r => r.ReportType == NarrativeReportType && r.TemplateVersion == request.Cycle);
 
         if (row is { Status: nameof(ReportStatus.submitted) })
-            return BoardReportSaveResult.Refused("El informe ya se había enviado.");
+            return BoardReportSaveResult.Refused("El informe ya estaba cerrado.");
 
         var now = DateTime.UtcNow;
         var inputs = await ReadInputsAsync(request.Cycle, asSubmittedAtUtc: now);
@@ -283,7 +291,7 @@ public class BoardReportRepository(
         {
             // One document per cycle, enforced by a filtered unique index: two areas pressing
             // send at the same time used to create two.
-            await db.SaveGuardingUniquenessAsync("Otro usuario envió el informe de este ciclo al mismo tiempo.");
+            await db.SaveGuardingUniquenessAsync("Otro usuario cerró el informe de este ciclo al mismo tiempo.");
         }
         catch (InvalidOperationException ex)
         {
@@ -291,7 +299,7 @@ public class BoardReportRepository(
         }
         catch (DbUpdateConcurrencyException)
         {
-            return BoardReportSaveResult.Refused("El informe cambió mientras se enviaba. Vuelve a abrirlo.");
+            return BoardReportSaveResult.Refused("El informe cambió mientras se cerraba. Vuelve a abrirlo.");
         }
 
         return BoardReportSaveResult.Ok();

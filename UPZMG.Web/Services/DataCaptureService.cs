@@ -204,8 +204,10 @@ public sealed class DataCaptureService(ISecurityService securityService): IDataC
                 return JsonSerializer.Deserialize<T>(response.Result, ResponseOptions);
             }
         }
-        catch (HttpRequestException)
+        catch (HttpRequestException ex) when (ex.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Forbidden)
         {
+            // Null is "that record is not there for you". Any other failure goes on to the screen
+            // that says it failed, not that nobody is there.
         }
         return null;
     }
@@ -214,47 +216,13 @@ public sealed class DataCaptureService(ISecurityService securityService): IDataC
 
 
 #region Listings
-    // Teaching staff already captured; empty when the area cannot read them.
-    public async Task<IReadOnlyList<TeacherListItem>> GetTeachersListAsync()
-    {
-        var requesterKey = await securityService.GetRequesterKeyAsync();
-        try
-        {
-            var response = await securityService.SendGetRequestAsync<IReadOnlyList<TeacherListItem>>(
-                "data-capture/employees/teachers", requesterKey);
+    // The staff already captured; null when the listing could not be read.
+    public Task<IReadOnlyList<EmployeeListItem>?> GetEmployeesListAsync() =>
+        ListAsync<EmployeeListItem>("data-capture/employees/list");
 
-            if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
-            {
-                return JsonSerializer.Deserialize<List<TeacherListItem>>(response.Result, ResponseOptions) ?? [];
-            }
-        }
-        catch (HttpRequestException)
-        {
-            // The listing is limited to Admin and Recursos Humanos.
-        }
-        return [];
-    }
-
-    // Captured class groups; empty when the area cannot read them.
-    public async Task<IReadOnlyList<ClassGroupListItem>> GetClassGroupsListAsync()
-    {
-        var requesterKey = await securityService.GetRequesterKeyAsync();
-        try
-        {
-            var response = await securityService.SendGetRequestAsync<IReadOnlyList<ClassGroupListItem>>(
-                "data-capture/class-groups/list", requesterKey);
-
-            if (response.StatusCode == HttpStatusCode.OK && response.Result is not null)
-            {
-                return JsonSerializer.Deserialize<List<ClassGroupListItem>>(response.Result, ResponseOptions) ?? [];
-            }
-        }
-        catch (HttpRequestException)
-        {
-            // The listing is limited to Admin and Dirección Académica.
-        }
-        return [];
-    }
+    // Captured class groups; null when the listing could not be read.
+    public Task<IReadOnlyList<ClassGroupListItem>?> GetClassGroupsListAsync() =>
+        ListAsync<ClassGroupListItem>("data-capture/class-groups/list");
 
     // School spaces already registered; null when the listing could not be read.
     public Task<IReadOnlyList<FacilityListItem>?> GetFacilitiesListAsync() =>

@@ -14,8 +14,8 @@ public sealed class BoardReportService(
 {
     private static readonly JsonSerializerOptions ResponseOptions = new(JsonSerializerDefaults.Web);
 
-    public async Task<IReadOnlyList<BoardReportListItem>> GetCyclesAsync() =>
-        await GetOrDefaultAsync<List<BoardReportListItem>>("boardreport/cycles") ?? [];
+    public async Task<IReadOnlyList<BoardReportListItem>?> GetCyclesAsync() =>
+        await GetOrDefaultAsync<List<BoardReportListItem>>("boardreport/cycles");
 
     public Task<BoardReportDocument?> GetDocumentAsync(string cycle) =>
         GetOrDefaultAsync<BoardReportDocument>($"boardreport/{Uri.EscapeDataString(cycle)}");

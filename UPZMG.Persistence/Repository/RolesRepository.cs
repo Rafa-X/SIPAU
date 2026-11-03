@@ -53,10 +53,9 @@ public class RolesRepository(AppDBContext _db)
         var name = request.Name.Trim();
         if (name.Length == 0) throw new InvalidOperationException("El rol necesita un nombre.");
 
-        // Authorisation is declared by role name, so renaming Admin would leave every
-        // administrative endpoint unreachable and the delete guard blind to it.
+        // The screens and the delete guard recognise this role by its name.
         if (role.Name == "Admin" && name != "Admin")
-            throw new InvalidOperationException("El rol Admin no puede renombrarse: la autorización del sistema depende de su nombre.");
+            throw new InvalidOperationException("«Admin» es un rol reservado del sistema: no se puede renombrar.");
 
         if (await db.Roles.AnyAsync(r => r.Id != role.Id && r.Name == name))
             throw new InvalidOperationException($"Ya existe un rol llamado «{name}».");
@@ -67,7 +66,10 @@ public class RolesRepository(AppDBContext _db)
         return role;
     }
 
-    public async Task DeleteRoleAsync(DeleteRole request)
+    public Task DeleteRoleAsync(DeleteRole request) =>
+        db.InExclusiveSectionAsync(ExclusiveSection.Accounts, () => RemoveRoleAsync(request));
+
+    private async Task RemoveRoleAsync(DeleteRole request)
     {
         var role = await db.Roles.FirstOrDefaultAsync(r => r.Id == request.RoleId)
             ?? throw new InvalidOperationException("El rol ya no existe.");
@@ -131,7 +133,10 @@ public class RolesRepository(AppDBContext _db)
             .ToListAsync();
     }
 
-    public async Task SetRolePermissionsAsync(SetRolePermissions request)
+    public Task SetRolePermissionsAsync(SetRolePermissions request) =>
+        db.InExclusiveSectionAsync(ExclusiveSection.Accounts, () => ReplaceRolePermissionsAsync(request));
+
+    private async Task ReplaceRolePermissionsAsync(SetRolePermissions request)
     {
         if (!await db.Roles.AnyAsync(r => r.Id == request.RoleId))
             throw new InvalidOperationException("El rol ya no existe.");

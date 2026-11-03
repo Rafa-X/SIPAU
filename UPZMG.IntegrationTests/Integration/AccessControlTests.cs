@@ -1,6 +1,8 @@
 using System.Net;
 using Microsoft.Data.SqlClient;
+using UPZMG.Implementations.Security;
 using UPZMG.IntegrationTests.Infrastructure;
+using UPZMG.Persistence.Models;
 using Xunit;
 
 namespace UPZMG.IntegrationTests.Integration;
@@ -31,7 +33,7 @@ public sealed class AccessControlTests(TestDatabase database) : IAsyncLifetime
     private static readonly (string Method, string Path, string[] Allowed)[] Matrix =
     [
         ("GET", $"data-capture/students/list?RequesterKey={Guid.Empty}&Page=1&PageSize=5", [A, CE, SE]),
-        ("GET", "data-capture/employees/teachers", [A, RH]),
+        ("GET", "data-capture/employees/list", [A, RH]),
         ("GET", "data-capture/class-groups/list", [A, DA]),
         ("GET", "data-capture/facilities/list", [A, DA, RM]),
         ("GET", "intelligence/dropout", [A, CE, SE, DA]),
@@ -71,7 +73,7 @@ public sealed class AccessControlTests(TestDatabase database) : IAsyncLifetime
         var anonymous = _api.CreateClient();
 
         Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("intelligence/forecast")).StatusCode);
-        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("data-capture/employees/teachers")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("data-capture/employees/list")).StatusCode);
     }
 
     [SqlServerFact]
@@ -144,6 +146,69 @@ public sealed class AccessControlTests(TestDatabase database) : IAsyncLifetime
         finally
         {
             await admin.PostAsync("users/set-active", new { requesterKey = admin.UserId, userId = rm.UserId, isActive = true });
+        }
+    }
+
+    /// <summary>
+    /// An attribute on an action adds to the one on its controller. Admin holds everything, so it
+    /// never showed: a role given only "riesgo.consultar" was refused the model it describes.
+    /// </summary>
+    [SqlServerFact]
+    public async Task APermissionAloneOpensWhatItsDescriptionPromises()
+    {
+        var admin = await _api.SignInAsync(A, Accounts.PasswordOf(A));
+        var email = await database.ScalarAsync<string>(
+            "SELECT TOP 1 e.Email FROM employees e WHERE NOT EXISTS (SELECT 1 FROM systemUser u WHERE u.Email = e.Email) ORDER BY e.Email");
+
+        var role = await admin.ReadAsync<Role>(await admin.PostAsync("roles/create", new { requesterKey = admin.UserId, name = "Un solo permiso" }));
+        var created = await admin.PostAsync("users/create", new
+        {
+            requesterKey = admin.UserId, userName = "Un solo permiso", email, roleId = role.Id.ToString(),
+            isActive = true, password = "UnSoloPermiso1",
+        });
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var only = await _api.SignInAsync(email, "UnSoloPermiso1");
+
+        async Task GrantAsync(string permission)
+        {
+            var id = await database.ScalarAsync<Guid>("SELECT Id FROM permissions WHERE Name = @n", new SqlParameter("@n", permission));
+            var granted = await admin.PostAsync("roles/set-permissions", new { requesterKey = admin.UserId, roleId = role.Id, permissionIds = new[] { id } });
+            Assert.Equal(HttpStatusCode.OK, granted.StatusCode);
+        }
+
+        async Task<HttpStatusCode> GetAsync(string path) => (await only.Client.GetAsync(path)).StatusCode;
+
+        try
+        {
+            await GrantAsync(AppPermissions.ReadRisk);
+            Assert.Equal(HttpStatusCode.OK, await GetAsync("intelligence/dropout"));
+            Assert.Equal(HttpStatusCode.OK, await GetAsync("intelligence/dropout/students"));
+            Assert.Equal(HttpStatusCode.Forbidden, await GetAsync("intelligence/history"));
+            Assert.Equal(HttpStatusCode.Forbidden, await GetAsync("intelligence/alerts"));
+
+            await GrantAsync(AppPermissions.ReadIndicators);
+            Assert.Equal(HttpStatusCode.OK, await GetAsync("intelligence/history"));
+            Assert.Equal(HttpStatusCode.Forbidden, await GetAsync("intelligence/dropout"));
+
+            await GrantAsync(AppPermissions.PublishReports);
+            Assert.Equal(HttpStatusCode.OK, await GetAsync("reports/templates"));
+            Assert.Equal(HttpStatusCode.Forbidden, await GetAsync("reports/mine"));
+
+            await GrantAsync(AppPermissions.CaptureReports);
+            Assert.Equal(HttpStatusCode.OK, await GetAsync("reports/templates"));
+            Assert.Equal(HttpStatusCode.OK, await GetAsync("reports/mine"));
+            var publish = await only.PostAsync("reports/templates/delete", new { requesterKey = only.UserId, reportType = "x", version = "y" });
+            Assert.Equal(HttpStatusCode.Forbidden, publish.StatusCode);
+
+            await GrantAsync(AppPermissions.CaptureTitulation);
+            Assert.Equal(HttpStatusCode.OK, await GetAsync("charts/titulation-summary"));
+            Assert.Equal(HttpStatusCode.Forbidden, await GetAsync("charts/careers-distribution"));
+        }
+        finally
+        {
+            await database.ExecuteAsync($"DELETE FROM userRoles WHERE UserId = '{only.UserId}'");
+            await database.ExecuteAsync($"DELETE FROM systemUser WHERE Id = '{only.UserId}'");
+            await admin.PostAsync("roles/delete", new { requesterKey = admin.UserId, roleId = role.Id });
         }
     }
 

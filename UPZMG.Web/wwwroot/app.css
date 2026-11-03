@@ -735,7 +735,7 @@ body.sipau-scrolled .sipau-appbar-sub { opacity: 0; }
     .sipau-capture-step { width: 220px; height: 100%; }
 }
 .sipau-capture-step {
-    display: flex; align-items: flex-start; gap: 12px;
+    display: flex; align-items: flex-start; justify-content: flex-start; gap: 12px;
     width: 100%; padding: 10px 12px;
     background: transparent; color: var(--mud-palette-text-primary);
     border: 1px solid transparent; border-radius: var(--sipau-radius);

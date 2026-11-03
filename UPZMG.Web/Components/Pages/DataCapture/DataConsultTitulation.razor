@@ -47,7 +47,7 @@ else
         </MudItem>
         <MudItem xs="12" sm="4">
             <StatCard Title="Eficiencia de titulación"
-                      Value="@($"{_summary?.TitulationRate ?? 0:0.0} %")"
+                      Value="@(_summary is null ? "—" : $"{_summary.TitulationRate:0.0} %")"
                       Subtitle="Titulados entre egresados"
                       Icon="@Icons.Material.Filled.Percent" />
         </MudItem>

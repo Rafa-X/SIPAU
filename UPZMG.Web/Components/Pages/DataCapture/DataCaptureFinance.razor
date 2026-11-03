@@ -102,6 +102,9 @@ else if (_existing is not null)
 @code {
     private static readonly System.Globalization.CultureInfo Mx = new("es-MX");
 
+    // The listing's "Editar" says which year it means.
+    [SupplyParameterFromQuery(Name = "ejercicio")] public int? RequestedYear { get; set; }
+
     private MudForm _form = null!;
     private bool _saving;
 
@@ -122,7 +125,11 @@ else if (_existing is not null)
     // list instead would have been worse, opening a blank form over a year that has figures.
     private bool _existingUnknown;
 
-    protected override Task OnInitializedAsync() => LoadExistingAsync();
+    protected override Task OnInitializedAsync()
+    {
+        if (RequestedYear is >= 2000 and <= 2100) _fiscalYear = RequestedYear.Value;
+        return LoadExistingAsync();
+    }
 
     private async Task LoadExistingAsync()
     {
@@ -138,12 +145,23 @@ else if (_existing is not null)
         LoadYear(year);
     }
 
+    // Whether the figures on screen were read from a captured year rather than typed.
+    private bool _showingCapturedYear;
+
     // Opening a year that was already captured shows its figures instead of an empty form.
     private void LoadYear(int year)
     {
         _existing = _summaries.FirstOrDefault(s => s.FiscalYear == year);
-        if (_existing is null) return;
+        if (_existing is null)
+        {
+            // Another year's figures are not this year's: left on screen, saving stored them under
+            // both years. What somebody typed for a new year stays when they correct the year.
+            if (_showingCapturedYear) ClearFigures();
+            _showingCapturedYear = false;
+            return;
+        }
 
+        _showingCapturedYear = true;
         _federal = _existing.FederalIncome;
         _state = _existing.StateIncome;
         _enrollment = _existing.OwnIncomeEnrollment;
@@ -153,6 +171,13 @@ else if (_existing is not null)
         _servicesExpense = _existing.ServicesExpense;
         _investment = _existing.InvestmentExpense;
         _notes = _existing.Notes ?? string.Empty;
+    }
+
+    private void ClearFigures()
+    {
+        _federal = _state = _enrollment = _services = 0;
+        _payroll = _materials = _servicesExpense = _investment = 0;
+        _notes = string.Empty;
     }
 
     private async Task Submit()
