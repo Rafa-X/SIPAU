@@ -290,7 +290,10 @@ public sealed class SecurityService(
         {
             return JsonSerializer.Deserialize<List<Guid>>(response.Result, ResponseOptions) ?? [];
         }
-        return [];
+
+        // Not an empty list: that opened the dialog with every box unticked, and saving it from
+        // there took all of the role's permissions away.
+        throw new InvalidOperationException(response.ErrorMessage ?? "No fue posible leer los permisos del rol.");
     }
 
     public async Task<bool> SetRolePermissions(SetRolePermissions request)
