@@ -41,7 +41,7 @@ public class PeriodsRepository(AppDBContext db)
         };
 
         db.Periods.Add(period);
-        await db.SaveChangesAsync();
+        await db.SaveGuardingUniquenessAsync("Ya existe un periodo con ese código.");
 
         return new PeriodItem(
             period.Id,
