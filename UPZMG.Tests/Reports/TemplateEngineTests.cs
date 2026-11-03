@@ -1,6 +1,8 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using UPZMG.Implementations.Reports;
 using UPZMG.Persistence;
+using UPZMG.Persistence.Models;
 using UPZMG.Persistence.Repository;
 using Xunit;
 
@@ -14,11 +16,22 @@ public class TemplateEngineTests
 {
     private static readonly string Folder = Path.Combine(AppContext.BaseDirectory, "ReportTemplates");
 
-    private static ReportTemplatesRepository Repository() =>
-        new(new AppDBContext(new DbContextOptionsBuilder<AppDBContext>()
-                .UseInMemoryDatabase("templates-" + Guid.NewGuid())
-                .Options),
-            new ReportTemplateStore(Folder));
+    private static ReportTemplatesRepository Repository()
+    {
+        var db = new AppDBContext(new DbContextOptionsBuilder<AppDBContext>()
+            .UseInMemoryDatabase("templates-" + Guid.NewGuid())
+            .Options);
+
+        // The period of the seeded capture, which the template's "periodo" reads from the catalogue.
+        db.Periods.Add(new Periods
+        {
+            Id = Guid.NewGuid(), IdCode = "2026-SD", SchoolCycle = "2026", SEP_Period = "Sep-Dic",
+            StartDate = new DateOnly(2026, 9, 1), EndDate = new DateOnly(2026, 12, 15),
+        });
+        db.SaveChanges();
+
+        return new ReportTemplatesRepository(db, new ReportTemplateStore(Folder));
+    }
 
     // "SII_CuerposAcademicos_2024-2025" → report type and cycle.
     private static (string Type, string Version) Split(string file) =>
@@ -118,6 +131,121 @@ public class TemplateEngineTests
         };
 
         Assert.Equal(found, Answered(question, key, value).OutOfCatalogue().Count > 0);
+    }
+
+    /// <summary>The screen says this catalogue has nothing to choose from; no answer can come from it.</summary>
+    [Fact]
+    public void AnEmptyCatalogueAcceptsNoAnswer()
+    {
+        var question = new ReportTemplateQuestion { Key = "q", Text = "Pregunta", Type = "select", OptionsFrom = "becas" };
+
+        Assert.NotEmpty(Answered(question, "q", "Inventada").OutOfCatalogue());
+        Assert.Empty(Answered(question, "q", "").OutOfCatalogue());
+    }
+
+    [Theory]
+    [InlineData("InformeJunta")]
+    [InlineData("informejunta")]
+    public void TheBoardReportsKeyIsNotAFormat(string reportType)
+    {
+        var template = OneQuestion(new ReportTemplateQuestion { Key = "q", Text = "Pregunta", Type = "text" });
+        template.ReportType = reportType;
+
+        Assert.Contains(TemplateValidator.Validate(template).Problems, p => p.Message.Contains("la usa el sistema"));
+    }
+
+    [Theory]
+    [InlineData("texto", true)]
+    [InlineData("otro", false)]
+    [InlineData("lista__especifique", true)]
+    [InlineData("otra__especifique", false)]
+    [InlineData("matriz[Fila][Col]", true)]
+    [InlineData("matriz[Fila][Otra]", false)]
+    [InlineData("seleccion[Fila]", true)]
+    [InlineData("seleccion[Otra]", false)]
+    [InlineData("tabla[#]", true)]
+    [InlineData("tabla[3][campo]", true)]
+    [InlineData("tabla[3][otro]", false)]
+    public void AnAnswerHasAPlaceOnlyWhereTheTemplateShowsIt(string key, bool expected)
+    {
+        var template = new ReportTemplateDefinition
+        {
+            ReportType = "Prueba", DisplayName = "Prueba", Version = "2024-2025",
+            Sections =
+            [
+                new ReportTemplateSection
+                {
+                    Key = "s", Title = "Sección",
+                    Questions =
+                    [
+                        new ReportTemplateQuestion { Key = "texto", Text = "T", Type = "text" },
+                        new ReportTemplateQuestion { Key = "lista", Text = "L", Type = "select", Options = ["A"] },
+                        new ReportTemplateQuestion { Key = "matriz", Text = "M", Type = "matrix", Rows = ["Fila"], Columns = ["Col"] },
+                        new ReportTemplateQuestion { Key = "seleccion", Text = "S", Type = "matrix_select", Rows = ["Fila"], Options = ["A"] },
+                        new ReportTemplateQuestion
+                        {
+                            Key = "tabla", Text = "Tb", Type = "table",
+                            Fields = [new ReportTemplateField { Key = "campo", Text = "C", Type = "text" }],
+                        },
+                    ],
+                },
+            ],
+        };
+
+        Assert.Equal(expected, new ReportFormState(template).HasPlaceFor(key));
+    }
+
+    /// <summary>
+    /// Renaming a question a draft answered left the text in the database and out of the form, with
+    /// nothing saying so. Rewording it, or doing anything else, hides nothing.
+    /// </summary>
+    [Fact]
+    public async Task AnEditCannotHideWhatADraftAnswered()
+    {
+        var folder = Directory.CreateTempSubdirectory("plantillas-").FullName;
+        try
+        {
+            using var db = new AppDBContext(new DbContextOptionsBuilder<AppDBContext>().UseInMemoryDatabase("templates-" + Guid.NewGuid()).Options);
+            var repository = new ReportTemplatesRepository(db, new ReportTemplateStore(folder));
+
+            string Json(string key, string text = "Pregunta") => JsonSerializer.Serialize(new ReportTemplateDefinition
+            {
+                ReportType = "Prueba", DisplayName = "Prueba", Version = "2099-2100",
+                Sections = [new ReportTemplateSection { Key = "s", Title = "Sección", Questions =
+                [
+                    new ReportTemplateQuestion { Key = key, Text = text, Type = "text" },
+                    new ReportTemplateQuestion { Key = "sin_respuesta", Text = "Otra", Type = "text" },
+                ] }],
+            });
+
+            Task<TemplateSaveResult> SaveAsync(string json) => repository.SaveTemplateAsync(new SaveReportTemplate
+            {
+                RequesterKey = Guid.NewGuid(), ReplacingFile = File.Exists(Path.Combine(folder, "Prueba_2099-2100.json")) ? "Prueba_2099-2100" : null, Json = json,
+            });
+
+            Assert.True((await SaveAsync(Json("pregunta"))).Saved);
+
+            // With no draft it is free to change.
+            Assert.True((await SaveAsync(Json("renombrada"))).Saved);
+
+            db.Reports.Add(new UPZMG.Persistence.Models.Reports
+            {
+                Id = Guid.NewGuid(), ReportType = "Prueba", TemplateVersion = "2099-2100",
+                Status = nameof(ReportStatus.draft),
+                AnswersJson = """{"renombrada":"Lo que escribió","sin_respuesta":"","ajena":"x"}""",
+            });
+            await db.SaveChangesAsync();
+
+            var refused = await SaveAsync(Json("otra"));
+            Assert.False(refused.Saved);
+            Assert.Contains("renombrada", Assert.Single(refused.Problems!));
+
+            Assert.True((await SaveAsync(Json("renombrada", "Pregunta con otro enunciado"))).Saved);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
     }
 
     [Fact]

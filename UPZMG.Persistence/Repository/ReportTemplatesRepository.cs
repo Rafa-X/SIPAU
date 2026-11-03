@@ -138,6 +138,15 @@ public class ReportTemplatesRepository(AppDBContext db, ReportTemplateStore stor
                     + (submitted == 1 ? "1 captura enviada" : $"{submitted} capturas enviadas")
                     + ". Publica una versión nueva en lugar de modificar el formato con el que se enviaron.");
             }
+
+            var hidden = await AnswersHiddenByAsync(template, path);
+            if (hidden.Count > 0)
+            {
+                return TemplateSaveResult.Refused(
+                    $"Plantilla: hay borradores con respuestas en {string.Join(", ", hidden.Take(5).Select(k => $"«{k}»"))}"
+                    + (hidden.Count > 5 ? $" y {hidden.Count - 5} más" : string.Empty)
+                    + ", y este cambio las dejaría sin dónde mostrarse. Conserva esas claves o publica una versión nueva.");
+            }
         }
 
         // Renaming moves the file, and a capture points at the report type and version the old
@@ -177,6 +186,52 @@ public class ReportTemplatesRepository(AppDBContext db, ReportTemplateStore stor
         }
 
         return new TemplateSaveResult(true, fileKey);
+    }
+
+    /// <summary>
+    /// What the drafts of this format have answered and the edited template has no place for. Their
+    /// text stayed in the database, but it disappeared from the form with nothing saying so. Only
+    /// what the current template can show counts: rewording a question or adding one hides nothing.
+    /// </summary>
+    private async Task<List<string>> AnswersHiddenByAsync(ReportTemplateDefinition edited, string currentPath)
+    {
+        var drafts = await db.Reports.AsNoTracking()
+            .Where(r => r.ReportType == edited.ReportType
+                && r.TemplateVersion == edited.Version
+                && r.Status == nameof(ReportStatus.draft))
+            .Select(r => r.AnswersJson)
+            .ToListAsync();
+
+        if (drafts.Count == 0) return [];
+
+        var (current, _) = await ReadAsync(currentPath);
+        if (current is null) return [];
+
+        await ResolveCatalogsAsync(current);
+        await ResolveCatalogsAsync(edited);
+        var before = new ReportFormState(current);
+        var after = new ReportFormState(edited);
+
+        return [.. drafts
+            .SelectMany(ReadAnswers)
+            .Where(answer => !string.IsNullOrWhiteSpace(answer.Value))
+            .Select(answer => answer.Key)
+            .Where(key => before.HasPlaceFor(key) && !after.HasPlaceFor(key))
+            .Distinct(StringComparer.OrdinalIgnoreCase)];
+    }
+
+    private static Dictionary<string, string?> ReadAnswers(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return [];
+
+        try
+        {
+            return JsonSerializer.Deserialize<Dictionary<string, string?>>(json) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
     }
 
     /// <summary>Removes a template, unless somebody already captured with it.</summary>

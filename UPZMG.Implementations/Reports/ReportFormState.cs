@@ -111,6 +111,26 @@ public sealed class ReportFormState
     public string CheckedSummary(string key) =>
         string.Join(", ", Get(key).Split(OptionSeparator, StringSplitOptions.RemoveEmptyEntries));
 
+    /// <summary>Whether this template has somewhere to show an answer stored under this key.</summary>
+    public bool HasPlaceFor(string key)
+    {
+        if (key.EndsWith(SpecifySuffix, StringComparison.OrdinalIgnoreCase))
+            return _questions.ContainsKey(key[..^SpecifySuffix.Length]);
+
+        var bracket = key.IndexOf('[');
+        if (bracket <= 0) return _questions.ContainsKey(key);
+        if (!_questions.TryGetValue(key[..bracket], out var q)) return false;
+
+        return ReportQuestionTypes.Of(q) switch
+        {
+            ReportQuestionTypes.Matrix => MatrixCells(q).Any(cell => cell.Key.Equals(key, StringComparison.OrdinalIgnoreCase)),
+            ReportQuestionTypes.MatrixSelect => q.Rows.Any(row => RowKey(q.Key, row).Equals(key, StringComparison.OrdinalIgnoreCase)),
+            ReportQuestionTypes.Table => key.Equals(TableCountKey(q.Key), StringComparison.OrdinalIgnoreCase)
+                || q.Fields.Any(field => key.EndsWith($"][{field.Key}]", StringComparison.OrdinalIgnoreCase)),
+            _ => false,
+        };
+    }
+
     // ── Answer keys ─────────────────────────────────────────────────────────
     public static string CellKey(string questionKey, string row, string column) => $"{questionKey}[{row}][{column}]";
 
@@ -371,8 +391,9 @@ public sealed class ReportFormState
         };
     }
 
+    // An empty list means a catalogue with nothing loaded yet, and then no answer can be from it.
     private static bool IsOutside(List<string> options, string value) =>
-        options.Count > 0 && !string.IsNullOrWhiteSpace(value) && !options.Contains(value.Trim(), StringComparer.OrdinalIgnoreCase);
+        !string.IsNullOrWhiteSpace(value) && !options.Contains(value.Trim(), StringComparer.OrdinalIgnoreCase);
 
     private static string NotInList(string value) => $"«{value}» no está en la lista de opciones.";
 
