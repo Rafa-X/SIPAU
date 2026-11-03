@@ -47,7 +47,20 @@ public sealed class ReportFormState
         foreach (var question in template.Sections.SelectMany(s => s.Questions))
             if (!string.IsNullOrWhiteSpace(question.Key)) _questions.TryAdd(question.Key, question);
 
+        foreach (var question in _questions.Values.Where(q => ReportQuestionTypes.Of(q) == ReportQuestionTypes.CheckboxGroup))
+            ReadOptionsWrittenWithSemicolons(question);
+
         Recompute();
+    }
+
+    // The seeded captures join several options with ";". Read as they are, no box showed ticked and
+    // the value could not be unticked either, because no box corresponds to it.
+    private void ReadOptionsWrittenWithSemicolons(ReportTemplateQuestion q)
+    {
+        var raw = Get(q.Key);
+        if (!raw.Contains(';') || raw.Contains(OptionSeparator) || q.Options.Contains(raw, StringComparer.OrdinalIgnoreCase)) return;
+
+        _answers[q.Key] = string.Join(OptionSeparator, raw.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
     }
 
     public ReportTemplateDefinition Template { get; }
@@ -283,6 +296,87 @@ public sealed class ReportFormState
         if (filled > 0) Recompute();
         return filled;
     }
+
+    // ── Submission ──────────────────────────────────────────────────────────
+    /// <summary>
+    /// Answers the capture screen cannot produce: a value outside a question's list, more rows than
+    /// a table allows, a date that is not one. The screen only offers what is valid, so these come
+    /// from a request that did not pass through it, or from a draft whose option left the catalogue.
+    /// They are kept apart from <see cref="Violations"/>, which is also printed with a format that
+    /// was already sent: a catalogue that changes later does not make that document wrong.
+    /// </summary>
+    public IReadOnlyList<RuleViolation> OutOfCatalogue()
+    {
+        var problems = new List<RuleViolation>();
+
+        for (var s = 0; s < Template.Sections.Count; s++)
+        {
+            var section = Template.Sections[s];
+
+            foreach (var q in section.Questions.Where(IsVisible))
+                problems.AddRange(CatalogueProblems(q).Select(message => new RuleViolation(s, section.Title, q.Key, q.Text, message)));
+        }
+
+        return problems;
+    }
+
+    private IEnumerable<string> CatalogueProblems(ReportTemplateQuestion q)
+    {
+        switch (ReportQuestionTypes.Of(q))
+        {
+            case ReportQuestionTypes.Select:
+                if (IsOutside(q.Options, Get(q.Key))) yield return NotInList(Get(q.Key));
+                break;
+
+            case ReportQuestionTypes.CheckboxGroup:
+                foreach (var option in Get(q.Key).Split(OptionSeparator, StringSplitOptions.RemoveEmptyEntries))
+                    if (IsOutside(q.Options, option)) yield return NotInList(option);
+                break;
+
+            case ReportQuestionTypes.MatrixSelect:
+                foreach (var row in q.Rows)
+                    if (IsOutside(q.Options, Get(RowKey(q.Key, row)))) yield return $"{row}: {NotInList(Get(RowKey(q.Key, row)))}";
+                break;
+
+            case ReportQuestionTypes.Boolean:
+                if (HasValue(q.Key) && !bool.TryParse(Get(q.Key), out _)) yield return $"«{Get(q.Key)}» no es una respuesta de sí o no.";
+                break;
+
+            case ReportQuestionTypes.Date:
+                if (HasValue(q.Key) && !IsDate(Get(q.Key))) yield return $"«{Get(q.Key)}» no es una fecha.";
+                break;
+
+            case ReportQuestionTypes.Table:
+                var rows = TableRowCount(q);
+                if (q.MaxRows is { } max && rows > max) yield return $"Hay {rows} líneas y el máximo son {max}.";
+
+                for (var r = 1; r <= rows; r++)
+                    foreach (var field in q.Fields)
+                        if (FieldProblem(field, Get(TableCellKey(q.Key, r, field.Key))) is { } problem)
+                            yield return $"Línea {r}, {field.Text}: {problem}";
+                break;
+        }
+    }
+
+    private static string? FieldProblem(ReportTemplateField field, string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+
+        return field.Type.Trim().ToLowerInvariant() switch
+        {
+            ReportQuestionTypes.Select when IsOutside(field.Options, value) => NotInList(value),
+            ReportQuestionTypes.Number when !TryParseNumber(value, out _) => $"«{value}» no es un número.",
+            ReportQuestionTypes.Date when !IsDate(value) => $"«{value}» no es una fecha.",
+            _ => null,
+        };
+    }
+
+    private static bool IsOutside(List<string> options, string value) =>
+        options.Count > 0 && !string.IsNullOrWhiteSpace(value) && !options.Contains(value.Trim(), StringComparer.OrdinalIgnoreCase);
+
+    private static string NotInList(string value) => $"«{value}» no está en la lista de opciones.";
+
+    private static bool IsDate(string value) => DateOnly.TryParse(value, CultureInfo.InvariantCulture, out _);
 
     // ── Values ──────────────────────────────────────────────────────────────
     /// <summary>Allowed range of a question's values; percentages default to 0–100.</summary>

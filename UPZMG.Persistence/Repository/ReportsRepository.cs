@@ -53,11 +53,12 @@ public class ReportsRepository(AppDBContext db)
         if (request.Status == ReportStatus.submitted)
         {
             var form = new ReportFormState(template, request.Answers);
-            if (!form.IsComplete)
+            var outside = form.OutOfCatalogue();
+            if (!form.IsComplete || outside.Count > 0)
             {
                 var problems = form.Missing
                     .Select(m => $"Falta «{m.QuestionText}» ({m.SectionTitle}).")
-                    .Concat(form.Violations.Select(v => $"{v.QuestionText} ({v.SectionTitle}): {v.Message}"))
+                    .Concat(form.Violations.Concat(outside).Select(v => $"{v.QuestionText} ({v.SectionTitle}): {v.Message}"))
                     .ToList();
 
                 return new SaveReportResult(SaveReportOutcome.Incomplete, Problems: problems);
@@ -81,9 +82,9 @@ public class ReportsRepository(AppDBContext db)
 
             // The row version the form was opened with. Reading the row again inside this
             // request only catches a write in the microseconds between read and save; what has
-            // to be checked is whether anything changed since the person opened the capture.
-            if (!string.IsNullOrEmpty(request.RowVersion)
-                && request.RowVersion != Version(existing.RowVersion))
+            // to be checked is whether anything changed since the person opened the capture. Leaving
+            // the version out is not a way around it: that overwrote whatever had been saved since.
+            if (request.RowVersion != Version(existing.RowVersion))
             {
                 return new SaveReportResult(SaveReportOutcome.Stale);
             }
