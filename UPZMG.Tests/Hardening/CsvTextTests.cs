@@ -12,6 +12,33 @@ public class CsvTextTests
 {
     private const string Sample = "Matrícula,Nombre\n1,María José Núñez Peña";
 
+    [Theory]
+    [InlineData("2005-02-01", 2005, 2, 1)]
+    [InlineData("2005-2-1", 2005, 2, 1)]
+    // As Excel writes it on a Mexican computer: day first. It used to be read as January 2.
+    [InlineData("01/02/2005", 2005, 2, 1)]
+    [InlineData("1/2/2005", 2005, 2, 1)]
+    [InlineData("13/02/2005", 2005, 2, 13)]
+    [InlineData("01-02-2005", 2005, 2, 1)]
+    public void ADateOfAFileIsReadDayFirst(string cell, int year, int month, int day)
+    {
+        Assert.True(CsvText.TryParseDate(cell, out var date));
+        Assert.Equal(new DateOnly(year, month, day), date);
+    }
+
+    [Theory]
+    // Month first has no 13th month: refused, not read the other way round.
+    [InlineData("02/13/2005")]
+    // Nothing in the cell says which century.
+    [InlineData("01/02/05")]
+    [InlineData("31/02/2005")]
+    [InlineData("2005-13-45")]
+    [InlineData("01/02/2005 10:00")]
+    [InlineData("ayer")]
+    [InlineData("")]
+    public void ADateThatCannotBeTrustedIsRefused(string cell) =>
+        Assert.False(CsvText.TryParseDate(cell, out _));
+
     static CsvTextTests() => Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
     [Fact]
