@@ -70,8 +70,8 @@ public class ExtensionRepository(AppDBContext db)
         var studentIds = projects.Where(p => p.StudentId is not null).Select(p => p.StudentId!.Value).Distinct().ToList();
         var students = await db.Students.AsNoTracking()
             .Where(s => studentIds.Contains(s.Id))
-            .Select(s => new { s.Id, s.Name, s.MiddleName, s.LastName })
-            .ToDictionaryAsync(s => s.Id, s => $"{s.Name} {s.MiddleName} {s.LastName}".Trim());
+            .Select(s => new { s.Id, s.EnrollmentNumber, s.Name, s.MiddleName, s.LastName })
+            .ToDictionaryAsync(s => s.Id);
 
         return [.. projects.Select(p => new OutreachListItem(
             p.Id,
@@ -81,8 +81,14 @@ public class ExtensionRepository(AppDBContext db)
             p.ActivityType,
             p.ProjectName,
             periods.GetValueOrDefault(p.PeriodId, "—"),
-            p.StudentId is { } id ? students.GetValueOrDefault(id) : null,
-            p.StudentEnrollmentNumber,
+            p.StudentId is { } id && students.TryGetValue(id, out var named)
+                ? $"{named.Name} {named.MiddleName} {named.LastName}".Trim()
+                : null,
+            // The student's own, not the copy from when the project was captured: Control Escolar
+            // can correct a matrícula, and this listing went on showing the old one.
+            p.StudentId is { } linked && students.TryGetValue(linked, out var current)
+                ? current.EnrollmentNumber
+                : p.StudentEnrollmentNumber,
             p.StartDate,
             p.EndDate,
             p.AccreditedHours))];

@@ -18,7 +18,7 @@ public class BulkImportRepository(AppDBContext db, StudentsRepository students, 
     public async Task<ImportResult> ImportStudentsAsync(ImportStudents request)
     {
         var rows = request.Rows;
-        if (Refusal(rows.Count) is { } refusal) return refusal;
+        if (Refusal(rows) is { } refusal) return refusal;
 
         var problems = rows.Select(r => ImportRules.Check(r.Request, Today)).ToList();
         AddRepeated(rows, problems,
@@ -69,7 +69,7 @@ public class BulkImportRepository(AppDBContext db, StudentsRepository students, 
     public async Task<ImportResult> ImportEmployeesAsync(ImportEmployees request)
     {
         var rows = request.Rows;
-        if (Refusal(rows.Count) is { } refusal) return refusal;
+        if (Refusal(rows) is { } refusal) return refusal;
 
         var problems = rows.Select(r => ImportRules.Check(r.Request, Today)).ToList();
         AddRepeated(rows, problems, ImportRules.RepeatedInFile(rows,
@@ -153,11 +153,12 @@ public class BulkImportRepository(AppDBContext db, StudentsRepository students, 
         return new ImportResult(true, results);
     }
 
-    private static ImportResult? Refusal(int count) => count switch
+    private static ImportResult? Refusal<T>(List<ImportRow<T>> rows) where T : class => rows.Count switch
     {
         0 => new ImportResult(false, [], "El archivo no tiene filas para importar."),
         > ImportRules.MaxRows => new ImportResult(false, [],
-            $"El archivo tiene {count:N0} filas; el máximo por lote es {ImportRules.MaxRows:N0}. Divídelo en varios archivos."),
+            $"El archivo tiene {rows.Count:N0} filas; el máximo por lote es {ImportRules.MaxRows:N0}. Divídelo en varios archivos."),
+        _ when rows.Any(row => row?.Request is null) => new ImportResult(false, [], "Hay filas sin datos."),
         _ => null,
     };
 

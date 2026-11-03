@@ -199,6 +199,10 @@ public class StudentsRepository(AppDBContext db)
 
     public async Task<StudentsListResponse> GetStudentsListAsync(StudentsListRequest request)
     {
+        // Longer than the columns it searches, it matches nobody, and as a parameter it was a server error.
+        if (request.Name?.Trim().Length > 100 || request.EnrollmentNumber?.Trim().Length > 20)
+            return new StudentsListResponse();
+
         var query =
             from s in db.Students.AsNoTracking()
             join c in db.Careers.AsNoTracking() on s.CareerId equals c.Id
@@ -230,7 +234,8 @@ public class StudentsRepository(AppDBContext db)
 
         var items = await query
             .OrderBy(x => x.Student.LastName).ThenBy(x => x.Student.Name)
-            .Skip((page - 1) * pageSize)
+            // In long: page 2147483647 overflowed into a negative offset and a server error.
+            .Skip((int)Math.Min((page - 1L) * pageSize, int.MaxValue))
             .Take(pageSize)
             .Select(x => new StudentListItem
             {

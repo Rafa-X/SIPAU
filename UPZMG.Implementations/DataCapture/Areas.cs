@@ -14,7 +14,7 @@ public sealed class CreateFacility
 
     public SchoolFacilityType Type { get; set; }
 
-    [Range(0, 100000, ErrorMessage = "La superficie no puede ser negativa.")]
+    [Range(0d, 100000d, ErrorMessage = "La superficie no puede ser negativa.")]
     public double SquareMeters { get; set; }
 
     [Range(0, 2000, ErrorMessage = "La capacidad debe estar entre 0 y 2000.")]
