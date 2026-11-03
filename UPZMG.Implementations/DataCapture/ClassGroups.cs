@@ -15,7 +15,7 @@ public class CreateClassGroup
     public bool IsTheory { get; set; }
     [Range(1, 500, ErrorMessage = "La capacidad debe estar entre 1 y 500.")]
     public int Capacity { get; set; }
-    [Range(0, 60, ErrorMessage = "Las horas por semana deben estar entre 0 y 60.")]
+    [Range(0d, 60d, ErrorMessage = "Las horas por semana deben estar entre 0 y 60.")]
     public double Weekhours { get; set; }
 }
 
@@ -23,6 +23,9 @@ public class CreateClassGroup
 public sealed class UpdateClassGroup : CreateClassGroup
 {
     public required Guid Id { get; set; }
+
+    /// <summary>Who gives it, to show them even if they no longer teach. Read back, never stored.</summary>
+    public string? TeacherName { get; set; }
 }
 
 public sealed class ClassGroupListItem
