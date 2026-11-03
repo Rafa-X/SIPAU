@@ -34,8 +34,13 @@ else
 {
     <MudGrid>
         <MudItem xs="12" md="4">
-            <SectionCard Title="Formatos publicados" Subtitle="@ReportUi.Plural(_templates.Count, "plantilla", "plantillas")"
+            <SectionCard Title="Formatos publicados"
+                         Subtitle="@(_loadFailed ? "No se pudieron leer" : ReportUi.Plural(_templates.Count, "plantilla", "plantillas"))"
                          Icon="@Icons.Material.Filled.FolderCopy" Flush="true">
+                @if (_loadFailed)
+                {
+                    <p class="sipau-board-pending pa-4">El sistema no respondió, así que no sabemos qué formatos hay publicados. Vuelve a cargar la página.</p>
+                }
                 <ul class="sipau-template-list">
                     @foreach (var template in _templates)
                     {
@@ -196,6 +201,7 @@ else
     private IReadOnlyList<string> _problems = [];
     private bool _checked;
     private bool _loading = true;
+    private bool _loadFailed;
     private bool _busy;
 
     private string EditorHint => _fileKey is null
@@ -210,10 +216,11 @@ else
         try
         {
             _templates = await ReportsSvc.GetTemplatesAsync();
+            _loadFailed = false;
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
-            Snackbar.Add("No se pudieron cargar las plantillas: el sistema no respondió.", Severity.Error);
+            _loadFailed = true;
         }
         finally
         {

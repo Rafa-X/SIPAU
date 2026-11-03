@@ -14,10 +14,18 @@
 <PageHeader Title="Datos de la institución"
             Subtitle="Información maestra que encabeza los reportes generados" BackHref="/settings" />
 
-@if (_profile is null)
+@if (_loading)
 {
     <SectionCard FullHeight="false">
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    </SectionCard>
+}
+else if (_profile is null)
+{
+    <SectionCard FullHeight="false">
+        <EmptyState Icon="@Icons.Material.Filled.CloudOff"
+                    Title="No pudimos leer los datos de la institución"
+                    Description="El servicio no respondió, así que esta pantalla no puede decir si el formato ya se capturó. Vuelve a cargar la página; si sigue así, avisa a Tecnologías." />
     </SectionCard>
 }
 else if (!_profile.IsReported)
@@ -70,6 +78,11 @@ else
 
 @code {
     private InstitutionProfile? _profile;
+    private bool _loading = true;
 
-    protected override async Task OnInitializedAsync() => _profile = await GeneralDataSvc.GetInstitutionAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        _profile = await GeneralDataSvc.GetInstitutionAsync();
+        _loading = false;
+    }
 }

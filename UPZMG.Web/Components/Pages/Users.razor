@@ -26,6 +26,8 @@
     }
     else
     {
+    @if (_users.Count > 0)
+    {
     <DataToolbar @bind-Search="_search" Placeholder="Buscar usuario, correo o rol…"
                  Count="UsersFiltered.Count" Total="_users.Count">
         <Filters>
@@ -40,6 +42,7 @@
             </MudSelect>
         </Filters>
     </DataToolbar>
+    }
 
     @* Bound to the filtered list: bound to the full one, the search box and the role filter
        were there and did nothing. *@

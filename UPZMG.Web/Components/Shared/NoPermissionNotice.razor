@@ -19,7 +19,11 @@
 *@
 
 <SectionCard FullHeight="false">
-    @if (_unverified)
+    @if (_checking)
+    {
+        <LoadingState Text="Comprobando tus permisos…" />
+    }
+    else if (_unverified)
     {
         <EmptyState Icon="@Icons.Material.Filled.CloudOff"
                     Title="No pudimos verificar tus permisos"
@@ -44,6 +48,9 @@
 </SectionCard>
 
 @code {
+    // A refused connection takes seconds to fail. Starting from "not verified = refused", the screen
+    // told somebody who may well have the permission that their area did not, until the check ended.
+    private bool _checking = true;
     private bool _unverified;
 
     protected override Task OnInitializedAsync() => CheckAsync();
@@ -65,6 +72,7 @@
         if (!Guid.TryParse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId))
         {
             _unverified = false;
+            _checking = false;
             return;
         }
 
@@ -78,6 +86,8 @@
             // The same unreachable service the authorisation handler just failed against.
             _unverified = true;
         }
+
+        _checking = false;
     }
 
     [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = null!;

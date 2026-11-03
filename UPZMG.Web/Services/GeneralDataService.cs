@@ -10,7 +10,7 @@ public sealed class GeneralDataService(ISecurityService securityService): IGener
 {
     private static readonly JsonSerializerOptions ResponseOptions = new(JsonSerializerDefaults.Web);
 
-    public async Task<InstitutionProfile> GetInstitutionAsync()
+    public async Task<InstitutionProfile?> GetInstitutionAsync()
     {
         var requesterKey = await securityService.GetRequesterKeyAsync();
         try
@@ -26,10 +26,10 @@ public sealed class GeneralDataService(ISecurityService securityService): IGener
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
-            // The screen shows "sin capturar" rather than failing when the API is down.
+            // Not "Unreported": that says nobody has captured the format, which nobody knows now.
         }
 
-        return InstitutionProfile.Unreported;
+        return null;
     }
 
     public async Task<IReadOnlyList<LookupOption>> GetCareersSelectableAsync()
