@@ -51,13 +51,13 @@
             </MudItem>
 
             <MudItem md="4">
-                <MudDatePicker @bind-Date="_creditsEgressDate" Label="Egreso (100 % de créditos)" />
+                <MudDatePicker @bind-Date="_creditsEgressDate" Label="Egreso (100 % de créditos)" MaxDate="DateTime.Today" />
             </MudItem>
             <MudItem md="4">
-                <MudDatePicker @bind-Date="_certificateDate" Label="Certificado de titulación" />
+                <MudDatePicker @bind-Date="_certificateDate" Label="Certificado de titulación" MaxDate="DateTime.Today" />
             </MudItem>
             <MudItem md="4">
-                <MudDatePicker @bind-Date="_titleDate" Label="Expedición del título" />
+                <MudDatePicker @bind-Date="_titleDate" Label="Expedición del título" MaxDate="DateTime.Today" />
             </MudItem>
 
             <MudItem md="4" Class="d-flex align-center">
@@ -65,7 +65,7 @@
             </MudItem>
             <MudItem md="4">
                 <MudTextField @bind-Value="_licenceNumber" Label="Número de cédula" MaxLength="20"
-                              Disabled="@(!_hasLicence)" />
+                              Disabled="@(!_hasLicence)" Required="@_hasLicence" RequiredError="Indica el número de cédula." />
             </MudItem>
         </MudGrid>
 
