@@ -257,7 +257,7 @@
                     <ChildContent>@Body</ChildContent>
                     <ErrorContent>
                         <EmptyState Title="No se pudo mostrar esta pantalla"
-                                    Description="El servicio de datos no respondió o rechazó la consulta. Tu sesión sigue abierta: vuelve a intentarlo en un momento o sigue con otra sección del menú.">
+                                    Description="Algo falló al preparar esta pantalla, y no siempre es el servicio de datos. Tu sesión sigue abierta y lo que ya guardaste no se perdió: vuelve a intentarlo o sigue con otra sección del menú. Si se repite, avisa a Tecnologías.">
                             <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Refresh"
                                        OnClick="@(() => Nav.NavigateTo(Nav.Uri, forceLoad: true))">Volver a intentar</MudButton>
                         </EmptyState>
