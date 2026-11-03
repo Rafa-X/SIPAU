@@ -9,23 +9,17 @@ namespace UPZMG.Persistence.Repository;
 
 public sealed partial class ClassGroupsRepository(AppDBContext db)
 {
-    public async Task<ClassGroups> CreateAsync(CreateClassGroup request)
+    // One at a time: whether a room or a teacher is free is read before writing, and twelve requests
+    // for one slot at once all read it free. Three groups ended up in the same room at the same hour.
+    public Task<ClassGroups> CreateAsync(CreateClassGroup request) =>
+        db.InExclusiveSectionAsync(ExclusiveSection.ClassGroups, () => CreateGroupAsync(request));
+
+    private async Task<ClassGroups> CreateGroupAsync(CreateClassGroup request)
     {
         EnsureReadableSchedule(request.Schedule);
         await RequireReferencesAsync(request);
-
-        var sameSpace = await db.ClassGroups
-            .AsNoTracking()
-            .Where(g => g.FacilityId == request.FacilityId && g.PeriodId == request.PeriodId)
-            .ToListAsync();
-
-        foreach (var existing in sameSpace)
-        {
-            var conflict = FindScheduleConflict(request.Schedule, existing.Schedule);
-            if (conflict is { } day)
-                throw new InvalidOperationException(
-                    $"El espacio ya está ocupado el {day} en un horario que se traslapa con otro grupo de este periodo.");
-        }
+        await RequireFreeSpaceAsync(request);
+        await RequireFreeTeacherAsync(request);
 
         var group = new ClassGroups
         {
@@ -70,10 +64,13 @@ public sealed partial class ClassGroupsRepository(AppDBContext db)
     }
 
     /// <summary>
-    /// Corrects a captured group. The room clash is checked again against the other groups of
-    /// the period — excluding this one, so a group never collides with its own former schedule.
+    /// Corrects a captured group. The clashes are checked again against the other groups of the
+    /// period — excluding this one, so a group never collides with its own former schedule.
     /// </summary>
-    public async Task<ClassGroups> UpdateAsync(UpdateClassGroup request)
+    public Task<ClassGroups> UpdateAsync(UpdateClassGroup request) =>
+        db.InExclusiveSectionAsync(ExclusiveSection.ClassGroups, () => UpdateGroupAsync(request));
+
+    private async Task<ClassGroups> UpdateGroupAsync(UpdateClassGroup request)
     {
         EnsureReadableSchedule(request.Schedule);
 
@@ -88,25 +85,10 @@ public sealed partial class ClassGroupsRepository(AppDBContext db)
 
         // Only what the correction actually moves is re-checked. Refusing to fix a capacity
         // because of a clash the group did not create would leave old records uncorrectable.
-        bool moved = group.FacilityId != request.FacilityId
-            || group.PeriodId != request.PeriodId
-            || !SameSchedule(group.Schedule, request.Schedule);
+        var timeMoved = group.PeriodId != request.PeriodId || !SameSchedule(group.Schedule, request.Schedule);
 
-        if (moved)
-        {
-            var sameSpace = await db.ClassGroups
-                .AsNoTracking()
-                .Where(g => g.Id != request.Id && g.FacilityId == request.FacilityId && g.PeriodId == request.PeriodId)
-                .ToListAsync();
-
-            foreach (var existing in sameSpace)
-            {
-                var conflict = FindScheduleConflict(request.Schedule, existing.Schedule);
-                if (conflict is { } day)
-                    throw new InvalidOperationException(
-                        $"El espacio ya está ocupado el {day} en un horario que se traslapa con otro grupo de este periodo.");
-            }
-        }
+        if (timeMoved || group.FacilityId != request.FacilityId) await RequireFreeSpaceAsync(request, except: request.Id);
+        if (timeMoved || group.TeacherId != request.TeacherId) await RequireFreeTeacherAsync(request, except: request.Id);
 
         group.FacilityId = request.FacilityId;
         group.Schedule = request.Schedule.Select(s => new Schedule { Day = s.Day.Trim(), Time = s.Time.Trim() }).ToList();
@@ -151,6 +133,35 @@ public sealed partial class ClassGroupsRepository(AppDBContext db)
 
         return await query.ToListAsync();
     }
+
+    private async Task RequireFreeSpaceAsync(CreateClassGroup request, Guid except = default)
+    {
+        var sameSpace = await db.ClassGroups
+            .AsNoTracking()
+            .Where(g => g.Id != except && g.FacilityId == request.FacilityId && g.PeriodId == request.PeriodId)
+            .ToListAsync();
+
+        if (FirstClash(request, sameSpace) is { } day)
+            throw new InvalidOperationException(
+                $"El espacio ya está ocupado el {day} en un horario que se traslapa con otro grupo de este periodo.");
+    }
+
+    // Nobody gives two classes at once. Only the room was checked, so one teacher could be given
+    // two groups at the same hour in two different rooms.
+    private async Task RequireFreeTeacherAsync(CreateClassGroup request, Guid except = default)
+    {
+        var sameTeacher = await db.ClassGroups
+            .AsNoTracking()
+            .Where(g => g.Id != except && g.TeacherId == request.TeacherId && g.PeriodId == request.PeriodId)
+            .ToListAsync();
+
+        if (FirstClash(request, sameTeacher) is { } day)
+            throw new InvalidOperationException(
+                $"El docente ya tiene otro grupo el {day} en un horario que se traslapa en este periodo.");
+    }
+
+    private static string? FirstClash(CreateClassGroup request, IEnumerable<ClassGroups> others) =>
+        others.Select(other => FindScheduleConflict(request.Schedule, other.Schedule)).FirstOrDefault(day => day is not null);
 
     /// <summary>
     /// What the group points at must exist, and the course must be one of the career's. The
@@ -226,11 +237,22 @@ public sealed partial class ClassGroupsRepository(AppDBContext db)
         }
     }
 
-    // Same days and same hours, in any order: the group did not move.
+    // Same days and same hours, however they are written: "Lunes y miércoles" and one row per day
+    // are one schedule, and the form always sends the second. The group did not move.
     private static bool SameSchedule(IReadOnlyList<Schedule> stored, IReadOnlyList<Schedule> incoming) =>
-        stored.Count == incoming.Count &&
-        stored.Select(s => $"{Normalize(s.Day)}|{Normalize(s.Time)}").OrderBy(x => x)
-            .SequenceEqual(incoming.Select(s => $"{Normalize(s.Day)}|{Normalize(s.Time)}").OrderBy(x => x));
+        Slots(stored).SetEquals(Slots(incoming));
+
+    private static HashSet<(string Day, TimeOnly Start, TimeOnly End)> Slots(IReadOnlyList<Schedule> schedule)
+    {
+        var slots = new HashSet<(string Day, TimeOnly Start, TimeOnly End)>();
+
+        foreach (var entry in schedule)
+            if (ParseTimeRange(entry.Time) is { } range)
+                foreach (var day in ParseDays(entry.Day))
+                    slots.Add((day, range.Start, range.End));
+
+        return slots;
+    }
 
     // Returns the conflicting day (as written) when a new schedule shares a day and overlapping time range with an existing one.
     private static string? FindScheduleConflict(IReadOnlyList<Schedule> newSchedule, IReadOnlyList<Schedule> existingSchedule)

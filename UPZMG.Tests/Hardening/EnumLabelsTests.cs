@@ -38,6 +38,16 @@ public class EnumLabelsTests
     public void AStoredDayIsReadBackWithOrWithoutItsAccent(string stored, Days expected) =>
         Assert.Equal(expected, DayLabels.Parse(stored));
 
+    [Theory]
+    [InlineData("Lunes y miércoles", new[] { Days.Lunes, Days.Miercoles })]
+    [InlineData("Martes, Jueves", new[] { Days.Martes, Days.Jueves })]
+    [InlineData("Lun/Mié.", new[] { Days.Lunes, Days.Miercoles })]
+    [InlineData("Viernes", new[] { Days.Viernes })]
+    [InlineData("lo que sea", new Days[0])]
+    [InlineData("", new Days[0])]
+    public void AStoredCellGivesEveryDayItNames(string stored, Days[] expected) =>
+        Assert.Equal(expected, DayLabels.ParseAll(stored));
+
     [Fact]
     public void NoLabelKeepsAnInnerCapitalUnlessItIsAnAcronym()
     {
