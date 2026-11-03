@@ -19,6 +19,9 @@ public sealed record TemplateValidation(IReadOnlyList<TemplateProblem> Problems)
 /// </summary>
 public static class TemplateValidator
 {
+    /// <summary>The board report's own row in the captures table: no format can use this key.</summary>
+    public const string ReservedReportType = "InformeJunta";
+
     // Column sizes of reports.ReportType and reports.TemplateVersion.
     private const int MaxReportTypeLength = 40;
     private const int MaxVersionLength = 20;
@@ -78,6 +81,11 @@ public static class TemplateValidator
         if (!IsSafeReportType(t.ReportType))
             problems.Add(new TemplateProblem("Plantilla",
                 $"La clave del formato (reportType) es obligatoria, de hasta {MaxReportTypeLength} caracteres, y sólo admite letras sin acento, números, guion y guion bajo."));
+
+        // Captures of a format with this key are taken for the board report: a capture was created and
+        // then could not be read back.
+        if (string.Equals(t.ReportType?.Trim(), ReservedReportType, StringComparison.OrdinalIgnoreCase))
+            problems.Add(new TemplateProblem("Plantilla", $"La clave «{ReservedReportType}» la usa el sistema para el Informe de Junta: elige otra."));
 
         if (!IsSafeVersion(t.Version))
             problems.Add(new TemplateProblem("Plantilla",

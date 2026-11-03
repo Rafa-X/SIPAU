@@ -20,7 +20,7 @@ public sealed class BoardReportService(
     public Task<BoardReportDocument?> GetDocumentAsync(string cycle) =>
         GetOrDefaultAsync<BoardReportDocument>($"boardreport/{Uri.EscapeDataString(cycle)}");
 
-    public async Task<BoardReportSaveResult> SaveNarrativeAsync(string cycle, string blockKey, string? text)
+    public async Task<BoardReportSaveResult> SaveNarrativeAsync(string cycle, string blockKey, string? text, string? baseText)
     {
         var requesterKey = await securityService.GetRequesterKeyAsync();
         var request = new SaveBoardNarrative
@@ -29,6 +29,7 @@ public sealed class BoardReportService(
             Cycle = cycle,
             BlockKey = blockKey,
             Text = text,
+            BaseText = baseText,
         };
 
         return await PostAsync("boardreport/narrative", JsonSerializer.Serialize(request), requesterKey);

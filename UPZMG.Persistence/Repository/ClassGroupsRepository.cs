@@ -56,6 +56,10 @@ public sealed partial class ClassGroupsRepository(AppDBContext db)
             PeriodId = group.PeriodId,
             CareerId = group.CareerId,
             TeacherId = group.TeacherId,
+            TeacherName = await db.Employees.AsNoTracking()
+                .Where(e => e.Id == group.TeacherId)
+                .Select(e => e.FullName)
+                .FirstOrDefaultAsync(),
             FacilityId = group.FacilityId,
             IsTheory = group.IsTheory,
             Capacity = group.Capacity,
@@ -77,7 +81,7 @@ public sealed partial class ClassGroupsRepository(AppDBContext db)
         var group = await db.ClassGroups.FirstOrDefaultAsync(g => g.Id == request.Id)
             ?? throw new InvalidOperationException("El grupo ya no existe.");
 
-        await RequireReferencesAsync(request);
+        await RequireReferencesAsync(request, checkTeacher: group.TeacherId != request.TeacherId);
 
         if (request.Capacity < group.Enrolled)
             throw new InvalidOperationException(
@@ -168,7 +172,7 @@ public sealed partial class ClassGroupsRepository(AppDBContext db)
     /// database refuses a missing one too, but as a foreign-key violation the person saw a server
     /// error; a course of another career was stored and the group listed under the wrong career.
     /// </summary>
-    private async Task RequireReferencesAsync(CreateClassGroup request)
+    private async Task RequireReferencesAsync(CreateClassGroup request, bool checkTeacher = true)
     {
         if (!await db.Periods.AnyAsync(p => p.Id == request.PeriodId))
             throw new InvalidOperationException("El periodo seleccionado no existe.");
@@ -185,14 +189,19 @@ public sealed partial class ClassGroupsRepository(AppDBContext db)
         if (courseCareer != request.CareerId)
             throw new InvalidOperationException("La materia seleccionada no pertenece a esa carrera.");
 
-        var isTeacher = await db.Employees.AsNoTracking()
-            .Where(e => e.Id == request.TeacherId)
-            .Select(e => (bool?)e.IsTeacher)
-            .FirstOrDefaultAsync();
-        if (isTeacher is null)
-            throw new InvalidOperationException("El docente seleccionado no existe.");
-        if (isTeacher == false)
-            throw new InvalidOperationException("El empleado seleccionado no está registrado como docente.");
+        // A correction that keeps the teacher is not choosing one. Whoever stopped teaching remains on
+        // the groups they gave, and correcting a capacity there must not demand rewriting who gave it.
+        if (checkTeacher)
+        {
+            var isTeacher = await db.Employees.AsNoTracking()
+                .Where(e => e.Id == request.TeacherId)
+                .Select(e => (bool?)e.IsTeacher)
+                .FirstOrDefaultAsync();
+            if (isTeacher is null)
+                throw new InvalidOperationException("El docente seleccionado no existe.");
+            if (isTeacher == false)
+                throw new InvalidOperationException("El empleado seleccionado no está registrado como docente.");
+        }
 
         if (!await db.Set<SchoolFacility>().AnyAsync(f => f.Id == request.FacilityId))
             throw new InvalidOperationException("El espacio seleccionado no existe.");
@@ -205,7 +214,7 @@ public sealed partial class ClassGroupsRepository(AppDBContext db)
     /// </summary>
     private static void EnsureReadableSchedule(IReadOnlyList<Schedule> schedule)
     {
-        if (schedule.Count == 0)
+        if (schedule.Count == 0 || schedule.Contains(null!))
             throw new InvalidOperationException("El grupo necesita al menos un día y horario.");
 
         foreach (var entry in schedule)

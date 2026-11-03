@@ -205,6 +205,10 @@ else
 
         _courses = await GeneralDataSvc.GetCoursesAsync(group.CareerId);
 
+        // Whoever no longer teaches is not on the list, but this group is still theirs.
+        if (group.TeacherName is { } teacherName && _teachers.All(t => t.Id != group.TeacherId))
+            _teachers = [.. _teachers, new LookupOption(group.TeacherId, teacherName)];
+
         _model = new ClassGroupFormViewModel
         {
             PeriodId = group.PeriodId,

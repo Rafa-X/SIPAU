@@ -14,7 +14,12 @@ public class InfraestructureRepository(AppDBContext db)
     private const int MaxProblems = 30;
     private const int MaxProblemLength = 200;
 
-    public async Task<SchoolFacility> CreateAsync(CreateFacility request)
+    // One at a time: nothing in the database stops two spaces with one name, and twelve requests at
+    // once all read the name free and all stored it.
+    public Task<SchoolFacility> CreateAsync(CreateFacility request) =>
+        db.InExclusiveSectionAsync(ExclusiveSection.Facilities, () => AddFacilityAsync(request));
+
+    private async Task<SchoolFacility> AddFacilityAsync(CreateFacility request)
     {
         var name = request.Name.Trim();
 

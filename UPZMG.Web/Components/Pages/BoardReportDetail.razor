@@ -139,6 +139,22 @@ else
 
                                     @if (_editing == key)
                                     {
+                                        @if (_superseded)
+                                        {
+                                            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mb-2">
+                                                <b>Otra persona guardó este apartado mientras lo redactabas.</b>
+                                                @if (_theirText is null)
+                                                {
+                                                    <text> Lo regresó a la redacción sugerida.</text>
+                                                }
+                                                else
+                                                {
+                                                    <text> Dejó este texto:</text>
+                                                    <div class="sipau-board-text mt-1">@_theirText</div>
+                                                }
+                                                <div class="mt-1">Tu texto sigue aquí abajo. Si guardas, sustituye al suyo.</div>
+                                            </MudAlert>
+                                        }
                                         <MudTextField @bind-Value="_draft" Lines="6" Variant="Variant.Outlined"
                                                       Immediate="true" AutoFocus="true"
                                                       Label="Texto del apartado" Class="mt-1" />
@@ -148,7 +164,7 @@ else
                                                 Guardar
                                             </MudButton>
                                             <MudButton Size="Size.Small" Variant="Variant.Text"
-                                                       OnClick="@(() => _editing = null)">Cancelar</MudButton>
+                                                       OnClick="CancelEditAsync">Cancelar</MudButton>
                                             <MudSpacer />
                                             @if (!block.IsSuggested)
                                             {
@@ -172,7 +188,7 @@ else
                                                 {
                                                     <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary"
                                                                StartIcon="@Icons.Material.Filled.Edit"
-                                                               OnClick="@(() => EditAsync(key, block.Text))">
+                                                               OnClick="@(() => EditAsync(key, block))">
                                                         Redactar
                                                     </MudButton>
                                                 }
@@ -207,6 +223,14 @@ else
 
     private bool HasUnsavedText => _editing is not null && _draft != (_editingOriginal ?? string.Empty);
 
+    // The stored text this draft started from; null while the block shows the suggestion. It is what
+    // tells a save that follows what the person read from one that would erase somebody else's.
+    private string? _editingBase;
+
+    // Somebody else saved the open block meanwhile, and what they left.
+    private bool _superseded;
+    private string? _theirText;
+
     protected override Task OnParametersSetAsync() => LoadAsync();
 
     private async Task LoadAsync()
@@ -220,7 +244,7 @@ else
     /// Opens one narrative block for writing. Switching blocks with unsaved text used to
     /// replace the draft without asking, so the paragraph somebody had just written was gone.
     /// </summary>
-    private async Task EditAsync(string key, string? text)
+    private async Task EditAsync(string key, BoardReportBlock block)
     {
         if (_editing != key && HasUnsavedText)
         {
@@ -233,8 +257,21 @@ else
         }
 
         _editing = key;
-        _draft = text ?? string.Empty;
+        _draft = block.Text ?? string.Empty;
         _editingOriginal = _draft;
+        _editingBase = block.IsSuggested ? null : block.Text;
+        _superseded = false;
+        _theirText = null;
+    }
+
+    private async Task CancelEditAsync()
+    {
+        _editing = null;
+        if (!_superseded) return;
+
+        // What this screen still shows is what it read before somebody else saved.
+        _superseded = false;
+        await LoadAsync();
     }
 
     private async Task GoToAsync(string elementId) => await JS.InvokeVoidAsync("sipauScrollTo", elementId);
@@ -255,8 +292,18 @@ else
     private async Task SaveAsync(string key, string? text)
     {
         _working = true;
-        var result = await BoardSvc.SaveNarrativeAsync(Cycle, key, text);
+        var result = await BoardSvc.SaveNarrativeAsync(Cycle, key, text, _editingBase);
         _working = false;
+
+        if (result.Superseded)
+        {
+            // Nothing is lost on either side: their text is on screen, this one stays in the editor,
+            // and saving again is now a decision somebody made knowing both.
+            _superseded = true;
+            _theirText = result.CurrentText;
+            _editingBase = result.CurrentText;
+            return;
+        }
 
         if (!result.Saved)
         {

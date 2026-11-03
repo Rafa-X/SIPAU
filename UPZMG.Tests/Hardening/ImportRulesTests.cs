@@ -28,6 +28,22 @@ public class ImportRulesTests
         BirthState = "Jalisco",
     };
 
+    /// <summary>The rule measured the trimmed text and the column took the rest: a server error.</summary>
+    [Fact]
+    public void AKeyIsMeasuredAsItCameSpacesIncluded()
+    {
+        var student = Student();
+        student.CURP = " " + new string('A', 18);
+        Assert.Contains("La CURP debe tener 18 caracteres.", ImportRules.Check(student, Today));
+
+        var employee = Employee();
+        employee.Curp = " " + new string('A', 18);
+        employee.Rfc = " " + new string('A', 13);
+        var problems = ImportRules.Check(employee, Today);
+        Assert.Contains("La CURP debe tener 18 caracteres.", problems);
+        Assert.Contains("El RFC debe tener 12 o 13 caracteres.", problems);
+    }
+
     private static CreateEmployee Employee() => new()
     {
         RequesterKey = Guid.NewGuid(),

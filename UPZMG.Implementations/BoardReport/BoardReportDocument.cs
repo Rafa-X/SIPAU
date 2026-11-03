@@ -116,6 +116,8 @@ public class SaveBoardNarrative
     public required string BlockKey { get; set; }
     /// <summary>Empty text restores the wording the system suggests.</summary>
     public string? Text { get; set; }
+    /// <summary>The stored text this edit started from; null when the block showed the suggestion.</summary>
+    public string? BaseText { get; set; }
 }
 
 public class SubmitBoardReport
@@ -125,8 +127,12 @@ public class SubmitBoardReport
 }
 
 /// <param name="Saved">False when the report was already submitted, or the cycle does not exist.</param>
-public sealed record BoardReportSaveResult(bool Saved, string? Message = null)
+/// <param name="Superseded">Somebody else saved this block after it was opened.</param>
+/// <param name="CurrentText">What they left, so it can be read before replacing it; null is the suggestion.</param>
+public sealed record BoardReportSaveResult(bool Saved, string? Message = null, bool Superseded = false, string? CurrentText = null)
 {
     public static BoardReportSaveResult Ok() => new(true);
     public static BoardReportSaveResult Refused(string message) => new(false, message);
+    public static BoardReportSaveResult SupersededBy(string? currentText) =>
+        new(false, "Otra persona guardó este apartado mientras lo redactabas.", true, currentText);
 }

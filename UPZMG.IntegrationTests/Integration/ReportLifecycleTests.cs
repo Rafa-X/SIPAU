@@ -206,6 +206,50 @@ public sealed class ReportLifecycleTests(TestDatabase database)
         }
     }
 
+    /// <summary>
+    /// Each save replaces the block, so whoever saved second erased the first text without anybody
+    /// knowing. Another block is not a conflict, and knowing what is there it can be replaced.
+    /// </summary>
+    [SqlServerFact]
+    public async Task ASectionOfTheBoardReportIsNotOverwrittenWithoutReadingIt()
+    {
+        await using var api = new ApiHost(database);
+        var admin = await api.SignInAsync(Accounts.Admin, Accounts.PasswordOf(Accounts.Admin));
+
+        async Task<List<JsonElement>> BlocksAsync()
+        {
+            var document = await admin.ReadAsync<JsonElement>(await admin.Client.GetAsync($"boardreport/{Version}"));
+            return [.. document.GetProperty("chapters").EnumerateArray()
+                .SelectMany(chapter => chapter.GetProperty("blocks").EnumerateArray())
+                .Where(block => block.GetProperty("kind").GetString() == "narrative")];
+        }
+
+        async Task<JsonElement> SaveAsync(string key, string? text, string? baseText)
+        {
+            var response = await admin.PostAsync("boardreport/narrative", new { requesterKey = admin.UserId, cycle = Version, blockKey = key, text, baseText });
+            return await admin.ReadAsync<JsonElement>(response);
+        }
+
+        var blocks = await BlocksAsync();
+        var first = blocks[0].GetProperty("blockKey").GetString()!;
+        var second = blocks[1].GetProperty("blockKey").GetString()!;
+
+        Assert.True((await SaveAsync(first, "Lo que escribió A", null)).GetProperty("saved").GetBoolean());
+
+        var late = await SaveAsync(first, "Lo que escribió B", null);
+        Assert.False(late.GetProperty("saved").GetBoolean());
+        Assert.True(late.GetProperty("superseded").GetBoolean());
+        Assert.Equal("Lo que escribió A", late.GetProperty("currentText").GetString());
+        Assert.Equal("Lo que escribió A", (await BlocksAsync())[0].GetProperty("text").GetString());
+
+        Assert.True((await SaveAsync(second, "Otro apartado", null)).GetProperty("saved").GetBoolean());
+        Assert.True((await SaveAsync(first, "Lo que escribió B", "Lo que escribió A")).GetProperty("saved").GetBoolean());
+        Assert.Equal("Lo que escribió B", (await BlocksAsync())[0].GetProperty("text").GetString());
+
+        Assert.True((await SaveAsync(first, null, "Lo que escribió B")).GetProperty("saved").GetBoolean());
+        Assert.True((await SaveAsync(second, null, "Otro apartado")).GetProperty("saved").GetBoolean());
+    }
+
     /// <summary>The listing used to count rows: "8 de 8" with two formats missing.</summary>
     [SqlServerFact]
     public async Task SendingAFormatAgainDoesNotAdvanceTheBoardReport()

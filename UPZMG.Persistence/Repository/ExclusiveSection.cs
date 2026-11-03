@@ -15,6 +15,7 @@ public static class ExclusiveSection
 {
     public const string Accounts = "sipau-accounts";
     public const string ClassGroups = "sipau-class-groups";
+    public const string Facilities = "sipau-facilities";
 
     private const int Busy = 51000;
 

@@ -328,12 +328,12 @@ else
 @code {
     [Parameter] public Guid ReportId { get; set; }
 
-    /// <summary>Arrives as ?enviado=1 right after submitting. It only adds the
-    /// on-screen receipt; the printed format is identical either way.</summary>
+    /// <summary>Arrives as ?enviado=1 right after submitting. It only adds the on-screen receipt,
+    /// and only over a format that was sent: the address is not what makes it so.</summary>
     [SupplyParameterFromQuery(Name = "enviado")]
     public string? SubmittedFlag { get; set; }
 
-    private bool JustSubmitted => SubmittedFlag == "1";
+    private bool JustSubmitted => SubmittedFlag == "1" && _status == ReportStatus.submitted;
 
     private ReportTemplateDefinition? _template;
     private ReportFormState? _form;

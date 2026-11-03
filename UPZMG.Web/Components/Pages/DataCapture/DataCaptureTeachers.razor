@@ -44,7 +44,8 @@ else
         <MudGrid>
             <MudItem md="4">
                 <MudTextField @bind-Value="_model.Email" Label="Correo electrónico" InputType="InputType.Email" MaxLength="100"
-                              Required="true" RequiredError="El correo electrónico es obligatorio." />
+                              Required="true" RequiredError="El correo electrónico es obligatorio."
+                              HelperText="@(IsEditing ? "Corregirlo aquí no cambia el correo con el que esta persona entra al sistema." : null)" />
             </MudItem>
             <MudItem md="4">
                 <MudTextField @bind-Value="_model.Rfc" Label="RFC" MaxLength="13"
@@ -240,7 +241,9 @@ else
 
         Snackbar.Add(IsEditing
             ? $"Cambios de {_model.FirstName} {_model.LastName} guardados correctamente."
-            : $"Docente {_model.FirstName} {_model.LastName} guardado correctamente.", Severity.Success);
+            : _model.IsTeacher
+                ? $"Docente {_model.FirstName} {_model.LastName} guardado correctamente."
+                : $"Registro de {_model.FirstName} {_model.LastName} guardado correctamente.", Severity.Success);
         Nav.NavigateTo(IsEditing ? "/datacapture/teachers/consult" : "/datacapture");
     }
 }

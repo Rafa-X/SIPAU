@@ -28,14 +28,17 @@
 <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4">
     En <b>Carrera</b> escribe la clave de la carrera, por ejemplo <b>INCO</b>, y en <b>Periodo de inicio</b> la del periodo, por ejemplo <b>2026-EA</b>.
     La columna de lenguas indígenas puede quedar vacía; para varias lenguas usa una celda entre comillas, por ejemplo <b>"Nahuatl,Maya Yucateco"</b>. Las lenguas válidas son las del catálogo.
+    Las fechas van como <b>AAAA-MM-DD</b> o <b>DD/MM/AAAA</b>, con el día primero.
 </MudAlert>
 
 <MudPaper Elevation="1" Class="bulk-import-container pa-6">
     <MudForm @ref="_form">
         <MudGrid Class="bulk-import-grid" Spacing="3">
             <MudItem xs="12" md="6" Class="d-flex justify-center">
+                @* Not while a review is in flight: its answer would land on another area's table, and
+                   confirming it then sent one area's rows as the other's. *@
                 <MudSelect T="string" @bind-Value="_areaKey" @bind-Value:after="Reset" Label="Área destino"
-                           Required="true" RequiredError="Selecciona un área.">
+                           Disabled="_busy" Required="true" RequiredError="Selecciona un área.">
                     @foreach (var area in CaptureSvc.BulkAreas)
                     {
                         <MudSelectItem T="string" Value="@area.Value">@area.Text</MudSelectItem>
@@ -54,7 +57,7 @@
                 <MudFileUpload T="IBrowserFile" @bind-Files="_file" @bind-Files:after="Reset" Accept=".csv,text/csv" Hidden="true">
                     <CustomContent Context="upload">
                         <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AttachFile"
-                                   OnClick="@(() => upload.OpenFilePickerAsync())">
+                                   Disabled="_busy" OnClick="@(() => upload.OpenFilePickerAsync())">
                             Seleccionar archivo (.csv)
                         </MudButton>
                     </CustomContent>
@@ -541,9 +544,9 @@
         if (actualType == typeof(DateOnly))
         {
             if (value.Length == 0) return default(DateOnly);
-            return DateOnly.TryParse(value, CultureInfo.InvariantCulture, out var date)
+            return CsvText.TryParseDate(value, out var date)
                 ? date
-                : throw new FormatException($"La fecha '{value}' de la columna «{column}» no es válida; usa AAAA-MM-DD.");
+                : throw new FormatException($"La fecha '{value}' de la columna «{column}» no es válida; usa AAAA-MM-DD o DD/MM/AAAA.");
         }
         if (actualType == typeof(bool))
         {

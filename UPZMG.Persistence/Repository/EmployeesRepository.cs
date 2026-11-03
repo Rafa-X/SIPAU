@@ -76,6 +76,8 @@ public class EmployeesRepository(AppDBContext db)
 
         RequireCaptureRules(request);
 
+        if (employee.IsTeacher && !request.IsTeacher) await RequireNoGroupsToReassignAsync(request.Id);
+
         if (await db.Employees.AnyAsync(e => e.Id != request.Id && e.EmployeeNumber == request.EmployeeNumber))
             throw new InvalidOperationException($"Ya existe otro empleado con el número '{request.EmployeeNumber}'.");
 
@@ -119,6 +121,26 @@ public class EmployeesRepository(AppDBContext db)
 
         await db.SaveGuardingUniquenessAsync("Ya existe otro empleado con ese número, correo, RFC o CURP.");
         return employee;
+    }
+
+    /// <summary>
+    /// Whoever gives a group this period keeps the status until it is given to somebody else. Taken
+    /// away first, the groups stayed in the hands of somebody the form no longer lists as a teacher,
+    /// with nothing saying so. Groups of other periods are history and do not hold anybody back.
+    /// </summary>
+    private async Task RequireNoGroupsToReassignAsync(Guid employeeId)
+    {
+        var groups = await (
+            from g in db.ClassGroups.AsNoTracking()
+            join p in db.Periods.AsNoTracking() on g.PeriodId equals p.Id
+            where g.TeacherId == employeeId && p.IsActive
+            select g.Id)
+            .CountAsync();
+
+        if (groups > 0)
+            throw new InvalidOperationException(groups == 1
+                ? "Tiene 1 grupo en el periodo activo: Dirección Académica debe reasignarlo antes de quitarle la condición de docente."
+                : $"Tiene {groups} grupos en el periodo activo: Dirección Académica debe reasignarlos antes de quitarle la condición de docente.");
     }
 
     /// <summary>

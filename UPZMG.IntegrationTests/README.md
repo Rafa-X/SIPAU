@@ -56,6 +56,8 @@ La Web de las pruebas distribuidas sirve HTTPS con el certificado de desarrollo 
 | `ConcurrencyTests.TwelveSimultaneousCapturesOfOneStudentStoreItOnce` | Doce capturas simultáneas de la misma matrícula: una se guarda y once reciben 409. Ninguna termina en 500. |
 | `ConcurrencyTests.TwoAdministratorsSuspendingEachOtherLeaveOneStanding` | Dos administradores que se suspenden mutuamente a la vez: sólo una baja procede y siempre queda uno activo. |
 | `ConcurrencyTests.TwelveRequestsForOneSlotCreateOneGroup` | Doce peticiones por el mismo espacio y hora: se crea un grupo y once reciben 409. |
+| `ConcurrencyTests.TwelveRequestsForOneNameCreateOneRoleAndOneSpace` | Doce altas simultáneas del mismo nombre crean un rol y un espacio; las demás reciben 409. |
+| `ConcurrencyTests.TwelveRequestsForOneCodeCreateOnePeriod` | Doce altas simultáneas del mismo código crean un periodo; las demás reciben 409, no un error de servidor. |
 | `ConcurrencyTests.ColdRequestsForTheModelShareOneTraining` | Ocho peticiones simultáneas con el modelo sin entrenar comparten un solo entrenamiento. |
 | `ConcurrencyTests.RetrainingsWhileOthersReadLeaveOneConsistentModel` | Reentrenamientos concurrentes con lectores: todo responde 200 y el resumen coincide con el listado. |
 | `BulkImportTests.TheCheckWritesNothingAndGivesEveryRowItsReason` | La revisión de un CSV no escribe nada y explica cada fila rechazada: dato faltante, duplicado en el archivo, duplicado en la base, lengua desconocida, CURP corta. |
@@ -64,6 +66,7 @@ La Web de las pruebas distribuidas sirve HTTPS con el certificado de desarrollo 
 | `ReportLifecycleTests.AnAnswerOutsideTheCatalogueIsNotAcceptedAsOfficial` | Un periodo o un nivel inventados no se aceptan como formato oficial (422); en borrador sí se pueden guardar. |
 | `ReportLifecycleTests.ATableOverItsLimitIsNotAcceptedAsOfficial` | 61 líneas donde la plantilla permite 60 no se aceptan como formato oficial, aunque cuadren con su total. |
 | `ReportLifecycleTests.EverySeededCaptureIsWithinItsLists` | Las ocho capturas sembradas cumplen esa regla: ningún borrador existente queda atorado por ella. |
+| `ReportLifecycleTests.ASectionOfTheBoardReportIsNotOverwrittenWithoutReadingIt` | Quien guarda un apartado que otra persona cambió mientras lo redactaba recibe el texto de ella, en vez de borrarlo sin saberlo. |
 | `ReportLifecycleTests.SendingAFormatAgainDoesNotAdvanceTheBoardReport` | Enviar otra vez un formato ya enviado no mueve el avance del Informe de Junta: cuenta formatos, no capturas. |
 | `ReportLifecycleTests.ADraftChangesUntilItIsSubmittedAndThenNever` | Ciclo de un formato oficial: borrador editable, protección contra sobrescritura (412), envío incompleto rechazado (422), envío, bloqueo (409) y lectura sólo por su autor. |
 | `WebApiProcessTests.ASessionOpenedInTheWebReadsTheDatabaseThroughTheApi` | Con la Web y la API en procesos separados, el inicio de sesión de la Web pasa por la API y la página muestra cifras calculadas por la API. |

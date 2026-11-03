@@ -167,6 +167,9 @@ else
         PropertyNameCaseInsensitive = true,
         ReadCommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true,
+        // As the API reads it. "sections": null reached the validator as a list that is not there,
+        // and the exception took the editor away with what was being written.
+        RespectNullableAnnotations = true,
     };
 
     // Written back the way a person reads it: indented and with real accents.

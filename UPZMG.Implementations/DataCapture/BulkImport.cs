@@ -73,6 +73,17 @@ public static class CsvText
         }
     }
 
+    private static readonly string[] DateFormats = ["yyyy-M-d", "d/M/yyyy", "d-M-yyyy"];
+
+    /// <summary>
+    /// A date of a file: the template's own form, or the day-first one Excel writes on a Mexican
+    /// computer. Read by the invariant culture, 01/02/2005 became January 2 while 13/02/2005 was
+    /// refused, so one file came out with some birth dates changed and others rejected. A year of
+    /// two digits is refused: nothing in the cell says which century it means.
+    /// </summary>
+    public static bool TryParseDate(string value, out DateOnly date) =>
+        DateOnly.TryParseExact(value, DateFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out date);
+
     /// <summary>A spreadsheet renamed to .csv, or anything else that is not text: text never carries a NUL.</summary>
     public static bool IsBinary(ReadOnlySpan<byte> bytes)
     {
@@ -101,7 +112,8 @@ public static class ImportRules
         if (Blank(s.Address)) problems.Add("Falta el domicilio.");
         if (Blank(s.BirthCountry)) problems.Add("Falta el país de nacimiento.");
         if (Blank(s.BirthState)) problems.Add("Falta el estado de nacimiento.");
-        if (!Blank(s.CURP) && s.CURP.Trim().Length != 18) problems.Add("La CURP debe tener 18 caracteres.");
+        // Measured as it came, spaces included: that is what goes to an 18-character column.
+        if (!Blank(s.CURP) && s.CURP.Length != 18) problems.Add("La CURP debe tener 18 caracteres.");
         if (s.CareerId == Guid.Empty) problems.Add("Falta la carrera.");
         if (s.PeriodIdStart == Guid.Empty) problems.Add("Falta el periodo de inicio.");
         if (s.NumberOfChildren < 0) problems.Add("El número de hijos no puede ser negativo.");
@@ -135,8 +147,8 @@ public static class ImportRules
         if (e.EmployeeNumber <= 0) problems.Add("El número de empleado debe ser mayor que cero.");
         if (Blank(e.FullName)) problems.Add("Falta el nombre completo.");
         if (Blank(e.Email) || !e.Email.Contains('@')) problems.Add("El correo electrónico no es válido.");
-        if (Blank(e.Rfc) || e.Rfc.Trim().Length is not (12 or 13)) problems.Add("El RFC debe tener 12 o 13 caracteres.");
-        if (Blank(e.Curp) || e.Curp.Trim().Length != 18) problems.Add("La CURP debe tener 18 caracteres.");
+        if (Blank(e.Rfc) || e.Rfc.Length is not (12 or 13)) problems.Add("El RFC debe tener 12 o 13 caracteres.");
+        if (Blank(e.Curp) || e.Curp.Length != 18) problems.Add("La CURP debe tener 18 caracteres.");
         if (e.ExternalXPYears < 0) problems.Add("Los años de experiencia no pueden ser negativos.");
         CheckBirthDate(e.BirthDate, today, problems);
 

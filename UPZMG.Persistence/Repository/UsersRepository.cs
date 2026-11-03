@@ -73,6 +73,15 @@ public class UsersRepository(AppDBContext db)
             ?? throw new InvalidOperationException(
                 $"No hay ningún empleado con el correo '{request.Email}': el usuario se crea sobre su expediente.");
         
+        // One person, one account. Correcting the address of the record left the account on the old
+        // one, so the new address was free and a second account could be opened for the same person.
+        var account = await db.SystemUsers.AsNoTracking()
+            .Where(u => u.EmployeeId == employee.Id)
+            .Select(u => u.Email)
+            .FirstOrDefaultAsync();
+        if (account is not null && !account.Equals(employee.Email, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"Ese empleado ya tiene una cuenta, con el correo '{account}'.");
+
         var roleId = await ExistingRoleAsync(request.RoleId);
 
         var user = new SystemUser

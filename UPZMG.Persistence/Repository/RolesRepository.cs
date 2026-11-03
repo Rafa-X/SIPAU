@@ -23,7 +23,12 @@ public class RolesRepository(AppDBContext _db)
             .ToListAsync();
     }
 
-    public async Task<Role> CreateRoleAsync(CreateRole request)
+    // One at a time: nothing in the database stops two roles with one name, and twelve requests at
+    // once all read the name free.
+    public Task<Role> CreateRoleAsync(CreateRole request) =>
+        db.InExclusiveSectionAsync(ExclusiveSection.Accounts, () => AddRoleAsync(request));
+
+    private async Task<Role> AddRoleAsync(CreateRole request)
     {
         var name = request.Name.Trim();
         if (name.Length == 0) throw new InvalidOperationException("El rol necesita un nombre.");
@@ -45,7 +50,10 @@ public class RolesRepository(AppDBContext _db)
         return role;
     }
 
-    public async Task<Role> EditRoleAsync(EditRole request)
+    public Task<Role> EditRoleAsync(EditRole request) =>
+        db.InExclusiveSectionAsync(ExclusiveSection.Accounts, () => RenameRoleAsync(request));
+
+    private async Task<Role> RenameRoleAsync(EditRole request)
     {
         var role = await db.Roles.FirstOrDefaultAsync(r => r.Id == request.RoleId)
             ?? throw new InvalidOperationException("El rol ya no existe.");

@@ -337,6 +337,30 @@ public class BusinessRuleTests
         Assert.Contains(reason, refused.Message);
     }
 
+    /// <summary>
+    /// Correcting the address of a record leaves the account on the old one. That freed the new
+    /// address, and a second account could be opened for the same person.
+    /// </summary>
+    [Fact]
+    public async Task APersonKeepsOneAccount()
+    {
+        using var db = Memory();
+        var (_, _, plainRoleId) = await WithOneAdministratorAsync(db);
+        var request = await ANewAccountAsync(db, plainRoleId);
+        var repository = new UsersRepository(db);
+        await repository.CreateUserAsync(request);
+
+        var employee = await db.Employees.FirstAsync(e => e.Email == request.Email);
+        employee.Email = "ana.corregido@upzmg.local";
+        await db.SaveChangesAsync();
+
+        request.Email = "ana.corregido@upzmg.local";
+        var refused = await Assert.ThrowsAsync<InvalidOperationException>(() => repository.CreateUserAsync(request));
+
+        Assert.Contains("ana.rios@upzmg.local", refused.Message);
+        Assert.Equal(1, await db.SystemUsers.CountAsync(u => u.EmployeeId == employee.Id));
+    }
+
     [Fact]
     public async Task ANewAccountNeedsAName()
     {
@@ -865,6 +889,115 @@ public class BusinessRuleTests
         group.Schedule = [new Schedule { Day = "Lunes", Time = "10:00 - 12:00" }];
         await groups.CreateAsync(group);
         Assert.Equal(2, await db.ClassGroups.CountAsync());
+    }
+
+    [Fact]
+    public async Task ANullInTheScheduleIsRefusedWithItsReason()
+    {
+        var (db, group) = await GroupContextAsync();
+        using var _ = db;
+        group.Schedule = [null!];
+
+        var refusal = await Assert.ThrowsAsync<InvalidOperationException>(() => new ClassGroupsRepository(db).CreateAsync(group));
+
+        Assert.Contains("al menos un día y horario", refusal.Message);
+    }
+
+    private static async Task<(UpdateEmployee Request, Employee Stored)> TheTeacherAsync(AppDBContext db, Guid id)
+    {
+        var stored = await db.Employees.FirstAsync(e => e.Id == id);
+        return (new UpdateEmployee
+        {
+            Id = stored.Id, RequesterKey = Guid.NewGuid(), EmployeeNumber = stored.EmployeeNumber, FullName = stored.FullName,
+            Email = stored.Email, Rfc = stored.Rfc, Curp = stored.Curp, Gender = stored.Gender,
+            BirthDate = new DateOnly(1985, 2, 2), HighestEducationLevel = stored.HighestEducationLevel,
+            TitleStatus = stored.TitleStatus, FirstHiredDate = new DateOnly(2015, 8, 1), IsTeacher = false,
+        }, stored);
+    }
+
+    /// <summary>The status was taken away with groups still in their hands, and nothing said so.</summary>
+    [Fact]
+    public async Task WhoGivesAGroupThisPeriodKeepsTheStatusUntilItIsReassigned()
+    {
+        var (db, group) = await GroupContextAsync();
+        using var _ = db;
+        (await db.Periods.FirstAsync(p => p.Id == EntryPeriod)).IsActive = true;
+        await db.SaveChangesAsync();
+        await new ClassGroupsRepository(db).CreateAsync(group);
+
+        var (request, stored) = await TheTeacherAsync(db, group.TeacherId);
+        var refusal = await Assert.ThrowsAsync<InvalidOperationException>(() => new EmployeesRepository(db).UpdateEmployeeAsync(request));
+
+        Assert.Contains("1 grupo en el periodo activo", refusal.Message);
+        Assert.True(stored.IsTeacher);
+    }
+
+    /// <summary>
+    /// A group of another period is history. Whoever gave it may stop teaching, and it can still be
+    /// corrected without inventing who gave it, though nobody can be given a new one that way.
+    /// </summary>
+    [Fact]
+    public async Task AGroupOfAnotherPeriodOutlivesItsTeachersStatus()
+    {
+        var (db, group) = await GroupContextAsync();
+        using var _ = db;
+        var groups = new ClassGroupsRepository(db);
+        var created = await groups.CreateAsync(group);
+
+        var (request, stored) = await TheTeacherAsync(db, group.TeacherId);
+        await new EmployeesRepository(db).UpdateEmployeeAsync(request);
+        Assert.False(stored.IsTeacher);
+        db.ChangeTracker.Clear();
+
+        var corrected = await groups.UpdateAsync(Correction(group, created.Id, group.Schedule));
+        Assert.Equal(25, corrected.Capacity);
+        db.ChangeTracker.Clear();
+
+        var read = await groups.GetAsync(created.Id);
+        Assert.Equal("Laura Mendoza", read!.TeacherName);
+
+        group.Schedule = [new Schedule { Day = "Martes", Time = "08:00 - 10:00" }];
+        var refusal = await Assert.ThrowsAsync<InvalidOperationException>(() => groups.CreateAsync(group));
+        Assert.Contains("no está registrado como docente", refusal.Message);
+    }
+
+    /// <summary>The listing showed the matrícula from when the project was captured.</summary>
+    [Fact]
+    public async Task AProjectShowsTheCurrentEnrolmentNumberOfItsStudent()
+    {
+        using var db = Catalogued();
+        var students = new StudentsRepository(db);
+        var student = await students.CreateStudentAsync(Student("UPH0100", string.Empty));
+
+        await new ExtensionRepository(db).CreateAsync(new CreateOutreachProject
+        {
+            RequesterKey = Guid.NewGuid(), OrganizationName = "Empresa", Sector = "Privado", CompanySize = "Micro",
+            ActivityType = "Servicio social", ProjectName = "Proyecto", PeriodId = EntryPeriod,
+            StudentEnrollmentNumber = "UPH0100",
+        }, Guid.NewGuid());
+
+        var stored = await db.Students.FirstAsync(s => s.Id == student.Id);
+        stored.EnrollmentNumber = "UPH0200";
+        await db.SaveChangesAsync();
+
+        var row = Assert.Single(await new ExtensionRepository(db).GetListAsync());
+        Assert.Equal("UPH0200", row.StudentEnrollmentNumber);
+    }
+
+    [Fact]
+    public async Task AnExtremePageIsAnEmptyPage()
+    {
+        using var db = Catalogued();
+        var students = new StudentsRepository(db);
+        await students.CreateStudentAsync(Student("UPH0300", string.Empty));
+
+        var list = await students.GetStudentsListAsync(new StudentsListRequest
+        {
+            RequesterKey = Guid.NewGuid(), Page = int.MaxValue, PageSize = 100,
+        });
+
+        Assert.Empty(list.Items);
+        Assert.Equal(1, list.TotalCount);
     }
 
     private static UpdateClassGroup Correction(CreateClassGroup group, Guid id, List<Schedule> schedule) => new()
