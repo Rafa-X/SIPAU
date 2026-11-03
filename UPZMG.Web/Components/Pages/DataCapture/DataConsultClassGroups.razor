@@ -17,12 +17,20 @@
 {
     <LoadingState Text="Leyendo los grupos capturados…" />
 }
+else if (_loadFailed)
+{
+    <SectionCard FullHeight="false">
+        <EmptyState Icon="@Icons.Material.Filled.CloudOff"
+                    Title="No pudimos leer el listado"
+                    Description="El servicio no respondió, así que esta pantalla no puede afirmar que no haya registros. Vuelve a cargar la página; si sigue así, avisa a Tecnologías." />
+    </SectionCard>
+}
 else if (_groups.Count == 0)
 {
     <SectionCard FullHeight="false">
         <EmptyState Icon="@Icons.Material.Filled.Class"
                     Title="Sin grupos registrados"
-                    Description="Captura un grupo de clase y aparecerá aquí. Si tu área no es Dirección Académica, el listado no se muestra.">
+                    Description="Captura un grupo de clase y aparecerá aquí.">
             <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/datacapture/class-groups">
                 Capturar grupo
             </MudButton>
@@ -125,6 +133,7 @@ else
     private IReadOnlyList<LookupOption> _facilities = [];
     private IReadOnlyList<LookupOption> _careers = [];
     private bool _loading = true;
+    private bool _loadFailed;
     private string _search = string.Empty;
     private string? _periodId;
     private string? _facilityId;
@@ -139,7 +148,10 @@ else
         var careersTask = GeneralDataSvc.GetCareersSelectableAsync();
         await Task.WhenAll(groupsTask, periodsTask, facilitiesTask, careersTask);
 
-        _groups = await groupsTask;
+        var groups = await groupsTask;
+        // Null is "the listing could not be read", which is not the same as having none.
+        _loadFailed = groups is null;
+        _groups = groups ?? [];
         _periods = await periodsTask;
         _facilities = await facilitiesTask;
         _careers = await careersTask;

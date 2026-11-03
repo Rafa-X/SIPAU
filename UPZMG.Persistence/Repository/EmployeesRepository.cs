@@ -8,27 +8,28 @@ namespace UPZMG.Persistence.Repository;
 public class EmployeesRepository(AppDBContext db)
 {
     
-    // Teaching staff as captured, newest hires first
-    public async Task<List<TeacherListItem>> GetTeachersListAsync() =>
+    // The staff as captured, newest hires first. Everybody: the form registers people who do not
+    // teach too, and with only teachers listed nobody could find them again or correct them.
+    public async Task<List<EmployeeListItem>> GetEmployeesListAsync() =>
         (await db.Employees
             .AsNoTracking()
-            .Where(employee => employee.IsTeacher)
             .OrderByDescending(employee => employee.FirstHiredDate)
             .Select(employee => new
             {
                 employee.Id, employee.EmployeeNumber, employee.FullName, employee.Email,
-                employee.HighestEducationLevel, employee.FirstHiredDate, employee.HasDisability,
+                employee.HighestEducationLevel, employee.FirstHiredDate, employee.HasDisability, employee.IsTeacher,
             })
             .ToListAsync())
             // The label is built in memory: it is wording, not something to ask SQL for.
-            .Select(employee => new TeacherListItem(
+            .Select(employee => new EmployeeListItem(
                 employee.Id,
                 employee.EmployeeNumber,
                 employee.FullName,
                 employee.Email,
                 employee.HighestEducationLevel.Label(),
                 employee.FirstHiredDate,
-                employee.HasDisability))
+                employee.HasDisability,
+                employee.IsTeacher))
             .ToList();
 
     /// <summary>The whole employee, to fill the correction form.</summary>
