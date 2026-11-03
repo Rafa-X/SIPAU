@@ -21,7 +21,7 @@ public class BoardReportRepository(
     IntelligenceRepository intelligenceRepository,
     ScholarshipsRepository scholarshipsRepository)
 {
-    public const string NarrativeReportType = "InformeJunta";
+    public const string NarrativeReportType = TemplateValidator.ReservedReportType;
 
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
@@ -199,6 +199,12 @@ public class BoardReportRepository(
             return BoardReportSaveResult.Refused("Ese bloque no existe en el informe de este ciclo.");
 
         var narratives = row is null ? [] : ReadNarratives(row.AnswersJson);
+
+        // Each save replaces the block, so whoever saved second erased the first text without
+        // anybody knowing. Compared by block: two people writing different sections do not collide.
+        var stored = narratives.GetValueOrDefault(request.BlockKey);
+        var read = string.IsNullOrWhiteSpace(request.BaseText) ? null : request.BaseText.Trim();
+        if (stored != read) return BoardReportSaveResult.SupersededBy(stored);
 
         if (string.IsNullOrWhiteSpace(request.Text)) narratives.Remove(request.BlockKey);
         else narratives[request.BlockKey] = request.Text.Trim();

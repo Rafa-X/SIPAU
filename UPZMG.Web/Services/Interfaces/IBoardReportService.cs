@@ -10,7 +10,7 @@ public interface IBoardReportService
     /// <summary>The document of a cycle; null when the cycle has no formats or the API failed.</summary>
     Task<BoardReportDocument?> GetDocumentAsync(string cycle);
 
-    Task<BoardReportSaveResult> SaveNarrativeAsync(string cycle, string blockKey, string? text);
+    Task<BoardReportSaveResult> SaveNarrativeAsync(string cycle, string blockKey, string? text, string? baseText);
 
     Task<BoardReportSaveResult> SubmitAsync(string cycle);
 }
