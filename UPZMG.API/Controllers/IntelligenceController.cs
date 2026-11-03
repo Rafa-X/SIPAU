@@ -11,7 +11,9 @@ namespace UPZMG.Api.Controllers;
 
 [ApiController]
 [Route("intelligence")]
-[RequirePermission(AppPermissions.ReadIndicators)]
+// Any of the three gets in; each action then asks for its own. An attribute on the action adds to
+// this one, so requiring the indicators here left a role with only "riesgo.consultar" refused.
+[RequirePermission(AppPermissions.ReadIndicators, AppPermissions.ReadRisk, AppPermissions.TrainRisk)]
 public class IntelligenceController(
     IntelligenceRepository intelligenceRepository,
     AlertsRepository alertsRepository,
@@ -34,36 +36,43 @@ public class IntelligenceController(
     private const int MaxPeriodsAhead = 6;
 
     [HttpGet("forecast")]
+    [RequirePermission(AppPermissions.ReadIndicators)]
     // Least-squares projection of enrolment
     public async Task<ActionResult<EnrollmentForecast>> GetForecast([FromQuery] int ahead = 2) =>
         Ok(await intelligenceRepository.GetForecastAsync(Math.Clamp(ahead, 0, MaxPeriodsAhead)));
 
     [HttpGet("history")]
+    [RequirePermission(AppPermissions.ReadIndicators)]
     // Enrolment, pass rate and outcomes of every period that has registrations
     public async Task<ActionResult<IReadOnlyList<PeriodStats>>> GetHistory() =>
         Ok((await intelligenceRepository.GetHistoryAsync()).Periods);
 
     [HttpGet("anomalies")]
+    [RequirePermission(AppPermissions.ReadIndicators)]
     // Statistical alerts over the enrolment, pass and withdrawal series
     public async Task<ActionResult<IReadOnlyList<AnomalyAlert>>> GetAnomalies() =>
         Ok(await intelligenceRepository.GetAnomaliesAsync());
 
     [HttpGet("alerts")]
+    [RequirePermission(AppPermissions.ReadIndicators)]
     // The same alerts as the signed-in user left them: dismissed ones out, seen ones marked
     public async Task<ActionResult<AlertInbox>> GetAlerts() =>
         CurrentUserId == Guid.Empty ? Unauthorized() : Ok(await alertsRepository.GetInboxAsync(CurrentUserId));
 
     [HttpPost("alerts/seen")]
+    [RequirePermission(AppPermissions.ReadIndicators)]
     // Marks alerts as seen for the signed-in user
     public async Task<ActionResult<AlertInbox>> MarkAlertsSeen([FromBody] MarkAlertsSeen request) =>
         CurrentUserId == Guid.Empty ? Unauthorized() : Ok(await alertsRepository.MarkSeenAsync(CurrentUserId, request.Keys));
 
     [HttpPost("alerts/dismiss")]
+    [RequirePermission(AppPermissions.ReadIndicators)]
     // Takes alerts out of the signed-in user's list; everybody else keeps them
     public async Task<ActionResult<AlertInbox>> DismissAlerts([FromBody] DismissAlerts request) =>
         CurrentUserId == Guid.Empty ? Unauthorized() : Ok(await alertsRepository.DismissAsync(CurrentUserId, request.Keys));
 
     [HttpPost("alerts/restore")]
+    [RequirePermission(AppPermissions.ReadIndicators)]
     // Brings back what the signed-in user dismissed
     public async Task<ActionResult<AlertInbox>> RestoreAlerts([FromBody] RestoreAlerts request) =>
         CurrentUserId == Guid.Empty ? Unauthorized() : Ok(await alertsRepository.RestoreAsync(CurrentUserId));
