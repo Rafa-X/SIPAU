@@ -93,7 +93,9 @@ public static class ReportExport
                     // value so the workbook matches what was on screen.
                     rows.Add([
                         XlsxCell.Label(question.Text, bold: true),
-                        question.Sum.Count > 0 ? XlsxCell.Value(form.ComputedTotal(question)) : XlsxCell.Answer(form.Get(question.Key)),
+                        question.Sum.Count > 0
+                            ? XlsxCell.Value(form.ComputedTotal(question))
+                            : XlsxCell.Answer(form.Get(question.Key), numeric: ReportQuestionTypes.Of(question) == ReportQuestionTypes.Number),
                     ]);
                     AppendSpecify(rows, form, question);
                     break;
@@ -139,12 +141,12 @@ public static class ReportExport
             {
                 if (!hasSubs)
                 {
-                    line.Add(XlsxCell.Answer(form.Get(ReportFormState.CellKey(question.Key, row, column))));
+                    line.Add(XlsxCell.Answer(form.Get(ReportFormState.CellKey(question.Key, row, column)), numeric: true));
                     continue;
                 }
 
                 foreach (var sub in question.SubColumns)
-                    line.Add(XlsxCell.Answer(form.Get(ReportFormState.CellKey(question.Key, row, column, sub))));
+                    line.Add(XlsxCell.Answer(form.Get(ReportFormState.CellKey(question.Key, row, column, sub)), numeric: true));
 
                 if (question.SubTotal) line.Add(XlsxCell.Value(form.CellTotal(question, row, column)));
             }
@@ -196,7 +198,8 @@ public static class ReportExport
         {
             var line = new List<XlsxCell> { XlsxCell.Value(r) };
             line.AddRange(question.Fields.Select(field =>
-                XlsxCell.Answer(form.Get(ReportFormState.TableCellKey(question.Key, r, field.Key)))));
+                XlsxCell.Answer(form.Get(ReportFormState.TableCellKey(question.Key, r, field.Key)),
+                    numeric: field.Type.Trim().Equals(ReportQuestionTypes.Number, StringComparison.OrdinalIgnoreCase))));
             rows.Add(line);
         }
     }
