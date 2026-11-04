@@ -1,0 +1,11 @@
+# Un clon en Windows no debe volver CRLF estos archivos: el contenedor de SQL Server los corre con bash
+# y se detiene en la primera línea.
+*.sh text eol=lf
+
+# cmd y Windows PowerShell los esperan con CRLF.
+despliegue/**/*.bat text eol=crlf
+despliegue/**/*.ps1 text eol=crlf
+
+# Copias exactas: git no debe cambiar ni un byte.
+despliegue/base-de-datos/*.bak binary
+despliegue/cargas-masivas/*.csv -text

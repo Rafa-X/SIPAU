@@ -1,20 +1,24 @@
 services:
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: upzmg_db
+    # SQL Server only exists for x86. On a Mac with an Apple chip this runs it under emulation.
+    platform: linux/amd64
+    container_name: ${SIPAU_DB_CONTAINER:-upzmg_db}
     restart: unless-stopped
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: ${MSSQL_DEV_PASSWORD}
       MSSQL_DEV_PASSWORD: ${MSSQL_DEV_PASSWORD}
-      MSSQL_PID: ${MSSQL_PID}
+      MSSQL_PID: ${MSSQL_PID:-Developer}
+      MSSQL_MEMORY_LIMIT_MB: ${MSSQL_MEMORY_LIMIT_MB:-2048}
     ports:
-      - "1433:1433"
+      - "${SIPAU_DB_PORT:-1433}:1433"
     volumes:
       - upzmg_db:/var/opt/mssql
       - ./init-db.sql:/var/opt/mssql/init-db.sql
       - ./start-mssql.sh:/var/opt/mssql/start-mssql.sh
-    entrypoint: /var/opt/mssql/start-mssql.sh
+    # With bash, so it does not depend on the file's execute bit, which Windows does not keep.
+    entrypoint: ["/bin/bash", "/var/opt/mssql/start-mssql.sh"]
     command: /opt/mssql/bin/sqlservr
 
 volumes:
