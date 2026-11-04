@@ -13,7 +13,7 @@ sql_server_pid=$!
 
 echo 'Waiting for SQL Server to start...'
 ready=0
-for i in {1..50}; do
+for i in {1..120}; do
     /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$db_password" -C -Q "SELECT 1" > /dev/null 2>&1
     if [ $? -eq 0 ]; then
         echo 'SQL Server is ready!'

@@ -22,7 +22,7 @@ public class BulkImportRepository(AppDBContext db, StudentsRepository students, 
 
         var problems = rows.Select(r => ImportRules.Check(r.Request, Today)).ToList();
         AddRepeated(rows, problems,
-            ImportRules.RepeatedInFile(rows, ("matrícula", s => s.EnrollmentNumber), ("CURP", s => s.CURP)));
+            ImportRules.RepeatedInFile(rows, ("La matrícula", s => s.EnrollmentNumber), ("La CURP", s => s.CURP)));
 
         // Against what is stored: one query per key for the whole file, not one per row.
         var enrollments = rows.Select(r => r.Request.EnrollmentNumber?.Trim() ?? "").Where(v => v != "").Distinct().ToList();
@@ -73,10 +73,10 @@ public class BulkImportRepository(AppDBContext db, StudentsRepository students, 
 
         var problems = rows.Select(r => ImportRules.Check(r.Request, Today)).ToList();
         AddRepeated(rows, problems, ImportRules.RepeatedInFile(rows,
-            ("número de empleado", e => e.EmployeeNumber.ToString()),
-            ("dirección de correo", e => e.Email),
-            ("RFC", e => e.Rfc),
-            ("CURP", e => e.Curp)));
+            ("El número de empleado", e => e.EmployeeNumber.ToString()),
+            ("El correo", e => e.Email),
+            ("El RFC", e => e.Rfc),
+            ("La CURP", e => e.Curp)));
 
         var numbers = rows.Select(r => r.Request.EmployeeNumber).Distinct().ToList();
         var emails = rows.Select(r => r.Request.Email?.Trim() ?? "").Where(v => v != "").Distinct().ToList();

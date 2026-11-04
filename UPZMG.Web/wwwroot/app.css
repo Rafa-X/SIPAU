@@ -2,6 +2,23 @@
     SIPAU — institutional blue edition
    ----------------------------------------------------------------------------
 
+/* ------------------------------------------------------------------ 0. Fonts */
+/* Served from here, not from Google: without internet the whole app fell back to the system font. */
+@font-face {
+    font-family: 'Archivo';
+    src: url('fonts/archivo-latin-wght.woff2') format('woff2');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Archivo Narrow';
+    src: url('fonts/archivo-narrow-latin-wght.woff2') format('woff2');
+    font-weight: 400 700;
+    font-style: normal;
+    font-display: swap;
+}
+
 /* ---------------------------------------------------------------- 1. Tokens */
 :root {
     --sipau-font: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
