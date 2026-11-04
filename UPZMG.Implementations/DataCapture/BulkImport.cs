@@ -188,7 +188,7 @@ public static class ImportRules
                 if (firstLine.TryGetValue(value, out var first))
                 {
                     if (!repeated.TryGetValue(row.Line, out var reasons)) repeated[row.Line] = reasons = [];
-                    reasons.Add($"La {label} '{key(row.Request)!.Trim()}' ya aparece en la línea {first} del archivo.");
+                    reasons.Add($"{label} '{key(row.Request)!.Trim()}' ya aparece en la línea {first} del archivo.");
                 }
                 else
                 {
